@@ -39,7 +39,7 @@ const LOOK: Record<string, Look> = {
   landuse: { color: '#1f7a6c', kind: 'fill', by: 'Land_Use', opacity: 0.22, width: 1.4, label: 'Land_Use', labelZoom: 13 },
   parcels: { color: '#5c5f66', kind: 'line', width: 0.8 },
   subdivisions: { color: '#1098ad', kind: 'fill', by: 'Subdivision', opacity: 0.14, width: 2.4, label: 'Subdivision', labelZoom: 12.5 },
-  rda: { color: '#7048e8', kind: 'fill', opacity: 0.16, outline: '#5f3dc4', width: 2.6, dash: true, label: 'REDLAB', labelZoom: 12 },
+  rda: { color: '#7048e8', kind: 'fill', opacity: 0.16, outline: '#5f3dc4', width: 2.6, dash: true, label: 'REDEV', labelZoom: 12 },
   rdaparcels: { color: '#7048e8', kind: 'fill', by: 'RDA', opacity: 0.3, width: 0.7, label: 'RDA', labelZoom: 15.5 },
   ura: { color: '#c2255c', kind: 'fill', opacity: 0.08, outline: '#c2255c', width: 3, dash: true, label: 'Name', labelZoom: 12 },
   snowplow: { color: '#1c7ed6', kind: 'line', by: 'Priority', width: 2.5 },
@@ -68,7 +68,7 @@ const NAME_FIELD: Record<string, string[]> = {
   zoning: ['ZONE', 'District'],
   landuse: ['Land_Use'],
   parcels: ['SITE_FULLADDRESS', 'PARCELID_LABEL', 'PARCEL_NO'],
-  rda: ['REDLAB', 'REDEV'],
+  rda: ['REDEV', 'REDLAB'],
   watersedge: ['District', 'ZONE'],
   amenities: ['Facility'],
   trails: ['FULLNAME', 'Facilities'],
@@ -329,7 +329,7 @@ export default function MapPage() {
 
   // Layer catalog, then the default layers (or the ones named in the address).
   useEffect(() => {
-    getJson<{ layers: MapLayerInfo[] }>('/api/map/layers').then(
+    getJson<{ layers: MapLayerInfo[] }>(`/api/map/layers?v=${DATA_VERSION}`).then(
       (j) => {
         setCatalog(j.layers);
         if (!explicitLayers.current) setOn((cur) => new Set([...j.layers.filter((l) => l.on).map((l) => l.key), ...cur]));
