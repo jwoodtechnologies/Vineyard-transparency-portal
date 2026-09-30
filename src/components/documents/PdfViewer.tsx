@@ -48,7 +48,7 @@ export default function PdfViewer({ url, page, onPageChange, onPageCount, onErro
   // Load the document.
   useEffect(() => {
     let cancelled = false;
-    const task = pdfjs.getDocument({ url, disableAutoFetch: false, enableXfa: false, withCredentials: false });
+    const task = pdfjs.getDocument({ url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 262144, enableXfa: false, withCredentials: false });
     task.promise.then(
       (d) => {
         if (cancelled) return;

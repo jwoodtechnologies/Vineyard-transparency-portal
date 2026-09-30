@@ -13,7 +13,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, ChevronDown, History, Plus, RotateCcw } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
-import { AskService, SearchService } from '@/services';
+import { SearchService } from '@/services';
+import { askStream, draftText } from './askStream';
 import { Composer } from './Composer';
 import { AnswerBody, Sources, Verdict } from './Answer';
 import { Records } from './Records';
@@ -25,6 +26,7 @@ import type { ConsoleAnswer, Preview, Turn } from './types';
 
 const PAGE = 8;
 const STEPS = ['Searching the archive', 'Reading the records', 'Checking every source'];
+const WRITING = 'Writing the answer';
 
 let seq = 0;
 const turnId = () => `t${Date.now().toString(36)}${(seq++).toString(36)}`;
@@ -41,6 +43,8 @@ const newTurn = (question: string): Turn => ({
   recordsStatus: 'loading',
   showRecords: false,
   wantRecords: true,
+  draft: '',
+  phase: 'searching',
 });
 
 function restore(chat: SavedChat): Turn[] {
@@ -67,17 +71,17 @@ function history(turns: Turn[]): ConversationTurn[] {
     ]);
 }
 
-function Thinking() {
+function Thinking({ writing }: { writing: boolean }) {
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 1400);
+    const id = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 900);
     return () => clearInterval(id);
   }, []);
   return (
     <div aria-live="polite">
       <span className="vc-status">
         <span className="vc-pulse" aria-hidden="true" />
-        <span className="vc-shimmer">{STEPS[step]}</span>
+        <span className="vc-shimmer">{writing ? WRITING : STEPS[step]}</span>
       </span>
       <div className="vc-skeleton" aria-hidden="true">
         <span style={{ width: '96%' }} />
@@ -126,10 +130,27 @@ export default function ConsolePage() {
         started.current.add(t.id);
         const ctrl = new AbortController();
         controllers.current.set(t.id, ctrl);
-        AskService.ask({ question: t.question, conversation: history(turns.slice(0, i)) }, ctrl.signal).then(
+        // Streamed text is batched to one render per frame so long answers stay smooth on phones.
+        let pending = '';
+        let frame = 0;
+        const flush = () => {
+          frame = 0;
+          const add = pending;
+          pending = '';
+          if (add) patch(t.id, (cur) => ({ draft: cur.draft + add, phase: 'writing' }));
+        };
+        askStream({ question: t.question, conversation: history(turns.slice(0, i)) }, ctrl.signal, {
+          onStatus: (phase) => phase === 'writing' && patch(t.id, { phase: 'writing' }),
+          onDelta: (text) => {
+            pending += text;
+            if (!frame) frame = requestAnimationFrame(flush);
+          },
+        }).then(
           (res) => {
             const answer = res as ConsoleAnswer;
+            if (frame) cancelAnimationFrame(frame);
             patch(t.id, (cur) => ({
+              draft: '',
               status: 'done',
               answer,
               recordsStatus: answer.mode === 'conversation' ? 'idle' : cur.recordsStatus,
@@ -265,10 +286,17 @@ export default function ConsolePage() {
             <div className="vc-you">
               <p className="vc-bubble">{t.question}</p>
             </div>
-            <div className="vc-assistant-head" aria-hidden="true">
-              <span>Vineyard</span>
-            </div>
-            {t.status === 'loading' && <Thinking />}
+            {t.status === 'loading' && !t.draft && <Thinking writing={t.phase === 'writing'} />}
+            {t.status === 'loading' && t.draft && (
+              <div className="vc-answer" data-streaming="true" aria-live="polite">
+                {draftText(t.draft).map((para, k, all) => (
+                  <p key={k}>
+                    {para}
+                    {k === all.length - 1 && <span className="vc-caret" aria-hidden="true" />}
+                  </p>
+                ))}
+              </div>
+            )}
             {t.status === 'error' && (
               <div className="vc-notice">
                 {t.error === 'Stopped.' ? 'Stopped.' : "I couldn't reach the archive just now."}{' '}

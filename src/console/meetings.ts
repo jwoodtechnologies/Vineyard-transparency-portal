@@ -6,13 +6,12 @@ import { BrowseService, MeetingService } from '@/services';
 const years = new Map<number, Promise<MeetingSummary[]>>();
 
 async function fetchYear(year: number): Promise<MeetingSummary[]> {
-  const out: MeetingSummary[] = [];
-  for (let page = 1; page <= 30; page++) {
-    const res = await MeetingService.list({ year, page, pageSize: 100, sort: 'date_asc' });
-    out.push(...res.items);
-    if (out.length >= res.total || res.items.length === 0) break;
-  }
-  return out;
+  // First page tells us the total; any remaining pages load in parallel.
+  const first = await MeetingService.list({ year, page: 1, pageSize: 100, sort: 'date_asc' });
+  const pages = Math.min(30, Math.ceil(first.total / 100));
+  if (pages <= 1) return first.items;
+  const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, i) => MeetingService.list({ year, page: i + 2, pageSize: 100, sort: 'date_asc' })));
+  return [first, ...rest].flatMap((r) => r.items);
 }
 
 export function loadYear(year: number): Promise<MeetingSummary[]> {

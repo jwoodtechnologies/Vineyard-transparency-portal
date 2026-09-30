@@ -101,11 +101,11 @@ export class SearchRepository {
   }
 
   /** Top chunks for an FTS expression across all active shards, merged best-first. */
-  async searchChunks(fts: string, filters: ShardFilters, limit: number, withText = false): Promise<ChunkHit[]> {
+  async searchChunks(fts: string, filters: ShardFilters, limit: number, withText = false, withSnippet = true): Promise<ChunkHit[]> {
     const { sql: where, params } = this.filterSql(filters);
     const sql =
       `SELECT c.id AS chunk_id, c.document_id, c.page_start, c.page_end, c.section_title, ${BM25} AS rank, ` +
-      `snippet(chunks_fts, 2, char(2), char(3), '…', 40) AS snip, ${withText ? 'c.text,' : ''} ` +
+      `${withSnippet ? "snippet(chunks_fts, 2, char(2), char(3), '…', 40)" : "''"} AS snip, ${withText ? 'c.text,' : ''} ` +
       `d.title, d.document_type, d.document_number, d.document_date, d.year, d.government_body_id, d.source_id, d.categories_json ` +
       `FROM chunks_fts JOIN chunks c ON c.rowid = chunks_fts.rowid JOIN shard_documents d ON d.document_id = c.document_id ` +
       `WHERE chunks_fts MATCH ?${where} ORDER BY rank LIMIT ?`;
@@ -138,6 +138,28 @@ export class SearchRepository {
       }),
     );
     return perShard.flat().sort((a, b) => b.score - a.score).slice(0, limit);
+  }
+
+  /**
+   * Snippets for specific chunks only. Building a snippet reads the chunk text, so the candidate
+   * query skips them and only the chunks shown on the current page get one.
+   */
+  async snippets(fts: string, refs: Array<{ shard: number; chunkId: string }>): Promise<Map<string, { text: string; highlights: Array<[number, number]> }>> {
+    const byShard = new Map<number, string[]>();
+    for (const r of refs) byShard.set(r.shard, [...(byShard.get(r.shard) ?? []), r.chunkId]);
+    const out = new Map<string, { text: string; highlights: Array<[number, number]> }>();
+    const sql =
+      `SELECT c.id AS chunk_id, snippet(chunks_fts, 2, char(2), char(3), '…', 40) AS snip FROM chunks_fts JOIN chunks c ON c.rowid = chunks_fts.rowid ` +
+      `WHERE chunks_fts MATCH ? AND chunks_fts.rowid IN (SELECT rowid FROM chunks WHERE id IN (SELECT value FROM json_each(?)))`;
+    await Promise.all(
+      [...byShard.entries()].map(async ([n, ids]) => {
+        const db = this.shards.get(n);
+        if (!db) return;
+        const res = await db.prepare(sql).bind(fts, JSON.stringify(ids)).all<{ chunk_id: string; snip: string }>();
+        for (const r of res.results ?? []) out.set(String(r.chunk_id), parseSnippet(String(r.snip ?? '')));
+      }),
+    );
+    return out;
   }
 
   /** Exact number of distinct documents matching (documents live in exactly one shard). */

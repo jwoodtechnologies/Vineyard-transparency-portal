@@ -1,17 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
-import { AppProvider } from '@/app/AppContext';
 import { router } from '@/app/router';
-import { ToastProvider } from '@/components/ui/Toast';
 import './index.css';
 
+// The portal is four quiet screens that need no app-wide providers, so nothing extra loads or
+// runs (no health check) before the first screen paints.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppProvider>
-      <ToastProvider>
-        <RouterProvider router={router} />
-      </ToastProvider>
-    </AppProvider>
+    <RouterProvider router={router} />
   </StrictMode>,
 );

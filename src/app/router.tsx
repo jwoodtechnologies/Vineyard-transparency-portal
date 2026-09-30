@@ -7,6 +7,19 @@ const MeetingsPage = lazy(() => import('@/console/MeetingsPage'));
 const MeetingPage = lazy(() => import('@/console/MeetingPage'));
 const DocumentView = lazy(() => import('@/console/DocumentView'));
 
+// Warm the other screens in the background once the first one is up, so tapping Meetings or a
+// record opens instantly.
+if (typeof window !== 'undefined') {
+  const warm = () => {
+    void import('@/console/MeetingsPage');
+    void import('@/console/MeetingPage');
+    void import('@/console/DocumentView');
+  };
+  const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
+  if (idle) idle(warm);
+  else setTimeout(warm, 1500);
+}
+
 const quiet = (node: ReactNode) => <Suspense fallback={<div className="vc" />}>{node}</Suspense>;
 
 /** Old search links (/search?q=...) open the same question in the console. */
