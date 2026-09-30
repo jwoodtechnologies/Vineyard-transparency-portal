@@ -137,19 +137,40 @@ export interface OutlineItem {
   depth: number;
 }
 const ITEM = /^\s*((?:\d{1,2}|[A-Z])(?:\.\d{1,2}){0,3})[.)]?\s+(\S.{2,})$/;
+const BARE_NUMBER = /^\s*(\d{1,2}(?:\.\d{1,2}){0,3})[.)]?\s*$/;
 export function agendaOutline(text: string): OutlineItem[] {
   const out: OutlineItem[] = [];
   const lines = text.replace(/\r/g, '').split('\n');
+  let pending: string | null = null; // a number that sat alone on its line ("5.") waiting for its title
+  const push = (number: string, raw: string) => {
+    const title = raw.replace(/\s*\.{3,}\s*\d*$/, '').trim();
+    out.push({ number, title: title.length > 220 ? `${title.slice(0, 217)}...` : title, detail: null, depth: number.split('.').length - 1 });
+  };
   for (const raw of lines) {
     const line = raw.replace(/\s+/g, ' ').trim();
     if (!line) continue;
+    const bare = BARE_NUMBER.exec(line);
+    if (bare) {
+      // Only a number that continues the outline counts; a lone "3" can also be a page number.
+      const tops = out.filter((o) => o.depth === 0).map((o) => Number(o.number));
+      const lastTop = tops.length ? tops[tops.length - 1] : 0;
+      const n = bare[1];
+      const ok = n.includes('.') ? Number(n.split('.')[0]) === lastTop : Number(n) === lastTop + 1 || (lastTop === 0 && Number(n) <= 2) || Number(n) === lastTop + 2;
+      pending = ok ? n : null;
+      continue;
+    }
+    if (pending) {
+      push(pending, line);
+      pending = null;
+      continue;
+    }
     const m = ITEM.exec(line);
     if (m && !/^\d{1,2}\s+(am|pm)\b/i.test(line)) {
-      const title = m[2].replace(/\s*\.{3,}\s*\d*$/, '').trim();
-      out.push({ number: m[1], title: title.length > 220 ? `${title.slice(0, 217)}...` : title, detail: null, depth: m[1].split('.').length - 1 });
+      push(m[1], m[2]);
     } else if (out.length) {
       const last = out[out.length - 1];
-      if (!last.detail && line.length > 12 && line.length < 400 && !/^page \d+/i.test(line)) last.detail = line;
+      const heading = line.length < 60 && line === line.toUpperCase() && /[A-Z]/.test(line);
+      if (!last.detail && !heading && line.length > 12 && line.length < 400 && !/^page \d+/i.test(line)) last.detail = line;
     }
   }
   return out.length >= 2 ? out.slice(0, 80) : [];
