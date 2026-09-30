@@ -79,3 +79,10 @@ class Sources(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BaseHref(unittest.TestCase):
+    def test_relative_links_resolve_from_base(self):
+        html = '<html><head><base href="https://www.vineyardutah.gov/"></head><body><div id="entry"><a href="September Newsletter 2026.pdf?t=1">Sept</a></div></body></html>'
+        inv = inventory(html, "https://www.vineyardutah.gov/community_/newsletters.php")
+        self.assertEqual(inv[0]["resolvedUrl"], "https://www.vineyardutah.gov/September%20Newsletter%202026.pdf?t=1")

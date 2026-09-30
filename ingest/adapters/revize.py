@@ -7,7 +7,7 @@ from typing import Iterator
 
 from bs4 import BeautifulSoup
 
-from ..discover import content_root
+from ..discover import base_url, content_root
 from ..sources import CITY_HOSTS, categorize
 from ..urls import extension, filename, host, normalize_url, url_key
 from .base import QueueItem, SourceAdapter
@@ -45,6 +45,7 @@ class VineyardWebsiteAdapter(SourceAdapter):
                 continue
             self.pages_read.append(final)
             soup = BeautifulSoup(html, "html.parser")
+            base = base_url(soup, final)
             page_title = (soup.title.get_text(" ", strip=True) if soup.title else "").strip()
             h1 = soup.find(["h1"])
             page_heading = h1.get_text(" ", strip=True) if h1 else page_title
@@ -53,7 +54,7 @@ class VineyardWebsiteAdapter(SourceAdapter):
                 href = a["href"].strip()
                 if href.startswith(("#", "javascript:", "mailto:", "tel:")):
                     continue
-                url = normalize_url(href, final)
+                url = normalize_url(href, base)
                 if host(url) not in CITY_HOSTS:
                     continue
                 cat = categorize(url)
