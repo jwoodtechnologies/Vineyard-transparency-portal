@@ -16,8 +16,9 @@ import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSor
 import { SearchService } from '@/services';
 import { askStream, draftText } from './askStream';
 import { Composer } from './Composer';
-import { AnswerBody, Sources, Verdict } from './Answer';
+import { AnswerBody, Sources } from './Answer';
 import { Records } from './Records';
+import { AnswerActions } from './AnswerActions';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
@@ -92,14 +93,23 @@ function Thinking({ writing }: { writing: boolean }) {
   );
 }
 
-function BrowseToggle({ turn, onOpen }: { turn: Turn; onOpen: () => void }) {
+function citedIds(answer: ConsoleAnswer | null): Set<string> {
+  return new Set((answer?.citations ?? []).map((c) => c.documentId));
+}
+
+/** One button for everything beyond the cited sources, so nothing is listed twice. */
+function MoreRecords({ turn, onOpen }: { turn: Turn; onOpen: () => void }) {
   const r = turn.records;
-  if (turn.recordsStatus === 'idle') return null;
-  if (r && r.total === 0) return null;
-  const n = r ? (r.totalIsEstimate ? `${r.total}+` : String(r.total)) : null;
+  if (turn.recordsStatus === 'idle' || !r) return null;
+  const cited = citedIds(turn.answer);
+  const extra = Math.max(0, r.total - r.items.filter((i) => cited.has(i.document.id)).length);
+  if (extra <= 0) return null;
+  const label = r.totalIsEstimate ? `${extra}+` : String(extra);
   return (
     <button type="button" className="vc-browse" onClick={onOpen}>
-      <span>{n ? `Browse ${n} matching ${r?.total === 1 ? 'record' : 'records'}` : 'Browse matching records'}</span>
+      <span>
+        {cited.size ? `${label} more ${extra === 1 ? 'record' : 'records'}` : `Browse ${label} matching ${extra === 1 ? 'record' : 'records'}`}
+      </span>
       <ChevronDown size={15} strokeWidth={2} />
     </button>
   );
@@ -264,7 +274,7 @@ export default function ConsolePage() {
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
         </main>
-        <p className="vc-legal">Independent project. Not an official Vineyard City website.</p>
+        <p className="vc-legal">Independent project, not an official Vineyard City website. Visits and questions, including IP address, are logged to improve the site.</p>
         {historyPanel}
       </div>
     );
@@ -308,15 +318,23 @@ export default function ConsolePage() {
             {t.status === 'done' && t.answer && (
               <>
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
-                {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} onCite={cite(t)} />}
                 {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
-                {t.answer.mode !== 'conversation' && <Verdict answer={t.answer} />}
-                {t.answer.mode !== 'conversation' &&
-                  (t.showRecords ? (
-                    <Records turn={t} onFilters={onFilters(t)} onMore={onMore(t)} onPreview={open(t)} onHide={() => patch(t.id, { showRecords: false })} />
-                  ) : (
-                    <BrowseToggle turn={t} onOpen={() => patch(t.id, { showRecords: true })} />
-                  ))}
+                {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} onCite={cite(t)} />}
+                <div className="vc-answer-foot">
+                  <AnswerActions answer={t.answer} />
+                  {t.answer.mode !== 'conversation' && !t.showRecords && <MoreRecords turn={t} onOpen={() => patch(t.id, { showRecords: true })} />}
+                </div>
+                {t.answer.mode !== 'conversation' && t.showRecords && (
+                  <Records
+                    turn={t}
+                    exclude={citedIds(t.answer)}
+                    title={t.answer.citations.length ? 'More records' : 'Records'}
+                    onFilters={onFilters(t)}
+                    onMore={onMore(t)}
+                    onPreview={open(t)}
+                    onHide={() => patch(t.id, { showRecords: false })}
+                  />
+                )}
               </>
             )}
           </article>

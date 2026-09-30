@@ -103,12 +103,15 @@ export class SearchRepository {
   /** Top chunks for an FTS expression across all active shards, merged best-first. */
   async searchChunks(fts: string, filters: ShardFilters, limit: number, withText = false, withSnippet = true): Promise<ChunkHit[]> {
     const { sql: where, params } = this.filterSql(filters);
-    const sql =
-      `SELECT c.id AS chunk_id, c.document_id, c.page_start, c.page_end, c.section_title, ${BM25} AS rank, ` +
-      `${withSnippet ? "snippet(chunks_fts, 2, char(2), char(3), '…', 40)" : "''"} AS snip, ${withText ? 'c.text,' : ''} ` +
-      `d.title, d.document_type, d.document_number, d.document_date, d.year, d.government_body_id, d.source_id, d.categories_json ` +
-      `FROM chunks_fts JOIN chunks c ON c.rowid = chunks_fts.rowid JOIN shard_documents d ON d.document_id = c.document_id ` +
-      `WHERE chunks_fts MATCH ?${where} ORDER BY rank LIMIT ?`;
+    const snipExpr = withSnippet ? "snippet(chunks_fts, 2, char(2), char(3), '…', 40)" : "''";
+    const cols = `c.id AS chunk_id, c.document_id, c.page_start, c.page_end, c.section_title, ${withText ? 'c.text,' : ''} d.title, d.document_type, d.document_number, d.document_date, d.year, d.government_body_id, d.source_id, d.categories_json`;
+    // Without filters, rank inside the FTS index first and join only the top rows; broad words
+    // ("council") match thousands of chunks, and joining every match before sorting is the slow part.
+    const sql = where || withSnippet
+      ? `SELECT ${cols}, ${BM25} AS rank, ${snipExpr} AS snip FROM chunks_fts JOIN chunks c ON c.rowid = chunks_fts.rowid JOIN shard_documents d ON d.document_id = c.document_id ` +
+        `WHERE chunks_fts MATCH ?${where} ORDER BY rank LIMIT ?`
+      : `WITH top AS (SELECT rowid AS rid, ${BM25} AS rank FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY rank LIMIT ?) ` +
+        `SELECT ${cols}, top.rank AS rank, '' AS snip FROM top JOIN chunks c ON c.rowid = top.rid JOIN shard_documents d ON d.document_id = c.document_id ORDER BY top.rank`;
     const perShard = await Promise.all(
       [...this.shards.entries()].map(async ([n, db]) => {
         const res = await db.prepare(sql).bind(fts, ...params, limit).all<Record<string, unknown>>();

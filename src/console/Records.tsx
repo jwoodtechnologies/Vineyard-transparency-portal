@@ -70,9 +70,12 @@ interface Props {
   onMore: () => void;
   onPreview: (r: SearchResult) => void;
   onHide?: () => void;
+  /** Documents already shown as the answer's sources. */
+  exclude?: Set<string>;
+  title?: string;
 }
 
-export function Records({ turn, onFilters, onMore, onPreview, onHide }: Props) {
+export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, title = 'Records' }: Props) {
   const r = turn.records;
   const f = turn.filters;
   const facets = r?.facets;
@@ -81,6 +84,7 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide }: Props) {
   const body = f.governmentBodyIds?.[0] ?? null;
   const active = Boolean(type || year || body);
 
+  const items = (r?.items ?? []).filter((i) => !exclude?.has(i.document.id));
   if (turn.recordsStatus === 'idle') return null;
   if (turn.recordsStatus === 'done' && r && r.total === 0 && !active) return null;
 
@@ -95,7 +99,7 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide }: Props) {
     <section className="vc-records" aria-label="Matching records">
       <div className="vc-records-head">
         <p className="vc-label" style={{ margin: 0 }}>
-          Records {r && <span className="vc-label-count">{r.totalIsEstimate ? `${r.total}+` : r.total}</span>}
+          {title}
         </p>
         <div className="vc-filters">
           <FilterMenu label="Type" value={type} options={facets?.documentTypes ?? []} onPick={(v) => set({ type: v })} />
@@ -123,11 +127,11 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide }: Props) {
         </div>
       )}
       {turn.recordsStatus === 'error' && <div className="vc-empty">The record search is unavailable right now.</div>}
-      {r && r.items.length === 0 && <div className="vc-empty">No records match these filters.</div>}
+      {r && items.length === 0 && <div className="vc-empty">No records match these filters.</div>}
 
-      {r && r.items.length > 0 && (
+      {r && items.length > 0 && (
         <div className="vc-results" style={{ opacity: turn.recordsStatus === 'loading' ? 0.55 : 1, transition: 'opacity .2s' }}>
-          {r.items.map((item, i) => {
+          {items.map((item, i) => {
             const ex = item.excerpts[0];
             const d = item.document;
             return (
