@@ -10,7 +10,7 @@
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
-import { DEFAULT_AI_MODEL, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, aiText, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -121,30 +121,55 @@ async function bumpQuota(env: Env, field: 'ai_requests' | 'ai_failures'): Promis
     .run();
 }
 
-async function aiBudgetLeft(env: Env): Promise<boolean> {
+/** Answers used today, or null when the daily allowance is spent. */
+async function aiBudgetLeft(env: Env): Promise<number | null> {
   const row = await env.CATALOG_DB.prepare('SELECT ai_requests FROM quota_usage WHERE day = ?').bind(utcDay()).first<{ ai_requests: number }>();
-  return Number(row?.ai_requests ?? 0) < intVar(env.AI_MAX_REQUESTS_PER_DAY, 120);
+  const used = Number(row?.ai_requests ?? 0);
+  return used < intVar(env.AI_MAX_REQUESTS_PER_DAY, 120) ? used : null;
 }
 
 type Msg = { role: string; content: string };
 type AiRunner = { run: (model: string, input: unknown) => Promise<unknown> };
 const MAX_TOKENS = 400;
 const AI_TIMEOUT_MS = 25_000;
+/**
+ * The larger model costs about 200 Neurons an answer, so it answers the first 35 questions of the
+ * day (about 7,000 of the 10,000 free daily Neurons) and the small model answers the rest.
+ */
+const BIG_MODEL_PER_DAY = 35;
 
-async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number } = {}): Promise<string> {
-  const model = env.AI_MODEL || DEFAULT_AI_MODEL;
-  const run = (env.AI as unknown as AiRunner).run(model, { messages, max_tokens: opts.maxTokens ?? MAX_TOKENS, temperature: opts.temperature ?? 0.1 });
+async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: number, temperature: number): Promise<string> {
+  const big = model.includes('gpt-oss');
+  const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : { messages, max_tokens: maxTokens, temperature };
+  const run = (env.AI as unknown as AiRunner).run(model, input);
   const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), AI_TIMEOUT_MS));
-  const out = (await Promise.race([run, timeout])) as { response?: unknown } | string;
-  const text = typeof out === 'string' ? out : typeof out?.response === 'string' ? out.response : '';
-  if (!text.trim()) throw new Error('Empty AI response');
+  const text = aiText(await Promise.race([run, timeout]))
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .trim();
+  if (!text) throw new Error('Empty AI response');
   return text;
 }
 
-/** Streams tokens from Workers AI (server-sent events: `data: {"response":"..."}` ... `data: [DONE]`). */
-async function streamModel(env: Env, messages: Msg[], onDelta: (text: string) => Promise<void>): Promise<string> {
-  const model = env.AI_MODEL || DEFAULT_AI_MODEL;
-  const out = await (env.AI as unknown as AiRunner).run(model, { messages, max_tokens: MAX_TOKENS, temperature: 0.1, stream: true });
+/** Tries the larger model first (while today's share lasts), then the small one. */
+async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number; useBig?: boolean } = {}): Promise<{ text: string; engine: string }> {
+  const primary = env.AI_MODEL && env.AI_MODEL !== FALLBACK_AI_MODEL ? env.AI_MODEL : DEFAULT_AI_MODEL;
+  const models = opts.useBig === false ? [FALLBACK_AI_MODEL] : [primary, FALLBACK_AI_MODEL];
+  let last: unknown = null;
+  for (const [i, model] of models.entries()) {
+    try {
+      const text = await runOnce(env, model, messages, opts.maxTokens ?? MAX_TOKENS, opts.temperature ?? 0.1);
+      const note = i > 0 && last ? ` (after ${String(last instanceof Error ? last.message : last).slice(0, 120)})` : '';
+      return { text, engine: model + note };
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last instanceof Error ? last : new Error(String(last));
+}
+
+/** Small-model streaming (server-sent events: `data: {"response":"..."}` ... `data: [DONE]`). */
+async function streamSmall(env: Env, messages: Msg[], onDelta: (text: string) => Promise<void>): Promise<string> {
+  const out = await (env.AI as unknown as AiRunner).run(FALLBACK_AI_MODEL, { messages, max_tokens: MAX_TOKENS, temperature: 0.1, stream: true });
   let sofar = '';
   const forward = async (piece: string) => {
     sofar += piece;
@@ -153,14 +178,14 @@ async function streamModel(env: Env, messages: Msg[], onDelta: (text: string) =>
     return finishedSentences(sofar) < MAX_ANSWER_SENTENCES;
   };
   if (out instanceof ReadableStream) return readAiStream(out as ReadableStream<Uint8Array>, forward, Date.now() + AI_TIMEOUT_MS);
-  const text = typeof out === 'string' ? out : typeof (out as { response?: unknown })?.response === 'string' ? String((out as { response: string }).response) : '';
+  const text = aiText(out);
   if (text) await onDelta(text);
   return text;
 }
 
 type Prepared =
   | { kind: 'final'; response: AskResponse }
-  | { kind: 'model'; messages: Msg[]; finish: (raw: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
+  | { kind: 'model'; messages: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
 
 /**
  * Everything up to the model call, with independent reads run in parallel. Returns either a final
@@ -204,12 +229,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const [strictHits, looseHits, budgetOk] = await Promise.all([
     strict.fts && strict.fts !== loose.fts ? repo.searchChunks(strict.fts, filters, 40, true, false) : Promise.resolve([] as ChunkHit[]),
     repo.searchChunks(loose.fts, filters, 40, true, false),
-    aiReady ? aiBudgetLeft(env) : Promise.resolve(false),
+    aiReady ? aiBudgetLeft(env) : Promise.resolve(null),
   ]);
   const seen = new Set(strictHits.map((h) => h.chunkId));
   const hits = [...strictHits, ...looseHits.filter((h) => !seen.has(h.chunkId))];
   if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
-  if (!aiReady || !budgetOk) return { kind: 'final', response: await fallback('search_only', SEARCH_ONLY_NOTICE) };
+  if (!aiReady || budgetOk == null) return { kind: 'final', response: await fallback('search_only', SEARCH_ONLY_NOTICE) };
 
   const evidence = selectEvidence(hits);
   // Start the catalog reads the final answer needs now, so they finish while the model writes.
@@ -235,10 +260,13 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     return fallback('search_only', SEARCH_ONLY_NOTICE);
   };
 
-  const finish = async (raw: string): Promise<AskResponse> => {
+  const finish = async (raw: string, engine?: string): Promise<AskResponse> => {
     await quotaP;
-    const seg = segmentAnswer(briefAnswer(raw), evidence.length);
-    if (!seg.used.size) return fallback('no_results', null);
+    const first = segmentAnswer(briefAnswer(raw), evidence.length);
+    // Every figure must be in the source it cites; unsupported sentences are removed.
+    const grounded = groundParagraphs(first.paragraphs, evidence);
+    const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
+    if (!seg.used.size) return fallback('search_only', null);
 
     // Renumber cited sources 1..k in order of first use.
     const order = [...seg.used].sort((a, b) => a - b);
@@ -274,7 +302,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
     const citedDocs = new Set(cited.map((c) => c.documentId));
     const relatedDocuments = [...docs.values()].filter((d) => !citedDocs.has(d.id)).slice(0, 5);
-    const partial = seg.dropped > 0 || seg.insufficient;
+    const partial = seg.dropped > 0 || seg.insufficient || grounded.removed > 0;
     const answer = paragraphs.map((p) => p.segments.map((s) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ')).join('\n\n');
 
     return {
@@ -285,11 +313,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       citations,
       relatedDocuments,
       notice: null,
-      engine: env.AI_MODEL || DEFAULT_AI_MODEL,
+      engine: engine ?? env.AI_MODEL ?? DEFAULT_AI_MODEL,
     };
   };
 
-  return { kind: 'model', messages, finish, fail };
+  return { kind: 'model', messages, useBig: budgetOk < BIG_MODEL_PER_DAY, finish, fail };
 }
 
 const SSE_HEADERS = {
@@ -320,9 +348,19 @@ function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract
     let final: AskResponse;
     try {
       await send('status', { phase: 'writing' });
-      const raw = await streamModel(env, prep.messages, (t) => send('delta', { t }));
+      let raw: string;
+      let engine = FALLBACK_AI_MODEL;
+      if (prep.useBig) {
+        // The larger model reasons before it writes, so its answer is sent whole once ready.
+        const r = await callModel(env, prep.messages, { useBig: true });
+        raw = r.text;
+        engine = r.engine;
+        await send('delta', { t: raw });
+      } else {
+        raw = await streamSmall(env, prep.messages, (t) => send('delta', { t }));
+      }
       if (!raw.trim()) throw new Error('Empty AI response');
-      final = await prep.finish(raw);
+      final = await prep.finish(raw, engine);
     } catch (e) {
       final = await prep.fail(e);
     }
@@ -355,13 +393,13 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   const prep = await prepare(env, body);
   if (prep.kind === 'final') return respond(done(prep.response));
   if (wantsStream) return streamAnswer(env, ctx, prep, done);
-  let text: string;
+  let out: { text: string; engine: string };
   try {
-    text = await callModel(env, prep.messages);
+    out = await callModel(env, prep.messages, { useBig: prep.useBig });
   } catch (e) {
     return respond(done(await prep.fail(e)));
   }
-  return respond(done(await prep.finish(text)));
+  return respond(done(await prep.finish(out.text, out.engine)));
 }
 
 function respond(body: AskResponse): Response {

@@ -6,7 +6,9 @@ import type { ChunkHit } from '../search/types';
 
 export const SEARCH_ONLY_NOTICE = 'AI answers are temporarily unavailable. Search results from the public-record archive are shown below.';
 export const NO_RESULTS_ANSWER = 'Nothing in the archive matches that yet. Try other words, a street or project name, or a meeting date.';
-export const DEFAULT_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
+/** Answers come from the larger model; the small one covers errors and the rest of the free daily allowance. */
+export const DEFAULT_AI_MODEL = '@cf/openai/gpt-oss-120b';
+export const FALLBACK_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
 
 /** Who the assistant is, shared by both modes. */
 export const ASSISTANT_PERSONA = [
@@ -32,6 +34,10 @@ export const RAG_SYSTEM_PROMPT = [
   'Every substantive claim should be supported by the provided sources.',
   'Answer with what the records show. Never say what the records do not contain, never add disclaimers about missing or unverifiable information, and never apologize.',
   'Cite the document and page when available.',
+  'Accuracy comes first. Copy names, titles, dollar amounts, vote counts, dates and ordinance or resolution numbers exactly as the source writes them. Never round, estimate, total or convert figures yourself.',
+  'Say whether something was proposed, recommended, discussed, approved, adopted or denied, exactly as the source states it. Never describe a proposal or a staff recommendation as a decision.',
+  'When sources differ, rely on the most recent one and name its date, for example "In the June 23, 2026 budget ...".',
+  'Only state facts about what the sources say. Never claim that something is not listed, not mentioned, not included or missing.',
   'Capital projects: describe only current and upcoming projects (construction in fiscal 2026 or later). The New City Hall project was canceled; never present it as planned, approved or current, and if asked about it say it was canceled.',
   'Links to the city map, official forms, the utility payment portal and phone numbers appear as buttons under your answer, so do not write out URLs.',
   '',
@@ -195,4 +201,109 @@ export function briefAnswer(raw: string, max = MAX_ANSWER_SENTENCES): string {
     if (kept.length) paragraphs.push(kept.join(' '));
   }
   return paragraphs.join('\n\n');
+}
+
+/* ------------------------------------------------------------------------------------------ *
+ * Grounding check: every number in a sentence (amounts, years, counts, percentages, ordinance
+ * numbers) must appear in the source it cites. If it appears in a different retrieved source,
+ * the citation is corrected; otherwise the sentence is removed. Sentences that claim something
+ * is absent from the records are removed too, since a handful of excerpts cannot prove that.
+ * ------------------------------------------------------------------------------------------ */
+
+const ABSENCE = /\b(is|are|was|were|isn't|aren't|wasn't|weren't) not (listed|mentioned|included|specified|identified|found|provided|available|stated|disclosed)\b|\b(isn't|aren't|wasn't|weren't) (listed|mentioned|included|specified)\b|\b(does|do|did|doesn't|don't|didn't)( not)? (list|mention|include|specify|identify|provide|state|say|disclose)\b|\bno (mention|record|records|information|details?|data) (of|about|on|regarding)\b|\bnot (clear|known|specified) (from|in)\b/i;
+
+const NUM = /\$?\d[\d,]*(?:\.\d+)?\s*(million|billion|thousand|[mk]\b)?/gi;
+
+const flat = (t: string) => t.replace(/(\d),(?=\d{3}\b)/g, '$1');
+
+/** The numbers a sentence depends on, each with the spellings a source might use. */
+export function sentenceNumbers(sentence: string): string[][] {
+  const out: string[][] = [];
+  for (const m of flat(sentence).matchAll(NUM)) {
+    const raw = m[0].replace(/^\$/, '').replace(/\s*(million|billion|thousand|[mk])$/i, '').trim();
+    const digits = raw.replace(/\.0+$/, '');
+    if (!digits || (/^\d$/.test(digits) && !m[1])) continue; // "Phase 1", "3 members"
+    const forms = [digits];
+    const unit = (m[1] ?? '').toLowerCase();
+    const scale = unit === 'billion' ? 1e9 : unit === 'million' || unit === 'm' ? 1e6 : unit === 'thousand' || unit === 'k' ? 1e3 : 0;
+    if (scale) forms.push(String(Math.round(Number(digits) * scale)));
+    // Years may be written "6.23.26" or "FY26" in city documents.
+    if (/^20\d{2}$/.test(digits)) forms.push(`FY${digits.slice(2)}`, `.${digits.slice(2)}`, `/${digits.slice(2)}`, `-${digits.slice(2)}`);
+    out.push(forms);
+  }
+  return out;
+}
+
+function has(text: string, forms: string[]): boolean {
+  return forms.some((f) => {
+    const e = f.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+    return new RegExp(/^[./-]/.test(f) || /^FY/.test(f) ? `${e}(?!\\d)` : `(^|[^\\d.])${e}(?![\\d]|\\.\\d)`, 'i').test(text);
+  });
+}
+
+export interface GroundSource {
+  text?: string;
+  title: string;
+  documentDate: string | null;
+}
+
+export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: GroundSource[]): { paragraphs: AnswerParagraph[]; removed: number; recited: number } {
+  const texts = evidence.map((e) => flat(`${e.title}\n${e.documentDate ?? ''}\n${(e.text ?? '').slice(0, MAX_CHUNK_CHARS)}`));
+  let removed = 0;
+  let recited = 0;
+  const out: AnswerParagraph[] = [];
+  for (const p of paragraphs) {
+    const segments: AnswerSegment[] = [];
+    for (const seg of p.segments) {
+      if (!seg.citations.length) {
+        segments.push(seg);
+        continue;
+      }
+      if (ABSENCE.test(seg.text)) {
+        removed++;
+        continue;
+      }
+      const nums = sentenceNumbers(seg.text);
+      const ok = (i: number) => nums.every((forms) => has(texts[i - 1] ?? '', forms));
+      if (!nums.length || seg.citations.every(ok)) {
+        segments.push(seg);
+        continue;
+      }
+      const cited = seg.citations.filter(ok);
+      if (cited.length) {
+        segments.push({ ...seg, citations: cited });
+        recited++;
+        continue;
+      }
+      const other = texts.map((_, i) => i + 1).filter(ok).slice(0, 2);
+      if (other.length) {
+        segments.push({ ...seg, citations: other });
+        recited++;
+      } else removed++;
+    }
+    if (segments.some((x) => x.citations.length)) out.push({ segments });
+  }
+  return { paragraphs: out, removed, recited };
+}
+
+/** Text from any Workers AI text-generation result shape (legacy, chat completions, responses). */
+export function aiText(out: unknown): string {
+  if (typeof out === 'string') return out;
+  const o = out as Record<string, unknown> | null;
+  if (!o || typeof o !== 'object') return '';
+  if (typeof o.response === 'string') return o.response;
+  const choice = (o.choices as Array<{ message?: { content?: unknown }; text?: unknown }> | undefined)?.[0];
+  if (typeof choice?.message?.content === 'string') return choice.message.content;
+  if (typeof choice?.text === 'string') return choice.text;
+  if (typeof o.output_text === 'string') return o.output_text;
+  if (Array.isArray(o.output)) {
+    const parts: string[] = [];
+    for (const item of o.output as Array<{ type?: string; content?: Array<{ type?: string; text?: unknown }> }>) {
+      if (item?.type !== 'message') continue;
+      for (const c of item.content ?? []) if (typeof c?.text === 'string' && c.type !== 'reasoning_text') parts.push(c.text);
+    }
+    return parts.join('');
+  }
+  if (o.result) return aiText(o.result);
+  return '';
 }
