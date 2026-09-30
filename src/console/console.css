@@ -3099,3 +3099,15 @@ html.vc-locked .vc-landing {
     break-inside: auto;
   }
 }
+
+.vc-map-bases {
+  display: flex;
+  width: 100%;
+  margin-bottom: 0.4rem;
+}
+.vc-map-bases button {
+  flex: 1;
+  justify-content: center;
+  padding: 0 0.3rem;
+  font-size: 0.76rem;
+}

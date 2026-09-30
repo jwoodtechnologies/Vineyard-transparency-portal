@@ -3,7 +3,7 @@
  *
  * Vineyard City publishes its GIS layers as public ArcGIS feature services. This route asks those
  * services for GeoJSON with an allowlisted set of fields (no parcel owner names or mailing
- * addresses, no private business licenses), then streams the body straight through with long
+ * addresses, no private business licenses) and exact, unsimplified shapes, then streams the body straight through with long
  * edge caching, so the Worker does almost no CPU work and the city's servers see one request per
  * layer page per cache period, not one per visitor.
  */
@@ -29,7 +29,7 @@ export interface MapLayerDef {
 }
 
 export const MAP_LAYERS: MapLayerDef[] = [
-  { key: 'boundary', label: 'City boundary', group: 'Land', path: 'Vineyard_City_Boundary/FeatureServer/0', fields: ['NAME'], geometry: 'polygon', on: true, offset: 0.00002 },
+  { key: 'boundary', label: 'City boundary', group: 'Land', path: 'Vineyard_City_Boundary/FeatureServer/0', fields: ['NAME'], geometry: 'polygon', on: true },
   {
     key: 'projects',
     label: 'Capital projects',
@@ -39,21 +39,22 @@ export const MAP_LAYERS: MapLayerDef[] = [
     geometry: 'polygon',
     on: true,
   },
-  { key: 'zoning', label: 'Zoning', group: 'Land', path: 'Zoning_-_Public_View/FeatureServer/8', fields: ['ZONE', 'District', 'Description', 'Ordinance', 'OrdinanceDate', 'ACRES'], geometry: 'polygon', offset: 0.00001 },
-  { key: 'landuse', label: 'Future land use', group: 'Plans', path: 'Vineyard_Future_Land_Use_View/FeatureServer/0', fields: ['Land_Use', 'Acres'], geometry: 'polygon', offset: 0.00001 },
+  { key: 'zoning', label: 'Zoning', group: 'Land', path: 'Zoning_-_Public_View/FeatureServer/8', fields: ['ZONE', 'District', 'Description', 'Ordinance', 'OrdinanceDate', 'ACRES'], geometry: 'polygon' },
+  { key: 'landuse', label: 'Future land use', group: 'Plans', path: 'Vineyard_Future_Land_Use_View/FeatureServer/0', fields: ['Land_Use', 'Acres'], geometry: 'polygon' },
   {
     key: 'parcels',
     label: 'Parcels',
     group: 'Land',
-    path: 'Vineyard_City_Parcels_view/FeatureServer/2',
-    fields: ['PARCEL_NO', 'PARCELID_LABEL', 'ACREAGE', 'SITE_FULLADDRESS', 'SITE_CITY', 'SITE_ZIP5'],
+    // The same 2025 county parcel layer the city's zoning and land use maps use. No owner names.
+    path: 'VNY_CA_Parcels_2025/FeatureServer/446',
+    fields: ['PARCEL_NO', 'SITE_FULL_ADDRESS', 'ACREAGE', 'SUB_NAME', 'PROP_TYPE_DESCR', 'GLA_WEIGHTED_YRBLT', 'MKT_CUR_VALUE', 'TAX_DISTRICT_DESCR'],
     geometry: 'polygon',
     pages: 3,
-    offset: 0.000004,
     minZoom: 14,
   },
-  { key: 'subdivisions', label: 'Neighborhoods', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon', offset: 0.000008, on: true },
-  { key: 'rda', label: 'RDA areas', group: 'Plans', path: 'Redevelopment_Area/FeatureServer/454', fields: ['REDEV', 'REDLAB', 'INCEPT', 'YEAR_'], geometry: 'polygon', offset: 0.00001 },
+  { key: 'pdoverlay', label: 'Planned development overlay', group: 'Land', path: 'VNY_PLPZ_PD_Overlay_view/FeatureServer/10', fields: ['GRANTEE', 'ACRES'], geometry: 'polygon' },
+  { key: 'subdivisions', label: 'Neighborhoods', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon', on: true },
+  { key: 'rda', label: 'RDA areas', group: 'Plans', path: 'Redevelopment_Area/FeatureServer/454', fields: ['REDEV', 'REDLAB', 'INCEPT', 'YEAR_'], geometry: 'polygon' },
   {
     key: 'rdaparcels',
     label: 'RDA phases by parcel',
@@ -63,10 +64,9 @@ export const MAP_LAYERS: MapLayerDef[] = [
     where: "RDA IS NOT NULL AND RDA <> ''",
     geometry: 'polygon',
     pages: 2,
-    offset: 0.000004,
   },
-  { key: 'ura', label: 'Geneva URA project area', group: 'Plans', path: 'Original_Geneva_URA_Project_Area/FeatureServer/471', fields: ['Name'], geometry: 'polygon', offset: 0.00001 },
-  { key: 'watersedge', label: "Water's Edge districts", group: 'Plans', path: 'Waters_Edge_Subdistricts_-_Public_View/FeatureServer/9', fields: ['ZONE', 'District', 'Description', 'ACRES'], geometry: 'polygon', offset: 0.00001 },
+  { key: 'ura', label: 'Geneva URA project area', group: 'Plans', path: 'Original_Geneva_URA_Project_Area/FeatureServer/471', fields: ['Name'], geometry: 'polygon' },
+  { key: 'watersedge', label: "Water's Edge districts", group: 'Plans', path: 'Waters_Edge_Subdistricts_-_Public_View/FeatureServer/9', fields: ['ZONE', 'District', 'Description', 'ACRES'], geometry: 'polygon' },
   {
     key: 'roads',
     label: 'Roads',
@@ -74,16 +74,15 @@ export const MAP_LAYERS: MapLayerDef[] = [
     path: 'VNY_PWTR_Roads/FeatureServer/1',
     fields: ['FULLNAME', 'ROADCLASS', 'ROW_WIDTH', 'YearConst', 'FROMLEFT', 'TOLEFT', 'CULDESAC'],
     geometry: 'line',
-    offset: 0.000005,
   },
-  { key: 'trails', label: 'Trails and bike lanes', group: 'Streets', path: 'VNY_PWTR_Active_Transportation_Facilities_View/FeatureServer/0', fields: ['FULLNAME', 'Facilities', 'Jurisdiction', 'ROW_WIDTH', 'YearConst'], geometry: 'line', offset: 0.000005 },
-  { key: 'snowplow', label: 'Snow plow routes', group: 'Streets', path: 'VNY_PWTR_SnowPlow_Routes_view/FeatureServer/286', fields: ['ROADNAME', 'Priority', 'Maintained', 'ROADCLASS'], geometry: 'line', offset: 0.000005 },
-  { key: 'evacroutes', label: 'Evacuation routes', group: 'Safety', path: 'VNY_HZ_EvacuationRoutes/FeatureServer/601', fields: ['Direction', 'ToCity', 'Zone', 'Status'], geometry: 'line', offset: 0.000005 },
-  { key: 'evaczones', label: 'Evacuation zones', group: 'Safety', path: 'VNY_HZ_EvacuationZone/FeatureServer/602', fields: ['Zone'], geometry: 'polygon', offset: 0.00001 },
+  { key: 'trails', label: 'Trails and bike lanes', group: 'Streets', path: 'VNY_PWTR_Active_Transportation_Facilities_View/FeatureServer/0', fields: ['FULLNAME', 'Facilities', 'Jurisdiction', 'ROW_WIDTH', 'YearConst'], geometry: 'line' },
+  { key: 'snowplow', label: 'Snow plow routes', group: 'Streets', path: 'VNY_PWTR_SnowPlow_Routes_view/FeatureServer/286', fields: ['ROADNAME', 'Priority', 'Maintained', 'ROADCLASS'], geometry: 'line' },
+  { key: 'evacroutes', label: 'Evacuation routes', group: 'Safety', path: 'VNY_HZ_EvacuationRoutes/FeatureServer/601', fields: ['Direction', 'ToCity', 'Zone', 'Status'], geometry: 'line' },
+  { key: 'evaczones', label: 'Evacuation zones', group: 'Safety', path: 'VNY_HZ_EvacuationZone/FeatureServer/602', fields: ['Zone'], geometry: 'polygon' },
   { key: 'crossings', label: 'School crossings', group: 'Safety', path: 'VNY_LO_School_Crossing_view/FeatureServer/314', fields: ['School_Name'], geometry: 'point' },
-  { key: 'greenspace', label: 'Green space', group: 'Places', path: 'Green_Space_Management_View/FeatureServer/191', fields: ['Category', 'Maintenance', 'Owner'], geometry: 'polygon', offset: 0.000005 },
+  { key: 'greenspace', label: 'Green space', group: 'Places', path: 'Green_Space_Management_View/FeatureServer/191', fields: ['Category', 'Maintenance', 'Owner'], geometry: 'polygon' },
   { key: 'wayfinding', label: 'Wayfinding signs', group: 'Places', path: 'Wayfinding_Signage_view/FeatureServer/83', fields: ['Type', 'Description', 'Status'], geometry: 'point', minZoom: 13 },
-  { key: 'parks', label: 'Parks', group: 'Places', path: 'VNY_PWPR_Park/FeatureServer/7', fields: ['NAME', 'ACRES', 'TYPE', 'STATUS'], geometry: 'polygon', on: true, offset: 0.000005 },
+  { key: 'parks', label: 'Parks', group: 'Places', path: 'VNY_PWPR_Park/FeatureServer/7', fields: ['NAME', 'ACRES', 'TYPE', 'STATUS'], geometry: 'polygon', on: true },
   { key: 'amenities', label: 'Park amenities', group: 'Places', path: 'VNY_PWPR_Amenities/FeatureServer/122', fields: ['Facility', 'Notes'], geometry: 'point', minZoom: 14 },
   { key: 'schools', label: 'Schools', group: 'Places', path: 'VNY_AD_Schools/FeatureServer/0', fields: ['Name', 'Address'], geometry: 'point', on: true },
   {

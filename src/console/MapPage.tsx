@@ -22,7 +22,50 @@ import { getJson, type MapLayerInfo } from './api';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
 
-const STYLE = { light: 'https://tiles.openfreemap.org/styles/positron', dark: 'https://tiles.openfreemap.org/styles/dark' };
+type Base = 'streets' | 'satellite' | 'terrain' | 'blank';
+const BASES: Array<{ id: Base; label: string }> = [
+  { id: 'streets', label: 'Streets' },
+  { id: 'satellite', label: 'Satellite' },
+  { id: 'terrain', label: 'Terrain' },
+  { id: 'blank', label: 'Blank' },
+];
+const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
+const USGS = (svc: string) => `https://basemap.nationalmap.gov/arcgis/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`;
+const USGS_ATTR = '<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a>';
+
+/** Free basemaps only: OpenFreeMap streets, USGS imagery and topo (public domain), AWS open elevation tiles. */
+function styleFor(base: Base, dark: boolean): string | maplibregl.StyleSpecification {
+  if (base === 'streets') return dark ? 'https://tiles.openfreemap.org/styles/dark' : 'https://tiles.openfreemap.org/styles/positron';
+  if (base === 'blank') return { version: 8, glyphs: GLYPHS, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': dark ? '#0a0a0b' : '#ffffff' } }] };
+  if (base === 'satellite')
+    return {
+      version: 8,
+      glyphs: GLYPHS,
+      sources: { img: { type: 'raster', tiles: [USGS('USGSImageryOnly')], tileSize: 256, maxzoom: 16, attribution: USGS_ATTR } },
+      layers: [{ id: 'img', type: 'raster', source: 'img' }],
+    };
+  return {
+    version: 8,
+    glyphs: GLYPHS,
+    sources: {
+      topo: { type: 'raster', tiles: [USGS('USGSTopo')], tileSize: 256, maxzoom: 16, attribution: USGS_ATTR },
+      dem: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 14, encoding: 'terrarium', attribution: 'Elevation: <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">AWS Terrain Tiles</a>' },
+    },
+    layers: [
+      { id: 'topo', type: 'raster', source: 'topo', paint: dark ? { 'raster-brightness-max': 0.7, 'raster-saturation': -0.3 } : {} },
+      { id: 'hill', type: 'hillshade', source: 'dem', paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#2b2b30' } },
+    ],
+  };
+}
+
+const readBase = (v: string | null): Base | null => (v === 'streets' || v === 'satellite' || v === 'terrain' || v === 'blank' ? v : null);
+function savedBase(): Base | null {
+  try {
+    return readBase(localStorage.getItem('vtp:mapbase'));
+  } catch {
+    return null;
+  }
+}
 const VINEYARD: LngLatBoundsLike = [
   [-111.772, 40.278],
   [-111.708, 40.338],
@@ -41,6 +84,7 @@ const LOOK: Record<string, Look> = {
   subdivisions: { color: '#1098ad', kind: 'fill', by: 'Subdivision', opacity: 0.14, width: 2.4, label: 'Subdivision', labelZoom: 12.5 },
   rda: { color: '#7048e8', kind: 'fill', opacity: 0.16, outline: '#5f3dc4', width: 2.6, dash: true, label: 'REDEV', labelZoom: 12 },
   rdaparcels: { color: '#7048e8', kind: 'fill', by: 'RDA', opacity: 0.3, width: 0.7, label: 'RDA', labelZoom: 15.5 },
+  pdoverlay: { color: '#f76707', kind: 'fill', opacity: 0.12, outline: '#d9480f', width: 2.6, dash: true, label: 'GRANTEE', labelZoom: 12.5 },
   ura: { color: '#c2255c', kind: 'fill', opacity: 0.08, outline: '#c2255c', width: 3, dash: true, label: 'Name', labelZoom: 12 },
   snowplow: { color: '#1c7ed6', kind: 'line', by: 'Priority', width: 2.5 },
   evacroutes: { color: '#e03131', kind: 'line', width: 3.5 },
@@ -67,7 +111,8 @@ const NAME_FIELD: Record<string, string[]> = {
   subdivisions: ['Subdivision'],
   zoning: ['ZONE', 'District'],
   landuse: ['Land_Use'],
-  parcels: ['SITE_FULLADDRESS', 'PARCELID_LABEL', 'PARCEL_NO'],
+  parcels: ['SITE_FULL_ADDRESS', 'PARCEL_NO'],
+  pdoverlay: ['GRANTEE'],
   rda: ['REDEV', 'REDLAB'],
   watersedge: ['District', 'ZONE'],
   amenities: ['Facility'],
@@ -136,6 +181,13 @@ const LABEL: Record<string, string> = {
   Facilities: 'Facilities',
   Jurisdiction: 'Jurisdiction',
   RDA: 'RDA phase',
+  SITE_FULL_ADDRESS: 'Address',
+  SUB_NAME: 'Subdivision',
+  PROP_TYPE_DESCR: 'Property type',
+  GLA_WEIGHTED_YRBLT: 'Year built',
+  MKT_CUR_VALUE: 'Market value (county)',
+  TAX_DISTRICT_DESCR: 'Tax district',
+  GRANTEE: 'Planned development',
   PARCEL_ID: 'Parcel',
   PARCEL_ADD: 'Address',
   acreage: 'Acres',
@@ -156,7 +208,7 @@ const HIDE = new Set(['OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Leng
 
 function fmt(key: string, v: unknown): string | null {
   if (v == null || v === '' || v === ' ') return null;
-  if ((key === 'Total_Budget' || key === 'total_taxable') && Number.isFinite(Number(v))) return `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  if ((key === 'Total_Budget' || key === 'total_taxable' || key === 'MKT_CUR_VALUE') && Number.isFinite(Number(v))) return `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if ((key === 'OrdinanceDate' || key === 'LASTUPDATE') && Number.isFinite(Number(v)) && Number(v) > 1e11) return new Date(Number(v)).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
   const s = String(v).trim();
@@ -227,7 +279,7 @@ interface Picked {
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
-const DATA_VERSION = 2;
+const DATA_VERSION = 3;
 const loaded = new Map<string, Promise<FC>>();
 function loadLayer(info: MapLayerInfo): Promise<FC> {
   let p = loaded.get(info.key);
@@ -259,7 +311,7 @@ const norm = (t: string) =>
     .map((w) => WORD[w] ?? w)
     .join(' ');
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda', 'ura'];
-const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
 
 export default function MapPage() {
   const [params, setParams] = useSearchParams();
@@ -282,7 +334,9 @@ export default function MapPage() {
   const [zoom, setZoom] = useState(13);
   const [error, setError] = useState<string | null>(null);
   const hoverRef = useRef<{ source: string; id: string | number } | null>(null);
-  const dark = resolved === 'dark';
+  const [base, setBase] = useState<Base>(() => readBase(params.get('base')) ?? savedBase() ?? 'streets');
+  // Overlays and labels use the dark treatment on dark mode and on satellite imagery.
+  const dark = resolved === 'dark' || base === 'satellite';
   const labelsRef = useRef(new Map<string, string>());
   const explicitLayers = useRef(Boolean(params.get('layers')));
   useEffect(() => {
@@ -341,17 +395,21 @@ export default function MapPage() {
   // Map instance, re-styled when the theme changes.
   useEffect(() => {
     if (!box.current) return;
-    const map = new maplibregl.Map({ container: box.current, style: STYLE[resolved === 'dark' ? 'dark' : 'light'], bounds: VINEYARD, fitBoundsOptions: { padding: 24 }, attributionControl: false, maxZoom: 19, minZoom: 10 });
+    const map = new maplibregl.Map({ container: box.current, style: styleFor(base, resolved === 'dark'), maxPitch: 70, bounds: VINEYARD, fitBoundsOptions: { padding: 24 }, attributionControl: false, maxZoom: 19, minZoom: 10 });
     map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Data: <a href="https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb" target="_blank" rel="noopener">Vineyard City Public GIS</a>' }), 'bottom-right');
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    map.addControl(new maplibregl.NavigationControl({ showCompass: base === 'terrain', visualizePitch: true }), 'bottom-right');
     // If the basemap service is unreachable, keep the city layers working on a plain background.
     let fellBack = false;
     map.on('error', () => {
       if (fellBack || map.isStyleLoaded()) return;
       fellBack = true;
-      setTimeout(() => map.setStyle({ version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': resolved === 'dark' ? '#111113' : '#f3f3f4' } }] }, { diff: false }), 0);
+      setTimeout(() => map.setStyle(styleFor('blank', resolved === 'dark') as maplibregl.StyleSpecification, { diff: false }), 0);
     });
     map.on('style.load', () => {
+      if (base === 'terrain' && map.getSource('dem')) {
+        map.setTerrain({ source: 'dem', exaggeration: 1.6 });
+        map.easeTo({ pitch: 55, bearing: -18, duration: 900 });
+      }
       setReady(true);
       readyRef.current = true;
       setTimeout(() => applyRef.current(), 0);
@@ -374,7 +432,7 @@ export default function MapPage() {
       map.remove();
       mapRef.current = null;
     };
-  }, [resolved]);
+  }, [resolved, base]);
 
   // Fetch data for layers that are switched on (and the searchable ones, for the search box).
   useEffect(() => {
@@ -588,6 +646,29 @@ export default function MapPage() {
 
         {panel && (
           <aside className="vc-map-panel" aria-label="Layers">
+            <p className="vc-panel-label">Map style</p>
+            <div className="vc-segment vc-map-bases" role="radiogroup" aria-label="Map style">
+              {BASES.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={base === b.id}
+                  data-on={base === b.id}
+                  onClick={() => {
+                    setBase(b.id);
+                    setData((d) => ({ ...d }));
+                    try {
+                      localStorage.setItem('vtp:mapbase', b.id);
+                    } catch {
+                      /* private mode */
+                    }
+                  }}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
             {!catalog && <div className="vc-skeleton" aria-hidden="true"><span style={{ width: '80%' }} /><span style={{ width: '60%' }} /></div>}
             {groups.map(([group, layers]) => (
               <div key={group} className="vc-map-group">
