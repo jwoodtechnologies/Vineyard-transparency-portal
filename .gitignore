@@ -15,3 +15,6 @@ data/*.sqlite-*
 data/discovered-documents.json
 data/source-health.json
 .DS_Store
+!.env.production
+__pycache__/
+*.pyc
