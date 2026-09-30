@@ -483,7 +483,7 @@ export default function MapPage() {
           });
         }
       }
-      const vis = on.has(key) ? 'visible' : 'none';
+      const vis = on.has(key) || key === 'boundary' ? 'visible' : 'none';
       for (const id of [`${src}-fill`, `${src}-line`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
     }
   }, [ready, catalog, data, on, dark]);
