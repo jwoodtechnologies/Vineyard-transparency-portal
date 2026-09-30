@@ -1,0 +1,1 @@
+fix: use the Workers AI model listed in the live catalog (llama-3.1-8b-instruct-fp8) and cap answers at 120/day
