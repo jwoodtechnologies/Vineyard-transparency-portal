@@ -64,6 +64,8 @@ class Sources(unittest.TestCase):
         self.assertFalse(categorize("https://cms3.revize.com/revize/security/index.jsp")["crawlable"])
         self.assertTrue(categorize("https://www.vineyardutah.gov/government/budget.php")["crawlable"])
         self.assertFalse(categorize("https://www.vineyardutah.gov/calendar.php?view=month")["crawlable"])
+        self.assertTrue(categorize("https://www.vineyardutah.gov/community_/parks.php")["crawlable"])
+        self.assertIsNone(categorize("https://transparent.utah.gov/")["sourceId"])
         self.assertEqual(categorize("https://www.vineyardutah.gov/Finance/Finance/FY22 Budgets.pdf")["category"], "document")
 
     def test_inventory_ignores_navigation_menu(self):

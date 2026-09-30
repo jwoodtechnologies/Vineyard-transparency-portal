@@ -15,7 +15,7 @@ from .classify import categories_for, classify_type, clean_title, parse_date, pa
 from .discover import discover, main_content_seeds
 from .extract import extract, sniff
 from .http import HttpFailure, PoliteClient, RobotsDisallowed
-from .sources import SOURCES
+from .sources import RETIRED_SOURCES, SOURCES
 from .storage import LocalFilesystemStorage, StorageProvider, WorkerArchiveStorage
 from .urls import DOCUMENT_EXTENSIONS, MEDIA_EXTENSIONS, extension, filename
 
@@ -55,7 +55,7 @@ def new_run_id() -> str:
 # --------------------------------------------------------------------------------------------- crawl
 
 def sync_sources(api: PortalApi) -> None:
-    api.post("/sources", {"sources": SOURCES})
+    api.post("/sources", {"sources": SOURCES, "retire": RETIRED_SOURCES})
 
 
 def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | None = None, manifest_path: str | None = None, civicclerk_since: str | None = None) -> RunCounts:
@@ -99,8 +99,9 @@ def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | No
             log(f"CivicClerk failed: {e}")
 
     if not only or "vineyard-city-website" in only:
-        seeds = main_content_seeds(manifest)
-        web = VineyardWebsiteAdapter(client, seeds=seeds)
+        # Whole-site crawl: the portal's links plus the site's top-level sections.
+        seeds = sorted(set(main_content_seeds(manifest)) | {f"https://www.vineyardutah.gov/{p}" for p in ("index.php", "government/index.php", "community_/index.php", "services/index.php")})
+        web = VineyardWebsiteAdapter(client, seeds=seeds, max_depth=4, max_pages=900)
         enqueue(web.list_documents())
         if web.bodies:
             api.post("/bodies", {"bodies": list(web.bodies.values())})

@@ -189,7 +189,7 @@ def main() -> int:
     crawl(api, c, "run_test_1", manifest_path=manifest)
     m = json.load(open(manifest))
     check(m["linkCount"] >= 8, f"source inventory captured {m['linkCount']} links")
-    check("vineyard-civicclerk-meetings" in m["sourceIds"] and "transparent-utah" in m["sourceIds"], "external systems discovered (CivicClerk, Transparent Utah via Budget page)")
+    check("vineyard-civicclerk-meetings" in m["sourceIds"] and "transparent-utah" not in m["sourceIds"], "meeting portal discovered; out-of-scope systems (Transparent Utah) not registered")
 
     counts = ingest(api, c, "run_test_1", limit=25)
     check(counts.ingested >= 5, f"ingested {counts.ingested} new documents")

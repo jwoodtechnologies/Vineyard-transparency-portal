@@ -2,7 +2,7 @@
 import { lazy } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AppShell } from './AppShell';
-import HomePage from '@/pages/HomePage';
+import ConsolePage from '@/console/ConsolePage';
 
 const AskPage = lazy(() => import('@/pages/AskPage'));
 const SearchPage = lazy(() => import('@/pages/SearchPage'));
@@ -21,10 +21,11 @@ const StatusPage = lazy(() => import('@/pages/StatusPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 export const router = createBrowserRouter([
+  // The home experience is a standalone, full-screen console (no header or footer).
+  { path: '/', element: <ConsolePage /> },
   {
     element: <AppShell />,
     children: [
-      { path: '/', element: <HomePage /> },
       { path: '/ask', element: <AskPage /> },
       { path: '/search', element: <SearchPage /> },
       { path: '/documents', element: <DocumentsPage /> },

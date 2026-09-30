@@ -10,7 +10,7 @@
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
-import { DEFAULT_AI_MODEL, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, buildUserMessage, segmentAnswer, selectEvidence } from './answer';
+import { CHAT_SYSTEM_PROMPT, DEFAULT_AI_MODEL, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, buildUserMessage, safeSmallTalk, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -126,9 +126,9 @@ async function aiBudgetLeft(env: Env): Promise<boolean> {
   return Number(row?.ai_requests ?? 0) < intVar(env.AI_MAX_REQUESTS_PER_DAY, 120);
 }
 
-async function callModel(env: Env, messages: Array<{ role: string; content: string }>): Promise<string> {
+async function callModel(env: Env, messages: Array<{ role: string; content: string }>, opts: { maxTokens?: number; temperature?: number } = {}): Promise<string> {
   const model = env.AI_MODEL || DEFAULT_AI_MODEL;
-  const run = (env.AI as unknown as { run: (m: string, i: unknown) => Promise<unknown> }).run(model, { messages, max_tokens: 600, temperature: 0.1 });
+  const run = (env.AI as unknown as { run: (m: string, i: unknown) => Promise<unknown> }).run(model, { messages, max_tokens: opts.maxTokens ?? 600, temperature: opts.temperature ?? 0.1 });
   const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), 25000));
   const out = (await Promise.race([run, timeout])) as { response?: unknown } | string;
   const text = typeof out === 'string' ? out : typeof out?.response === 'string' ? out.response : '';
@@ -164,6 +164,24 @@ export async function handleAsk(env: Env, request: Request): Promise<Response> {
     };
   };
 
+  // Conversation, not a records question: answer like an assistant, never with facts.
+  const kind = smallTalkKind(body.question);
+  if (kind) {
+    let text = SMALL_TALK_REPLIES[kind];
+    let engine = 'assistant';
+    if (aiConfigured(env) && !aiBreakerOpen() && (await aiBudgetLeft(env))) {
+      try {
+        await bumpQuota(env, 'ai_requests');
+        const prior = (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 500) }));
+        text = safeSmallTalk(await callModel(env, [{ role: 'system', content: CHAT_SYSTEM_PROMPT }, ...prior, { role: 'user', content: body.question }], { maxTokens: 120, temperature: 0.6 }), kind);
+        engine = env.AI_MODEL || DEFAULT_AI_MODEL;
+      } catch {
+        text = SMALL_TALK_REPLIES[kind];
+      }
+    }
+    return respond({ ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine, mode: 'conversation' } as AskResponse);
+  }
+
   if (!repo.available) throw new HttpError(503, 'search_unavailable', 'The full-text index is not available right now.');
 
   const strict = parseQuery(retrievalText, { match: 'all' });
@@ -184,8 +202,10 @@ export async function handleAsk(env: Env, request: Request): Promise<Response> {
   let raw: string;
   try {
     await bumpQuota(env, 'ai_requests');
+    const prior = (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }));
     raw = await callModel(env, [
       { role: 'system', content: RAG_SYSTEM_PROMPT },
+      ...prior,
       { role: 'user', content: buildUserMessage(body.question, evidence, history) },
     ]);
   } catch (e) {

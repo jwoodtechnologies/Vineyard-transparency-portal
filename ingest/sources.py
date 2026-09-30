@@ -8,8 +8,9 @@ SEED_URL = "https://www.vineyardutah.gov/transparency_portal/index.php"
 CITY_HOSTS = {"vineyardutah.gov", "vineyardutah.org"}
 
 # Paths on the city site whose pages are record listings worth following.
-CITY_PAGE_PREFIXES = ("/government/", "/transparency_portal/", "/community_/newsletters", "/services/utility_billing")
-CITY_PAGE_EXCLUDE = ("calendar.php", "report-a-concern", "/revize/", "/security/", "search.php", "/contact/")
+# Every page on the city site is followed (depth-limited) except calendars, forms and CMS/login paths.
+CITY_PAGE_EXCLUDE = ("calendar.php", "report-a-concern", "/revize/", "/security/", "search.php", "/form", "login", "/_assets_/", "/rss")
+RETIRED_SOURCES = ["transparent-utah", "vineyard-gis"]
 
 SOURCES = [
     {
@@ -33,7 +34,7 @@ SOURCES = [
         "crawlEnabled": True,
         "archiveEnabled": True,
         "documentDiscoveryEnabled": True,
-        "description": "Department pages linked from the transparency portal (budget, finance, recorder, RDA, water quality, elections and others) and the documents they publish.",
+        "description": "Every document published on vineyardutah.gov: department pages (budget, finance, recorder, RDA, water quality, elections, planning, public works and others) and the files they link.",
         "notes": "Revize CMS. Document links carry a ?t= cache-buster that changes when a file is replaced.",
     },
     {
@@ -58,31 +59,7 @@ SOURCES = [
         "archiveEnabled": False,
         "documentDiscoveryEnabled": False,
         "description": "Codified municipal code, zoning code, resolutions and ordinance index.",
-        "notes": "Client-rendered application; not crawled yet. Linked for reference.",
-    },
-    {
-        "id": "transparent-utah",
-        "name": "Transparent Utah",
-        "baseUrl": "https://transparent.utah.gov/",
-        "sourceType": "financial_transparency",
-        "authority": "State of Utah",
-        "crawlEnabled": False,
-        "archiveEnabled": False,
-        "documentDiscoveryEnabled": False,
-        "description": "State financial transparency site linked from the city's Budget and Finance pages.",
-        "notes": "Interactive data application; datasets are not crawled yet. Linked for reference.",
-    },
-    {
-        "id": "vineyard-gis",
-        "name": "Vineyard City Maps (ArcGIS)",
-        "baseUrl": "https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb",
-        "sourceType": "gis_portal",
-        "authority": "Vineyard City",
-        "crawlEnabled": False,
-        "archiveEnabled": False,
-        "documentDiscoveryEnabled": False,
-        "description": "Interactive city maps linked from the transparency portal.",
-        "notes": "Interactive map application; not crawled.",
+        "notes": "Linked for reference. The code site only serves its content to its own pages (server-side same-site filter), so it is not crawled; its ordinances, resolutions and minutes are indexed where the city publishes them (CivicClerk packets and vineyardutah.gov).",
     },
 ]
 
@@ -104,16 +81,16 @@ def categorize(url: str) -> dict:
             return {"category": "document", "sourceId": "vineyard-city-website", "crawlable": True, "notes": ""}
         if any(x in path for x in CITY_PAGE_EXCLUDE):
             return {"category": "city_page_excluded", "sourceId": None, "crawlable": False, "notes": "Calendar/forms/search pages are not record listings."}
-        crawl = path.startswith(CITY_PAGE_PREFIXES) or path in ("/", "/index.php")
-        return {"category": "city_page", "sourceId": "vineyard-city-website", "crawlable": crawl and path not in ("/", "/index.php"), "notes": "" if crawl else "Outside record-listing sections."}
+        is_page = path.endswith((".php", ".html", ".htm", "/")) or "." not in path.rsplit("/", 1)[-1]
+        return {"category": "city_page", "sourceId": "vineyard-city-website", "crawlable": is_page and not parts.query, "notes": "" if is_page else "Not an HTML page."}
     if h.endswith("civicclerk.com"):
         return {"category": "meeting_portal", "sourceId": "vineyard-civicclerk-meetings", "crawlable": True, "notes": "Crawled through its public API."}
     if h.endswith("municipalcodeonline.com"):
         return {"category": "municipal_code", "sourceId": "vineyard-municipal-code", "crawlable": False, "notes": "Client-rendered code library."}
     if h == "transparent.utah.gov":
-        return {"category": "financial_transparency", "sourceId": "transparent-utah", "crawlable": False, "notes": "State data application."}
+        return {"category": "financial_transparency", "sourceId": None, "crawlable": False, "notes": "State data application; out of scope."}
     if h.endswith("arcgis.com"):
-        return {"category": "gis", "sourceId": "vineyard-gis", "crawlable": False, "notes": "Interactive map."}
+        return {"category": "gis", "sourceId": None, "crawlable": False, "notes": "Interactive map; out of scope."}
     if h.endswith("suiteonemedia.com"):
         return {"category": "meeting_media", "sourceId": "vineyard-civicclerk-meetings", "crawlable": False, "notes": "Meeting video; stored as a link only."}
     if h.endswith("utah.gov"):

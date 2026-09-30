@@ -10,21 +10,18 @@ by every crawl (`sources:discover`, uploaded as a workflow artifact).
 
 ## Source registry
 
+Scope: agendas, minutes, meeting packets, PDFs and financial documents from Vineyard's own systems.
+
 | id | System | Crawled | How |
 | --- | --- | --- | --- |
 | `vineyard-transparency-portal` | Transparency Portal page | yes | Link inventory (seed) |
-| `vineyard-city-website` | vineyardutah.gov department pages | yes | `VineyardWebsiteAdapter`: record-listing pages linked from the portal (Budget, Finance, Recorder, RDA, Water Quality Reports, City Council, Elections, Public Works, Building, Construction Projects, Records Request, Mayor's Office, Newsletters) and one level below; document links (pdf/doc/docx/xls/xlsx/csv/txt/ppt) |
-| `vineyard-civicclerk-meetings` | "Government Meetings & Decisions" (vineyardut.portal.civicclerk.com) | yes | `CivicClerkAdapter`: public API `vineyardut.api.civicclerk.com/v1/Events` (verified live). Meetings, public bodies, published Agenda / Agenda Packet / Minutes files, video links (SuiteOne Media / YouTube) |
-| `vineyard-municipal-code` | Code & Policies (vineyard.municipalcodeonline.com) | not yet | Client-rendered app; linked for reference |
-| `transparent-utah` | Transparent Utah (linked from Budget and Finance) | not yet | Interactive state data app |
-| `vineyard-gis` | Vineyard City Maps (ArcGIS) | no | Interactive map |
+| `vineyard-city-website` | vineyardutah.gov (whole site) | yes | `VineyardWebsiteAdapter`: every HTML page on the city site reachable from the portal and the site's top-level sections (depth 4, up to 900 pages per run), and every document they link (pdf/doc/docx/xls/xlsx/csv/txt/ppt). Calendars, forms, search and CMS/login paths are skipped. Relative links resolve from the page's `<base href>`. |
+| `vineyard-civicclerk-meetings` | "Government Meetings & Decisions" (vineyardut.portal.civicclerk.com, a CivicPlus product) | yes | `CivicClerkAdapter`: public API `vineyardut.api.civicclerk.com/v1/Events`, full history via `@odata.nextLink`. Meetings, public bodies, Agenda / Agenda Packet / Minutes files, video links |
+| `vineyard-municipal-code` | Code & Policies (vineyard.municipalcodeonline.com, CivicPlus codification) | no | The site serves its book content only to its own pages (a server-side same-site filter answers other requests with "Unauthorized Access"). The portal respects that and does not work around it. Its ordinances, resolutions and minutes are indexed where the city also publishes them (CivicClerk packets and vineyardutah.gov). |
 
-Not crawled by design: social share links, the Revize CMS login, Google Maps, Revize vendor link,
-ApplicantPro jobs, "Report a Concern" and Calendar pages.
-
-The Phase 1 seed file `config/source-seeds.json` also lists the Utah Public Notice Website and
-the State Auditor. They are **not linked** from the live transparency page, so they are not part of
-the initial crawl. Add an adapter and a registry entry to include them later.
+Out of scope and retired from the registry: Transparent Utah and the ArcGIS map viewer. Social
+share links, the Revize CMS login, Google Maps, ApplicantPro jobs, "Report a Concern" and calendar
+pages are never fetched.
 
 ## Adapters
 

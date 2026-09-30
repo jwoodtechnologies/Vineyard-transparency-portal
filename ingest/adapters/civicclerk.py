@@ -101,7 +101,7 @@ class CivicClerkAdapter(SourceAdapter):
             self.meetings.append(
                 {
                     "id": meeting_id,
-                    "slug": f"{slug(title)}-{date_str or ev['id']}",
+                    "slug": "-".join(x for x in [slug(title)[:100], date_str, str(ev["id"])] if x),  # event id keeps same-day, same-title events unique
                     "title": title,
                     "governmentBodyId": body["id"] if body else None,
                     "governmentBodyName": body["name"] if body else None,
