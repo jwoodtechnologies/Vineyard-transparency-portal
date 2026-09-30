@@ -16,8 +16,9 @@ import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSor
 import { SearchService } from '@/services';
 import { askStream, draftText } from './askStream';
 import { Composer } from './Composer';
-import { AnswerBody, Sources, Verdict } from './Answer';
+import { AnswerBody, Sources } from './Answer';
 import { Records } from './Records';
+import { AnswerActions } from './AnswerActions';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
@@ -264,7 +265,7 @@ export default function ConsolePage() {
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
         </main>
-        <p className="vc-legal">Independent project. Not an official Vineyard City website.</p>
+        <p className="vc-legal">Independent project, not an official Vineyard City website. Visits and questions, including IP address, are logged to improve the site.</p>
         {historyPanel}
       </div>
     );
@@ -310,7 +311,7 @@ export default function ConsolePage() {
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
                 {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} onCite={cite(t)} />}
                 {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
-                {t.answer.mode !== 'conversation' && <Verdict answer={t.answer} />}
+                <AnswerActions answer={t.answer} />
                 {t.answer.mode !== 'conversation' &&
                   (t.showRecords ? (
                     <Records turn={t} onFilters={onFilters(t)} onMore={onMore(t)} onPreview={open(t)} onHide={() => patch(t.id, { showRecords: false })} />

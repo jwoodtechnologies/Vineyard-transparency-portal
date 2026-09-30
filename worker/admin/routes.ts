@@ -17,6 +17,8 @@ import { nowIso, utcDay, chunked } from '../lib/util';
 import { categoriesForType, normalizeType } from '../lib/taxonomy';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
+import { ensureActivityTables } from '../panel/store';
+import { newSetupCode } from '../panel/auth';
 import { requireIngestAuth } from './auth';
 import { splitSql } from '../lib/sql';
 
@@ -87,7 +89,10 @@ async function migrate(env: Env): Promise<Response> {
     const r = await db.batch(search.map((q) => db.prepare(q)));
     shards[shard] = sum(r);
   }
-  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards } });
+  await ensureActivityTables(env);
+  // While no panel owner exists, each migrate run prints a fresh one-time setup code (24 hours).
+  const panelSetupCode = await newSetupCode(env);
+  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, ...(panelSetupCode ? { panelSetupCode } : {}) });
 }
 
 async function quota(env: Env): Promise<Response> {

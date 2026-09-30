@@ -2150,3 +2150,90 @@
     animation: none;
   }
 }
+
+/* dictation */
+.vc-mic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-right: 0.15rem;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--vc-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.vc-landing .vc-mic {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+.vc-mic:hover {
+  background: var(--vc-surface-2);
+  color: var(--vc-ink);
+}
+.vc-mic[data-on='true'] {
+  color: #fff;
+  background: var(--vc-accent);
+  animation: vc-listen 1.6s ease-in-out infinite;
+}
+.dark .vc-mic[data-on='true'] {
+  color: #16070e;
+}
+@keyframes vc-listen {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--vc-accent) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--vc-accent) 0%, transparent);
+  }
+}
+
+/* answer actions */
+.vc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 1.1rem 0 0 -0.4rem;
+}
+.vc-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--vc-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 540;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.vc-act:hover {
+  background: var(--vc-surface-2);
+  color: var(--vc-ink);
+}
+.vc-act[data-on='true'],
+.vc-act[data-done='true'] {
+  color: var(--vc-accent);
+}
+.vc-act[data-on='true'] svg {
+  fill: color-mix(in srgb, var(--vc-accent) 22%, transparent);
+}
+.vc-act-thanks {
+  margin-left: 0.4rem;
+  font-size: 0.74rem;
+  color: var(--vc-faint);
+  animation: vc-fade 0.3s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vc-mic[data-on='true'] {
+    animation: none;
+  }
+}

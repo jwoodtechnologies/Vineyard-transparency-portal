@@ -296,7 +296,7 @@ const SSE_HEADERS = {
  * Streaming variant: `event: delta` carries raw model text as it is written (for display only),
  * then `event: done` carries the final, citation-checked AskResponse that replaces it.
  */
-function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract<Prepared, { kind: 'model' }>): Response {
+function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract<Prepared, { kind: 'model' }>, done: (r: AskResponse) => AskResponse): Response {
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
   const writer = writable.getWriter();
   const enc = new TextEncoder();
@@ -319,14 +319,25 @@ function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract
     } catch (e) {
       final = await prep.fail(e);
     }
-    await send('done', final);
+    await send('done', done(final));
     if (open) await writer.close().catch(() => undefined);
   })();
   ctx?.waitUntil(work);
   return new Response(readable, { status: 200, headers: SSE_HEADERS });
 }
 
-export async function handleAsk(env: Env, request: Request, ctx?: ExecutionContext): Promise<Response> {
+export type AskLogger = (response: AskResponse, latencyMs: number) => void;
+
+export async function handleAsk(env: Env, request: Request, ctx?: ExecutionContext, onDone?: AskLogger): Promise<Response> {
+  const started = Date.now();
+  const done = (r: AskResponse) => {
+    try {
+      onDone?.(r, Date.now() - started);
+    } catch {
+      /* logging never breaks an answer */
+    }
+    return r;
+  };
   const raw = await readJson<unknown>(request, 32 * 1024);
   const body = validate(raw);
   const wantsStream = Boolean(raw && typeof raw === 'object' && (raw as { stream?: unknown }).stream === true);
@@ -335,15 +346,15 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   if (retry != null) throw new HttpError(429, 'rate_limited', 'Too many questions. Try again shortly.', retry);
 
   const prep = await prepare(env, body);
-  if (prep.kind === 'final') return respond(prep.response);
-  if (wantsStream) return streamAnswer(env, ctx, prep);
+  if (prep.kind === 'final') return respond(done(prep.response));
+  if (wantsStream) return streamAnswer(env, ctx, prep, done);
   let text: string;
   try {
     text = await callModel(env, prep.messages);
   } catch (e) {
-    return respond(await prep.fail(e));
+    return respond(done(await prep.fail(e)));
   }
-  return respond(await prep.finish(text));
+  return respond(done(await prep.finish(text)));
 }
 
 function respond(body: AskResponse): Response {

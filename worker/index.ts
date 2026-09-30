@@ -5,7 +5,8 @@
  *   /api/*        → this Worker (D1 catalog + FTS5 search shards, R2 archive, Workers AI)
  *   everything    → static SPA assets (dist/), with SPA fallback for client routes
  *
- * The API holds no user accounts, sets no cookies and never logs questions or search text.
+ * No public accounts. Visits and questions (with IP address) are logged for the owner's private
+ * activity panel (see worker/panel), as the site footer says; logs are kept for 180 days.
  */
 import type { Env } from './env';
 import { HttpError, errorResponse, json, notFound } from './lib/http';
@@ -15,6 +16,8 @@ import { filtersFromUrl, handleSearch } from './api/search';
 import { browseFacets, getMeeting, handleHealth, handleStats, listBodies, listCategories, listMeetings, listSources, notImplementedYet, submitReport, suggestions } from './api/misc';
 import { handleAsk } from './ai/rag';
 import { handleAdmin } from './admin/routes';
+import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
+import { logQuestion, who } from './panel/store';
 
 function id(segment: string | undefined): string {
   const value = decodeURIComponent(segment ?? '');
@@ -27,6 +30,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
   const method = request.method;
 
   if (path.startsWith('/api/admin/')) return handleAdmin(env, request, url);
+  if (path === PANEL_PREFIX || path.startsWith(`${PANEL_PREFIX}/`)) return handlePanel(env, request, url);
 
   if (method === 'OPTIONS') return new Response(null, { status: 204, headers: { allow: 'GET, HEAD, POST, OPTIONS' } });
   if (!['GET', 'HEAD', 'POST'].includes(method)) throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
@@ -35,7 +39,25 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
   const [a, b, c] = parts;
 
   if (method === 'POST') {
-    if (a === 'ask' && parts.length === 1) return handleAsk(env, request, ctx);
+    if (a === 'ask' && parts.length === 1) {
+      const w = who(request);
+      return handleAsk(env, request, ctx, (r, ms) =>
+        ctx.waitUntil(
+          logQuestion(env, w, {
+            askId: r.id,
+            question: r.question,
+            status: r.retrievalStatus,
+            mode: (r as { mode?: string }).mode ?? null,
+            engine: r.engine,
+            citations: r.citations.length,
+            latencyMs: ms,
+            answer: r.answer,
+          }),
+        ),
+      );
+    }
+    if (a === 'visit' && parts.length === 1) return handleVisit(env, request, ctx);
+    if (a === 'feedback' && parts.length === 1) return handleFeedback(env, request, ctx);
     if (a === 'reports' && parts.length === 1) return submitReport(env, request);
     throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
   }
