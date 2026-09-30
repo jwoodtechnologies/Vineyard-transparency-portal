@@ -1,0 +1,1 @@
+fix(console): keep the wordmark header pinned while scrolling (overflow-x clip instead of hidden)
