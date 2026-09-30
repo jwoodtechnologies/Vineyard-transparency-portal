@@ -2107,3 +2107,20 @@
     padding-left: 0.8rem;
   }
 }
+
+.vc-menu-right {
+  left: auto;
+  right: 0;
+}
+@media (max-width: 720px) {
+  .vc-menu-right {
+    right: auto;
+    left: 0;
+    position: fixed;
+    top: auto;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    max-height: 60vh;
+  }
+}

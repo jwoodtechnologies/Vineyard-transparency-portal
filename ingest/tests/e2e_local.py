@@ -102,7 +102,7 @@ EVENTS = {
     "value": [
         {
             "id": 1652, "eventName": "City Council Meeting", "agendaName": "Special City Council Meeting ", "categoryName": "City Council",
-            "startDateTime": "2026-09-16T00:00:00Z", "isPublished": "Published", "isDeleted": False,
+            "startDateTime": "2026-09-15T18:00:00Z", "isPublished": "Published", "isDeleted": False,
             "externalMediaUrl": "http://vineyardut.suiteonemedia.com/web/Player.aspx?id=1724&key=-1&mod=-1&mk=-1&nov=0", "youtubeVideoId": "",
             "eventLocation": {"address1": "125 South Main", "city": "Vineyard", "state": "Utah"},
             "publishedFiles": [
@@ -112,7 +112,7 @@ EVENTS = {
         },
         {
             "id": 1560, "eventName": "Planning Commission", "agendaName": None, "categoryName": "Planning Commission",
-            "startDateTime": "2026-06-04T01:00:00Z", "isPublished": "Published", "isDeleted": False, "externalMediaUrl": "", "youtubeVideoId": "",
+            "startDateTime": "2026-06-03T19:00:00Z", "isPublished": "Published", "isDeleted": False, "externalMediaUrl": "", "youtubeVideoId": "",
             "eventLocation": {"address1": "City Council Chambers, 125 South Main Street", "city": "Vineyard", "state": "Utah"},
             "publishedFiles": [{"fileId": 2001, "type": "Minutes", "name": "6.3.26 PC Minutes", "url": "stream/VINEYARDUT/m.pdf", "publishOn": "2026-06-20T10:00:00Z"}],
         },
@@ -139,7 +139,7 @@ class FixtureAdapter(BaseAdapter):
         elif "government/finance.php" in url or "redevelopment_agency" in url:
             body = b"<html><body><div id='post'><h1>Page</h1><p>No documents.</p></div></body></html>"
         elif "api.civicclerk.com/v1/Events" in url:
-            nxt = "https://vineyardut.api.civicclerk.com/v1/Events?$orderby=startDateTime%20desc&$top=85&$skiptoken=startDateTime-2026-06-04T01%3A00%3A00Z,id-1560"
+            nxt = "https://vineyardut.api.civicclerk.com/v1/Events?$orderby=startDateTime%20desc&$top=85&$skiptoken=startDateTime-2026-06-03T19%3A00%3A00Z,id-1560"
             body = json.dumps({"value": EVENTS["value"][1:]} if "skiptoken" in url else {"value": EVENTS["value"][:1], "@odata.nextLink": nxt}).encode()
             ctype = "application/json"
         elif "GetMeetingFileStream(fileId=3340" in url or "9.15.26%20CC%20Agenda%20copy.pdf" in url:
