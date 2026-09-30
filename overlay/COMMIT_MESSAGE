@@ -1,0 +1,1 @@
+fix(ingest): honor <base href> on Revize pages and follow CivicClerk @odata.nextLink paging
