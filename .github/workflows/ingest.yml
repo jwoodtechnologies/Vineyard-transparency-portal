@@ -14,7 +14,7 @@ on:
         options: [run, crawl, ingest, ingest:resume, sources:discover, verify, stats, retry-errors, index, migrate]
       limit:
         description: Max documents to process (ingest/run)
-        default: "25"
+        default: "3000"
       source:
         description: Optional source id to crawl (blank = all enabled sources)
         default: ""
@@ -49,11 +49,11 @@ jobs:
       VTP_OIDC_AUDIENCE: vineyardportal.org
       VTP_TRIGGER: ${{ github.event_name }}
       IN_COMMAND: ${{ inputs.command || 'run' }}
-      IN_LIMIT: ${{ inputs.limit || '400' }}
+      IN_LIMIT: ${{ inputs.limit || '3000' }}
       IN_SOURCE: ${{ inputs.source || '' }}
       IN_SINCE: ${{ inputs.since || '' }}
       IN_OCR: ${{ inputs.ocr && 'true' || 'false' }}
-      IN_HOURS: ${{ inputs.hours || '4' }}
+      IN_HOURS: ${{ inputs.hours || '5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
