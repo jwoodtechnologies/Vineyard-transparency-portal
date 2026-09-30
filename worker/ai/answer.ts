@@ -6,7 +6,7 @@ import type { ChunkHit } from '../search/types';
 
 export const SEARCH_ONLY_NOTICE = 'AI answers are temporarily unavailable. Search results from the public-record archive are shown below.';
 export const NO_RESULTS_ANSWER = 'I could not verify that from the records currently indexed in the Vineyard Transparency Portal.';
-export const DEFAULT_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8-fast';
+export const DEFAULT_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
 
 export const RAG_SYSTEM_PROMPT = [
   'You answer questions using the Vineyard Transparency Portal public record archive.',

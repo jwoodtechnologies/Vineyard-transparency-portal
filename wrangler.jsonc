@@ -30,8 +30,8 @@
     "SEARCH_SHARDS": "0",
     "SEARCH_WRITE_SHARDS": "0",
     "AI_ENABLED": "true",
-    "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fp8-fast",
-    "AI_MAX_REQUESTS_PER_DAY": "250",
+    "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fp8",
+    "AI_MAX_REQUESTS_PER_DAY": "120",
     "MAX_D1_INGEST_ROWS_PER_DAY": "75000",
     // 6 GB: the account's other buckets already hold ~1.7 GB of the 10 GB free allowance.
     "ARCHIVE_STORAGE_HARD_STOP_BYTES": "6000000000",

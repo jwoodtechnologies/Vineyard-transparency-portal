@@ -123,7 +123,7 @@ async function bumpQuota(env: Env, field: 'ai_requests' | 'ai_failures'): Promis
 
 async function aiBudgetLeft(env: Env): Promise<boolean> {
   const row = await env.CATALOG_DB.prepare('SELECT ai_requests FROM quota_usage WHERE day = ?').bind(utcDay()).first<{ ai_requests: number }>();
-  return Number(row?.ai_requests ?? 0) < intVar(env.AI_MAX_REQUESTS_PER_DAY, 250);
+  return Number(row?.ai_requests ?? 0) < intVar(env.AI_MAX_REQUESTS_PER_DAY, 120);
 }
 
 async function callModel(env: Env, messages: Array<{ role: string; content: string }>): Promise<string> {

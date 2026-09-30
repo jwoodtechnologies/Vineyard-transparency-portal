@@ -8,8 +8,8 @@ The archive is the authority; the model is an interface to it.
 3. Select evidence: at most 10 chunks, at most 3 per document, about 14,000 characters total.
 4. Prompt: the system prompt below plus numbered SOURCES; record text is fenced and `<<<`/`>>>`
    markers inside records are removed so a document cannot close its own evidence block.
-5. Generate with Workers AI (`AI_MODEL`, default `@cf/meta/llama-3.1-8b-instruct-fp8-fast`,
-   available on the Workers Free plan; temperature 0.1, 600 output tokens).
+5. Generate with Workers AI (`AI_MODEL`, default `@cf/meta/llama-3.1-8b-instruct-fp8`,
+   listed in the account's Workers AI catalog on 2026-09-29 and available on the Workers Free plan; temperature 0.1, 600 output tokens).
 6. Verify: the answer is split into sentences. Each sentence must carry `[n]` markers pointing at
    supplied sources; invalid numbers are discarded; uncited factual sentences are **dropped** and the
    response becomes `partial` with search results attached. No valid citation at all → `no_results`

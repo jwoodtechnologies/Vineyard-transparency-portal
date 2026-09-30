@@ -12,7 +12,7 @@ The project must cost $0. Nothing here enables billing; every guard fails closed
 | R2 storage | 10 GB-month | `ARCHIVE_STORAGE_HARD_STOP_BYTES=6000000000`. The account's other buckets already use ~1.7 GB, so the suggested 8 GB would leave under 0.4 GB headroom; 6 GB leaves ~2.3 GB. Projected size is checked before every upload; over the limit the document is `quota_deferred` (metadata, provenance and text are kept). The threshold is never raised automatically. |
 | R2 operations | 1M Class A, 10M Class B / month | One PUT per unique binary (content-addressed, duplicates never re-uploaded). |
 | Max archived object | project rule | 25 MB (`ARCHIVE_MAX_OBJECT_BYTES`); larger files are `remote_only_large_file`. Video/audio never downloaded. |
-| Workers AI | 10,000 neurons/day | `AI_MAX_REQUESTS_PER_DAY=250` (about 30 neurons per answer with the 8B model); errors open a breaker; search-only fallback. |
+| Workers AI | 10,000 neurons/day | `AI_MAX_REQUESTS_PER_DAY=120` (about 70 neurons per answer with `llama-3.1-8b-instruct-fp8`: 13,778 input and 26,128 output neurons per million tokens); errors open a breaker; search-only fallback. |
 | GitHub Actions | 2,000 min/month (private repo) | One daily incremental run (usually minutes); manual backfills sized with `limit`/`hours`; `concurrency` prevents overlap. |
 
 ## Throughput expectation
