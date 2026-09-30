@@ -5,9 +5,9 @@
 import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, FileText, Video } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, Video } from 'lucide-react';
 import type { MeetingSummary } from '@/types/models';
 import { Frame } from './Chrome';
 import {
@@ -75,6 +75,50 @@ function MeetingRow({ m, today }: { m: MeetingSummary; today: string }) {
       </div>
       <ChevronRight className="vc-meeting-go" size={18} strokeWidth={1.6} aria-hidden="true" />
     </Link>
+  );
+}
+
+const MAIN_BODIES = 4;
+
+function MoreBodies({ bodies, value, onPick }: { bodies: Array<{ id: string; name: string; count: number }>; value: string | null; onPick: (id: string | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => box.current && !box.current.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  const current = bodies.find((b) => b.id === value);
+  return (
+    <div className="vc-filter" ref={box}>
+      <button type="button" className="vc-chip vc-chip-tone" data-tone={current ? toneOf(current.id) : undefined} data-active={Boolean(current)} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {current ? (
+          <>
+            <span className="vc-body-dot" /> {current.name}
+          </>
+        ) : (
+          `More (${bodies.length})`
+        )}
+        <ChevronDown size={14} strokeWidth={2} />
+      </button>
+      {open && (
+        <div className="vc-menu vc-menu-right" role="listbox" aria-label="More bodies">
+          {bodies.map((b) => (
+            <button key={b.id} type="button" className="vc-option" role="option" aria-selected={b.id === value} data-selected={b.id === value} data-tone={toneOf(b.id)} onClick={() => (onPick(b.id === value ? null : b.id), setOpen(false))}>
+              <span className="vc-option-check">{b.id === value ? <Check size={14} strokeWidth={2.4} /> : <span className="vc-body-dot" />}</span>
+              {b.name}
+              {b.count > 0 && <span className="vc-option-count">{b.count}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -260,12 +304,19 @@ export default function MeetingsPage() {
   const all = useMemo(() => loaded ?? [], [loaded]);
   const shown = body ? all.filter((m) => m.governmentBodyId === body) : all;
   const bodyChips = useMemo(() => {
-    const withMeetings = bodies.filter((b) => (b.meetingCount ?? 0) > 0);
-    if (withMeetings.length) return withMeetings.map((b) => ({ id: b.id, name: b.name }));
-    const seen = new Map<string, string>();
-    for (const m of all) if (m.governmentBodyId) seen.set(m.governmentBodyId, m.governmentBodyName ?? m.governmentBodyId);
-    return [...seen.entries()].map(([id, name]) => ({ id, name }));
+    const withMeetings = bodies.filter((b) => (b.meetingCount ?? 0) > 0).map((b) => ({ id: b.id, name: b.name, count: b.meetingCount ?? 0 }));
+    if (withMeetings.length) return withMeetings.sort((a, b) => b.count - a.count);
+    const seen = new Map<string, { id: string; name: string; count: number }>();
+    for (const m of all) {
+      if (!m.governmentBodyId) continue;
+      const cur = seen.get(m.governmentBodyId) ?? { id: m.governmentBodyId, name: m.governmentBodyName ?? m.governmentBodyId, count: 0 };
+      cur.count++;
+      seen.set(m.governmentBodyId, cur);
+    }
+    return [...seen.values()].sort((a, b) => b.count - a.count);
   }, [bodies, all]);
+  const mainBodies = bodyChips.slice(0, MAIN_BODIES);
+  const moreBodies = bodyChips.slice(MAIN_BODIES).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Frame wide>
@@ -287,11 +338,12 @@ export default function MeetingsPage() {
             <button type="button" className="vc-chip" data-active={!body} onClick={() => set({ body: null })}>
               All
             </button>
-            {bodyChips.map((b) => (
+            {mainBodies.map((b) => (
               <button key={b.id} type="button" className="vc-chip vc-chip-tone" data-tone={toneOf(b.id)} data-active={body === b.id} onClick={() => set({ body: body === b.id ? null : b.id })}>
                 <span className="vc-body-dot" /> {b.name}
               </button>
             ))}
+            {moreBodies.length > 0 && <MoreBodies bodies={moreBodies} value={body} onPick={(id) => set({ body: id })} />}
           </div>
         )}
       </div>

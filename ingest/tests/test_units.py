@@ -1,7 +1,7 @@
 """Unit tests for the ingestion pipeline: python -m unittest discover -s ingest/tests -p 'test_*.py'"""
 import unittest
 
-from ingest.adapters.civicclerk import body_for, file_url
+from ingest.adapters.civicclerk import body_for, file_url, local_start
 from ingest.chunk import HARD_MAX, chunk_pages
 from ingest.classify import classify_type, clean_title, parse_date, parse_document_number
 from ingest.discover import inventory
@@ -77,6 +77,14 @@ class Sources(unittest.TestCase):
     def test_civicclerk(self):
         self.assertEqual(body_for("Planning Commission"), {"id": "planning-commission", "name": "Planning Commission", "kind": "commission"})
         self.assertEqual(file_url(3340), "https://vineyardut.api.civicclerk.com/v1/Meetings/GetMeetingFileStream(fileId=3340,plainText=false)")
+
+    def test_civicclerk_times_are_local_wall_clock(self):
+        # The 9/15/2026 special council meeting agenda says 6:00 PM; the API sends T18:00:00Z.
+        d = local_start("2026-09-15T18:00:00Z")
+        self.assertEqual((d.date().isoformat(), d.strftime("%H:%M")), ("2026-09-15", "18:00"))
+        early = local_start("2026-01-20T00:00:00Z")
+        self.assertEqual(early.date().isoformat(), "2026-01-20")
+        self.assertIsNone(local_start(None))
 
 
 if __name__ == "__main__":

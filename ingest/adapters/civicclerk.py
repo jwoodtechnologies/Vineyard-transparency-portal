@@ -16,6 +16,15 @@ from ..classify import slug
 from ..urls import key_for
 from .base import QueueItem, SourceAdapter
 
+def local_start(value: object) -> datetime | None:
+    """CivicClerk sends Vineyard wall-clock time with a "Z" suffix (a 6:00 PM council meeting
+    arrives as ...T18:00:00Z), so the clock value is local Mountain time, not UTC."""
+    try:
+        return datetime.fromisoformat(str(value)[:19]).replace(tzinfo=TZ)
+    except (TypeError, ValueError):
+        return None
+
+
 TENANT = "vineyardut"
 API = f"https://{TENANT}.api.civicclerk.com/v1"
 PORTAL = f"https://{TENANT}.portal.civicclerk.com"
@@ -76,11 +85,8 @@ class CivicClerkAdapter(SourceAdapter):
             if ev.get("isDeleted") or ev.get("isPublished") not in (None, "Published"):
                 continue
             start = ev.get("startDateTime") or ev.get("eventDate")
-            try:
-                dt_utc = datetime.fromisoformat(start.replace("Z", "+00:00"))
-            except (AttributeError, ValueError):
-                dt_utc = None
-            local = dt_utc.astimezone(TZ) if dt_utc else None
+            local = local_start(start)
+            dt_utc = local.astimezone(timezone.utc) if local else None
             body = body_for(ev.get("categoryName") or ev.get("eventCategoryName"))
             if body:
                 self.bodies[body["id"]] = body
@@ -109,7 +115,7 @@ class CivicClerkAdapter(SourceAdapter):
                     "date": date_str,
                     "startTime": local.strftime("%H:%M") if local else None,
                     "location": location,
-                    "status": "held" if dt_utc and dt_utc < now else "scheduled",
+                    "status": "cancelled" if "cancel" in f"{name} {agenda_name}".lower() else "held" if dt_utc and dt_utc < now else "scheduled",
                     "sourceId": self.source_id,
                     "sourceUrl": f"{PORTAL}/event/{int(ev['id'])}/files",
                     "externalId": str(ev["id"]),
