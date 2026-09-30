@@ -454,7 +454,14 @@ export default function MapPage() {
   // Draw: add sources and layers once per map instance, then toggle visibility.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready || !catalog) return;
+    // After a style switch the new map may not have finished loading yet; it redraws on style.load.
+    if (!map || !ready || !catalog || !map.isStyleLoaded()) return;
+    try {
+      drawLayers(map, catalog);
+    } catch (e) {
+      console.warn('map draw', e);
+    }
+    function drawLayers(map: maplibregl.Map, catalog: MapLayerInfo[]) {
     for (const key of DRAW_ORDER) {
       const fc = data[key];
       const info = catalog.find((l) => l.key === key);
@@ -543,6 +550,7 @@ export default function MapPage() {
       }
       const vis = on.has(key) || key === 'boundary' ? 'visible' : 'none';
       for (const id of [`${src}-fill`, `${src}-line`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+    }
     }
   }, [ready, catalog, data, on, dark]);
 
@@ -657,7 +665,6 @@ export default function MapPage() {
                   data-on={base === b.id}
                   onClick={() => {
                     setBase(b.id);
-                    setData((d) => ({ ...d }));
                     try {
                       localStorage.setItem('vtp:mapbase', b.id);
                     } catch {
