@@ -1,103 +1,99 @@
 /**
- * Vineyard Transparency Portal — Cloudflare Worker gateway.
+ * Vineyard Transparency Portal: Cloudflare Worker.
  *
- * Serves the SPA from static assets and exposes a thin /api gateway:
- *  - /api/health is always answered here so the frontend can tell "backend not connected"
- *    apart from "network down".
- *  - Every other /api/* request is proxied to API_ORIGIN (the Phase 2 backend) when configured.
- *  - Without API_ORIGIN, /api/* returns a structured 503 the frontend renders as
- *    "backend offline" instead of a broken page.
+ * One application on one origin:
+ *   /api/*        → this Worker (D1 catalog + FTS5 search shards, R2 archive, Workers AI)
+ *   everything    → static SPA assets (dist/), with SPA fallback for client routes
  *
- * The Worker holds no secrets that reach the browser and does not log request bodies
- * (questions are not profiled server-side).
+ * The API holds no user accounts, sets no cookies and never logs questions or search text.
  */
+import type { Env } from './env';
+import { HttpError, errorResponse, json, notFound } from './lib/http';
+import { isSafeId } from './lib/util';
+import { getDocumentDetail, getDocumentFile, getDocumentText, getRelated, listDocuments } from './api/documents';
+import { filtersFromUrl, handleSearch } from './api/search';
+import { browseFacets, getMeeting, handleHealth, handleStats, listBodies, listCategories, listMeetings, listSources, notImplementedYet, submitReport, suggestions } from './api/misc';
+import { handleAsk } from './ai/rag';
+import { handleAdmin } from './admin/routes';
 
-export interface Env {
-  ASSETS: Fetcher;
-  API_ORIGIN?: string;
+function id(segment: string | undefined): string {
+  const value = decodeURIComponent(segment ?? '');
+  if (!isSafeId(value)) throw notFound();
+  return value;
 }
 
-const JSON_HEADERS = {
-  'content-type': 'application/json; charset=utf-8',
-  'cache-control': 'no-store',
-  'x-content-type-options': 'nosniff',
-};
+async function route(request: Request, env: Env, url: URL): Promise<Response> {
+  const path = url.pathname.replace(/\/+$/, '') || '/';
+  const method = request.method;
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
-}
+  if (path.startsWith('/api/admin/')) return handleAdmin(env, request, url);
 
-function apiOrigin(env: Env): URL | null {
-  if (!env.API_ORIGIN) return null;
-  try {
-    const url = new URL(env.API_ORIGIN);
-    return url.protocol === 'https:' || url.hostname === 'localhost' ? url : null;
-  } catch {
-    return null;
+  if (method === 'OPTIONS') return new Response(null, { status: 204, headers: { allow: 'GET, HEAD, POST, OPTIONS' } });
+  if (!['GET', 'HEAD', 'POST'].includes(method)) throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
+
+  const parts = path.split('/').slice(2); // after /api
+  const [a, b, c] = parts;
+
+  if (method === 'POST') {
+    if (a === 'ask' && parts.length === 1) return handleAsk(env, request);
+    if (a === 'reports' && parts.length === 1) return submitReport(env, request);
+    throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
   }
-}
 
-async function proxy(request: Request, origin: URL): Promise<Response> {
-  const incoming = new URL(request.url);
-  const target = new URL(incoming.pathname + incoming.search, origin);
-  const headers = new Headers(request.headers);
-  // Never forward cookies or client auth to the backend; the portal has no accounts.
-  headers.delete('cookie');
-  headers.delete('authorization');
-  const init: RequestInit = {
-    method: request.method,
-    headers,
-    body: ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
-    redirect: 'manual',
-  };
-  try {
-    const upstream = await fetch(target, init);
-    const response = new Response(upstream.body, upstream);
-    response.headers.set('x-content-type-options', 'nosniff');
-    response.headers.delete('set-cookie');
-    return response;
-  } catch {
-    return json(
-      { error: { kind: 'backend_unavailable', message: 'The archive backend could not be reached.' } },
-      502,
-    );
+  switch (a) {
+    case 'health':
+      return handleHealth(env);
+    case 'stats':
+      return handleStats(env);
+    case 'search':
+      return handleSearch(env, url);
+    case 'documents':
+      if (!b) return listDocuments(env, url, filtersFromUrl(url));
+      if (!c) return getDocumentDetail(env, request, id(b));
+      if (c === 'file') return getDocumentFile(env, request, id(b), url);
+      if (c === 'text') return getDocumentText(env, request, id(b));
+      if (c === 'related') return getRelated(env, request, id(b));
+      break;
+    case 'meetings':
+      return b ? getMeeting(env, request, id(b)) : listMeetings(env, url);
+    case 'sources':
+      return listSources(env, request, b ? id(b) : undefined);
+    case 'bodies':
+      return listBodies(env, request, b ? id(b) : undefined);
+    case 'categories':
+      return listCategories(env, request);
+    case 'browse':
+      if (b === 'facets') return browseFacets(env);
+      break;
+    case 'suggestions':
+      return suggestions(env);
+    case 'topics':
+      return notImplementedYet(b ? 'topic' : 'topics');
+    case 'code':
+      return notImplementedYet('code');
   }
+  throw notFound('Unknown API route.');
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname.startsWith('/api/')) {
-      const origin = apiOrigin(env);
-
-      if (url.pathname === '/api/health' && !origin) {
-        return json({
-          status: 'backend_not_connected',
-          gateway: 'cloudflare-worker',
-          checkedAt: new Date().toISOString(),
-        });
-      }
-
-      if (!origin) {
-        return json(
-          {
-            error: {
-              kind: 'backend_unavailable',
-              message: 'The archive backend is not connected to this deployment yet.',
-            },
-          },
-          503,
-        );
-      }
-
-      if (!['GET', 'HEAD', 'POST', 'OPTIONS'].includes(request.method)) {
-        return json({ error: { kind: 'method_not_allowed', message: 'Method not allowed.' } }, 405);
-      }
-
-      return proxy(request, origin);
+    // Canonical host: www → apex, permanent. (HTTP → HTTPS is enforced at the zone.)
+    if (url.hostname === 'www.vineyardportal.org') {
+      url.hostname = 'vineyardportal.org';
+      url.protocol = 'https:';
+      return Response.redirect(url.toString(), 301);
     }
 
-    return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
+
+    try {
+      return await route(request, env, url);
+    } catch (e) {
+      if (e instanceof HttpError) return errorResponse(e);
+      console.error(JSON.stringify({ event: 'api_error', path: url.pathname, message: e instanceof Error ? e.message : String(e) }));
+      return json({ error: { kind: 'server', message: 'Something went wrong while reading the archive.' } }, { status: 500 });
+    }
   },
 } satisfies ExportedHandler<Env>;
