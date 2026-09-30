@@ -1,0 +1,1 @@
+fix(ingest): make meeting slugs unique per CivicClerk event so same-day meetings with the same title no longer fail the batch
