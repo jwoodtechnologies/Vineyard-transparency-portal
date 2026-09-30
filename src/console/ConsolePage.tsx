@@ -22,7 +22,7 @@ import { AnswerActions } from './AnswerActions';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
-import { newChatId, saveChat, type SavedChat } from './history';
+import { getChat, newChatId, saveChat, type SavedChat } from './history';
 import type { ConsoleAnswer, Preview, Turn } from './types';
 
 const PAGE = 8;
@@ -115,16 +115,36 @@ function MoreRecords({ turn, onOpen }: { turn: Turn; onOpen: () => void }) {
   );
 }
 
+// The open conversation lives here for the whole visit, so going to a record and pressing Back
+// brings it back exactly as it was (even with saving turned off) instead of asking again.
+const liveChats = new Map<string, Turn[]>();
+const scrollPos = new Map<string, number>();
+
+function initialChat(params: URLSearchParams): { id: string; turns: Turn[]; restored: boolean } {
+  const c = params.get('c');
+  if (c) {
+    const live = liveChats.get(c);
+    if (live?.length)
+      return {
+        id: c,
+        restored: true,
+        turns: live.map((t) => (t.status === 'loading' ? { ...t, status: 'error', error: 'Stopped.', draft: '' } : t)),
+      };
+    const saved = getChat(c);
+    if (saved) return { id: c, turns: restore(saved), restored: true };
+  }
+  const q = params.get('q')?.trim();
+  return { id: newChatId(), turns: q ? [newTurn(q.slice(0, 1000))] : [], restored: false };
+}
+
 export default function ConsolePage() {
   const [params, setParams] = useSearchParams();
-  const [chatId, setChatId] = useState(newChatId);
-  const [turns, setTurns] = useState<Turn[]>(() => {
-    const q = params.get('q')?.trim();
-    return q ? [newTurn(q.slice(0, 1000))] : [];
-  });
+  const [init] = useState(() => initialChat(params));
+  const [chatId, setChatId] = useState(init.id);
+  const [turns, setTurns] = useState<Turn[]>(init.turns);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const started = useRef(new Set<string>());
+  const started = useRef(new Set<string>(init.restored ? init.turns.map((t) => t.id) : []));
   const searched = useRef(new Map<string, string>());
   const controllers = useRef(new Map<string, AbortController>());
   const lastTurnEl = useRef<HTMLElement | null>(null);
@@ -189,12 +209,44 @@ export default function ConsolePage() {
     });
   }, [turns, patch]);
 
+  // Keep the conversation for Back navigation, and put its id (not the question) in the address.
+  useEffect(() => {
+    if (turns.length) liveChats.set(chatId, turns);
+  }, [turns, chatId]);
+  const hasTurns = turns.length > 0;
+  useEffect(() => {
+    if (hasTurns && params.get('c') !== chatId) setParams({ c: chatId }, { replace: true });
+  }, [hasTurns, chatId, params, setParams]);
+
+  // Remember and restore where the reader was in the conversation.
+  const chatRef = useRef(chatId);
+  useEffect(() => {
+    chatRef.current = chatId;
+  }, [chatId]);
+  useEffect(() => {
+    if (init.restored) {
+      const y = scrollPos.get(init.id);
+      if (y) requestAnimationFrame(() => window.scrollTo({ top: y }));
+    }
+    return () => {
+      scrollPos.set(chatRef.current, window.scrollY);
+    };
+  }, [init]);
+
   // Save finished turns to this browser.
   useEffect(() => {
     const done = turns.filter((t) => t.status !== 'loading');
     if (!done.length) return;
     saveChat({ id: chatId, title: turns[0].question.slice(0, 90), updatedAt: Date.now(), turns: done.map((t) => ({ id: t.id, question: t.question, answer: t.answer })) });
   }, [turns, chatId]);
+
+  // The home screen is a single fixed screen: no scrolling or rubber-band bounce on phones.
+  const landing = turns.length === 0;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('vc-locked', landing);
+    return () => root.classList.remove('vc-locked');
+  }, [landing]);
 
   // Bring each new question to the top of the view.
   const count = turns.length;
@@ -204,7 +256,6 @@ export default function ConsolePage() {
 
   const ask = (text: string) => {
     setTurns((all) => [...all, newTurn(text)]);
-    if (!turns.length) setParams({ q: text }, { replace: true });
   };
 
   const reset = useCallback(() => {
@@ -224,7 +275,7 @@ export default function ConsolePage() {
     setTurns(restored);
     setPreview(null);
     setHistoryOpen(false);
-    setParams({}, { replace: true });
+    setParams({ c: chat.id }, { replace: true });
     requestAnimationFrame(() => window.scrollTo({ top: 0 }));
   };
 
@@ -274,7 +325,7 @@ export default function ConsolePage() {
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
         </main>
-        <p className="vc-legal">Independent project, not an official Vineyard City website. Visits and questions, including IP address, are logged to improve the site.</p>
+        <p className="vc-legal">Independent project, not an official Vineyard City website.</p>
         {historyPanel}
       </div>
     );
