@@ -1,0 +1,1 @@
+fix(console): Back restores the conversation instead of asking again (chat id in the address, kept in memory and in saved chats)
