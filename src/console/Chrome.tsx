@@ -1,10 +1,10 @@
 /**
- * The one piece of chrome every screen shares: the wordmark, a Meetings link and a settings menu.
+ * The one piece of chrome every screen shares: the wordmark, Latest, Calendar and Map links and a settings menu.
  * No hamburger, no footer, no explainer pages.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { CalendarDays, History, MessageSquare, Moon, Settings2, Sun, Trash2 } from 'lucide-react';
+import { CalendarDays, History, Map as MapIcon, MessageSquare, Moon, Newspaper, Settings2, Sun, Trash2 } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { clearChats, setHistoryEnabled, useChats, useHistoryEnabled } from './history';
@@ -74,8 +74,14 @@ export function SettingsMenu() {
           <Link to="/" className="vc-panel-row" onClick={close}>
             <MessageSquare size={15} strokeWidth={1.8} /> Ask the archive
           </Link>
+          <Link to="/latest" className="vc-panel-row" onClick={close}>
+            <Newspaper size={15} strokeWidth={1.8} /> Latest
+          </Link>
           <Link to="/meetings" className="vc-panel-row" onClick={close}>
             <CalendarDays size={15} strokeWidth={1.8} /> Calendar
+          </Link>
+          <Link to="/map" className="vc-panel-row" onClick={close}>
+            <MapIcon size={15} strokeWidth={1.8} /> Map
           </Link>
 
           <p className="vc-panel-label">Chat history</p>
@@ -133,9 +139,17 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
       </div>
       <nav className="vc-topbar-actions" aria-label="Main">
         {children}
-        <NavLink to="/meetings" className="vc-ghost vc-nav">
+        <NavLink to="/latest" className="vc-ghost vc-nav" aria-label="Latest" title="Latest">
+          <Newspaper size={16} strokeWidth={1.8} />
+          <span className="vc-nav-text">Latest</span>
+        </NavLink>
+        <NavLink to="/meetings" className="vc-ghost vc-nav" aria-label="Calendar" title="Calendar">
           <CalendarDays size={16} strokeWidth={1.8} />
           <span className="vc-nav-text">Calendar</span>
+        </NavLink>
+        <NavLink to="/map" className="vc-ghost vc-nav" aria-label="Map" title="Map">
+          <MapIcon size={16} strokeWidth={1.8} />
+          <span className="vc-nav-text">Map</span>
         </NavLink>
         <SettingsMenu />
       </nav>

@@ -260,6 +260,8 @@ export async function getDocumentFile(env: Env, request: Request, id: string, ur
     headers['content-security-policy'] = 'sandbox';
   } else {
     headers['content-type'] = mime;
+    // PDFs may be shown in a same-origin frame so the portal's Print button can print them directly.
+    if (mime === 'application/pdf') headers['x-frame-options'] = 'SAMEORIGIN';
     headers['content-disposition'] = `inline; filename="${fileName}"`;
   }
   if (range && obj.range) {

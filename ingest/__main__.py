@@ -103,6 +103,10 @@ def main(argv: list[str] | None = None) -> int:
             except BudgetReached:
                 pass
             log(f"Run {run_id}: {status} {total} (source requests {client.requests_made}, API requests {api.requests})")
+        elif cmd == "gis":
+            from . import gis
+
+            print(json.dumps(gis.run(api, client)))
         elif cmd == "retry-errors":
             print(json.dumps(api.post("/queue/retry-errors", {})))
         elif cmd == "index":

@@ -40,5 +40,7 @@
     "OIDC_REPOSITORY": "jwoodtechnologies/Vineyard-transparency-portal",
     "OIDC_ALLOWED_REFS": "refs/heads/main"
   },
+  // Hourly check for new meetings, records and news (worker/cron.ts). Free plan.
+  "triggers": { "crons": ["23 * * * *"] },
   "observability": { "enabled": true }
 }

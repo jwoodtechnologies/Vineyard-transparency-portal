@@ -6,6 +6,8 @@ import ConsolePage from '@/console/ConsolePage';
 const MeetingsPage = lazy(() => import('@/console/MeetingsPage'));
 const MeetingPage = lazy(() => import('@/console/MeetingPage'));
 const DocumentView = lazy(() => import('@/console/DocumentView'));
+const LatestPage = lazy(() => import('@/console/LatestPage'));
+const MapPage = lazy(() => import('@/console/MapPage'));
 
 // Warm the other screens in the background once the first one is up, so tapping Meetings or a
 // record opens instantly.
@@ -14,6 +16,7 @@ if (typeof window !== 'undefined') {
     void import('@/console/MeetingsPage');
     void import('@/console/MeetingPage');
     void import('@/console/DocumentView');
+    void import('@/console/LatestPage');
   };
   const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
   if (idle) idle(warm);
@@ -29,7 +32,7 @@ function SearchRedirect() {
   return <Navigate to={q ? `/?q=${encodeURIComponent(q)}` : '/'} replace />;
 }
 
-// The whole portal is four quiet screens: ask, the meeting schedule, one meeting, one record.
+// The portal is a few quiet screens: ask, latest, the calendar, the map, one meeting, one record.
 // Everything else from the first version (browse, topics, sources, about, status...) folds into these.
 export const router = createBrowserRouter([
   { path: '/', element: <ConsolePage /> },
@@ -37,6 +40,9 @@ export const router = createBrowserRouter([
   { path: '/calendar', element: quiet(<MeetingsPage />) },
   { path: '/meetings/:meetingId', element: quiet(<MeetingPage />) },
   { path: '/documents/:documentId', element: quiet(<DocumentView />) },
+  { path: '/latest', element: quiet(<LatestPage />) },
+  { path: '/news', element: <Navigate to="/latest" replace /> },
+  { path: '/map', element: quiet(<MapPage />) },
   { path: '/search', element: <SearchRedirect /> },
   { path: '/ask', element: <SearchRedirect /> },
   { path: '*', element: <Navigate to="/" replace /> },

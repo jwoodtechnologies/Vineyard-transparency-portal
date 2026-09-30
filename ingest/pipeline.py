@@ -1,6 +1,7 @@
 """crawl → queue → download → hash → dedupe → archive → extract → chunk → index. Resumable."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -8,12 +9,12 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-from .adapters import CivicClerkAdapter, VineyardWebsiteAdapter
+from .adapters import CivicClerkAdapter, SheriffAdapter, VineyardWebsiteAdapter
 from .api import BudgetReached, PortalApi
 from .chunk import chunk_pages
 from .classify import categories_for, classify_type, clean_title, parse_date, parse_document_number
 from .discover import discover, main_content_seeds
-from .extract import extract, sniff
+from .extract import extract, extract_html, sniff
 from .http import HttpFailure, PoliteClient, RobotsDisallowed
 from .sources import RETIRED_SOURCES, SOURCES
 from .storage import LocalFilesystemStorage, StorageProvider, WorkerArchiveStorage
@@ -108,6 +109,14 @@ def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | No
         log(f"City website: {len(web.pages_read)} pages read from {len(seeds)} seeds, {len(web.page_errors)} page errors")
         statuses.append({"id": "vineyard-city-website", "status": "active" if web.pages_read else "unreachable", "message": "; ".join(e["url"] for e in web.page_errors[:5]) or None})
 
+    if not only or "ucso-press-releases" in only:
+        try:
+            enqueue(SheriffAdapter(client).list_documents())
+            statuses.append({"id": "ucso-press-releases", "status": "active"})
+        except (HttpFailure, RobotsDisallowed) as e:
+            statuses.append({"id": "ucso-press-releases", "status": "blocked" if isinstance(e, RobotsDisallowed) else "unreachable", "message": str(e)[:300]})
+            log(f"Sheriff's Office feed failed: {e}")
+
     api.post("/sources/status", {"statuses": statuses})
     log(f"Queued/refreshed {counts.discovered} document URLs")
     return counts
@@ -156,12 +165,26 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
         if mime.startswith(("video/", "audio/")):
             api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": f"media ({mime}) linked only", "runId": run_id}]})
             return
-        if mime.startswith("text/html"):
-            api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": "HTML page, not a document", "runId": run_id}]})
-            return
-
-        extraction = extract(dl.path, ext, mime, ocr=ocr) if dl.path else None
-        title = clean_title(meta.get("title") or meta.get("linkText"), meta.get("fileName") or filename(url))
+        page_kind = meta.get("kind")
+        html_heading = None
+        if mime.startswith("text/html") or page_kind in ("web_page", "press_release"):
+            if page_kind not in ("web_page", "press_release") or not dl.path:
+                api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": "HTML page, not a document", "runId": run_id}]})
+                return
+            extraction, html_heading = extract_html(dl.path, page_kind)
+            text_all = " ".join(p.text for p in extraction.pages)
+            if meta.get("requireMention") and not re.search(rf"\b{re.escape(meta['requireMention'])}\b", text_all, re.I):
+                api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": f"does not mention {meta['requireMention']}", "runId": run_id}]})
+                return
+            if len(text_all) < 80:
+                api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": "page has no readable content", "runId": run_id}]})
+                return
+            # Hash the readable text, not the raw HTML, so menus or widgets changing do not re-index a page.
+            dl.sha256 = hashlib.sha256(text_all.encode()).hexdigest()
+            mime, ext = "text/html", "html"
+        else:
+            extraction = extract(dl.path, ext, mime, ocr=ocr) if dl.path else None
+        title = clean_title(meta.get("title") or html_heading or meta.get("linkText") or meta.get("pageTitle"), meta.get("fileName") or filename(url))
         doc_type = meta.get("documentType") or classify_type(title, meta.get("fileName"), meta.get("sectionHeading"), meta.get("pageTitle"))
         doc_date = meta.get("documentDate") or parse_date(title, meta.get("fileName"), meta.get("linkText"))
         document = {
@@ -206,7 +229,7 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
         else:
             counts.ingested += 1
 
-        if res.get("needsArchive") and storage and dl.path and dl.sha256:
+        if res.get("needsArchive") and storage and dl.path and dl.sha256 and page_kind not in ("web_page", "press_release"):
             if dl.size > MAX_ARCHIVE_BYTES:
                 api.post(f"/documents/{doc_id}", {"archiveStatus": "remote_only_large_file"})
             else:

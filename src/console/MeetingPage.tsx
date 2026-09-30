@@ -9,6 +9,8 @@ import type { Meeting } from '@/types/models';
 import { DocumentService, MeetingService } from '@/services';
 import { Frame } from './Chrome';
 import { agendaOutline, formatTime, longDate, statusLabel, todayIso, toneOf, type OutlineItem } from './meetings';
+import { MeetingDocList } from './MeetingDocs';
+import { useMeetingDocs } from './meetingDocs';
 
 type Load<T> = { status: 'loading' } | { status: 'error' } | { status: 'done'; data: T };
 
@@ -68,6 +70,7 @@ export default function MeetingPage() {
   const load = useMeeting(meetingId);
   const meeting = load.status === 'done' ? load.data : null;
   const outline = useOutline(meeting);
+  const records = useMeetingDocs(meeting?.id ?? null);
   const today = todayIso();
 
   useEffect(() => {
@@ -151,6 +154,15 @@ export default function MeetingPage() {
           <MessageSquare size={15} strokeWidth={1.8} /> Ask about this meeting
         </Link>
       </div>
+
+      {records.docs.length > 0 && (
+        <section className="vc-sched-group">
+          <p className="vc-label">
+            Every record from this meeting · {records.docs.length}
+          </p>
+          <MeetingDocList docs={records.docs} />
+        </section>
+      )}
 
       <section className="vc-sched-group">
         <p className="vc-label">On the agenda</p>

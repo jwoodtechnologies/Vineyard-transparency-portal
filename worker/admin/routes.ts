@@ -46,7 +46,7 @@ function slugify(title: string): string {
 
 const sum = (results: D1Result[]): number => results.reduce((t, r) => t + Number(r.meta?.rows_written ?? 0), 0);
 
-class Budget {
+export class Budget {
   constructor(private readonly env: Env) {}
   get limit(): number {
     return intVar(this.env.MAX_D1_INGEST_ROWS_PER_DAY, 75000);
@@ -172,7 +172,7 @@ async function sourceStatus(env: Env, body: Json, budget: Budget): Promise<Respo
   return json({ ok: true, rowsWritten: rows });
 }
 
-async function upsertBodies(env: Env, body: Json, budget: Budget): Promise<Response> {
+export async function upsertBodies(env: Env, body: Json, budget: Budget): Promise<Response> {
   const list = (Array.isArray(body.bodies) ? (body.bodies as Json[]) : []).filter((x) => idOk(x.id) && s(x.name)).slice(0, 200);
   const stmts = list.map((x) =>
     env.CATALOG_DB.prepare(
@@ -185,7 +185,7 @@ async function upsertBodies(env: Env, body: Json, budget: Budget): Promise<Respo
   return json({ ok: true, rowsWritten: rows });
 }
 
-async function upsertMeetings(env: Env, body: Json, budget: Budget): Promise<Response> {
+export async function upsertMeetings(env: Env, body: Json, budget: Budget): Promise<Response> {
   const list = (Array.isArray(body.meetings) ? (body.meetings as Json[]) : []).filter((x) => idOk(x.id) && s(x.title) && idOk(x.sourceId)).slice(0, 100);
   const now = nowIso();
   const stmts: D1PreparedStatement[] = [];
@@ -227,7 +227,7 @@ async function upsertMeetings(env: Env, body: Json, budget: Budget): Promise<Res
   return json({ ok: true, upserted: list.length, rowsWritten: rows });
 }
 
-async function upsertQueue(env: Env, body: Json, budget: Budget): Promise<Response> {
+export async function upsertQueue(env: Env, body: Json, budget: Budget): Promise<Response> {
   const items = (Array.isArray(body.items) ? (body.items as Json[]) : []).filter((x) => typeof x.urlKey === 'string' && /^[0-9a-f]{64}$/.test(x.urlKey) && s(x.url) && idOk(x.sourceId));
   if (items.length > 500) throw badRequest('At most 500 queue items per request.');
   const now = nowIso();
@@ -242,7 +242,9 @@ async function upsertQueue(env: Env, body: Json, budget: Budget): Promise<Respon
               json_extract(value,'$.parent'), json_extract(value,'$.m'), json_extract(value,'$.run'), ?, ?
        FROM json_each(?) WHERE true
        ON CONFLICT(url_key) DO UPDATE SET url = excluded.url, metadata_json = excluded.metadata_json, updated_at = excluded.updated_at,
-         status = CASE WHEN crawl_queue.url IS NOT excluded.url AND crawl_queue.status IN ('done','unchanged') THEN 'pending' ELSE crawl_queue.status END
+         status = CASE WHEN (crawl_queue.url IS NOT excluded.url
+                              OR json_extract(crawl_queue.metadata_json, '$.refreshToken') IS NOT json_extract(excluded.metadata_json, '$.refreshToken'))
+                             AND crawl_queue.status IN ('done','unchanged','skipped') THEN 'pending' ELSE crawl_queue.status END
        WHERE crawl_queue.metadata_json IS NOT excluded.metadata_json OR crawl_queue.url IS NOT excluded.url`,
     ).bind(now, now, payload),
   ]);
@@ -493,6 +495,15 @@ async function putChunks(env: Env, id: string, body: Json, budget: Budget): Prom
   const append = body.append === true;
   // Rough pre-check: each chunk costs ~4 rows (row, index, FTS docsize, FTS segments).
   await budget.check(chunks.length * 4);
+  // D1 Free databases stop at 500 MB. Pause indexing cleanly (the ingest job stops and resumes
+  // later) before a search shard gets there; adding the next shard lets it continue.
+  if (!append || Number(body.offset ?? 0) === 0) {
+    const probe = await repo.shard(Number(doc.search_shard)).prepare('SELECT 1').run();
+    const size = Number((probe.meta as { size_after?: number } | undefined)?.size_after ?? 0);
+    if (size > intVar(env.SEARCH_SHARD_MAX_BYTES, 460_000_000)) {
+      throw new HttpError(429, 'quota_exhausted', `Search shard ${doc.search_shard} is nearly full (${Math.round(size / 1e6)} MB). Add the next search shard to continue indexing.`);
+    }
+  }
   const categories = (() => {
     try {
       return JSON.parse(String(doc.categories_json ?? '[]')) as string[];

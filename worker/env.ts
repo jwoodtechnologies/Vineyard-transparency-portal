@@ -21,6 +21,8 @@ export interface Env {
   SEARCH_SHARDS?: string;
   /** Comma-separated shard numbers that receive newly indexed documents. */
   SEARCH_WRITE_SHARDS?: string;
+  /** Pause indexing when a search shard database passes this size (bytes). */
+  SEARCH_SHARD_MAX_BYTES?: string;
   AI_ENABLED?: string;
   AI_MODEL?: string;
   AI_MAX_REQUESTS_PER_DAY?: string;

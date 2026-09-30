@@ -3,6 +3,7 @@ the documents they publish. Follows only allowlisted record-listing pages on cit
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Iterator
 
 from bs4 import BeautifulSoup
@@ -50,6 +51,23 @@ class VineyardWebsiteAdapter(SourceAdapter):
             h1 = soup.find(["h1"])
             page_heading = h1.get_text(" ", strip=True) if h1 else page_title
             content = content_root(soup)
+            # The page itself is a record too: its text is indexed so answers can use it, and it is
+            # re-read weekly (refreshToken) so edits to the page reach the archive.
+            if host(final) in CITY_HOSTS and categorize(final)["category"] == "city_page" and categorize(final)["crawlable"]:
+                yield QueueItem(
+                    source_id=self.source_id,
+                    url=final,
+                    key=url_key(final),
+                    parent_url=None,
+                    priority=150 + depth * 10,
+                    metadata={
+                        "kind": "web_page",
+                        "title": page_heading or page_title or None,
+                        "pageTitle": page_title or None,
+                        "documentType": "other",
+                        "refreshToken": date.today().strftime("%G-W%V"),
+                    },
+                )
             for a in content.find_all("a", href=True):
                 href = a["href"].strip()
                 if href.startswith(("#", "javascript:", "mailto:", "tel:")):

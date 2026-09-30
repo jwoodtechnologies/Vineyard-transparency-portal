@@ -4,12 +4,14 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, CalendarDays, Download, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CalendarDays, Download, Layers, MessageSquare, Printer, Share2 } from 'lucide-react';
 import type { DocumentDetail, DocumentPageText } from '@/types/models';
 import { DocumentService } from '@/services';
 import { Frame } from './Chrome';
 import { TYPE_LABEL, formatDate } from './format';
 import { meetingHref } from './meetings';
+import { MeetingDocsSheet } from './MeetingDocs';
+import { useMeetingDocs } from './meetingDocs';
 
 const PdfViewer = lazy(() => import('@/components/documents/PdfViewer'));
 
@@ -87,6 +89,49 @@ function Viewer({ doc, page, setPage, highlight }: { doc: DocumentDetail; page: 
   return <TextPages pages={text.data} page={page} />;
 }
 
+const touchDevice = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+
+/** Prints the record itself: a PDF through a hidden same-origin frame (desktop), or the browser's
+ * own PDF viewer in a new tab (phones); text records print the page with a clean print layout. */
+function printRecord(doc: DocumentDetail, fileUrl: string | null) {
+  if (doc.mimeType === 'application/pdf' && fileUrl) {
+    if (touchDevice()) {
+      window.open(fileUrl, '_blank', 'noopener');
+      return;
+    }
+    const frame = document.createElement('iframe');
+    frame.className = 'vc-print-frame';
+    frame.setAttribute('aria-hidden', 'true');
+    frame.src = fileUrl;
+    frame.onload = () => {
+      try {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+      } catch {
+        window.open(fileUrl, '_blank', 'noopener');
+      }
+      setTimeout(() => frame.remove(), 120_000);
+    };
+    document.body.appendChild(frame);
+    return;
+  }
+  window.print();
+}
+
+async function shareRecord(title: string): Promise<'shared' | 'copied' | 'failed'> {
+  const url = window.location.href;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, url });
+      return 'shared';
+    }
+    await navigator.clipboard.writeText(url);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
+}
+
 export default function DocumentView() {
   const { documentId = '' } = useParams();
   const [params, setParams] = useSearchParams();
@@ -95,6 +140,10 @@ export default function DocumentView() {
   const q = (params.get('q') ?? '').slice(0, 200);
   const load = useLoad(`doc:${documentId}`, () => DocumentService.get(documentId));
   const doc = load.status === 'done' ? load.data : null;
+  const [showMeeting, setShowMeeting] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const siblings = useMeetingDocs(doc?.meeting?.id ?? null);
+  const fileUrl = doc ? (doc.archiveUrl ?? (doc.mimeType === 'application/pdf' ? `/api/documents/${encodeURIComponent(doc.id)}/file` : null)) : null;
 
   useEffect(() => {
     if (doc) document.title = `${doc.title} | Vineyard Transparency Portal`;
@@ -153,11 +202,31 @@ export default function DocumentView() {
               <CalendarDays size={15} strokeWidth={1.8} /> {doc.meeting.title}, {formatDate(doc.meeting.date)}
             </Link>
           )}
+          {doc.meeting && siblings.docs.length > 1 && (
+            <button type="button" className="vc-secondary vc-meeting-docs-btn" onClick={() => setShowMeeting(true)}>
+              <Layers size={15} strokeWidth={1.8} /> Everything from this meeting <span className="vc-count">{siblings.docs.length}</span>
+            </button>
+          )}
           {doc.archiveUrl && (
             <a href={doc.archiveUrl} className="vc-secondary" download>
               <Download size={15} strokeWidth={1.8} /> Download
             </a>
           )}
+          <button type="button" className="vc-secondary" onClick={() => printRecord(doc, fileUrl)}>
+            <Printer size={15} strokeWidth={1.8} /> Print
+          </button>
+          <button
+            type="button"
+            className="vc-secondary"
+            onClick={() =>
+              void shareRecord(doc.title).then((r) => {
+                setShareNote(r === 'copied' ? 'Link copied' : r === 'failed' ? 'Could not share' : null);
+                if (r !== 'shared') setTimeout(() => setShareNote(null), 2200);
+              })
+            }
+          >
+            <Share2 size={15} strokeWidth={1.8} /> {shareNote ?? 'Share'}
+          </button>
           {original && (
             <a href={original} target="_blank" rel="noopener noreferrer" className="vc-secondary">
               Original source <ArrowUpRight size={13} />
@@ -169,6 +238,7 @@ export default function DocumentView() {
         </div>
       </header>
       <Viewer doc={doc} page={page} setPage={setPage} highlight={highlight} />
+      {showMeeting && doc.meeting && <MeetingDocsSheet meeting={{ id: doc.meeting.id, title: doc.meeting.title, date: doc.meeting.date }} currentId={doc.id} onClose={() => setShowMeeting(false)} />}
     </Frame>
   );
 }

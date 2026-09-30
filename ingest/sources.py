@@ -10,7 +10,7 @@ CITY_HOSTS = {"vineyardutah.gov", "vineyardutah.org"}
 # Paths on the city site whose pages are record listings worth following.
 # Every page on the city site is followed (depth-limited) except calendars, forms and CMS/login paths.
 CITY_PAGE_EXCLUDE = ("calendar.php", "report-a-concern", "/revize/", "/security/", "search.php", "/form", "login", "/_assets_/", "/rss")
-RETIRED_SOURCES = ["transparent-utah", "vineyard-gis"]
+RETIRED_SOURCES = ["transparent-utah"]
 
 SOURCES = [
     {
@@ -48,6 +48,30 @@ SOURCES = [
         "documentDiscoveryEnabled": True,
         "description": "Meeting calendar with published agendas, agenda packets and minutes for the City Council, Planning Commission, RDA and boards.",
         "notes": "Read through the public API behind the portal (vineyardut.api.civicclerk.com/v1/Events). Meeting video links (SuiteOne Media / YouTube) are stored as links only.",
+    },
+    {
+        "id": "ucso-press-releases",
+        "name": "Utah County Sheriff's Office press releases",
+        "baseUrl": "https://sheriff.utahcounty.gov/media/pressArchive",
+        "sourceType": "other",
+        "authority": "Utah County Sheriff's Office",
+        "crawlEnabled": True,
+        "archiveEnabled": False,
+        "documentDiscoveryEnabled": True,
+        "description": "Press releases from the Utah County Sheriff's Office, which provides police service to Vineyard. Only releases that mention Vineyard are indexed.",
+        "notes": "Read from the office's public archive feed (/api/news/archive). Checked hourly by the Worker and nightly by the crawler.",
+    },
+    {
+        "id": "vineyard-gis",
+        "name": "Vineyard City Public GIS",
+        "baseUrl": "https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb",
+        "sourceType": "gis_portal",
+        "authority": "Vineyard City",
+        "crawlEnabled": True,
+        "archiveEnabled": False,
+        "documentDiscoveryEnabled": True,
+        "description": "The city's public map layers: roads, capital improvement projects, zoning, future land use, subdivisions, parks and schools. Shown on the portal's own map and summarized into searchable records.",
+        "notes": "Read from the city's public ArcGIS feature services. Parcel owner names and mailing addresses are not shown.",
     },
     {
         "id": "vineyard-municipal-code",

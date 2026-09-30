@@ -222,3 +222,32 @@ def clean(text: str) -> str:
     text = re.sub(r" *\n *", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def extract_html(path: str, kind: str | None = None) -> tuple[Extraction, str | None]:
+    """Main readable text of a web page (city page or Sheriff press release) and its heading.
+    Menus, headers, footers, scripts and sidebars are dropped so only the page's own content is indexed."""
+    from bs4 import BeautifulSoup
+
+    from .discover import content_root
+
+    raw = open(path, "rb").read(3_000_000).decode("utf-8", errors="replace")
+    soup = BeautifulSoup(raw, "html.parser")
+    for tag in soup(["script", "style", "noscript", "nav", "header", "footer", "form", "iframe", "svg"]):
+        tag.decompose()
+    for sel in (".sidebar", ".sidebar-widgets-wrap", "#sidebar", ".breadcrumb", ".breadcrumbs", ".social", ".share", "#google_translate_element"):
+        for el in soup.select(sel):
+            el.decompose()
+    root = soup.select_one("div.entry") if kind == "press_release" else None
+    root = root or content_root(soup)
+    heading_el = root.find(["h1", "h2"]) or soup.find("h1")
+    heading = heading_el.get_text(" ", strip=True) if heading_el else None
+    blocks = []
+    for el in root.find_all(["h1", "h2", "h3", "h4", "p", "li", "td", "th", "div"], recursive=True):
+        if el.name == "div" and el.find(["p", "div", "li", "table", "h1", "h2", "h3", "h4"]):
+            continue
+        t = el.get_text(" ", strip=True)
+        if t and (not blocks or blocks[-1] != t):
+            blocks.append(t)
+    text = clean("\n".join(blocks))
+    return (Extraction(pages=[Page(number=None, text=text)], status="extracted") if text else Extraction(status="empty")), heading
