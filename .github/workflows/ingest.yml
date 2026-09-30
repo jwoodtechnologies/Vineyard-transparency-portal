@@ -11,7 +11,7 @@ on:
         description: What to run
         type: choice
         default: run
-        options: [run, crawl, ingest, ingest:resume, gis, sources:discover, verify, stats, retry-errors, index, migrate]
+        options: [run, crawl, ingest, ingest:resume, gis, backup, sources:discover, verify, stats, retry-errors, index, migrate]
       limit:
         description: Max documents to process (ingest/run)
         default: "3000"
@@ -35,6 +35,8 @@ on:
     - cron: "47 */3 * * *"
     # Weekly: refresh the GIS records (every road, capital project, zoning district, park, school).
     - cron: "37 10 * * 1"
+    # Weekly catalog backup to R2 (Sundays)
+    - cron: "7 11 * * 0"
 
 permissions:
   contents: read
@@ -52,7 +54,7 @@ jobs:
       VTP_API_BASE: ${{ vars.VTP_API_BASE || 'https://vineyardportal.org,https://vineyard-transparency-portal.citizenjwood.workers.dev' }}
       VTP_OIDC_AUDIENCE: vineyardportal.org
       VTP_TRIGGER: ${{ github.event_name }}
-      IN_COMMAND: ${{ inputs.command || (github.event.schedule == '47 */3 * * *' && 'ingest') || (github.event.schedule == '37 10 * * 1' && 'gis') || 'run' }}
+      IN_COMMAND: ${{ inputs.command || (github.event.schedule == '47 */3 * * *' && 'ingest') || (github.event.schedule == '37 10 * * 1' && 'gis') || (github.event.schedule == '7 11 * * 0' && 'backup') || 'run' }}
       IN_LIMIT: ${{ inputs.limit || '3000' }}
       IN_SOURCE: ${{ inputs.source || '' }}
       IN_SINCE: ${{ inputs.since || '' }}
@@ -71,7 +73,7 @@ jobs:
       - name: Run ingestion
         run: |
           set -euo pipefail
-          case "$IN_COMMAND" in run|crawl|ingest|ingest:resume|gis|sources:discover|verify|stats|retry-errors|index|migrate) ;; *) echo "bad command"; exit 2;; esac
+          case "$IN_COMMAND" in run|crawl|ingest|ingest:resume|gis|backup|sources:discover|verify|stats|retry-errors|index|migrate) ;; *) echo "bad command"; exit 2;; esac
           [[ "$IN_LIMIT" =~ ^[0-9]{1,5}$ ]] || { echo "bad limit"; exit 2; }
           [[ "$IN_HOURS" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "bad hours"; exit 2; }
           ARGS=(--limit "$IN_LIMIT" --hours "$IN_HOURS")
