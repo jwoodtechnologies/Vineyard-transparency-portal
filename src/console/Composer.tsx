@@ -30,6 +30,9 @@ const speechCtor = (): RecognizerCtor | null => {
 };
 
 const HERO_PROMPTS = ['Ask about Vineyard records', 'What did the council approve?', 'FY 2027 budget amendments', 'Minutes, packets and notices'];
+// Phones get prompts short enough to fit beside the mic and send buttons.
+const HERO_PROMPTS_SHORT = ['Ask about Vineyard', 'Council decisions', 'The city budget', 'Meeting minutes'];
+const narrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 480px)').matches;
 
 interface Props {
   variant: 'hero' | 'dock';
@@ -42,6 +45,8 @@ interface Props {
 export function Composer({ variant, busy, onSubmit, onStop, autoFocus }: Props) {
   const [value, setValue] = useState('');
   const [prompt, setPrompt] = useState(0);
+  const [short] = useState(narrow);
+  const prompts = short ? HERO_PROMPTS_SHORT : HERO_PROMPTS;
   const [fading, setFading] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [listening, setListening] = useState(false);
@@ -142,7 +147,7 @@ export function Composer({ variant, busy, onSubmit, onStop, autoFocus }: Props) 
     }
   };
 
-  const placeholder = listening ? 'Listening... start speaking' : micNote ?? (variant === 'hero' ? HERO_PROMPTS[prompt] : 'Ask a follow-up');
+  const placeholder = listening ? (short ? 'Listening...' : 'Listening... start speaking') : micNote ?? (variant === 'hero' ? prompts[prompt] : 'Ask a follow-up');
 
   return (
     <div className="vc-composer-wrap">

@@ -196,6 +196,14 @@ export default function ConsolePage() {
     saveChat({ id: chatId, title: turns[0].question.slice(0, 90), updatedAt: Date.now(), turns: done.map((t) => ({ id: t.id, question: t.question, answer: t.answer })) });
   }, [turns, chatId]);
 
+  // The home screen is a single fixed screen: no scrolling or rubber-band bounce on phones.
+  const landing = turns.length === 0;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('vc-locked', landing);
+    return () => root.classList.remove('vc-locked');
+  }, [landing]);
+
   // Bring each new question to the top of the view.
   const count = turns.length;
   useEffect(() => {
@@ -274,7 +282,7 @@ export default function ConsolePage() {
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
         </main>
-        <p className="vc-legal">Independent project, not an official Vineyard City website. Visits and questions, including IP address, are logged to improve the site.</p>
+        <p className="vc-legal">Independent project, not an official Vineyard City website.</p>
         {historyPanel}
       </div>
     );
