@@ -226,11 +226,13 @@ interface Picked {
   props: Record<string, unknown>;
 }
 
+/** Bumped when a layer's source or fields change, so cached copies are not reused. */
+const DATA_VERSION = 2;
 const loaded = new Map<string, Promise<FC>>();
 function loadLayer(info: MapLayerInfo): Promise<FC> {
   let p = loaded.get(info.key);
   if (!p) {
-    p = Promise.all(Array.from({ length: info.pages }, (_, i) => getJson<FC>(`/api/map/layers/${info.key}?page=${i}`)))
+    p = Promise.all(Array.from({ length: info.pages }, (_, i) => getJson<FC>(`/api/map/layers/${info.key}?page=${i}&v=${DATA_VERSION}`)))
       .then((pages) => {
         const fc = colorize(info.key, { type: 'FeatureCollection', features: pages.flatMap((pg) => pg.features ?? []) });
         if (info.key !== 'roads') return fc;

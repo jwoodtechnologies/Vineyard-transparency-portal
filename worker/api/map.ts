@@ -132,7 +132,17 @@ export async function getMapLayer(_env: Env, key: string, url: URL): Promise<Res
     cf: { cacheTtl: 43200, cacheEverything: true },
   } as RequestInit);
   if (!upstream.ok || !upstream.body) throw new HttpError(502, 'backend_unavailable', 'The city map service did not respond. Try again shortly.');
-  return new Response(upstream.body, {
+  // ArcGIS reports query errors with HTTP 200 and an {"error": ...} body; never cache those.
+  const [body, peek] = upstream.body.tee();
+  const reader = peek.getReader();
+  const first = await reader.read();
+  void reader.cancel();
+  const head = first.value ? new TextDecoder().decode(first.value.slice(0, 64)) : '';
+  if (/^\s*\{\s*"error"/.test(head)) {
+    void body.cancel();
+    throw new HttpError(502, 'backend_unavailable', 'The city map service could not return this layer right now.');
+  }
+  return new Response(body, {
     status: 200,
     headers: {
       'content-type': 'application/geo+json; charset=utf-8',
