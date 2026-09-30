@@ -1,0 +1,85 @@
+# Public-record ingestion. Heavy work (downloads, PDF text extraction) runs here, never in the Worker.
+# Auth to the Worker's /api/admin endpoints is a short-lived GitHub OIDC token (no stored secret).
+# Free-tier safety: the Worker enforces the daily D1 write budget and the R2 hard stop server-side;
+# when the budget is reached this job stops cleanly and the next run resumes from the D1 queue.
+name: Ingest public records
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: What to run
+        type: choice
+        default: run
+        options: [run, crawl, ingest, ingest:resume, sources:discover, verify, stats, retry-errors, index, migrate]
+      limit:
+        description: Max documents to process (ingest/run)
+        default: "25"
+      source:
+        description: Optional source id to crawl (blank = all enabled sources)
+        default: ""
+      since:
+        description: CivicClerk only, events on/after YYYY-MM-DD (blank = all)
+        default: ""
+      ocr:
+        description: OCR image-only PDF pages with Tesseract
+        type: boolean
+        default: false
+      hours:
+        description: Wall-clock budget in hours
+        default: "4"
+  schedule:
+    # Daily incremental check at 09:17 UTC (03:17 America/Denver). New/changed records only.
+    - cron: "17 9 * * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      VTP_API_BASE: ${{ vars.VTP_API_BASE || 'https://vineyardportal.org,https://vineyard-transparency-portal.citizenjwood.workers.dev' }}
+      VTP_OIDC_AUDIENCE: vineyardportal.org
+      VTP_TRIGGER: ${{ github.event_name }}
+      IN_COMMAND: ${{ inputs.command || 'run' }}
+      IN_LIMIT: ${{ inputs.limit || '400' }}
+      IN_SOURCE: ${{ inputs.source || '' }}
+      IN_SINCE: ${{ inputs.since || '' }}
+      IN_OCR: ${{ inputs.ocr && 'true' || 'false' }}
+      IN_HOURS: ${{ inputs.hours || '4' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-ingest.txt
+      - name: Install extraction tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > /dev/null
+      - run: pip install -q -r requirements-ingest.txt
+      - name: Run ingestion
+        run: |
+          set -euo pipefail
+          case "$IN_COMMAND" in run|crawl|ingest|ingest:resume|sources:discover|verify|stats|retry-errors|index|migrate) ;; *) echo "bad command"; exit 2;; esac
+          [[ "$IN_LIMIT" =~ ^[0-9]{1,5}$ ]] || { echo "bad limit"; exit 2; }
+          [[ "$IN_HOURS" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "bad hours"; exit 2; }
+          ARGS=(--limit "$IN_LIMIT" --hours "$IN_HOURS")
+          if [[ -n "$IN_SOURCE" ]]; then [[ "$IN_SOURCE" =~ ^[a-z0-9-]{1,64}$ ]] || exit 2; ARGS+=(--source "$IN_SOURCE"); fi
+          if [[ -n "$IN_SINCE" ]]; then [[ "$IN_SINCE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || exit 2; ARGS+=(--since "$IN_SINCE"); fi
+          if [[ "$IN_OCR" == "true" ]]; then ARGS+=(--ocr); fi
+          python -m ingest "$IN_COMMAND" "${ARGS[@]}"
+      - name: Upload source manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sources-manifest-${{ github.run_id }}
+          path: data/sources.manifest.json
+          if-no-files-found: ignore
+          retention-days: 30
