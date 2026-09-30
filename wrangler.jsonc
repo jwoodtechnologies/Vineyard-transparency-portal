@@ -1,0 +1,21 @@
+// Cloudflare Workers configuration (static assets + thin /api gateway).
+// See docs/CLOUDFLARE_DEPLOYMENT.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vineyard-transparency-portal",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Client-side routes (/documents/:id, /search?...) fall back to index.html.
+    "not_found_handling": "single-page-application",
+    // Only /api/* executes Worker code; everything else is served directly from the asset store.
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    // Origin of the Phase 2 backend (e.g. https://api.example.org). Empty = backend not connected.
+    "API_ORIGIN": ""
+  },
+  "observability": { "enabled": true }
+}
