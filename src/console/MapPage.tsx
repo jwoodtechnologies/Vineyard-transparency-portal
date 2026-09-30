@@ -131,10 +131,20 @@ function fmt(key: string, v: unknown): string | null {
   return s && !/^(null|none|<null>)$/i.test(s) ? s : null;
 }
 
+const DIR = new Set(['N', 'S', 'E', 'W']);
+const titleWords = (t: string) =>
+  t
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (DIR.has(w.toUpperCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join(' ');
+/** One street across its directional pieces: "W 1600 NORTH ST" and "E 1600 NORTH ST" are "1600 North St". */
+const streetOf = (full: string) => titleWords(full.trim().replace(/^[NSEW]\s+(?=\S)/i, ''));
+
 function nameOf(layer: string, p: Record<string, unknown>): string {
   for (const f of NAME_FIELD[layer] ?? []) {
     const v = fmt(f, p[f]);
-    if (v) return v;
+    if (v) return layer === 'roads' ? streetOf(v) : v;
   }
   return 'Map feature';
 }

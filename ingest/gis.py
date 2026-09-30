@@ -98,6 +98,21 @@ def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:80] or "record"
 
 
+DIRS = {"N", "S", "E", "W"}
+
+
+def street(name: str) -> str:
+    """One street across its directional segments: "W 1600 NORTH ST" and "E 1600 NORTH ST" → "1600 North St"."""
+    words = re.sub(r"\s+", " ", name.strip()).split(" ")
+    if len(words) > 1 and words[0].upper() in DIRS:
+        words = words[1:]
+    return " ".join(w.upper() if w.upper() in DIRS else w.capitalize() for w in words)
+
+
+def pretty(name: str) -> str:
+    return " ".join(w.upper() if w.upper() in DIRS else w.capitalize() for w in re.sub(r"\s+", " ", name.strip()).split(" "))
+
+
 class Record:
     def __init__(self, key: str, title: str, doc_type: str, text: str, focus: str):
         self.key = key
@@ -129,12 +144,12 @@ def build(client: PoliteClient) -> list[Record]:
     for i, f in enumerate(layers["roads"]):
         name = val(f["properties"].get("FULLNAME"))
         if name:
-            road_segments[name].append(i)
+            road_segments[street(name)].append(i)
     for pi, pg in enumerate(geoms["projects"]):
         for ri in near("roads", pg):
             name = val(layers["roads"][ri]["properties"].get("FULLNAME"))
             if name:
-                project_roads[pi].add(name)
+                project_roads[pi].add(street(name))
 
     def project_line(p: dict) -> str:
         bits = [val(p.get("Project_Name")) or "Unnamed project"]
@@ -180,7 +195,9 @@ def build(client: PoliteClient) -> list[Record]:
         widths = sorted({int(float(p["ROW_WIDTH"])) for p in props if val(p.get("ROW_WIDTH")) and re.fullmatch(r"[\d.]+", str(p["ROW_WIDTH"]))})
         years = sorted({int(float(p["YearConst"])) for p in props if val(p.get("YearConst")) and re.fullmatch(r"[\d.]+", str(p["YearConst"])) and 1900 < float(p["YearConst"]) < 2100})
         nums = [int(float(p[k])) for p in props for k in ("FROMLEFT", "TOLEFT", "FROMRIGHT", "TORIGHT") if val(p.get(k)) and re.fullmatch(r"[\d.]+", str(p[k])) and float(p[k]) > 0]
-        alt = sorted({val(p.get("ALTROADNAME")) for p in props if val(p.get("ALTROADNAME"))} - {name})
+        full = [val(p.get("FULLNAME")) for p in props if val(p.get("FULLNAME"))]
+        parts = sorted({pretty(f) for f in full} - {name})
+        alt = sorted({pretty(val(p.get("ALTROADNAME"))) for p in props if val(p.get("ALTROADNAME"))} - {name})
         culdesac = any(str(p.get("CULDESAC") or "").upper() in ("Y", "YES", "1", "TRUE") for p in props)
         geom = unary_union([geoms["roads"][i] for i in idx])
         on_projects = sorted({pi for pi in near("projects", geom)})
@@ -191,6 +208,7 @@ def build(client: PoliteClient) -> list[Record]:
         length_m = sum(_length_m(geoms["roads"][i]) for i in idx)
         lines = [
             f"{name} is a street in Vineyard, Utah, in the city's public road layer ({len(idx)} mapped segment{'s' if len(idx) != 1 else ''}, about {length_m / 1609.34:.2f} miles).",
+            f"Mapped as: {', '.join(parts)}." if parts else "",
             f"Also known as: {', '.join(alt)}." if alt else "",
             f"Road class: {', '.join(classes)}." if classes else "",
             f"Right-of-way width: {', '.join(str(w) for w in widths)} feet." if widths else "",
