@@ -50,10 +50,11 @@ function styleFor(base: Base, dark: boolean): string | maplibregl.StyleSpecifica
     sources: {
       topo: { type: 'raster', tiles: [USGS('USGSTopo')], tileSize: 256, maxzoom: 16, attribution: USGS_ATTR },
       dem: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 14, encoding: 'terrarium', attribution: 'Elevation: <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">AWS Terrain Tiles</a>' },
+      shade: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 14, encoding: 'terrarium' },
     },
     layers: [
       { id: 'topo', type: 'raster', source: 'topo', paint: dark ? { 'raster-brightness-max': 0.7, 'raster-saturation': -0.3 } : {} },
-      { id: 'hill', type: 'hillshade', source: 'dem', paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#2b2b30' } },
+      { id: 'hill', type: 'hillshade', source: 'shade', paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#2b2b30' } },
     ],
   };
 }
@@ -281,6 +282,8 @@ interface Picked {
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
 const DATA_VERSION = 3;
 const loaded = new Map<string, Promise<FC>>();
+/** Maps whose style has finished loading (tiles may still be streaming; layers can be added). */
+const styleReady = new WeakSet<maplibregl.Map>();
 function loadLayer(info: MapLayerInfo): Promise<FC> {
   let p = loaded.get(info.key);
   if (!p) {
@@ -401,11 +404,12 @@ export default function MapPage() {
     // If the basemap service is unreachable, keep the city layers working on a plain background.
     let fellBack = false;
     map.on('error', () => {
-      if (fellBack || map.isStyleLoaded()) return;
+      if (fellBack || styleReady.has(map)) return;
       fellBack = true;
       setTimeout(() => map.setStyle(styleFor('blank', resolved === 'dark') as maplibregl.StyleSpecification, { diff: false }), 0);
     });
     map.on('style.load', () => {
+      styleReady.add(map);
       if (base === 'terrain' && map.getSource('dem')) {
         map.setTerrain({ source: 'dem', exaggeration: 1.6 });
       }
@@ -454,7 +458,7 @@ export default function MapPage() {
   useEffect(() => {
     const map = mapRef.current;
     // After a style switch the new map may not have finished loading yet; it redraws on style.load.
-    if (!map || !ready || !catalog || !map.isStyleLoaded()) return;
+    if (!map || !ready || !catalog || !styleReady.has(map)) return;
     try {
       drawLayers(map, catalog);
     } catch (e) {
