@@ -11,7 +11,7 @@ on:
         description: What to run
         type: choice
         default: run
-        options: [run, crawl, ingest, ingest:resume, sources:discover, verify, stats, retry-errors, index, migrate]
+        options: [run, crawl, ingest, ingest:resume, gis, sources:discover, verify, stats, retry-errors, index, migrate]
       limit:
         description: Max documents to process (ingest/run)
         default: "3000"
@@ -29,8 +29,12 @@ on:
         description: Wall-clock budget in hours
         default: "4"
   schedule:
-    # Daily incremental check at 09:17 UTC (03:17 America/Denver). New/changed records only.
+    # Nightly full crawl at 09:17 UTC (03:17 America/Denver): every source, new and changed records.
     - cron: "17 9 * * *"
+    # Every 3 hours: index what the hourly Worker check queued (new agendas, minutes, releases).
+    - cron: "47 */3 * * *"
+    # Weekly: refresh the GIS records (every road, capital project, zoning district, park, school).
+    - cron: "37 10 * * 1"
 
 permissions:
   contents: read
@@ -48,7 +52,7 @@ jobs:
       VTP_API_BASE: ${{ vars.VTP_API_BASE || 'https://vineyardportal.org,https://vineyard-transparency-portal.citizenjwood.workers.dev' }}
       VTP_OIDC_AUDIENCE: vineyardportal.org
       VTP_TRIGGER: ${{ github.event_name }}
-      IN_COMMAND: ${{ inputs.command || 'run' }}
+      IN_COMMAND: ${{ inputs.command || (github.event.schedule == '47 */3 * * *' && 'ingest') || (github.event.schedule == '37 10 * * 1' && 'gis') || 'run' }}
       IN_LIMIT: ${{ inputs.limit || '3000' }}
       IN_SOURCE: ${{ inputs.source || '' }}
       IN_SINCE: ${{ inputs.since || '' }}
@@ -67,7 +71,7 @@ jobs:
       - name: Run ingestion
         run: |
           set -euo pipefail
-          case "$IN_COMMAND" in run|crawl|ingest|ingest:resume|sources:discover|verify|stats|retry-errors|index|migrate) ;; *) echo "bad command"; exit 2;; esac
+          case "$IN_COMMAND" in run|crawl|ingest|ingest:resume|gis|sources:discover|verify|stats|retry-errors|index|migrate) ;; *) echo "bad command"; exit 2;; esac
           [[ "$IN_LIMIT" =~ ^[0-9]{1,5}$ ]] || { echo "bad limit"; exit 2; }
           [[ "$IN_HOURS" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "bad hours"; exit 2; }
           ARGS=(--limit "$IN_LIMIT" --hours "$IN_HOURS")
