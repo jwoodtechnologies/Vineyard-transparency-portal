@@ -54,6 +54,65 @@ function rowsOf(r: Resp, searching: boolean): Row[] {
   });
 }
 
+function RecordList({ rows, q }: { rows: Row[]; q: string }) {
+  return (
+    <ul className="vc-mdocs">
+      {rows.map((d) => (
+        <li key={d.id}>
+          <Link to={`/documents/${encodeURIComponent(d.id)}${q ? `?q=${encodeURIComponent(q)}` : ''}`} className="vc-mdoc">
+            <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.documentType) ? d.documentType : 'other'}>
+              <FileText size={15} strokeWidth={1.8} />
+            </span>
+            <span className="vc-mdoc-main">
+              <span className="vc-mdoc-title">{d.title}</span>
+              <span className="vc-mdoc-meta">{[TYPE_LABEL[d.documentType as keyof typeof TYPE_LABEL] ?? 'Record', d.governmentBodyName, formatDate(d.date)].filter(Boolean).join(' · ')}</span>
+              {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
+            </span>
+            <ChevronRight size={16} className="vc-mdoc-go" />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Meeting packets and other records that discuss the category's subject. */
+function TopicRecords({ topics, exclude }: { topics: string; exclude: Set<string> }) {
+  const [pages, setPages] = useState(1);
+  const [state, setState] = useState<{ key: string; rows: Row[]; total: number }>({ key: '', rows: [], total: 0 });
+  const key = `${topics}|${pages}`;
+  useEffect(() => {
+    let live = true;
+    const url = (page: number) => {
+      const u = new URLSearchParams({ q: topics, match: 'any', page: String(page), pageSize: String(PAGE), sort: 'date_desc' });
+      return `/api/search?${u}`;
+    };
+    Promise.all(Array.from({ length: pages }, (_, i) => getJson<Resp>(url(i + 1)))).then(
+      (list) => live && setState({ key, rows: list.flatMap((r) => rowsOf(r, true)), total: Number(list[0]?.total ?? list[0]?.totalCount ?? 0) }),
+      () => live && setState({ key, rows: [], total: 0 }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [topics, pages, key]);
+  const rows = state.rows.filter((r) => !exclude.has(r.id));
+  if (state.key !== key && !state.rows.length) return null;
+  if (!rows.length) return null;
+  return (
+    <section className="vc-rec-topic">
+      <h2 className="vc-rec-topic-title">Also discussed in meeting records</h2>
+      <RecordList rows={rows} q="" />
+      {state.rows.length < state.total && (
+        <div className="vc-rec-more">
+          <button type="button" className="vc-secondary" onClick={() => setPages((p) => p + 1)}>
+            Show more
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function RecordsPage() {
   const [params, setParams] = useSearchParams();
   const cat = categoryById(params.get('c'));
@@ -160,25 +219,9 @@ export default function RecordsPage() {
       ) : state.status === 'error' ? (
         <div className="vc-empty">These records could not be loaded. Try again in a moment.</div>
       ) : state.rows.length === 0 ? (
-        <div className="vc-empty">{q ? 'No records in this category match that search.' : 'No records in this category yet.'}</div>
+        cat?.topics ? null : <div className="vc-empty">{q ? 'No records in this category match that search.' : 'No records in this category yet.'}</div>
       ) : (
-        <ul className="vc-mdocs">
-          {state.rows.map((d) => (
-            <li key={d.id}>
-              <Link to={`/documents/${encodeURIComponent(d.id)}${q ? `?q=${encodeURIComponent(q)}` : ''}`} className="vc-mdoc">
-                <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.documentType) ? d.documentType : 'other'}>
-                  <FileText size={15} strokeWidth={1.8} />
-                </span>
-                <span className="vc-mdoc-main">
-                  <span className="vc-mdoc-title">{d.title}</span>
-                  <span className="vc-mdoc-meta">{[TYPE_LABEL[d.documentType as keyof typeof TYPE_LABEL] ?? 'Record', d.governmentBodyName, formatDate(d.date)].filter(Boolean).join(' · ')}</span>
-                  {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
-                </span>
-                <ChevronRight size={16} className="vc-mdoc-go" />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <RecordList rows={state.rows} q={q} />
       )}
 
       {!loading && state.rows.length < state.total && (
@@ -188,6 +231,7 @@ export default function RecordsPage() {
           </button>
         </div>
       )}
+      {!q && cat?.topics && !loading && state.status === 'done' && <TopicRecords key={cat.id} topics={cat.topics} exclude={new Set(state.rows.map((r) => r.id))} />}
     </Frame>
   );
 }
