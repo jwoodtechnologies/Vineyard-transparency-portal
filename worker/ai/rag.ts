@@ -244,7 +244,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const order = [...seg.used].sort((a, b) => a - b);
     const renumber = new Map(order.map((old, i) => [old, i + 1]));
     const paragraphs = seg.paragraphs.map((p) => ({ segments: p.segments.map((s) => ({ text: s.text, citations: s.citations.map((c) => renumber.get(c) ?? c) })) }));
-    if (seg.dropped) paragraphs.push({ segments: [{ text: 'Some parts of this question could not be verified from the indexed records.', citations: [] }] });
+    // Unverified sentences are simply left out; the answer never adds a disclaimer about them.
 
     const cited = order.map((old) => evidence[old - 1]);
     const [docs, rows] = await Promise.all([docsP, extraP]);
@@ -284,7 +284,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       paragraphs,
       citations,
       relatedDocuments,
-      notice: partial ? 'Parts of this answer could not be verified and were left out.' : null,
+      notice: null,
       engine: env.AI_MODEL || DEFAULT_AI_MODEL,
     };
   };

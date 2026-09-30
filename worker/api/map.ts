@@ -37,7 +37,6 @@ export const MAP_LAYERS: MapLayerDef[] = [
     path: 'Capital_Improvement_Plan_Public_View/FeatureServer/650',
     fields: ['Project_Name', 'Department', 'Project_Phase', 'Phase_Status', 'Total_Budget', 'Funding_Source', 'Location', 'Description', 'Construction_Fiscal', 'Start_Date', 'Finish_Date', 'Consultant'],
     geometry: 'polygon',
-    on: true,
   },
   { key: 'zoning', label: 'Zoning', group: 'Land', path: 'Zoning_-_Public_View/FeatureServer/8', fields: ['ZONE', 'District', 'Description', 'Ordinance', 'OrdinanceDate', 'ACRES'], geometry: 'polygon' },
   { key: 'landuse', label: 'Future land use', group: 'Plans', path: 'Vineyard_Future_Land_Use_View/FeatureServer/0', fields: ['Land_Use', 'Acres'], geometry: 'polygon' },
@@ -53,7 +52,7 @@ export const MAP_LAYERS: MapLayerDef[] = [
     minZoom: 14,
   },
   { key: 'pdoverlay', label: 'Planned development overlay', group: 'Land', path: 'VNY_PLPZ_PD_Overlay_view/FeatureServer/10', fields: ['GRANTEE', 'ACRES'], geometry: 'polygon' },
-  { key: 'subdivisions', label: 'Neighborhoods', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon', on: true },
+  { key: 'subdivisions', label: 'Neighborhoods', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon' },
   { key: 'rda', label: 'RDA areas', group: 'Plans', path: 'Redevelopment_Area/FeatureServer/454', fields: ['REDEV', 'REDLAB', 'INCEPT', 'YEAR_'], geometry: 'polygon' },
   {
     key: 'rdaparcels',
@@ -82,9 +81,9 @@ export const MAP_LAYERS: MapLayerDef[] = [
   { key: 'crossings', label: 'School crossings', group: 'Safety', path: 'VNY_LO_School_Crossing_view/FeatureServer/314', fields: ['School_Name'], geometry: 'point' },
   { key: 'greenspace', label: 'Green space', group: 'Places', path: 'Green_Space_Management_View/FeatureServer/191', fields: ['Category', 'Maintenance', 'Owner'], geometry: 'polygon' },
   { key: 'wayfinding', label: 'Wayfinding signs', group: 'Places', path: 'Wayfinding_Signage_view/FeatureServer/83', fields: ['Type', 'Description', 'Status'], geometry: 'point', minZoom: 13 },
-  { key: 'parks', label: 'Parks', group: 'Places', path: 'VNY_PWPR_Park/FeatureServer/7', fields: ['NAME', 'ACRES', 'TYPE', 'STATUS'], geometry: 'polygon', on: true },
+  { key: 'parks', label: 'Parks', group: 'Places', path: 'VNY_PWPR_Park/FeatureServer/7', fields: ['NAME', 'ACRES', 'TYPE', 'STATUS'], geometry: 'polygon' },
   { key: 'amenities', label: 'Park amenities', group: 'Places', path: 'VNY_PWPR_Amenities/FeatureServer/122', fields: ['Facility', 'Notes'], geometry: 'point', minZoom: 14 },
-  { key: 'schools', label: 'Schools', group: 'Places', path: 'VNY_AD_Schools/FeatureServer/0', fields: ['Name', 'Address'], geometry: 'point', on: true },
+  { key: 'schools', label: 'Schools', group: 'Places', path: 'VNY_AD_Schools/FeatureServer/0', fields: ['Name', 'Address'], geometry: 'point' },
   {
     key: 'businesses',
     label: 'Businesses',

@@ -280,7 +280,7 @@ interface Picked {
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
-const DATA_VERSION = 3;
+const DATA_VERSION = 4;
 const loaded = new Map<string, Promise<FC>>();
 /** Maps whose style has finished loading (tiles may still be streaming; layers can be added). */
 const styleReady = new WeakSet<maplibregl.Map>();
@@ -419,6 +419,7 @@ export default function MapPage() {
     });
     // One click handler for every layer: the topmost feature under the pointer wins.
     map.on('click', (e) => {
+      if (window.innerWidth <= 820) setPanel(false);
       const ids = (map.getStyle().layers ?? []).map((l) => l.id).filter((id) => /^vtp-(?!pick|boundary)[a-z]+-(fill|line|circle)$/.test(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
       const hits = map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: ids });
       const order = (f: MapGeoJSONFeature) => (f.layer.type === 'circle' ? 0 : f.layer.type === 'line' && !f.layer.id.includes('parcels') ? 1 : 2);
@@ -659,7 +660,12 @@ export default function MapPage() {
 
         {panel && (
           <aside className="vc-map-panel" aria-label="Layers">
-            <p className="vc-panel-label">Map style</p>
+            <div className="vc-map-panel-head">
+              <p className="vc-panel-label">Map style</p>
+              <button type="button" className="vc-map-close" onClick={() => setPanel(false)} aria-label="Close layers">
+                <X size={16} strokeWidth={2} /> <span>Done</span>
+              </button>
+            </div>
             <div className="vc-segment vc-map-bases" role="radiogroup" aria-label="Map style">
               {BASES.map((b) => (
                 <button
