@@ -75,7 +75,7 @@ export function SettingsMenu() {
             <MessageSquare size={15} strokeWidth={1.8} /> Ask the archive
           </Link>
           <Link to="/meetings" className="vc-panel-row" onClick={close}>
-            <CalendarDays size={15} strokeWidth={1.8} /> Meeting schedule
+            <CalendarDays size={15} strokeWidth={1.8} /> Calendar
           </Link>
 
           <p className="vc-panel-label">Chat history</p>
@@ -135,7 +135,7 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
         {children}
         <NavLink to="/meetings" className="vc-ghost vc-nav">
           <CalendarDays size={16} strokeWidth={1.8} />
-          <span className="vc-nav-text">Meetings</span>
+          <span className="vc-nav-text">Calendar</span>
         </NavLink>
         <SettingsMenu />
       </nav>

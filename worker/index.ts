@@ -15,6 +15,7 @@ import { getDocumentDetail, getDocumentFile, getDocumentText, getRelated, listDo
 import { filtersFromUrl, handleSearch } from './api/search';
 import { browseFacets, getMeeting, handleHealth, handleStats, listBodies, listCategories, listMeetings, listSources, notImplementedYet, submitReport, suggestions } from './api/misc';
 import { handleAsk } from './ai/rag';
+import { listEvents } from './api/events';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
 import { logQuestion, who } from './panel/store';
@@ -76,6 +77,9 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       if (c === 'text') return getDocumentText(env, request, id(b));
       if (c === 'related') return getRelated(env, request, id(b));
       break;
+    case 'events':
+      if (!b) return listEvents(env, url);
+      break;
     case 'meetings':
       return b ? getMeeting(env, request, id(b)) : listMeetings(env, url);
     case 'sources':
@@ -103,7 +107,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
  * and POST /api/ask, admin, health and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
 
 async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '');

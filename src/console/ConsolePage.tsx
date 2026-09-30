@@ -260,7 +260,7 @@ export default function ConsolePage() {
           <div className="vc-topbar-actions">
             <Link to="/meetings" className="vc-ghost vc-nav">
               <CalendarDays size={16} strokeWidth={1.8} />
-              <span className="vc-nav-text">Meetings</span>
+              <span className="vc-nav-text">Calendar</span>
             </Link>
             <SettingsMenu />
           </div>

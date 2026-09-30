@@ -2259,3 +2259,89 @@
 .vc-answer-foot .vc-browse {
   margin-top: 0;
 }
+
+/* community events on the calendar */
+.vc [data-tone='7'] {
+  --tone: #b4436c;
+}
+.dark .vc [data-tone='7'] {
+  --tone: #f19ab8;
+}
+.vc-subfilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+.vc-event {
+  display: block;
+  padding: 0;
+}
+.vc-event:hover {
+  transform: none;
+}
+.vc-event-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 0.95rem 1.1rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 18px;
+}
+.vc-event-chev {
+  transition: transform 0.25s var(--vc-ease), color 0.2s;
+}
+.vc-event[data-open='true'] .vc-event-chev {
+  transform: rotate(180deg);
+}
+.vc-event:hover .vc-event-chev {
+  transform: none;
+}
+.vc-event[data-open='true']:hover .vc-event-chev {
+  transform: rotate(180deg);
+}
+.vc-event-where {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--vc-muted);
+}
+.vc-event-more {
+  padding: 0 1.1rem 1.05rem calc(1.1rem + 3.4rem + 1.1rem);
+  animation: vc-fade 0.25s both;
+}
+.vc-event-desc {
+  margin: 0 0 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--vc-ink-2);
+  white-space: pre-line;
+}
+.vc-muted {
+  color: var(--vc-muted);
+}
+button.vc-cal-event {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  font-size: 0.7rem;
+  text-align: left;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .vc-event-toggle {
+    gap: 0.85rem;
+    padding: 0.85rem 0.9rem;
+  }
+  .vc-event-more {
+    padding: 0 0.9rem 0.95rem;
+  }
+}
