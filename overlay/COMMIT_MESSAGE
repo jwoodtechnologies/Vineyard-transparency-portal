@@ -1,1 +1,0 @@
-perf(search): rank inside the FTS index before joining, and skip snippets on the answer path

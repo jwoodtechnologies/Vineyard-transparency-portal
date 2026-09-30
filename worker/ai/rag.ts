@@ -195,8 +195,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   const aiReady = aiConfigured(env) && !aiBreakerOpen();
   const [strictHits, looseHits, budgetOk] = await Promise.all([
-    strict.fts && strict.fts !== loose.fts ? repo.searchChunks(strict.fts, filters, 40, true) : Promise.resolve([] as ChunkHit[]),
-    repo.searchChunks(loose.fts, filters, 40, true),
+    strict.fts && strict.fts !== loose.fts ? repo.searchChunks(strict.fts, filters, 40, true, false) : Promise.resolve([] as ChunkHit[]),
+    repo.searchChunks(loose.fts, filters, 40, true, false),
     aiReady ? aiBudgetLeft(env) : Promise.resolve(false),
   ]);
   const seen = new Set(strictHits.map((h) => h.chunkId));
