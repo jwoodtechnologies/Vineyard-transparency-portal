@@ -408,7 +408,6 @@ export default function MapPage() {
     map.on('style.load', () => {
       if (base === 'terrain' && map.getSource('dem')) {
         map.setTerrain({ source: 'dem', exaggeration: 1.6 });
-        map.easeTo({ pitch: 55, bearing: -18, duration: 900 });
       }
       setReady(true);
       readyRef.current = true;
@@ -470,7 +469,9 @@ export default function MapPage() {
       const src = `vtp-${key}`;
       if (key === 'boundary' && !map.getSource(src) && !focusRef.current) {
         const b = boundsOf(fc.features);
-        if (b) map.fitBounds(b, { padding: typeof window !== 'undefined' && window.innerWidth > 820 ? { top: 90, bottom: 30, left: 300, right: 30 } : 20, duration: 0 });
+        const pad = typeof window !== 'undefined' && window.innerWidth > 820 ? { top: 90, bottom: 30, left: 300, right: 30 } : 20;
+        // Terrain opens tilted toward the mountains, still framed on Vineyard.
+        if (b) map.fitBounds(b, base === 'terrain' ? { padding: pad, pitch: 50, bearing: -20, duration: 0 } : { padding: pad, duration: 0 });
       }
       if (!map.getSource(src)) {
         map.addSource(src, { type: 'geojson', data: fc, generateId: true });
@@ -552,7 +553,7 @@ export default function MapPage() {
       for (const id of [`${src}-fill`, `${src}-line`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
     }
     }
-  }, [ready, catalog, data, on, dark]);
+  }, [ready, catalog, data, on, dark, base]);
 
   const results = useMemo(() => {
     const raw = q.trim().toLowerCase();
