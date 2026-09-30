@@ -188,6 +188,16 @@ function loadLayer(info: MapLayerInfo): Promise<FC> {
 }
 
 const FOCUS_LAYER: Record<string, string> = { road: 'roads', project: 'projects', park: 'parks', school: 'schools', business: 'businesses', subdivision: 'subdivisions' };
+const WORD: Record<string, string> = { north: 'n', south: 's', east: 'e', west: 'w', street: 'st', road: 'rd', avenue: 'ave', drive: 'dr', lane: 'ln', boulevard: 'blvd', circle: 'cir', court: 'ct', parkway: 'pkwy', place: 'pl' };
+/** "1200 North Main Street" and "1200 N Main St" match each other. */
+const norm = (t: string) =>
+  t
+    .toLowerCase()
+    .replace(/[.,]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => WORD[w] ?? w)
+    .join(' ');
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses'];
 const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'rda', 'subdivisions', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'trails', 'amenities', 'businesses', 'schools'];
 
@@ -239,7 +249,7 @@ export default function MapPage() {
     const matches = fc.features.filter((f) => nameOf(layer, f.properties ?? {}).toLowerCase() === value);
     if (!matches.length) return;
     const b = boundsOf(matches);
-    if (b) map.fitBounds(b, { padding: 80, maxZoom: 17, duration: 800 });
+    if (b) map.fitBounds(b, { padding: fitPadding(), maxZoom: 16, duration: 800 });
     setPicked({ layer, label: labelsRef.current.get(layer) ?? '', name: nameOf(layer, matches[0].properties ?? {}), props: matches[0].properties ?? {} });
     highlight(map, matches.length === 1 ? matches[0] : { type: 'FeatureCollection', features: matches });
   }, []);
@@ -331,6 +341,10 @@ export default function MapPage() {
       const look = LOOK[key];
       if (!fc || !info || !look) continue;
       const src = `vtp-${key}`;
+      if (key === 'boundary' && !map.getSource(src) && !focusRef.current) {
+        const b = boundsOf(fc.features);
+        if (b) map.fitBounds(b, { padding: typeof window !== 'undefined' && window.innerWidth > 820 ? { top: 90, bottom: 30, left: 300, right: 30 } : 20, duration: 0 });
+      }
       if (!map.getSource(src)) {
         map.addSource(src, { type: 'geojson', data: fc, promoteId: undefined });
         const color = look.by ? (['coalesce', ['get', '__c'], look.color] as unknown as string) : look.color;
@@ -362,18 +376,19 @@ export default function MapPage() {
   }, [ready, catalog, data, on]);
 
   const results = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (term.length < 2) return [];
+    const raw = q.trim().toLowerCase();
+    if (raw.length < 2) return [];
+    const term = norm(raw);
     const out: Array<{ layer: string; name: string; features: Feature[] }> = [];
     for (const layer of SEARCHABLE) {
       const groups = new Map<string, Feature[]>();
       for (const f of data[layer]?.features ?? []) {
         const n = nameOf(layer, (f.properties ?? {}) as Record<string, unknown>);
-        if (n.toLowerCase().includes(term)) groups.set(n, [...(groups.get(n) ?? []), f]);
+        if (norm(n).includes(term) || n.toLowerCase().includes(raw)) groups.set(n, [...(groups.get(n) ?? []), f]);
       }
       for (const [name, features] of groups) out.push({ layer, name, features });
     }
-    return out.sort((a, b) => Number(!a.name.toLowerCase().startsWith(term)) - Number(!b.name.toLowerCase().startsWith(term)) || a.name.localeCompare(b.name, undefined, { numeric: true })).slice(0, 12);
+    return out.sort((a, b) => Number(!norm(a.name).startsWith(term)) - Number(!norm(b.name).startsWith(term)) || a.name.localeCompare(b.name, undefined, { numeric: true })).slice(0, 12);
   }, [q, data]);
 
   const go = useCallback(
@@ -382,7 +397,7 @@ export default function MapPage() {
       if (!map) return;
       setOn((cur) => new Set([...cur, r.layer]));
       const b = boundsOf(r.features);
-      if (b) map.fitBounds(b, { padding: 80, maxZoom: 17, duration: 800 });
+      if (b) map.fitBounds(b, { padding: fitPadding(), maxZoom: 16, duration: 800 });
       setPicked({ layer: r.layer, label: catalog?.find((l) => l.key === r.layer)?.label ?? '', name: r.name, props: (r.features[0].properties ?? {}) as Record<string, unknown> });
       highlight(map, r.features.length === 1 ? r.features[0] : { type: 'FeatureCollection', features: r.features });
       setQ('');
@@ -518,6 +533,12 @@ export default function MapPage() {
       </div>
     </div>
   );
+}
+
+/** Keep a focused feature clear of the layers panel (left) and the details card (right/bottom). */
+function fitPadding() {
+  if (typeof window === 'undefined' || window.innerWidth <= 820) return { top: 90, bottom: 320, left: 40, right: 40 };
+  return { top: 110, bottom: 80, left: 320, right: 420 };
 }
 
 function highlight(map: maplibregl.Map, f: Feature | FeatureCollection) {

@@ -53,7 +53,8 @@ async function refreshCivicClerk(env: Env, budget: Budget): Promise<Record<strin
     meetings.push(m.meeting);
     if (m.body) bodies.set(m.body.id, m.body);
     for (const f of m.files) {
-      items.push({ urlKey: await sha256Hex(f.identifier), sourceId: 'vineyard-civicclerk-meetings', url: f.url, kind: 'document', priority: f.priority, parentUrl: f.parentUrl, metadata: f.metadata, runId: 'hourly' });
+      // Files for recent and upcoming meetings go to the front of the queue, ahead of the archive backfill.
+      items.push({ urlKey: await sha256Hex(f.identifier), sourceId: 'vineyard-civicclerk-meetings', url: f.url, kind: 'document', priority: f.priority - 30, parentUrl: f.parentUrl, metadata: f.metadata, runId: 'hourly' });
     }
   }
   if (bodies.size) await upsertBodies(env, { bodies: [...bodies.values()] }, budget);
@@ -90,7 +91,7 @@ async function refreshSheriff(env: Env, budget: Budget): Promise<Record<string, 
         sourceId: UCSO_SOURCE,
         url: ucsoPage(i.id),
         kind: 'document',
-        priority: 60,
+        priority: 40,
         parentUrl: 'https://sheriff.utahcounty.gov/media/pressArchive',
         metadata: { kind: 'press_release', title: cleanText(i.headline ?? 'Press release').slice(0, 300), documentType: 'public_notice', documentDate: String(i.entered_date).slice(0, 10), requireMention: 'vineyard', governmentBodyName: "Utah County Sheriff's Office" },
         runId: 'hourly',

@@ -2781,7 +2781,7 @@ html.vc-locked .vc-landing {
   top: 0.8rem;
   left: 0.8rem;
   right: 0.8rem;
-  z-index: 3;
+  z-index: 6;
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
