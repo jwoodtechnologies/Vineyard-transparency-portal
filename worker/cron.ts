@@ -122,12 +122,8 @@ export async function runHourly(env: Env): Promise<Record<string, unknown>> {
   const budget = new Budget(env);
   const started = new Date().toISOString();
   const summary: Record<string, unknown> = {};
-  try {
-    await budget.check(200);
-  } catch {
-    summary.skipped = 'daily write budget reached';
-    return summary;
-  }
+  // The hourly check writes only a few rows, so it runs even after the backfill has used the
+  // day's ingestion allowance (that allowance sits well under the D1 Free daily limit).
   const [cc, ucso] = await Promise.allSettled([refreshCivicClerk(env, budget), refreshSheriff(env, budget)]);
   summary.civicclerk = cc.status === 'fulfilled' ? cc.value : String(cc.reason).slice(0, 300);
   summary.sheriff = ucso.status === 'fulfilled' ? ucso.value : String(ucso.reason).slice(0, 300);
