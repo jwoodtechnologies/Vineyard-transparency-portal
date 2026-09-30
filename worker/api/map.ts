@@ -15,7 +15,7 @@ const BASE = 'https://services.arcgis.com/QdlehUncXjEmQYtI/arcgis/rest/services/
 export interface MapLayerDef {
   key: string;
   label: string;
-  group: 'Plans' | 'Land' | 'Streets' | 'Places';
+  group: 'Plans' | 'Land' | 'Streets' | 'Places' | 'Safety';
   path: string;
   fields: string[];
   where?: string;
@@ -52,8 +52,20 @@ export const MAP_LAYERS: MapLayerDef[] = [
     offset: 0.000004,
     minZoom: 14,
   },
-  { key: 'subdivisions', label: 'Subdivisions', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon', offset: 0.000008 },
-  { key: 'rda', label: 'Redevelopment areas', group: 'Plans', path: 'Redevelopment_Area/FeatureServer/454', fields: ['REDEV', 'REDLAB', 'INCEPT', 'YEAR_'], geometry: 'polygon', offset: 0.00001 },
+  { key: 'subdivisions', label: 'Neighborhoods', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon', offset: 0.000008, on: true },
+  { key: 'rda', label: 'RDA areas', group: 'Plans', path: 'Redevelopment_Area/FeatureServer/454', fields: ['REDEV', 'REDLAB', 'INCEPT', 'YEAR_'], geometry: 'polygon', offset: 0.00001 },
+  {
+    key: 'rdaparcels',
+    label: 'RDA phases by parcel',
+    group: 'Plans',
+    path: 'Vineyard_RDA_2026_Parcels/FeatureServer/686',
+    fields: ['RDA', 'PARCEL_ID', 'PARCEL_ADD', 'acreage', 'total_taxable'],
+    where: "RDA IS NOT NULL AND RDA <> ''",
+    geometry: 'polygon',
+    pages: 2,
+    offset: 0.000004,
+  },
+  { key: 'ura', label: 'Geneva URA project area', group: 'Plans', path: 'Original_Geneva_URA_Project_Area/FeatureServer/471', fields: ['Name'], geometry: 'polygon', offset: 0.00001 },
   { key: 'watersedge', label: "Water's Edge districts", group: 'Plans', path: 'Waters_Edge_Subdistricts_-_Public_View/FeatureServer/9', fields: ['ZONE', 'District', 'Description', 'ACRES'], geometry: 'polygon', offset: 0.00001 },
   {
     key: 'roads',
@@ -64,7 +76,13 @@ export const MAP_LAYERS: MapLayerDef[] = [
     geometry: 'line',
     offset: 0.000005,
   },
-  { key: 'trails', label: 'Trails and bike lanes', group: 'Streets', path: 'VNY_PWTR_ActiveTransportation_Facility_Points/FeatureServer/1', fields: ['*'], geometry: 'point' },
+  { key: 'trails', label: 'Trails and bike lanes', group: 'Streets', path: 'VNY_PWTR_Active_Transportation_Facilities_View/FeatureServer/0', fields: ['FULLNAME', 'Facilities', 'Jurisdiction', 'ROW_WIDTH', 'YearConst'], geometry: 'line', offset: 0.000005 },
+  { key: 'snowplow', label: 'Snow plow routes', group: 'Streets', path: 'VNY_PWTR_SnowPlow_Routes_view/FeatureServer/286', fields: ['ROADNAME', 'Priority', 'Maintained', 'ROADCLASS'], geometry: 'line', offset: 0.000005 },
+  { key: 'evacroutes', label: 'Evacuation routes', group: 'Safety', path: 'VNY_HZ_EvacuationRoutes/FeatureServer/601', fields: ['Direction', 'ToCity', 'Zone', 'Status'], geometry: 'line', offset: 0.000005 },
+  { key: 'evaczones', label: 'Evacuation zones', group: 'Safety', path: 'VNY_HZ_EvacuationZone/FeatureServer/602', fields: ['Zone'], geometry: 'polygon', offset: 0.00001 },
+  { key: 'crossings', label: 'School crossings', group: 'Safety', path: 'VNY_LO_School_Crossing_view/FeatureServer/314', fields: ['School_Name'], geometry: 'point' },
+  { key: 'greenspace', label: 'Green space', group: 'Places', path: 'Green_Space_Management_View/FeatureServer/191', fields: ['Category', 'Maintenance', 'Owner'], geometry: 'polygon', offset: 0.000005 },
+  { key: 'wayfinding', label: 'Wayfinding signs', group: 'Places', path: 'Wayfinding_Signage_view/FeatureServer/83', fields: ['Type', 'Description', 'Status'], geometry: 'point', minZoom: 13 },
   { key: 'parks', label: 'Parks', group: 'Places', path: 'VNY_PWPR_Park/FeatureServer/7', fields: ['NAME', 'ACRES', 'TYPE', 'STATUS'], geometry: 'polygon', on: true, offset: 0.000005 },
   { key: 'amenities', label: 'Park amenities', group: 'Places', path: 'VNY_PWPR_Amenities/FeatureServer/122', fields: ['Facility', 'Notes'], geometry: 'point', minZoom: 14 },
   { key: 'schools', label: 'Schools', group: 'Places', path: 'VNY_AD_Schools/FeatureServer/0', fields: ['Name', 'Address'], geometry: 'point', on: true },
@@ -97,8 +115,9 @@ export function upstreamUrl(layer: MapLayerDef, page: number): string {
     f: 'geojson',
     resultRecordCount: '2000',
     resultOffset: String(page * 2000),
-    orderByFields: 'OBJECTID',
   });
+  // Paging needs a stable order; only multi-page layers ask for it (some layers' ID field is FID, not OBJECTID).
+  if ((layer.pages ?? 1) > 1) p.set('orderByFields', 'OBJECTID');
   if (layer.offset) p.set('maxAllowableOffset', String(layer.offset));
   return `${BASE}${layer.path}/query?${p.toString()}`;
 }

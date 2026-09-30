@@ -48,7 +48,7 @@ export interface Latest {
 export interface MapLayerInfo {
   key: string;
   label: string;
-  group: 'Plans' | 'Land' | 'Streets' | 'Places';
+  group: 'Plans' | 'Land' | 'Streets' | 'Places' | 'Safety';
   geometry: 'polygon' | 'line' | 'point';
   pages: number;
   on: boolean;
