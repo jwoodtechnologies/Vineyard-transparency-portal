@@ -1,9 +1,10 @@
 /**
  * Reads a Workers AI token stream (server-sent events: `data: {"response":"..."}` ... `data: [DONE]`),
- * calling onDelta for each piece and returning the full text. Pure: no Cloudflare types, so it can
+ * calling onDelta for each piece and returning the full text. If onDelta returns false the stream
+ * is cancelled and the text so far is returned. Pure: no Cloudflare types, so it can
  * be unit-tested anywhere.
  */
-export async function readAiStream(stream: ReadableStream<Uint8Array>, onDelta: (text: string) => Promise<void>, deadline = Infinity): Promise<string> {
+export async function readAiStream(stream: ReadableStream<Uint8Array>, onDelta: (text: string) => Promise<void | boolean>, deadline = Infinity): Promise<string> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -25,7 +26,10 @@ export async function readAiStream(stream: ReadableStream<Uint8Array>, onDelta: 
           const piece = (JSON.parse(payload) as { response?: unknown }).response;
           if (typeof piece === 'string' && piece) {
             raw += piece;
-            await onDelta(piece);
+            if ((await onDelta(piece)) === false) {
+              await reader.cancel().catch(() => undefined);
+              return raw;
+            }
           }
         } catch {
           /* partial or non-JSON line; ignore */

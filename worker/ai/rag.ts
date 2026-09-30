@@ -10,7 +10,7 @@
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
-import { DEFAULT_AI_MODEL, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, buildUserMessage, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -128,7 +128,7 @@ async function aiBudgetLeft(env: Env): Promise<boolean> {
 
 type Msg = { role: string; content: string };
 type AiRunner = { run: (model: string, input: unknown) => Promise<unknown> };
-const MAX_TOKENS = 500;
+const MAX_TOKENS = 220;
 const AI_TIMEOUT_MS = 25_000;
 
 async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number } = {}): Promise<string> {
@@ -145,7 +145,14 @@ async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; 
 async function streamModel(env: Env, messages: Msg[], onDelta: (text: string) => Promise<void>): Promise<string> {
   const model = env.AI_MODEL || DEFAULT_AI_MODEL;
   const out = await (env.AI as unknown as AiRunner).run(model, { messages, max_tokens: MAX_TOKENS, temperature: 0.1, stream: true });
-  if (out instanceof ReadableStream) return readAiStream(out as ReadableStream<Uint8Array>, onDelta, Date.now() + AI_TIMEOUT_MS);
+  let sofar = '';
+  const forward = async (piece: string) => {
+    sofar += piece;
+    await onDelta(piece);
+    // Stop once the answer is long enough; the final answer is trimmed to the same length.
+    return finishedSentences(sofar) < MAX_ANSWER_SENTENCES;
+  };
+  if (out instanceof ReadableStream) return readAiStream(out as ReadableStream<Uint8Array>, forward, Date.now() + AI_TIMEOUT_MS);
   const text = typeof out === 'string' ? out : typeof (out as { response?: unknown })?.response === 'string' ? String((out as { response: string }).response) : '';
   if (text) await onDelta(text);
   return text;
@@ -230,7 +237,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   const finish = async (raw: string): Promise<AskResponse> => {
     await quotaP;
-    const seg = segmentAnswer(raw, evidence.length);
+    const seg = segmentAnswer(briefAnswer(raw), evidence.length);
     if (!seg.used.size) return fallback('no_results', null);
 
     // Renumber cited sources 1..k in order of first use.

@@ -37,7 +37,8 @@ export const RAG_SYSTEM_PROMPT = [
   '- Write plain sentences. No markdown, no headings, no bullet symbols, no HTML.',
   '- End every sentence that states a fact with the bracketed number of the source that supports it, e.g. "The council met on June 5, 2026 [2]."',
   '- Use only the source numbers listed in SOURCES. Never cite a number that is not listed.',
-  '- Keep the answer under 200 words. Separate paragraphs with a blank line.',
+  '- Be brief: answer the question directly in 2 to 4 short sentences (under 80 words), one paragraph.',
+  '- Lead with the direct answer. Do not walk through every record or repeat yourself; the source documents are listed for the reader right below your answer.',
 ].join('\n');
 
 export const MAX_EVIDENCE = 10;
@@ -155,3 +156,32 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
   return { paragraphs, dropped, used, insufficient };
 }
 
+/** Hard limit on answer length, whatever the model does. */
+export const MAX_ANSWER_SENTENCES = 5;
+
+const SENTENCE = /[^.!?]+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g;
+
+/** Number of finished sentences in streamed text so far. */
+export function finishedSentences(text: string): number {
+  return (text.match(/[.!?]+(?:\s*\[[\d,\s]+\])*(?=\s)/g) ?? []).length;
+}
+
+/**
+ * Keeps an answer short: the first few distinct sentences, with repeats dropped, as one paragraph.
+ * The small model sometimes lists record after record; this keeps it to a brief summary.
+ */
+export function briefAnswer(raw: string, max = MAX_ANSWER_SENTENCES): string {
+  const text = raw.replace(/\r/g, '').replace(/\s*\n\s*/g, ' ').trim();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const s of text.match(SENTENCE) ?? [text]) {
+    const sentence = s.trim();
+    if (!sentence) continue;
+    const key = sentence.replace(/\[[\d,\s]+\]/g, '').replace(/[^a-z0-9]+/gi, ' ').trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(sentence);
+    if (out.length >= max) break;
+  }
+  return out.join(' ');
+}
