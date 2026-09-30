@@ -11,7 +11,7 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CalendarDays, ChevronDown, History, Plus, RotateCcw } from 'lucide-react';
+import { CalendarDays, ChevronDown, FileText, History, Landmark, Map as MapIcon, Newspaper, Plus, RotateCcw, Scale } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { SearchService } from '@/services';
 import { askStream, draftText } from './askStream';
@@ -19,11 +19,13 @@ import { Composer } from './Composer';
 import { AnswerBody, Sources } from './Answer';
 import { Records } from './Records';
 import { AnswerActions } from './AnswerActions';
+import { QuickLinks } from './QuickLinks';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
 import { getChat, newChatId, saveChat, type SavedChat } from './history';
 import type { ConsoleAnswer, Preview, Turn } from './types';
+import { RECORD_CATEGORIES } from './categories';
 
 const PAGE = 8;
 const STEPS = ['Searching the archive', 'Reading the records', 'Checking every source'];
@@ -309,7 +311,11 @@ export default function ConsolePage() {
             <History size={17} strokeWidth={1.8} />
           </button>
           <div className="vc-topbar-actions">
-            <Link to="/meetings" className="vc-ghost vc-nav">
+            <Link to="/latest" className="vc-ghost vc-nav" aria-label="Latest" title="Latest">
+              <Newspaper size={16} strokeWidth={1.8} />
+              <span className="vc-nav-text">Latest</span>
+            </Link>
+            <Link to="/meetings" className="vc-ghost vc-nav" aria-label="Calendar" title="Calendar">
               <CalendarDays size={16} strokeWidth={1.8} />
               <span className="vc-nav-text">Calendar</span>
             </Link>
@@ -324,6 +330,23 @@ export default function ConsolePage() {
             <p className="vc-hero-rule">Public records of Vineyard, Utah</p>
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
+          <nav className="vc-cats" aria-label="Browse records">
+            {RECORD_CATEGORIES.slice(0, 3).map((c, i) => {
+              const Icon = [FileText, Landmark, Scale][i];
+              return (
+                <Link key={c.id} to={`/records?c=${c.id}`} className="vc-cat">
+                  <Icon size={15} strokeWidth={1.9} />
+                  <span className="vc-cat-long">{c.label}</span>
+                  <span className="vc-cat-short">{c.short}</span>
+                </Link>
+              );
+            })}
+            <Link to="/map" className="vc-cat">
+              <MapIcon size={15} strokeWidth={1.9} />
+              <span className="vc-cat-long">City map</span>
+              <span className="vc-cat-short">Map</span>
+            </Link>
+          </nav>
         </main>
         <p className="vc-legal">Independent project, not an official Vineyard City website.</p>
         {historyPanel}
@@ -371,6 +394,7 @@ export default function ConsolePage() {
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
                 {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
                 {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} onCite={cite(t)} />}
+                <QuickLinks answer={t.answer} />
                 <div className="vc-answer-foot">
                   <AnswerActions answer={t.answer} />
                   {t.answer.mode !== 'conversation' && !t.showRecords && <MoreRecords turn={t} onOpen={() => patch(t.id, { showRecords: true })} />}

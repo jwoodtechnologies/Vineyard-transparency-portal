@@ -5,7 +5,7 @@ import type { AnswerParagraph, AnswerSegment } from '../../src/types/models';
 import type { ChunkHit } from '../search/types';
 
 export const SEARCH_ONLY_NOTICE = 'AI answers are temporarily unavailable. Search results from the public-record archive are shown below.';
-export const NO_RESULTS_ANSWER = 'I could not verify that from the records currently indexed in the Vineyard Transparency Portal.';
+export const NO_RESULTS_ANSWER = 'Nothing in the archive matches that yet. Try other words, a street or project name, or a meeting date.';
 export const DEFAULT_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
 
 /** Who the assistant is, shared by both modes. */
@@ -32,6 +32,8 @@ export const RAG_SYSTEM_PROMPT = [
   'Every substantive claim should be supported by the provided sources.',
   'Answer with what the records show. Never say what the records do not contain, never add disclaimers about missing or unverifiable information, and never apologize.',
   'Cite the document and page when available.',
+  'Capital projects: describe only current and upcoming projects (construction in fiscal 2026 or later). The New City Hall project was canceled; never present it as planned, approved or current, and if asked about it say it was canceled.',
+  'Links to the city map, official forms, the utility payment portal and phone numbers appear as buttons under your answer, so do not write out URLs.',
   '',
   'Format rules:',
   '- Write plain sentences. No markdown, no headings, no bullet symbols, no HTML.',

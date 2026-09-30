@@ -280,7 +280,7 @@ interface Picked {
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
-const DATA_VERSION = 4;
+const DATA_VERSION = 5;
 const loaded = new Map<string, Promise<FC>>();
 /** Maps whose style has finished loading (tiles may still be streaming; layers can be added). */
 const styleReady = new WeakSet<maplibregl.Map>();
@@ -302,7 +302,7 @@ function loadLayer(info: MapLayerInfo): Promise<FC> {
   return p;
 }
 
-const FOCUS_LAYER: Record<string, string> = { road: 'roads', project: 'projects', park: 'parks', school: 'schools', business: 'businesses', subdivision: 'subdivisions' };
+const FOCUS_LAYER: Record<string, string> = { road: 'roads', project: 'projects', park: 'parks', school: 'schools', business: 'businesses', subdivision: 'subdivisions', rda: 'rda', ura: 'ura', zone: 'zoning' };
 const WORD: Record<string, string> = { north: 'n', south: 's', east: 'e', west: 'w', street: 'st', road: 'rd', avenue: 'ave', drive: 'dr', lane: 'ln', boulevard: 'blvd', circle: 'cir', court: 'ct', parkway: 'pkwy', place: 'pl' };
 /** "1200 North Main Street" and "1200 N Main St" match each other. */
 const norm = (t: string) =>
@@ -365,7 +365,10 @@ export default function MapPage() {
     const fc = dataRef.current[layer];
     if (!fc) return;
     focusRef.current = null;
-    const matches = fc.features.filter((f) => nameOf(layer, f.properties ?? {}).toLowerCase() === value);
+    // Exact name first ("1200 North" matches "1200 N"), then names that contain the words asked for.
+    const want = norm(value);
+    let matches = fc.features.filter((f) => norm(nameOf(layer, f.properties ?? {})) === want);
+    if (!matches.length && want.length >= 4) matches = fc.features.filter((f) => ` ${norm(nameOf(layer, f.properties ?? {}))} `.includes(` ${want} `));
     if (!matches.length) return;
     const b = boundsOf(matches);
     if (b) map.fitBounds(b, { padding: fitPadding(), maxZoom: 16, duration: 800 });

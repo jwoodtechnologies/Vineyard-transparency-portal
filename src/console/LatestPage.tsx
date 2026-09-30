@@ -2,7 +2,7 @@
 import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, CalendarDays, Clock, FileText, MapPin, Megaphone, Shield, Sparkles } from 'lucide-react';
 import { Frame } from './Chrome';
@@ -10,11 +10,12 @@ import { useJson, type Latest } from './api';
 import { TYPE_LABEL, formatDate } from './format';
 import { CATEGORIES, categoryOf, dayNumber, eventTone, formatTime, monthShort, todayIso, toneOf, useEvents, weekdayShort, type PortalEvent } from './meetings';
 
-type Tab = 'all' | 'meetings' | 'records' | 'events' | 'safety';
+type Tab = 'all' | 'posts' | 'meetings' | 'records' | 'events' | 'safety';
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'all', label: 'Everything' },
+  { id: 'posts', label: 'City posts' },
   { id: 'meetings', label: 'Meetings' },
-  { id: 'records', label: 'Just posted' },
+  { id: 'records', label: 'New records' },
   { id: 'events', label: 'Around town' },
   { id: 'safety', label: 'Public safety' },
 ];
@@ -66,6 +67,59 @@ function Skeleton() {
   );
 }
 
+const FEEDS = [
+  { id: 'city', name: 'Vineyard City', url: 'https://www.facebook.com/VineyardCity/' },
+  { id: 'ucso', name: "Sheriff's Office, Vineyard", url: 'https://www.facebook.com/VineyardUCSO' },
+];
+
+/**
+ * The newest posts from the City and the Sheriff's Office Vineyard page, shown with Facebook's own
+ * official Page embed (live from Facebook on every visit, so it is always current).
+ */
+function FacebookFeeds() {
+  const box = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  const [pick, setPick] = useState(FEEDS[0].id);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const measure = () => setWidth(Math.round(el.clientWidth / 10) * 10);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const two = width >= 700;
+  const each = Math.max(180, Math.min(500, two ? Math.floor((width - 12) / 2) : width));
+  const shown = two ? FEEDS : FEEDS.filter((f) => f.id === pick);
+  const src = (url: string) =>
+    `https://www.facebook.com/plugins/page.php?${new URLSearchParams({ href: url, tabs: 'timeline', width: String(each), height: '640', small_header: 'true', adapt_container_width: 'true', hide_cover: 'true', show_facepile: 'false' })}`;
+  return (
+    <div ref={box}>
+      {!two && (
+        <div className="vc-segment vc-feed-pick" role="radiogroup" aria-label="Page">
+          {FEEDS.map((f) => (
+            <button key={f.id} type="button" role="radio" aria-checked={pick === f.id} data-on={pick === f.id} onClick={() => setPick(f.id)}>
+              {f.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="vc-feeds" data-two={two}>
+        {width > 0 &&
+          shown.map((f) => (
+            <div key={f.id} className="vc-feed">
+              <iframe title={`${f.name} on Facebook`} src={src(f.url)} width={each} height={640} loading="lazy" allow="encrypted-media" referrerPolicy="strict-origin-when-cross-origin" />
+              <a href={f.url} target="_blank" rel="noopener noreferrer" className="vc-feed-open">
+                Open {f.name} on Facebook <ArrowUpRight size={13} />
+              </a>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
 export default function LatestPage() {
   const [tab, setTab] = useState<Tab>('all');
   const load = useJson<Latest>('/api/latest');
@@ -102,10 +156,10 @@ export default function LatestPage() {
     <Frame>
       <header className="vc-page-head vc-latest-head">
         <p className="vc-latest-kicker">
-          <span className="vc-live-dot" aria-hidden="true" /> Checked every hour{updated ? ` · updated ${updated}` : ''}
+          <span className="vc-live-dot" aria-hidden="true" /> Live posts · records checked every hour{updated ? `, last ${updated}` : ''}
         </p>
         <h1 className="vc-page-title">Latest</h1>
-        <p className="vc-page-sub">New agendas and minutes, upcoming meetings, events around town and public safety updates in Vineyard.</p>
+        <p className="vc-page-sub">The newest posts from the City and the Sheriff&apos;s Office, upcoming meetings, events around town and newly posted records.</p>
       </header>
 
       <div className="vc-filters vc-body-chips vc-latest-tabs" role="tablist" aria-label="Show">
@@ -117,6 +171,12 @@ export default function LatestPage() {
       </div>
 
       {load.status === 'error' && <div className="vc-empty">The latest updates could not be loaded. Try again in a moment.</div>}
+
+      {show('posts') && (
+        <Section title="Latest posts" icon={<Megaphone size={16} strokeWidth={1.9} />}>
+          <FacebookFeeds />
+        </Section>
+      )}
 
       {show('meetings') && (
         <Section
@@ -149,35 +209,6 @@ export default function LatestPage() {
             </div>
           ) : (
             <div className="vc-empty">No public meetings are scheduled in the next three weeks.</div>
-          )}
-        </Section>
-      )}
-
-      {show('records') && (
-        <Section title="Just posted" icon={<Sparkles size={16} strokeWidth={1.9} />}>
-          {!data ? (
-            <Skeleton />
-          ) : data.posted.length ? (
-            <ul className="vc-mdocs">
-              {data.posted.map((d) => (
-                <li key={d.id}>
-                  <Link to={`/documents/${encodeURIComponent(d.id)}`} className="vc-mdoc">
-                    <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.type) ? d.type : 'other'}>
-                      <FileText size={15} strokeWidth={1.8} />
-                    </span>
-                    <span className="vc-mdoc-main">
-                      <span className="vc-mdoc-title">{d.title}</span>
-                      <span className="vc-mdoc-meta">
-                        {[TYPE_LABEL[d.type as keyof typeof TYPE_LABEL] ?? 'Record', d.meetingTitle ?? d.body, formatDate(d.date)].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
-                    <ArrowUpRight size={15} className="vc-mdoc-go" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="vc-empty">Nothing new has been posted in the last few weeks.</div>
           )}
         </Section>
       )}
@@ -230,24 +261,35 @@ export default function LatestPage() {
         </Section>
       )}
 
-      {(tab === 'all' || tab === 'safety') && data && (
-        <Section title="Follow for daily posts" icon={<Megaphone size={16} strokeWidth={1.9} />}>
-          <div className="vc-follow">
-            {data.follow.map((f) => (
-              <a key={f.handle} href={f.url} target="_blank" rel="noopener noreferrer" className="vc-follow-card">
-                <span className="vc-follow-badge" aria-hidden="true">
-                  f
-                </span>
-                <span className="vc-follow-main">
-                  <span className="vc-follow-name">{f.name}</span>
-                  <span className="vc-follow-handle">facebook.com/{f.handle}</span>
-                </span>
-                <ArrowUpRight size={15} className="vc-mdoc-go" />
-              </a>
-            ))}
-          </div>
+      {show('records') && (
+        <Section title="New records" icon={<Sparkles size={16} strokeWidth={1.9} />}>
+          {!data ? (
+            <Skeleton />
+          ) : data.posted.length ? (
+            <ul className="vc-mdocs">
+              {data.posted.map((d) => (
+                <li key={d.id}>
+                  <Link to={`/documents/${encodeURIComponent(d.id)}`} className="vc-mdoc">
+                    <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.type) ? d.type : 'other'}>
+                      <FileText size={15} strokeWidth={1.8} />
+                    </span>
+                    <span className="vc-mdoc-main">
+                      <span className="vc-mdoc-title">{d.title}</span>
+                      <span className="vc-mdoc-meta">
+                        {[TYPE_LABEL[d.type as keyof typeof TYPE_LABEL] ?? 'Record', d.meetingTitle ?? d.body, formatDate(d.date)].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <ArrowUpRight size={15} className="vc-mdoc-go" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="vc-empty">Nothing new has been posted in the last few weeks.</div>
+          )}
         </Section>
       )}
+
     </Frame>
   );
 }

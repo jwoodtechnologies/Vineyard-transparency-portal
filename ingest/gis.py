@@ -54,12 +54,27 @@ def log(msg: str) -> None:
     print(msg, flush=True)
 
 
+# Capital projects: only current and upcoming work (construction in fiscal 2026 or later, not
+# completed, no duplicate entries) and never projects the city has canceled. Keep in step with
+# CURRENT_PROJECTS_WHERE in worker/api/map.ts.
+CANCELED_PROJECTS = ("New City Hall",)
+FIRST_CURRENT_FISCAL_YEAR = 2026
+WHERE = {
+    "projects": (
+        f"Construction_Fiscal >= {FIRST_CURRENT_FISCAL_YEAR} AND (Project_Phase IS NULL OR Project_Phase <> 'Completed')"
+        " AND Project_Name NOT LIKE '%Duplicate%' AND Project_Name NOT IN ("
+        + ", ".join("'" + n.replace("'", "''") + "'" for n in CANCELED_PROJECTS)
+        + ")"
+    ),
+}
+
+
 def fetch_layer(client: PoliteClient, key: str) -> list[dict]:
     path, fields = LAYERS[key]
     out: list[dict] = []
     offset = 0
     while True:
-        q = urlencode({"where": "1=1", "outFields": fields, "returnGeometry": "true", "outSR": "4326", "geometryPrecision": "6", "f": "geojson", "resultRecordCount": "2000", "resultOffset": str(offset), "orderByFields": "OBJECTID"})
+        q = urlencode({"where": WHERE.get(key, "1=1"), "outFields": fields, "returnGeometry": "true", "outSR": "4326", "geometryPrecision": "6", "f": "geojson", "resultRecordCount": "2000", "resultOffset": str(offset), "orderByFields": "OBJECTID"})
         data = client.get_json(f"{BASE}{path}/query?{q}")
         feats = [f for f in data.get("features") or [] if f.get("geometry")]
         out.extend(feats)
@@ -171,7 +186,7 @@ def build(client: PoliteClient) -> list[Record]:
         roads = sorted(project_roads.get(pi, []))
         zones = sorted({val(layers["zoning"][z]["properties"].get("ZONE")) or "" for z in near("zoning", geoms["projects"][pi], 0)} - {""})
         lines = [
-            f"{name} is a Vineyard City capital improvement project listed in the city's public Capital Improvement Plan map.",
+            f"{name} is a current Vineyard City capital improvement project (construction planned for fiscal {val(p.get('Construction_Fiscal')) or '2026 or later'}) listed in the city's public Capital Improvement Plan map.",
             f"Department: {val(p.get('Department'))}." if val(p.get("Department")) else "",
             f"Project phase: {val(p.get('Project_Phase'))}" + (f", {val(p.get('Phase_Status'))} complete." if val(p.get("Phase_Status")) else ".") if val(p.get("Project_Phase")) else "",
             f"Total budget: {money(p.get('Total_Budget'))}." if money(p.get("Total_Budget")) else "",
@@ -239,11 +254,11 @@ def build(client: PoliteClient) -> list[Record]:
     by_phase: dict[str, list[str]] = defaultdict(list)
     for f in projects:
         by_phase[val(f["properties"].get("Project_Phase")) or "Unspecified"].append(project_line(f["properties"]))
-    lines = [f"Vineyard City's public Capital Improvement Plan map lists {len(projects)} projects with a combined total budget of {money(total)}."]
+    lines = [f"Vineyard City's public Capital Improvement Plan map lists {len(projects)} current and upcoming projects (construction in fiscal {FIRST_CURRENT_FISCAL_YEAR} or later, excluding completed and canceled projects) with a combined total budget of {money(total)}. The New City Hall project was canceled and is not a current project."]
     for ph in sorted(by_phase):
         lines.append(f"{ph} ({len(by_phase[ph])}): " + " | ".join(sorted(by_phase[ph])) + ".")
     lines.append(f"Source: Vineyard City Public GIS, Capital Improvement Plan layer, read {today}.")
-    records.append(Record("gis:overview:projects", "Vineyard Capital Improvement Plan: all projects", "plan", "\n".join(lines), "layer:projects"))
+    records.append(Record("gis:overview:projects", "Vineyard Capital Improvement Plan: current and upcoming projects", "plan", "\n".join(lines), "layer:projects"))
 
     zmap: dict[str, dict] = {}
     for f in layers["zoning"]:

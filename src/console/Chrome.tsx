@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { CalendarDays, History, Map as MapIcon, MessageSquare, Moon, Newspaper, Settings2, Sun, Trash2 } from 'lucide-react';
+import { CalendarDays, History, Map as MapIcon, Moon, Newspaper, Settings2, Sun, Trash2 } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { clearChats, setHistoryEnabled, useChats, useHistoryEnabled } from './history';
@@ -69,20 +69,6 @@ export function SettingsMenu() {
               </button>
             ))}
           </div>
-
-          <p className="vc-panel-label">Go to</p>
-          <Link to="/" className="vc-panel-row" onClick={close}>
-            <MessageSquare size={15} strokeWidth={1.8} /> Ask the archive
-          </Link>
-          <Link to="/latest" className="vc-panel-row" onClick={close}>
-            <Newspaper size={15} strokeWidth={1.8} /> Latest
-          </Link>
-          <Link to="/meetings" className="vc-panel-row" onClick={close}>
-            <CalendarDays size={15} strokeWidth={1.8} /> Calendar
-          </Link>
-          <Link to="/map" className="vc-panel-row" onClick={close}>
-            <MapIcon size={15} strokeWidth={1.8} /> Map
-          </Link>
 
           <p className="vc-panel-label">Chat history</p>
           <label className="vc-panel-row vc-switch-row">

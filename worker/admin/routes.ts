@@ -21,6 +21,7 @@ import { ensureActivityTables } from '../panel/store';
 import { newSetupCode } from '../panel/auth';
 import { requireIngestAuth } from './auth';
 import { splitSql } from '../lib/sql';
+import { exportPage, exportTables, pruneBackups, putBackup } from './backup';
 
 export const BUDGET_MESSAGE = 'Daily free-tier ingestion budget reached. Resume next UTC quota period.';
 
@@ -714,6 +715,14 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   if (path === '/quota' && method === 'GET') return quota(env);
   if (path === '/verify' && method === 'GET') return verify(env);
   if (path === '/queue' && method === 'GET') return listQueue(env, url);
+  if (path === '/export/tables' && method === 'GET') return exportTables(env);
+  if (path === '/export' && method === 'GET') return exportPage(env, url);
+  // Backups are reads plus R2 writes, so they run even after the day's D1 write budget is spent.
+  if (method === 'PUT' && path.startsWith('/backup/')) return putBackup(env, request, path.slice('/backup/'.length));
+  if (method === 'POST' && path === '/backup/prune') {
+    const b = await readJson<Json>(request, 4096);
+    return pruneBackups(env, Number(b.keepDays ?? 90) || 90);
+  }
 
   if (method === 'PUT') {
     const m = /^\/archive\/([0-9a-f]{64})$/.exec(path);

@@ -28,6 +28,13 @@ export interface MapLayerDef {
   minZoom?: number;
 }
 
+/** Projects the city has canceled that still appear in its Capital Improvement Plan map. */
+export const CANCELED_PROJECTS = ['New City Hall'];
+export const FIRST_CURRENT_FISCAL_YEAR = 2026;
+export const CURRENT_PROJECTS_WHERE =
+  `Construction_Fiscal >= ${FIRST_CURRENT_FISCAL_YEAR} AND (Project_Phase IS NULL OR Project_Phase <> 'Completed')` +
+  ` AND Project_Name NOT LIKE '%Duplicate%' AND Project_Name NOT IN (${CANCELED_PROJECTS.map((n) => `'${n.replace(/'/g, "''")}'`).join(', ')})`;
+
 export const MAP_LAYERS: MapLayerDef[] = [
   { key: 'boundary', label: 'City boundary', group: 'Land', path: 'Vineyard_City_Boundary/FeatureServer/0', fields: ['NAME'], geometry: 'polygon', on: true },
   {
@@ -37,6 +44,9 @@ export const MAP_LAYERS: MapLayerDef[] = [
     path: 'Capital_Improvement_Plan_Public_View/FeatureServer/650',
     fields: ['Project_Name', 'Department', 'Project_Phase', 'Phase_Status', 'Total_Budget', 'Funding_Source', 'Location', 'Description', 'Construction_Fiscal', 'Start_Date', 'Finish_Date', 'Consultant'],
     geometry: 'polygon',
+    // Current and upcoming work only: construction in fiscal 2026 or later, not completed, no
+    // duplicate entries, and not projects the city has canceled (New City Hall).
+    where: CURRENT_PROJECTS_WHERE,
   },
   { key: 'zoning', label: 'Zoning', group: 'Land', path: 'Zoning_-_Public_View/FeatureServer/8', fields: ['ZONE', 'District', 'Description', 'Ordinance', 'OrdinanceDate', 'ACRES'], geometry: 'polygon' },
   { key: 'landuse', label: 'Future land use', group: 'Plans', path: 'Vineyard_Future_Land_Use_View/FeatureServer/0', fields: ['Land_Use', 'Acres'], geometry: 'polygon' },

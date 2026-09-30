@@ -2,9 +2,9 @@
 import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, CalendarDays, Download, Layers, MessageSquare, Printer, Share2 } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CalendarDays, Download, Expand, Layers, MessageSquare, Printer, Share2, X } from 'lucide-react';
 import type { DocumentDetail, DocumentPageText } from '@/types/models';
 import { DocumentService } from '@/services';
 import { Frame } from './Chrome';
@@ -132,6 +132,72 @@ async function shareRecord(title: string): Promise<'shared' | 'copied' | 'failed
   }
 }
 
+/**
+ * The record in a shell that can go truly full screen: a fixed layer over the whole screen (works
+ * on iPhone, where web pages cannot use the browser Fullscreen API) plus the Fullscreen API where it
+ * exists, with a large Exit button that is always visible. Back and Esc also exit.
+ */
+function FullScreenShell({ title, children }: { title: string; children: ReactNode }) {
+  const shell = useRef<HTMLDivElement>(null);
+  const [full, setFull] = useState(false);
+  const exit = useCallback(() => {
+    setFull(false);
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    if ((window.history.state as { vcFull?: boolean } | null)?.vcFull) window.history.back();
+  }, []);
+  const enter = () => {
+    setFull(true);
+    window.history.pushState({ ...(window.history.state ?? {}), vcFull: true }, '');
+    const el = shell.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
+    try {
+      if (el?.requestFullscreen) void el.requestFullscreen({ navigationUI: 'hide' }).catch(() => undefined);
+      else el?.webkitRequestFullscreen?.();
+    } catch {
+      /* the fixed layer alone still fills the screen */
+    }
+  };
+  useEffect(() => {
+    if (!full) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && exit();
+    const onPop = () => {
+      setFull(false);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    };
+    // Leaving browser full screen (Esc, swipe, system gesture) also leaves the layer.
+    const onFs = () => {
+      if (!document.fullscreenElement) exit();
+    };
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('popstate', onPop);
+    document.addEventListener('fullscreenchange', onFs);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('popstate', onPop);
+      document.removeEventListener('fullscreenchange', onFs);
+    };
+  }, [full, exit]);
+  return (
+    <div ref={shell} className="vc-viewer-shell" data-full={full}>
+      {full ? (
+        <div className="vc-full-bar">
+          <span className="vc-full-title">{title}</span>
+          <button type="button" className="vc-full-exit" onClick={exit} autoFocus>
+            <X size={18} strokeWidth={2.2} /> Exit full screen
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="vc-full-open" onClick={enter} aria-label="Full screen">
+          <Expand size={15} strokeWidth={2} /> <span>Full screen</span>
+        </button>
+      )}
+      {children}
+    </div>
+  );
+}
+
 export default function DocumentView() {
   const { documentId = '' } = useParams();
   const [params, setParams] = useSearchParams();
@@ -237,7 +303,9 @@ export default function DocumentView() {
           </Link>
         </div>
       </header>
-      <Viewer doc={doc} page={page} setPage={setPage} highlight={highlight} />
+      <FullScreenShell title={doc.title}>
+        <Viewer doc={doc} page={page} setPage={setPage} highlight={highlight} />
+      </FullScreenShell>
       {showMeeting && doc.meeting && <MeetingDocsSheet meeting={{ id: doc.meeting.id, title: doc.meeting.title, date: doc.meeting.date }} currentId={doc.id} onClose={() => setShowMeeting(false)} />}
     </Frame>
   );
