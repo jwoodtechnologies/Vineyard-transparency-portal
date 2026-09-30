@@ -78,7 +78,7 @@ export default function MeetingPage() {
     return (
       <Frame>
         <Link to="/meetings" className="vc-back">
-          <ArrowLeft size={15} /> All meetings
+          <ArrowLeft size={15} /> Calendar
         </Link>
         <div className="vc-empty" style={{ marginTop: '2rem' }}>
           That meeting is not in the archive.
@@ -110,7 +110,7 @@ export default function MeetingPage() {
   return (
     <Frame>
       <Link to="/meetings" className="vc-back">
-        <ArrowLeft size={15} /> All meetings
+        <ArrowLeft size={15} /> Calendar
       </Link>
 
       <header className="vc-mtg-head" data-tone={toneOf(meeting.governmentBodyId)}>

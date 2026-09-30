@@ -1,5 +1,6 @@
 /**
- * /meetings : Vineyard's public meeting schedule, past and upcoming.
+ * /meetings (and /calendar) : Vineyard's calendar. Public meetings from the city's meeting portal
+ * plus community, recreation, library and utility events from the city website calendar.
  * Three views of the same data: Upcoming (the default), a month Calendar, and Past by year.
  */
 import '@fontsource-variable/inter';
@@ -7,14 +8,18 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, Video } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, MapPin, Video } from 'lucide-react';
 import type { MeetingSummary } from '@/types/models';
 import { Frame } from './Chrome';
 import {
+  CATEGORIES,
+  categoryOf,
   dayMonth,
   dayNumber,
+  eventTone,
   formatTime,
   meetingHref,
+  mergeItems,
   monthGrid,
   monthLabel,
   monthShort,
@@ -23,8 +28,12 @@ import {
   todayIso,
   toneOf,
   useBodies,
+  useEvents,
   useMeetings,
   weekdayShort,
+  type CalItem,
+  type CategoryId,
+  type PortalEvent,
 } from './meetings';
 
 type View = 'upcoming' | 'calendar' | 'past';
@@ -43,16 +52,22 @@ function groupBy<T>(items: T[], key: (t: T) => string): Array<[string, T[]]> {
   return [...map.entries()];
 }
 
+function DateBox({ date }: { date: string }) {
+  return (
+    <div className="vc-meeting-date" aria-hidden="true">
+      <span className="vc-meeting-mon">{monthShort(date)}</span>
+      <span className="vc-meeting-day">{dayNumber(date)}</span>
+      <span className="vc-meeting-dow">{weekdayShort(date)}</span>
+    </div>
+  );
+}
+
 function MeetingRow({ m, today }: { m: MeetingSummary; today: string }) {
   const status = statusLabel(m, today);
   const tag = status === 'Upcoming' ? null : status;
   return (
     <Link to={meetingHref(m)} className="vc-meeting" data-tone={toneOf(m.governmentBodyId)}>
-      <div className="vc-meeting-date" aria-hidden="true">
-        <span className="vc-meeting-mon">{monthShort(m.date)}</span>
-        <span className="vc-meeting-day">{dayNumber(m.date)}</span>
-        <span className="vc-meeting-dow">{weekdayShort(m.date)}</span>
-      </div>
+      <DateBox date={m.date} />
       <div className="vc-meeting-main">
         <div className="vc-meeting-meta">
           <span className="vc-body-dot" />
@@ -63,19 +78,91 @@ function MeetingRow({ m, today }: { m: MeetingSummary; today: string }) {
               <span>{formatTime(m.startTime)}</span>
             </>
           )}
-          {tag && <span className="vc-status-tag" data-kind={tag.toLowerCase()}>{tag}</span>}
+          {tag && (
+            <span className="vc-status-tag" data-kind={tag.toLowerCase()}>
+              {tag}
+            </span>
+          )}
         </div>
         <h3 className="vc-meeting-title">{m.title}</h3>
         <div className="vc-meeting-docs">
-          {m.agendaDocumentId && <span className="vc-tag"><FileText size={11} strokeWidth={2} /> Agenda</span>}
-          {m.packetDocumentId && <span className="vc-tag"><FileText size={11} strokeWidth={2} /> Packet</span>}
-          {m.minutesDocumentId && <span className="vc-tag"><FileText size={11} strokeWidth={2} /> Minutes</span>}
-          {m.hasVideo && <span className="vc-tag"><Video size={11} strokeWidth={2} /> Video</span>}
+          {m.agendaDocumentId && (
+            <span className="vc-tag">
+              <FileText size={11} strokeWidth={2} /> Agenda
+            </span>
+          )}
+          {m.packetDocumentId && (
+            <span className="vc-tag">
+              <FileText size={11} strokeWidth={2} /> Packet
+            </span>
+          )}
+          {m.minutesDocumentId && (
+            <span className="vc-tag">
+              <FileText size={11} strokeWidth={2} /> Minutes
+            </span>
+          )}
+          {m.hasVideo && (
+            <span className="vc-tag">
+              <Video size={11} strokeWidth={2} /> Video
+            </span>
+          )}
         </div>
       </div>
       <ChevronRight className="vc-meeting-go" size={18} strokeWidth={1.6} aria-hidden="true" />
     </Link>
   );
+}
+
+function eventTimeLabel(e: PortalEvent): string {
+  if (e.allDay) return 'All day';
+  const a = formatTime(e.start.slice(11, 16));
+  const b = e.end && e.end.slice(0, 10) === e.start.slice(0, 10) ? formatTime(e.end.slice(11, 16)) : null;
+  return b ? `${a} to ${b}` : (a ?? '');
+}
+
+function EventRow({ e }: { e: PortalEvent }) {
+  const [open, setOpen] = useState(false);
+  const label = CATEGORIES.find((c) => c.id === categoryOf(e))?.label ?? e.category;
+  const canceled = /cancel/i.test(e.title);
+  return (
+    <div className="vc-meeting vc-event" data-tone={eventTone(e)} data-open={open}>
+      <button type="button" className="vc-event-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <DateBox date={e.start.slice(0, 10)} />
+        <div className="vc-meeting-main">
+          <div className="vc-meeting-meta">
+            <span className="vc-body-dot" />
+            <span>{label}</span>
+            <span className="vc-dot" />
+            <span>{eventTimeLabel(e)}</span>
+            {canceled && (
+              <span className="vc-status-tag" data-kind="cancelled">
+                Canceled
+              </span>
+            )}
+          </div>
+          <h3 className="vc-meeting-title">{e.title.replace(/^CANCELED\s*[-:|]?\s*/i, '')}</h3>
+          {e.location && (
+            <p className="vc-event-where">
+              <MapPin size={12} strokeWidth={1.8} /> {e.location}
+            </p>
+          )}
+        </div>
+        <ChevronDown className="vc-meeting-go vc-event-chev" size={18} strokeWidth={1.6} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="vc-event-more">
+          {e.description ? <p className="vc-event-desc">{e.description}</p> : <p className="vc-event-desc vc-muted">No description was posted for this event.</p>}
+          <a href={e.url} target="_blank" rel="noopener noreferrer" className="vc-secondary">
+            On the city calendar <ArrowUpRight size={13} />
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ item, today }: { item: CalItem; today: string }) {
+  return item.kind === 'meeting' ? <MeetingRow m={item.m} today={today} /> : <EventRow e={item.e} />;
 }
 
 const MAIN_BODIES = 4;
@@ -132,31 +219,31 @@ function Skeleton() {
   );
 }
 
-function Upcoming({ meetings, today }: { meetings: MeetingSummary[]; today: string }) {
-  const upcoming = meetings.filter((m) => m.date >= today);
-  const recent = meetings.filter((m) => m.date < today).slice(-6).reverse();
+function Upcoming({ items, today, meetingsOnly }: { items: CalItem[]; today: string; meetingsOnly: boolean }) {
+  const upcoming = items.filter((i) => i.date >= today);
+  const recent = items.filter((i) => i.kind === 'meeting' && i.date < today).slice(-6).reverse();
   return (
     <>
       {upcoming.length ? (
-        groupBy(upcoming.slice(0, 40), (m) => m.date.slice(0, 7)).map(([ym, list]) => (
+        groupBy(upcoming.slice(0, 60), (i) => i.date.slice(0, 7)).map(([ym, list]) => (
           <section key={ym} className="vc-sched-group">
             <p className="vc-label">{monthLabel(ym)}</p>
             <div className="vc-sched-list">
-              {list.map((m) => (
-                <MeetingRow key={m.id} m={m} today={today} />
+              {list.map((i) => (
+                <Row key={i.key} item={i} today={today} />
               ))}
             </div>
           </section>
         ))
       ) : (
-        <div className="vc-empty">No upcoming meetings have been posted yet. The city usually posts agendas a few days ahead.</div>
+        <div className="vc-empty">{meetingsOnly ? 'No upcoming meetings have been posted yet. The city usually posts agendas a few days ahead.' : 'Nothing upcoming has been posted yet.'}</div>
       )}
       {recent.length > 0 && (
         <section className="vc-sched-group">
           <p className="vc-label">Recently held</p>
           <div className="vc-sched-list">
-            {recent.map((m) => (
-              <MeetingRow key={m.id} m={m} today={today} />
+            {recent.map((i) => (
+              <Row key={i.key} item={i} today={today} />
             ))}
           </div>
         </section>
@@ -165,16 +252,20 @@ function Upcoming({ meetings, today }: { meetings: MeetingSummary[]; today: stri
   );
 }
 
-function Calendar({ meetings, month, onMonth, today }: { meetings: MeetingSummary[]; month: string; onMonth: (ym: string) => void; today: string }) {
+const itemTone = (i: CalItem) => (i.kind === 'meeting' ? toneOf(i.m.governmentBodyId) : eventTone(i.e));
+const itemName = (i: CalItem) => (i.kind === 'meeting' ? (i.m.governmentBodyName ?? i.m.title) : i.e.title.replace(/^CANCELED\s*[-:|]?\s*/i, ''));
+const shortTime = (t: string | null) => (t ? (formatTime(t) ?? '').replace(':00', '').replace(' ', '').toLowerCase() : '');
+
+function Calendar({ items, month, onMonth, today }: { items: CalItem[]; month: string; onMonth: (ym: string) => void; today: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const byDay = useMemo(() => {
-    const map = new Map<string, MeetingSummary[]>();
-    for (const m of meetings) map.set(m.date, [...(map.get(m.date) ?? []), m]);
+    const map = new Map<string, CalItem[]>();
+    for (const i of items) map.set(i.date, [...(map.get(i.date) ?? []), i]);
     return map;
-  }, [meetings]);
+  }, [items]);
   const cells = monthGrid(month);
-  const inMonth = meetings.filter((m) => m.date.startsWith(month));
-  const dayList = selected ? byDay.get(selected) ?? [] : inMonth;
+  const inMonth = items.filter((i) => i.date.startsWith(month));
+  const dayList = selected ? (byDay.get(selected) ?? []) : inMonth;
 
   return (
     <>
@@ -213,17 +304,24 @@ function Calendar({ meetings, month, onMonth, today }: { meetings: MeetingSummar
             >
               <span className="vc-cal-num">{dayNumber(c.iso)}</span>
               <div className="vc-cal-events">
-                {list.slice(0, 3).map((m) => (
-                  <Link key={m.id} to={meetingHref(m)} className="vc-cal-event" data-tone={toneOf(m.governmentBodyId)} onClick={(e) => e.stopPropagation()} title={`${m.title}${m.startTime ? `, ${formatTime(m.startTime)}` : ''}`}>
-                    <span className="vc-cal-time">{formatTime(m.startTime)?.replace(':00', '').replace(' ', '').toLowerCase()}</span>
-                    <span className="vc-cal-name">{m.governmentBodyName ?? m.title}</span>
-                  </Link>
-                ))}
+                {list.slice(0, 3).map((i) =>
+                  i.kind === 'meeting' ? (
+                    <Link key={i.key} to={meetingHref(i.m)} className="vc-cal-event" data-tone={itemTone(i)} onClick={(e) => e.stopPropagation()} title={`${i.m.title}${i.time ? `, ${formatTime(i.time)}` : ''}`}>
+                      <span className="vc-cal-time">{shortTime(i.time)}</span>
+                      <span className="vc-cal-name">{itemName(i)}</span>
+                    </Link>
+                  ) : (
+                    <button key={i.key} type="button" className="vc-cal-event" data-tone={itemTone(i)} title={itemName(i)} onClick={(e) => (e.stopPropagation(), setSelected(c.iso))}>
+                      {i.time && <span className="vc-cal-time">{shortTime(i.time)}</span>}
+                      <span className="vc-cal-name">{itemName(i)}</span>
+                    </button>
+                  ),
+                )}
                 {list.length > 3 && <span className="vc-cal-more">+{list.length - 3} more</span>}
               </div>
               <div className="vc-cal-dots" aria-hidden="true">
-                {list.slice(0, 4).map((m) => (
-                  <span key={m.id} data-tone={toneOf(m.governmentBodyId)} />
+                {list.slice(0, 4).map((i) => (
+                  <span key={i.key} data-tone={itemTone(i)} />
                 ))}
               </div>
             </div>
@@ -231,34 +329,34 @@ function Calendar({ meetings, month, onMonth, today }: { meetings: MeetingSummar
         })}
       </div>
       <section className="vc-sched-group">
-        <p className="vc-label">{selected ? dayMonth(selected) : `${inMonth.length} ${inMonth.length === 1 ? 'meeting' : 'meetings'} in ${monthLabel(month)}`}</p>
+        <p className="vc-label">{selected ? dayMonth(selected) : `${inMonth.length} on the calendar in ${monthLabel(month)}`}</p>
         {dayList.length ? (
           <div className="vc-sched-list">
-            {dayList.map((m) => (
-              <MeetingRow key={m.id} m={m} today={today} />
+            {dayList.map((i) => (
+              <Row key={i.key} item={i} today={today} />
             ))}
           </div>
         ) : (
-          <div className="vc-empty">No meetings on the record for this month.</div>
+          <div className="vc-empty">Nothing on the calendar for this month.</div>
         )}
       </section>
     </>
   );
 }
 
-function Past({ meetings, today }: { meetings: MeetingSummary[]; today: string }) {
-  const past = meetings.filter((m) => m.date < today).reverse();
-  if (!past.length) return <div className="vc-empty">No meetings on the record for this year.</div>;
+function Past({ items, today }: { items: CalItem[]; today: string }) {
+  const past = items.filter((i) => i.date < today).reverse();
+  if (!past.length) return <div className="vc-empty">Nothing on the record for this year.</div>;
   return (
     <>
-      {groupBy(past, (m) => m.date.slice(0, 7)).map(([ym, list]) => (
+      {groupBy(past, (i) => i.date.slice(0, 7)).map(([ym, list]) => (
         <section key={ym} className="vc-sched-group">
           <p className="vc-label">
             {monthLabel(ym)} <span className="vc-label-count">{list.length}</span>
           </p>
           <div className="vc-sched-list">
-            {list.map((m) => (
-              <MeetingRow key={m.id} m={m} today={today} />
+            {list.map((i) => (
+              <Row key={i.key} item={i} today={today} />
             ))}
           </div>
         </section>
@@ -267,19 +365,22 @@ function Past({ meetings, today }: { meetings: MeetingSummary[]; today: string }
   );
 }
 
+const TYPES: Array<{ id: 'all' | CategoryId; label: string; tone?: number }> = [{ id: 'all', label: 'All' }, ...CATEGORIES];
+
 export default function MeetingsPage() {
   const [params, setParams] = useSearchParams();
   const today = todayIso();
   const thisYear = Number(today.slice(0, 4));
   const view = (VIEWS.some((v) => v.id === params.get('view')) ? params.get('view') : 'upcoming') as View;
-  const body = params.get('body');
+  const type = (TYPES.some((t) => t.id === params.get('type')) ? params.get('type') : 'all') as 'all' | CategoryId;
+  const body = type === 'meetings' ? params.get('body') : null;
   const month = /^\d{4}-\d{2}$/.test(params.get('month') ?? '') ? String(params.get('month')) : today.slice(0, 7);
   const yearParam = Number(params.get('year'));
   const year = yearParam >= 1990 && yearParam <= thisYear + 1 ? yearParam : thisYear;
   const bodies = useBodies();
 
   useEffect(() => {
-    document.title = 'Meetings | Vineyard Transparency Portal';
+    document.title = 'Calendar | Vineyard Transparency Portal';
   }, []);
 
   const firstYear = useMemo(() => {
@@ -290,6 +391,7 @@ export default function MeetingsPage() {
   const monthYear = Number(month.slice(0, 4));
   const yearsNeeded = view === 'upcoming' ? [thisYear, thisYear + 1] : view === 'calendar' ? [monthYear] : [year];
   const load = useMeetings(yearsNeeded);
+  const events = useEvents(yearsNeeded);
 
   const set = (next: Record<string, string | null>) => {
     const p = new URLSearchParams(params);
@@ -301,28 +403,38 @@ export default function MeetingsPage() {
   };
 
   const loaded = load.status === 'done' ? load.data : null;
-  const all = useMemo(() => loaded ?? [], [loaded]);
-  const shown = body ? all.filter((m) => m.governmentBodyId === body) : all;
+  const meetings = useMemo(() => loaded ?? [], [loaded]);
+  const items = useMemo(() => mergeItems(meetings, events ?? []), [meetings, events]);
+  const shown = useMemo(
+    () =>
+      items.filter((i) => {
+        if (type === 'all') return true;
+        if (i.kind === 'meeting') return type === 'meetings' && (!body || i.m.governmentBodyId === body);
+        return categoryOf(i.e) === type && !body;
+      }),
+    [items, type, body],
+  );
+
   const bodyChips = useMemo(() => {
     const withMeetings = bodies.filter((b) => (b.meetingCount ?? 0) > 0).map((b) => ({ id: b.id, name: b.name, count: b.meetingCount ?? 0 }));
     if (withMeetings.length) return withMeetings.sort((a, b) => b.count - a.count);
     const seen = new Map<string, { id: string; name: string; count: number }>();
-    for (const m of all) {
+    for (const m of meetings) {
       if (!m.governmentBodyId) continue;
       const cur = seen.get(m.governmentBodyId) ?? { id: m.governmentBodyId, name: m.governmentBodyName ?? m.governmentBodyId, count: 0 };
       cur.count++;
       seen.set(m.governmentBodyId, cur);
     }
     return [...seen.values()].sort((a, b) => b.count - a.count);
-  }, [bodies, all]);
+  }, [bodies, meetings]);
   const mainBodies = bodyChips.slice(0, MAIN_BODIES);
   const moreBodies = bodyChips.slice(MAIN_BODIES).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Frame wide>
       <header className="vc-page-head">
-        <h1 className="vc-page-title">Meetings</h1>
-        <p className="vc-page-sub">Every public meeting of Vineyard City, with agendas, packets, minutes and video.</p>
+        <h1 className="vc-page-title">Calendar</h1>
+        <p className="vc-page-sub">Public meetings, community events, recreation, library programs and trash days in Vineyard.</p>
       </header>
 
       <div className="vc-sched-controls">
@@ -333,20 +445,35 @@ export default function MeetingsPage() {
             </button>
           ))}
         </div>
-        {bodyChips.length > 1 && (
-          <div className="vc-filters vc-body-chips" role="group" aria-label="Body">
-            <button type="button" className="vc-chip" data-active={!body} onClick={() => set({ body: null })}>
-              All
+        <div className="vc-filters vc-body-chips" role="group" aria-label="Show">
+          {TYPES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={t.tone != null ? 'vc-chip vc-chip-tone' : 'vc-chip'}
+              data-tone={t.tone}
+              data-active={type === t.id}
+              onClick={() => set({ type: t.id === 'all' || type === t.id ? null : t.id, body: null })}
+            >
+              {t.tone != null && <span className="vc-body-dot" />} {t.label}
             </button>
-            {mainBodies.map((b) => (
-              <button key={b.id} type="button" className="vc-chip vc-chip-tone" data-tone={toneOf(b.id)} data-active={body === b.id} onClick={() => set({ body: body === b.id ? null : b.id })}>
-                <span className="vc-body-dot" /> {b.name}
-              </button>
-            ))}
-            {moreBodies.length > 0 && <MoreBodies bodies={moreBodies} value={body} onPick={(id) => set({ body: id })} />}
-          </div>
-        )}
+          ))}
+        </div>
       </div>
+
+      {type === 'meetings' && bodyChips.length > 1 && (
+        <div className="vc-filters vc-body-chips vc-subfilters" role="group" aria-label="Board or commission">
+          <button type="button" className="vc-chip" data-active={!body} onClick={() => set({ body: null })}>
+            All boards
+          </button>
+          {mainBodies.map((b) => (
+            <button key={b.id} type="button" className="vc-chip vc-chip-tone" data-tone={toneOf(b.id)} data-active={body === b.id} onClick={() => set({ body: body === b.id ? null : b.id })}>
+              <span className="vc-body-dot" /> {b.name}
+            </button>
+          ))}
+          {moreBodies.length > 0 && <MoreBodies bodies={moreBodies} value={body} onPick={(id) => set({ body: id })} />}
+        </div>
+      )}
 
       {view === 'past' && (
         <div className="vc-years" role="group" aria-label="Year">
@@ -359,10 +486,10 @@ export default function MeetingsPage() {
       )}
 
       {load.status === 'loading' && <Skeleton />}
-      {load.status === 'error' && <div className="vc-empty">The meeting schedule could not be loaded right now. Please try again in a moment.</div>}
-      {load.status === 'done' && view === 'upcoming' && <Upcoming meetings={shown} today={today} />}
-      {load.status === 'done' && view === 'calendar' && <Calendar meetings={shown} month={month} today={today} onMonth={(ym) => set({ month: ym === today.slice(0, 7) ? null : ym })} />}
-      {load.status === 'done' && view === 'past' && <Past meetings={shown} today={today} />}
+      {load.status === 'error' && <div className="vc-empty">The calendar could not be loaded right now. Please try again in a moment.</div>}
+      {load.status === 'done' && view === 'upcoming' && <Upcoming items={shown} today={today} meetingsOnly={type === 'meetings'} />}
+      {load.status === 'done' && view === 'calendar' && <Calendar items={shown} month={month} today={today} onMonth={(ym) => set({ month: ym === today.slice(0, 7) ? null : ym })} />}
+      {load.status === 'done' && view === 'past' && <Past items={shown} today={today} />}
     </Frame>
   );
 }

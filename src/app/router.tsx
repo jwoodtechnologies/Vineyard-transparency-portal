@@ -34,6 +34,7 @@ function SearchRedirect() {
 export const router = createBrowserRouter([
   { path: '/', element: <ConsolePage /> },
   { path: '/meetings', element: quiet(<MeetingsPage />) },
+  { path: '/calendar', element: quiet(<MeetingsPage />) },
   { path: '/meetings/:meetingId', element: quiet(<MeetingPage />) },
   { path: '/documents/:documentId', element: quiet(<DocumentView />) },
   { path: '/search', element: <SearchRedirect /> },
