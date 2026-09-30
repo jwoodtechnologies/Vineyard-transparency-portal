@@ -2,6 +2,18 @@
 
 The archive is the authority; the model is an interface to it.
 
+## Conversation mode
+
+Greetings, thanks, "what can you do", "can you help me" and similar small talk
+(`smallTalkKind()` in `worker/ai/answer.ts`) skip retrieval. The assistant replies naturally with
+`CHAT_SYSTEM_PROMPT` (persona: a warm, precise research librarian for Vineyard public records) and
+the response carries `mode: "conversation"` with no citations. A small-talk reply may not state
+facts: any reply containing numbers, years or money is replaced by a fixed reply
+(`safeSmallTalk()`). Without AI (quota, outage, disabled) the same fixed replies are used, so
+"hi" always gets "Hi! How can I help you today? …".
+
+## Record questions
+
 1. Validate: question 1 to 1000 characters, control characters stripped, at most 6 prior turns
    (used only to resolve short follow-ups, never stored).
 2. Retrieve: FTS5 with all terms; if fewer than 8 chunks, add any-term matches. Metadata filters apply.

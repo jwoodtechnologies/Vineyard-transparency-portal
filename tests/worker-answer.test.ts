@@ -55,3 +55,22 @@ describe('selectEvidence', () => {
     expect(msg.split('\n>>>').length - 1).toBe(1);
   });
 });
+
+describe('conversation mode', () => {
+  it('recognizes small talk and leaves real questions to retrieval', async () => {
+    const { smallTalkKind } = await import('../worker/ai/answer');
+    expect(smallTalkKind('hi')).toBe('greeting');
+    expect(smallTalkKind('Hello there!')).toBe('greeting');
+    expect(smallTalkKind('thanks!')).toBe('thanks');
+    expect(smallTalkKind('What can you do?')).toBe('capability');
+    expect(smallTalkKind('can you help me')).toBe('help');
+    expect(smallTalkKind('hi, what did the council decide about the budget?')).toBeNull();
+    expect(smallTalkKind('What was on the September 15 agenda?')).toBeNull();
+  });
+
+  it('never lets a small-talk reply carry unsourced figures', async () => {
+    const { safeSmallTalk, SMALL_TALK_REPLIES } = await import('../worker/ai/answer');
+    expect(safeSmallTalk('Hi! How can I help you today?', 'greeting')).toBe('Hi! How can I help you today?');
+    expect(safeSmallTalk('The council approved $4 million in 2026.', 'greeting')).toBe(SMALL_TALK_REPLIES.greeting);
+  });
+});

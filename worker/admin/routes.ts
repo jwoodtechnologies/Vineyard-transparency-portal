@@ -144,9 +144,11 @@ async function upsertSources(env: Env, body: Json, budget: Budget): Promise<Resp
         now,
       ),
     );
+  const retire = (Array.isArray(body.retire) ? body.retire : []).filter(idOk).slice(0, 50);
+  for (const id of retire) stmts.push(env.CATALOG_DB.prepare('DELETE FROM sources WHERE id = ? AND NOT EXISTS (SELECT 1 FROM documents WHERE source_id = ?)').bind(id, id));
   const rows = sum(await env.CATALOG_DB.batch(stmts));
   await budget.record(rows);
-  return json({ ok: true, upserted: stmts.length, rowsWritten: rows });
+  return json({ ok: true, upserted: stmts.length - retire.length, retired: retire, rowsWritten: rows });
 }
 
 async function sourceStatus(env: Env, body: Json, budget: Budget): Promise<Response> {
