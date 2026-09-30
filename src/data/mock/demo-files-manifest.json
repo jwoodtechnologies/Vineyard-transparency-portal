@@ -1,0 +1,296 @@
+{
+  "demo-res-2026-04-parking-permits": {
+    "fileName": "demo-res-2026-04-parking-permits.pdf",
+    "sha256": "db59baabc6fa880c89c2ca7386282769880e62d8996e6379bd0ef516540a1d57",
+    "size": 4126,
+    "pageCount": 3,
+    "mimeType": "application/pdf"
+  },
+  "demo-sr-parking-permit-program": {
+    "fileName": "demo-sr-parking-permit-program.pdf",
+    "sha256": "e9d5c095045c679d7b17e3d1a3196a9bea171fe731f8db5dadf0c0a3a3b17c89",
+    "size": 3889,
+    "pageCount": 3,
+    "mimeType": "application/pdf"
+  },
+  "demo-ord-2026-01-parking": {
+    "fileName": "demo-ord-2026-01-parking.pdf",
+    "sha256": "d3ca30fdc068b35f767ba7b436f9c68eff48da12195199a6724bf342e82b604f",
+    "size": 3881,
+    "pageCount": 3,
+    "mimeType": "application/pdf"
+  },
+  "demo-ord-2024-03-parking": {
+    "fileName": "demo-ord-2024-03-parking.pdf",
+    "sha256": "86bfa9b6f8c81b7e18972b98e1ca1a3e87cecb8421e8e450acd54bcda0c32622",
+    "size": 2842,
+    "pageCount": 2,
+    "mimeType": "application/pdf"
+  },
+  "demo-notice-parking-hearing": {
+    "fileName": "demo-notice-parking-hearing.pdf",
+    "sha256": "f528fcc6b901fa00b3f5869dd5217d51be9b6c929bef4df0d1d6e7d10be7bd6d",
+    "size": 2001,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-contract-towing-services": {
+    "fileName": "demo-contract-towing-services.pdf",
+    "sha256": "0e145b0dfcb39128510f46b2a64779226c9a1fc549a7ede301e6b9639bb890a7",
+    "size": 3849,
+    "pageCount": 3,
+    "mimeType": "application/pdf"
+  },
+  "demo-rfp-towing": {
+    "fileName": "demo-rfp-towing.pdf",
+    "sha256": "77290c868e031323928f7b243d370661fce38b73c75faec479d42d011dba5aeb",
+    "size": 2694,
+    "pageCount": 2,
+    "mimeType": "application/pdf"
+  },
+  "demo-sr-towing-agreement": {
+    "fileName": "demo-sr-towing-agreement.pdf",
+    "sha256": "bb4dc07ffc78028145649de2fe7b3eb7d51a7c8c846d559260af958bd518326b",
+    "size": 1934,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-psa-sample-park-design": {
+    "fileName": "demo-psa-sample-park-design.pdf",
+    "sha256": "905169486ea118c6500e1620eaae196326a1d373952cdc2e9fec0262ce3e9553",
+    "size": 2941,
+    "pageCount": 2,
+    "mimeType": "application/pdf"
+  },
+  "demo-parks-master-plan": {
+    "fileName": "demo-parks-master-plan.pdf",
+    "sha256": "2bb50674252ce21f11bf69d47816ae1394b8c4c32e26bbc0970f702a24dcb783",
+    "size": 4500,
+    "pageCount": 4,
+    "mimeType": "application/pdf"
+  },
+  "demo-da-example-mixed-use": {
+    "fileName": "demo-da-example-mixed-use.pdf",
+    "sha256": "3e102bfb42748eeea9ddac04b9afe07cfd14c22789ccba59fa90ae06855448ac",
+    "size": 4675,
+    "pageCount": 4,
+    "mimeType": "application/pdf"
+  },
+  "demo-sr-harbor-crossing-rezone": {
+    "fileName": "demo-sr-harbor-crossing-rezone.pdf",
+    "sha256": "58df7d800bbec4281c63de621096662543ab83f18128be9269c7d8c56ca072e7",
+    "size": 2841,
+    "pageCount": 2,
+    "mimeType": "application/pdf"
+  },
+  "demo-application-harbor-crossing": {
+    "fileName": "demo-application-harbor-crossing.pdf",
+    "sha256": "f36e74ce043f9a6439ff207e13191d7e7f31f2c10c54c835191dfffed483e854",
+    "size": 1972,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-study-demo-parkway-corridor": {
+    "fileName": "demo-study-demo-parkway-corridor.pdf",
+    "sha256": "1cbe2670f6b91eb539ae5802b1588c67726c2523bddf4714ffeedeecd74012a0",
+    "size": 3662,
+    "pageCount": 3,
+    "mimeType": "application/pdf"
+  },
+  "demo-policy-traffic-calming": {
+    "fileName": "demo-policy-traffic-calming.pdf",
+    "sha256": "7dd80321f0872d02ffbfe8804532a258cb4be1c59445172083872c397d684841",
+    "size": 1954,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-budget-fy2027-tentative": {
+    "fileName": "demo-budget-fy2027-tentative.pdf",
+    "sha256": "aab4998a652a88491ab52b68857197760f0abdeb42a40c9c940aaa692f7badc8",
+    "size": 3619,
+    "pageCount": 3,
+    "mimeType": "application/pdf"
+  },
+  "demo-afr-fy2025": {
+    "fileName": "demo-afr-fy2025.pdf",
+    "sha256": "c7eb829f10676fa7e231be3a020a457172ac440136b4e209ce51dc986b6d8162",
+    "size": 3522,
+    "pageCount": 3,
+    "mimeType": "application/pdf"
+  },
+  "demo-audit-fy2025": {
+    "fileName": "demo-audit-fy2025.pdf",
+    "sha256": "64016573d2ff29a26180c43d96bcad6f60782437049b2671dd8492f096cbb4ad",
+    "size": 2731,
+    "pageCount": 2,
+    "mimeType": "application/pdf"
+  },
+  "demo-ila-shared-dispatch": {
+    "fileName": "demo-ila-shared-dispatch.pdf",
+    "sha256": "fcd3f9d40e25528cf25006134eaa93a641479c84ba93a45507353ff505a79fb6",
+    "size": 1905,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-proclamation-library-week": {
+    "fileName": "demo-proclamation-library-week.pdf",
+    "sha256": "a5461f12a79a6d295c2d5305961da280d9c33438212bade5e8b40061fc3df123",
+    "size": 1850,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-map-zoning": {
+    "fileName": "demo-map-zoning.pdf",
+    "sha256": "27e93bdbf3bebcf7d85f515e8e939503ff6e9ce5cfe77ec3c5706290bd4f2522",
+    "size": 1807,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-transcript-cc-2026-08-11": {
+    "fileName": "demo-transcript-cc-2026-08-11.txt",
+    "sha256": "5329b38f03c10fe05bd0064a8e427cffd159672abbc4a52d6a5e0d17e29be996",
+    "size": 564,
+    "pageCount": 1,
+    "mimeType": "text/plain"
+  },
+  "demo-cc-2026-01-13-agenda": {
+    "fileName": "demo-cc-2026-01-13-agenda.pdf",
+    "sha256": "f688f17838e862ec9f6bca5758717961c783418d1e57f3021577db6cb5d501a3",
+    "size": 2029,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-01-13-minutes": {
+    "fileName": "demo-cc-2026-01-13-minutes.pdf",
+    "sha256": "19f880e3a224ef1ef01c118370989d03685132d610584c2c0cd201a693d320b9",
+    "size": 2100,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-01-13-packet": {
+    "fileName": "demo-cc-2026-01-13-packet.pdf",
+    "sha256": "5c7d5ce35cee58f7ca93ae29514a1f0301984089e8a9e2d5509be30c97dff572",
+    "size": 5813,
+    "pageCount": 5,
+    "mimeType": "application/pdf"
+  },
+  "demo-pc-2026-02-04-agenda": {
+    "fileName": "demo-pc-2026-02-04-agenda.pdf",
+    "sha256": "ddc81e4c4a0a11830053601e63fdb076960b1175c3aceb33de737c8881376705",
+    "size": 1942,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-pc-2026-02-04-minutes": {
+    "fileName": "demo-pc-2026-02-04-minutes.pdf",
+    "sha256": "b04635c0c5c63b127c4cf34b747601c462561845d681055e055154642bf8c82b",
+    "size": 2054,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-03-10-agenda": {
+    "fileName": "demo-cc-2026-03-10-agenda.pdf",
+    "sha256": "6c38cdbf99d1018307a128695dbe8416355e5aed0791b8dbf5bf7f59f65b78cb",
+    "size": 2028,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-03-10-minutes": {
+    "fileName": "demo-cc-2026-03-10-minutes.pdf",
+    "sha256": "7aec1a5d6c8096d802d7e71d6c9b68531943ac4ae84dbdbe5b9fbcbab29a4409",
+    "size": 2201,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-03-10-packet": {
+    "fileName": "demo-cc-2026-03-10-packet.pdf",
+    "sha256": "714afeb2fce950bbb6f9c33d7e3087aa9a8a0fc644ab74830cefcd3a2a4670c8",
+    "size": 8846,
+    "pageCount": 8,
+    "mimeType": "application/pdf"
+  },
+  "demo-pc-2026-04-01-agenda": {
+    "fileName": "demo-pc-2026-04-01-agenda.pdf",
+    "sha256": "b527da962dcc4a912b02810cd1efef1c3d657b1a36b3f3be956b753427fd029a",
+    "size": 1887,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-pc-2026-04-01-minutes": {
+    "fileName": "demo-pc-2026-04-01-minutes.pdf",
+    "sha256": "ca1e24b8c2ffa067c09c2f2f558e807b68a891f0e638fc1041dc414fc0965a1e",
+    "size": 2132,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-pc-2026-04-01-packet": {
+    "fileName": "demo-pc-2026-04-01-packet.pdf",
+    "sha256": "5d485c127017da320c8a1d8d22081fec54ff356f048453ce4f4af522f0e2959c",
+    "size": 4578,
+    "pageCount": 4,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-05-12-agenda": {
+    "fileName": "demo-cc-2026-05-12-agenda.pdf",
+    "sha256": "ad26d3be9d56cfe1c233423e2bcf27ec225933d8200bb50296c152520e30593b",
+    "size": 1942,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-05-12-minutes": {
+    "fileName": "demo-cc-2026-05-12-minutes.pdf",
+    "sha256": "991d3330eace95003e3710dfeb34f6d11b81f5dc728598065799583a41c732ec",
+    "size": 2221,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-05-12-packet": {
+    "fileName": "demo-cc-2026-05-12-packet.pdf",
+    "sha256": "59b7d7026e9c4272810277139b2892b20b8102e2cbe930602e112b3d409a699b",
+    "size": 8353,
+    "pageCount": 8,
+    "mimeType": "application/pdf"
+  },
+  "demo-rda-2026-06-09-agenda": {
+    "fileName": "demo-rda-2026-06-09-agenda.pdf",
+    "sha256": "e6824db255d081f9f3a901717fe56af25162826733d0debb784909b5302ccc04",
+    "size": 1901,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-rda-2026-06-09-minutes": {
+    "fileName": "demo-rda-2026-06-09-minutes.pdf",
+    "sha256": "c6152d93adb321fa1b65028be61a2f0ed1a78c926d0d851b06a359b27e29679c",
+    "size": 2139,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-08-11-agenda": {
+    "fileName": "demo-cc-2026-08-11-agenda.pdf",
+    "sha256": "534575c79038fa69d9968fd09032d9fe2c3afe8d9c753123c454a38f3af25fcf",
+    "size": 1902,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-08-11-minutes": {
+    "fileName": "demo-cc-2026-08-11-minutes.pdf",
+    "sha256": "34c577bfd52904b228bc5c12930b80f3feb1c8beba8c2fda4eb6f73ad5a32790",
+    "size": 2141,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-08-11-packet": {
+    "fileName": "demo-cc-2026-08-11-packet.pdf",
+    "sha256": "8e6bc2655d0a5f81c7d63c6f34ecdc30df6fe90cfbb41ceb18e2de2f5cb00286",
+    "size": 5579,
+    "pageCount": 5,
+    "mimeType": "application/pdf"
+  },
+  "demo-cc-2026-10-13-agenda": {
+    "fileName": "demo-cc-2026-10-13-agenda.pdf",
+    "sha256": "206522f4bc5f76eb15ac9a74cedd314f4a71bf071ee314223ee460e9b5fe9a39",
+    "size": 1885,
+    "pageCount": 1,
+    "mimeType": "application/pdf"
+  }
+}

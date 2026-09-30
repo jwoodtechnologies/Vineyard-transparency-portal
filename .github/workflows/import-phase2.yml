@@ -1,0 +1,63 @@
+# One-time helper: unpacks the Phase 2 backend bundle uploaded through the GitHub web UI
+# (overlay/phase2.tar.gz), applies it, verifies the whole project, and commits it in logical
+# commits. It only runs when a file under overlay/ is pushed. Safe to delete afterwards.
+name: Import Phase 2 bundle
+
+on:
+  push:
+    paths: ["overlay/**"]
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unpack and apply
+        run: |
+          set -euo pipefail
+          sha256sum -c overlay/phase2.sha256
+          mkdir -p "$RUNNER_TEMP/p2" && tar -xzf overlay/phase2.tar.gz -C "$RUNNER_TEMP/p2"
+          node "$RUNNER_TEMP/p2/apply.mjs" "$RUNNER_TEMP/p2/files" .
+          if [[ -f overlay/COMMIT_MESSAGE ]]; then echo "COMMIT_MESSAGE=$(head -c 200 overlay/COMMIT_MESSAGE | tr -d '\n\r')" >> "$GITHUB_ENV"; fi
+          git rm -r -q overlay
+      - name: Verify (typecheck, lint, tests, build, ingestion tests)
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm run lint
+          npm test
+          VITE_DATA_MODE=api npm run build
+          sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils > /dev/null
+          pip install -q -r requirements-ingest.txt
+          python -m unittest discover -s ingest/tests -p "test_*.py"
+      - name: Commit in logical commits
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          T=$'\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X'
+          c() { msg="$1"; shift; git add -A -- "$@" 2>/dev/null || true; git diff --cached --quiet || git commit -q -m "$msg$T"; }
+          if [[ -n "${COMMIT_MESSAGE:-}" ]]; then
+            git add -A && git commit -q -m "$COMMIT_MESSAGE$T" && git push
+            exit 0
+          fi
+          c "feat: add Cloudflare backend (Worker API, D1 catalog schema, wrangler config)" worker/index.ts worker/env.ts worker/sql.d.ts worker/lib worker/api/documents.ts worker/api/misc.ts worker/admin migrations wrangler.jsonc package.json package-lock.json
+          c "feat: add document search API (D1 FTS5, sharded SearchRepository)" worker/search worker/api/search.ts
+          c "feat: connect document archive (R2 StorageProvider, content-addressed keys, hard stop)" worker/storage
+          c "feat: add grounded AI answers (Workers AI RAG with search-only fallback)" worker/ai
+          c "feat: add public records ingestion pipeline (crawler, adapters, extraction, resumable queue)" ingest requirements-ingest.txt data/sources.manifest.json
+          c "test: cover query building, answer grounding, OIDC auth and migrations" tests
+          c "chore: production frontend config and headers" .env.production .gitignore public/_headers
+          c "docs: production architecture, Cloudflare, ingestion, sources, search, RAG and free-tier limits" docs README.md
+          git add -A && (git diff --cached --quiet || git commit -q -m "chore: remove import bundle$T")
+          git push

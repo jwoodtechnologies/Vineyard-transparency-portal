@@ -1,0 +1,10 @@
+{
+  "name": "Vineyard Transparency Portal",
+  "short_name": "VTP",
+  "description": "Independent public-records archive and search for Vineyard, Utah.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8fb",
+  "theme_color": "#1f4fcf",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

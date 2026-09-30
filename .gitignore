@@ -1,0 +1,20 @@
+node_modules
+dist
+.wrangler
+.dev.vars
+*.local
+.env
+.env.*
+!.env.example
+coverage
+# Local ingestion outputs (large / environment-specific)
+data/archive/
+data/cache/
+data/*.sqlite
+data/*.sqlite-*
+data/discovered-documents.json
+data/source-health.json
+.DS_Store
+!.env.production
+__pycache__/
+*.pyc
