@@ -55,7 +55,8 @@ class CivicClerkAdapter(SourceAdapter):
         until = (datetime.now(timezone.utc) + timedelta(days=self.lookahead_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
         flt = f"startDateTime lt {until}" + (f" and startDateTime ge {self.since}T00:00:00Z" if self.since else "")
         # The API pages server-side (15 events per page) and returns @odata.nextLink with a skip token.
-        url: str | None = f"{API}/Events?$filter={quote(flt)}&$orderby={quote('startDateTime desc')}&$top={self.page_size}"
+        # No $top: on this API $top caps the TOTAL result count (nextLink carries the remainder), not the page size.
+        url: str | None = f"{API}/Events?$filter={quote(flt)}&$orderby={quote('startDateTime desc')}"
         seen: set[int] = set()
         for _ in range(self.max_pages):
             if not url:
