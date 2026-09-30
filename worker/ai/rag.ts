@@ -128,7 +128,7 @@ async function aiBudgetLeft(env: Env): Promise<boolean> {
 
 type Msg = { role: string; content: string };
 type AiRunner = { run: (model: string, input: unknown) => Promise<unknown> };
-const MAX_TOKENS = 220;
+const MAX_TOKENS = 400;
 const AI_TIMEOUT_MS = 25_000;
 
 async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number } = {}): Promise<string> {
