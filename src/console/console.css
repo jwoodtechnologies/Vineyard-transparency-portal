@@ -2237,3 +2237,25 @@
     animation: none;
   }
 }
+
+/* answer, then its sources, then one row of actions */
+.vc-answer + section[aria-label='Sources'] {
+  margin-top: 1.5rem;
+}
+.vc-answer + section[aria-label='Sources'] .vc-sources {
+  margin-bottom: 0.4rem;
+}
+.vc-answer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-top: 0.6rem;
+}
+.vc-answer-foot .vc-actions {
+  margin-top: 0;
+}
+.vc-answer-foot .vc-browse {
+  margin-top: 0;
+}
