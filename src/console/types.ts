@@ -17,6 +17,9 @@ export interface Turn {
   showRecords: boolean;
   /** Fetch the record count eagerly (false for chats restored from history until opened). */
   wantRecords: boolean;
+  /** Model text as it streams in (display only; replaced by the checked answer). */
+  draft: string;
+  phase: 'searching' | 'writing';
 }
 
 export type Preview = { kind: 'citation'; citation: Citation; query: string } | { kind: 'result'; result: SearchResult; query: string };

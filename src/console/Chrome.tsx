@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { CalendarDays, History, MessageSquare, Monitor, Moon, Settings2, Sun, Trash2 } from 'lucide-react';
+import { CalendarDays, History, MessageSquare, Moon, Settings2, Sun, Trash2 } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { clearChats, setHistoryEnabled, useChats, useHistoryEnabled } from './history';
@@ -37,16 +37,15 @@ function useDismiss(open: boolean, close: () => void) {
   return box;
 }
 
-const THEMES: Array<{ value: ThemePreference; label: string; Icon: typeof Sun }> = [
+const THEMES: Array<{ value: Exclude<ThemePreference, 'system'>; label: string; Icon: typeof Sun }> = [
   { value: 'light', label: 'Light', Icon: Sun },
   { value: 'dark', label: 'Dark', Icon: Moon },
-  { value: 'system', label: 'Auto', Icon: Monitor },
 ];
 
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const { preference, setPreference } = useTheme();
+  const { resolved, setPreference } = useTheme();
   const chats = useChats();
   const saving = useHistoryEnabled();
   const close = () => {
@@ -65,7 +64,7 @@ export function SettingsMenu() {
           <p className="vc-panel-label">Appearance</p>
           <div className="vc-segment" role="radiogroup" aria-label="Theme">
             {THEMES.map(({ value, label, Icon }) => (
-              <button key={value} type="button" role="radio" aria-checked={preference === value} data-on={preference === value} onClick={() => setPreference(value)}>
+              <button key={value} type="button" role="radio" aria-checked={resolved === value} data-on={resolved === value} onClick={() => setPreference(value)}>
                 <Icon size={14} strokeWidth={1.9} /> {label}
               </button>
             ))}

@@ -22,7 +22,7 @@ function id(segment: string | undefined): string {
   return value;
 }
 
-async function route(request: Request, env: Env, url: URL): Promise<Response> {
+async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const method = request.method;
 
@@ -35,7 +35,7 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
   const [a, b, c] = parts;
 
   if (method === 'POST') {
-    if (a === 'ask' && parts.length === 1) return handleAsk(env, request);
+    if (a === 'ask' && parts.length === 1) return handleAsk(env, request, ctx);
     if (a === 'reports' && parts.length === 1) return submitReport(env, request);
     throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
   }
@@ -75,8 +75,33 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
   throw notFound('Unknown API route.');
 }
 
+/**
+ * Public, read-only API responses are cached at Cloudflare's edge (free Cache API), keyed by the
+ * full URL, for as long as each route's own Cache-Control allows. Repeat views of the same meeting
+ * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
+ * and POST /api/ask, admin, health and file streams are excluded.
+ */
+const EDGE_CACHEABLE = /^\/api\/(search|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
+
+async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
+  const path = url.pathname.replace(/\/+$/, '');
+  if (request.method !== 'GET' || !EDGE_CACHEABLE.test(path) || request.headers.has('range')) return compute();
+  const cache = (caches as unknown as { default: Cache }).default;
+  const key = new Request(url.toString(), { method: 'GET' });
+  const hit = await cache.match(key).catch(() => undefined);
+  if (hit) {
+    const etag = hit.headers.get('etag');
+    if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: hit.headers });
+    return hit;
+  }
+  const res = await compute();
+  const cc = res.headers.get('cache-control') ?? '';
+  if (res.status === 200 && /max-age=\d*[1-9]/.test(cc) && !/no-store|private/.test(cc)) ctx.waitUntil(cache.put(key, res.clone()).catch(() => undefined));
+  return res;
+}
+
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     // Canonical host: www → apex, permanent. (HTTP → HTTPS is enforced at the zone.)
@@ -89,7 +114,7 @@ export default {
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
     try {
-      return await route(request, env, url);
+      return await cached(request, url, ctx, () => route(request, env, url, ctx));
     } catch (e) {
       if (e instanceof HttpError) return errorResponse(e);
       console.error(JSON.stringify({ event: 'api_error', path: url.pathname, message: e instanceof Error ? e.message : String(e) }));

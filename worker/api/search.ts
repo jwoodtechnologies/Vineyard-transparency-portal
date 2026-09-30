@@ -41,7 +41,17 @@ function bucket(counts: Map<string, number>, label: (v: string) => string, sortB
   return sortByValueDesc ? list.sort((a, b) => b.value.localeCompare(a.value)) : list.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }
 
-async function namesFor(env: Env): Promise<{ bodies: Map<string, string>; sources: Map<string, string> }> {
+// Body and source names change only when ingestion adds one; keep them per isolate for 5 minutes.
+let namesCache: { at: number; value: Promise<{ bodies: Map<string, string>; sources: Map<string, string> }> } | null = null;
+function namesFor(env: Env): Promise<{ bodies: Map<string, string>; sources: Map<string, string> }> {
+  if (namesCache && Date.now() - namesCache.at < 300_000) return namesCache.value;
+  const value = loadNames(env);
+  namesCache = { at: Date.now(), value };
+  value.catch(() => (namesCache = null));
+  return value;
+}
+
+async function loadNames(env: Env): Promise<{ bodies: Map<string, string>; sources: Map<string, string> }> {
   const [b, s] = await Promise.all([
     env.CATALOG_DB.prepare('SELECT id, name FROM government_bodies').all<{ id: string; name: string }>(),
     env.CATALOG_DB.prepare('SELECT id, name FROM sources').all<{ id: string; name: string }>(),
@@ -105,7 +115,8 @@ export async function runSearch(
 
   if (!repo.available) throw new HttpError(503, 'search_unavailable', 'The full-text index is not available right now.');
 
-  const hits = await repo.searchChunks(parsed.fts, params.filters, CANDIDATE_CHUNKS);
+  // Candidates without snippets (cheap), then one parallel round for everything the page needs.
+  const hits = await repo.searchChunks(parsed.fts, params.filters, CANDIDATE_CHUNKS, false, false);
   let groups = groupHits(hits, parsed.interpretation.documentNumber ?? null);
 
   if (params.sort !== 'relevance') {
@@ -118,24 +129,31 @@ export async function runSearch(
     if (f) groups = [...groups].sort((a, b) => f(a.hits[0], b.hits[0]));
   }
 
-  let total = groups.length;
-  let totalIsEstimate = false;
-  if (hits.length >= CANDIDATE_CHUNKS) {
-    const exact = await repo.countDocuments(parsed.fts, params.filters);
-    totalIsEstimate = exact > groups.length;
-    total = groups.length;
-  }
-
   const pageGroups = groups.slice((params.page - 1) * params.pageSize, params.page * params.pageSize);
-  const summaries = await summariesByIds(env, pageGroups.map((g) => g.documentId));
-  const meetingIds = [...new Set([...summaries.values()].map((s) => s.meetingId).filter((x): x is string => Boolean(x)))];
-  const [meetings, names] = await Promise.all([
-    meetingIds.length
-      ? env.CATALOG_DB.prepare('SELECT id, title, meeting_date FROM meetings WHERE id IN (SELECT value FROM json_each(?))').bind(JSON.stringify(meetingIds)).all<{ id: string; title: string; meeting_date: string }>()
-      : Promise.resolve({ results: [] as Array<{ id: string; title: string; meeting_date: string }> }),
+  const pageIds = pageGroups.map((g) => g.documentId);
+  const snippetRefs = pageGroups.flatMap((g) => g.hits.slice(0, 4).map((h) => ({ shard: h.shard, chunkId: h.chunkId })));
+  const [snips, summaries, meetingRows, names, exact] = await Promise.all([
+    repo.snippets(parsed.fts, snippetRefs),
+    summariesByIds(env, pageIds),
+    pageIds.length
+      ? env.CATALOG_DB.prepare('SELECT d.id AS document_id, m.title, m.meeting_date FROM documents d JOIN meetings m ON m.id = d.meeting_id WHERE d.id IN (SELECT value FROM json_each(?))')
+          .bind(JSON.stringify(pageIds))
+          .all<{ document_id: string; title: string; meeting_date: string }>()
+      : Promise.resolve({ results: [] as Array<{ document_id: string; title: string; meeting_date: string }> }),
     namesFor(env),
+    hits.length >= CANDIDATE_CHUNKS ? repo.countDocuments(parsed.fts, params.filters) : Promise.resolve(groups.length),
   ]);
-  const meetingTitle = new Map((meetings.results ?? []).map((m) => [m.id, m.meeting_date ? `${m.title} (${m.meeting_date})` : m.title]));
+  for (const g of pageGroups)
+    for (const h of g.hits) {
+      const sn = snips.get(h.chunkId);
+      if (sn) {
+        h.excerpt = sn.text;
+        h.highlights = sn.highlights;
+      }
+    }
+  const total = groups.length;
+  const totalIsEstimate = exact > groups.length;
+  const meetingTitle = new Map((meetingRows.results ?? []).map((m) => [m.document_id, m.meeting_date ? `${m.title} (${m.meeting_date})` : m.title]));
 
   const items: SearchResult[] = [];
   for (const g of pageGroups) {
@@ -145,7 +163,7 @@ export async function runSearch(
     const excerpts: SourceExcerpt[] = [];
     for (const h of g.hits) {
       const k = `${h.pageStart}`;
-      if (seenPages.has(k)) continue;
+      if (!h.excerpt || seenPages.has(k)) continue;
       seenPages.add(k);
       excerpts.push({ documentId: g.documentId, chunkId: h.chunkId, page: h.pageStart, sectionTitle: h.sectionTitle, text: h.excerpt, highlights: h.highlights });
       if (excerpts.length >= 3) break;
@@ -158,7 +176,7 @@ export async function runSearch(
     if (titleTerms.length) matches.push({ field: 'title', terms: titleTerms, page: null });
     if (excerpts.some((e) => e.highlights.length)) matches.push({ field: 'full_text', terms: parsed.words, page: excerpts[0]?.page ?? null });
     if (!matches.length) matches.push({ field: 'full_text', terms: parsed.words, page: excerpts[0]?.page ?? null });
-    items.push({ document, score: Math.round(g.score * 100) / 100, excerpts, matches, meetingTitle: document.meetingId ? (meetingTitle.get(document.meetingId) ?? null) : null });
+    items.push({ document, score: Math.round(g.score * 100) / 100, excerpts, matches, meetingTitle: meetingTitle.get(g.documentId) ?? null });
   }
 
   // Facets over the candidate set (exact unless totalIsEstimate).

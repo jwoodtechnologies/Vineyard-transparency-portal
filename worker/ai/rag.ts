@@ -10,15 +10,15 @@
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
-import { CHAT_SYSTEM_PROMPT, DEFAULT_AI_MODEL, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, buildUserMessage, safeSmallTalk, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, buildUserMessage, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
 import { SearchRepository } from '../search/SearchRepository';
 import type { ChunkHit } from '../search/types';
-import { runSearch } from '../api/search';
 import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
+import { readAiStream } from './sse';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -126,22 +126,40 @@ async function aiBudgetLeft(env: Env): Promise<boolean> {
   return Number(row?.ai_requests ?? 0) < intVar(env.AI_MAX_REQUESTS_PER_DAY, 120);
 }
 
-async function callModel(env: Env, messages: Array<{ role: string; content: string }>, opts: { maxTokens?: number; temperature?: number } = {}): Promise<string> {
+type Msg = { role: string; content: string };
+type AiRunner = { run: (model: string, input: unknown) => Promise<unknown> };
+const MAX_TOKENS = 500;
+const AI_TIMEOUT_MS = 25_000;
+
+async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number } = {}): Promise<string> {
   const model = env.AI_MODEL || DEFAULT_AI_MODEL;
-  const run = (env.AI as unknown as { run: (m: string, i: unknown) => Promise<unknown> }).run(model, { messages, max_tokens: opts.maxTokens ?? 600, temperature: opts.temperature ?? 0.1 });
-  const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), 25000));
+  const run = (env.AI as unknown as AiRunner).run(model, { messages, max_tokens: opts.maxTokens ?? MAX_TOKENS, temperature: opts.temperature ?? 0.1 });
+  const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), AI_TIMEOUT_MS));
   const out = (await Promise.race([run, timeout])) as { response?: unknown } | string;
   const text = typeof out === 'string' ? out : typeof out?.response === 'string' ? out.response : '';
   if (!text.trim()) throw new Error('Empty AI response');
   return text;
 }
 
-export async function handleAsk(env: Env, request: Request): Promise<Response> {
-  const body = validate(await readJson<unknown>(request, 32 * 1024));
-  const clientKey = request.headers.get('cf-connecting-ip') ?? 'anon';
-  const retry = rateLimit(clientKey);
-  if (retry != null) throw new HttpError(429, 'rate_limited', 'Too many questions. Try again shortly.', retry);
+/** Streams tokens from Workers AI (server-sent events: `data: {"response":"..."}` ... `data: [DONE]`). */
+async function streamModel(env: Env, messages: Msg[], onDelta: (text: string) => Promise<void>): Promise<string> {
+  const model = env.AI_MODEL || DEFAULT_AI_MODEL;
+  const out = await (env.AI as unknown as AiRunner).run(model, { messages, max_tokens: MAX_TOKENS, temperature: 0.1, stream: true });
+  if (out instanceof ReadableStream) return readAiStream(out as ReadableStream<Uint8Array>, onDelta, Date.now() + AI_TIMEOUT_MS);
+  const text = typeof out === 'string' ? out : typeof (out as { response?: unknown })?.response === 'string' ? String((out as { response: string }).response) : '';
+  if (text) await onDelta(text);
+  return text;
+}
 
+type Prepared =
+  | { kind: 'final'; response: AskResponse }
+  | { kind: 'model'; messages: Msg[]; finish: (raw: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
+
+/**
+ * Everything up to the model call, with independent reads run in parallel. Returns either a final
+ * response (small talk, no results, AI unavailable) or what is needed to call the model and finish.
+ */
+async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const repo = new SearchRepository(env);
   const id = randomId('ask');
   const base = { id, question: body.question, relatedDocuments: [] as DocumentSummary[], suggestedFollowUps: [] as string[], generatedAt: nowIso() };
@@ -150,130 +168,182 @@ export async function handleAsk(env: Env, request: Request): Promise<Response> {
   const history = (body.conversation ?? []).filter((t) => t.role === 'user').map((t) => t.content).slice(-2);
   const retrievalText = body.question.split(/\s+/).length < 6 && history.length ? `${body.question} ${history[history.length - 1]}` : body.question;
 
-  const fallback = async (status: 'search_only' | 'no_results', notice: string | null): Promise<AskResponse> => {
-    const search = await runSearch(env, { q: retrievalText, filters, match: 'any', titleOnly: false, sort: 'relevance', page: 1, pageSize: 10 });
-    return {
-      ...base,
-      retrievalStatus: status,
-      answer: status === 'no_results' ? NO_RESULTS_ANSWER : SEARCH_ONLY_NOTICE,
-      paragraphs: status === 'no_results' ? [{ segments: [{ text: NO_RESULTS_ANSWER, citations: [] }] }] : [],
-      citations: [],
-      searchResults: search.items,
-      notice,
-      engine: 'search-fallback',
-    };
-  };
+  const fallback = async (status: 'search_only' | 'no_results', notice: string | null): Promise<AskResponse> => ({
+    ...base,
+    retrievalStatus: status,
+    answer: status === 'no_results' ? NO_RESULTS_ANSWER : SEARCH_ONLY_NOTICE,
+    paragraphs: status === 'no_results' ? [{ segments: [{ text: NO_RESULTS_ANSWER, citations: [] }] }] : [],
+    citations: [],
+    // The client runs its own record search alongside every question, so no second search here.
+    searchResults: [],
+    notice,
+    engine: 'search-fallback',
+  });
 
-  // Conversation, not a records question: answer like an assistant, never with facts.
+  // Conversation, not a records question: an instant, friendly reply that never states facts.
   const kind = smallTalkKind(body.question);
   if (kind) {
-    let text = SMALL_TALK_REPLIES[kind];
-    let engine = 'assistant';
-    if (aiConfigured(env) && !aiBreakerOpen() && (await aiBudgetLeft(env))) {
-      try {
-        await bumpQuota(env, 'ai_requests');
-        const prior = (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 500) }));
-        text = safeSmallTalk(await callModel(env, [{ role: 'system', content: CHAT_SYSTEM_PROMPT }, ...prior, { role: 'user', content: body.question }], { maxTokens: 120, temperature: 0.6 }), kind);
-        engine = env.AI_MODEL || DEFAULT_AI_MODEL;
-      } catch {
-        text = SMALL_TALK_REPLIES[kind];
-      }
-    }
-    return respond({ ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine, mode: 'conversation' } as AskResponse);
+    const text = SMALL_TALK_REPLIES[kind];
+    return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'assistant', mode: 'conversation' } as AskResponse };
   }
 
   if (!repo.available) throw new HttpError(503, 'search_unavailable', 'The full-text index is not available right now.');
 
   const strict = parseQuery(retrievalText, { match: 'all' });
   const loose = parseQuery(retrievalText, { match: 'any' });
-  if (!loose.fts) return respond(await fallback('no_results', null));
+  if (!loose.fts) return { kind: 'final', response: await fallback('no_results', null) };
 
-  let hits: ChunkHit[] = strict.fts ? await repo.searchChunks(strict.fts, filters, 40, true) : [];
-  if (hits.length < 8) {
-    const more = await repo.searchChunks(loose.fts, filters, 40, true);
-    const seen = new Set(hits.map((h) => h.chunkId));
-    hits = [...hits, ...more.filter((h) => !seen.has(h.chunkId))];
-  }
-  if (!hits.length) return respond(await fallback('no_results', null));
-
-  if (!aiConfigured(env) || aiBreakerOpen() || !(await aiBudgetLeft(env))) return respond(await fallback('search_only', SEARCH_ONLY_NOTICE));
+  const aiReady = aiConfigured(env) && !aiBreakerOpen();
+  const [strictHits, looseHits, budgetOk] = await Promise.all([
+    strict.fts && strict.fts !== loose.fts ? repo.searchChunks(strict.fts, filters, 40, true) : Promise.resolve([] as ChunkHit[]),
+    repo.searchChunks(loose.fts, filters, 40, true),
+    aiReady ? aiBudgetLeft(env) : Promise.resolve(false),
+  ]);
+  const seen = new Set(strictHits.map((h) => h.chunkId));
+  const hits = [...strictHits, ...looseHits.filter((h) => !seen.has(h.chunkId))];
+  if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
+  if (!aiReady || !budgetOk) return { kind: 'final', response: await fallback('search_only', SEARCH_ONLY_NOTICE) };
 
   const evidence = selectEvidence(hits);
-  let raw: string;
-  try {
-    await bumpQuota(env, 'ai_requests');
-    const prior = (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }));
-    raw = await callModel(env, [
-      { role: 'system', content: RAG_SYSTEM_PROMPT },
-      ...prior,
-      { role: 'user', content: buildUserMessage(body.question, evidence, history) },
-    ]);
-  } catch (e) {
+  // Start the catalog reads the final answer needs now, so they finish while the model writes.
+  const docsP = summariesByIds(env, [...new Set(hits.map((h) => h.documentId))].slice(0, 30));
+  const extraP = env.CATALOG_DB.prepare(
+    `SELECT d.id, d.original_url, d.archive_status, d.archive_key, m.title AS meeting_title, a.number AS agenda_number FROM documents d
+     LEFT JOIN meetings m ON m.id = d.meeting_id LEFT JOIN agenda_items a ON a.id = d.agenda_item_id WHERE d.id IN (SELECT value FROM json_each(?))`,
+  )
+    .bind(JSON.stringify([...new Set(evidence.map((c) => c.documentId))]))
+    .all<Record<string, unknown>>();
+  docsP.catch(() => undefined);
+  extraP.catch(() => undefined);
+  const quotaP = bumpQuota(env, 'ai_requests').catch(() => undefined);
+
+  const prior = (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }));
+  const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(body.question, evidence, history) }];
+
+  const fail = async (e: unknown): Promise<AskResponse> => {
     const msg = e instanceof Error ? e.message : String(e);
     // Quota / capacity / auth errors open the breaker so we stop spending requests for a while.
     breakerUntil = Date.now() + (/4006|quota|limit|429|capacity|403|neuron/i.test(msg) ? 30 * 60_000 : 5 * 60_000);
     await bumpQuota(env, 'ai_failures').catch(() => undefined);
-    return respond(await fallback('search_only', SEARCH_ONLY_NOTICE));
-  }
-
-  const seg = segmentAnswer(raw, evidence.length);
-  if (!seg.used.size) return respond(await fallback('no_results', null));
-
-  // Renumber cited sources 1..k in order of first use.
-  const order = [...seg.used].sort((a, b) => a - b);
-  const renumber = new Map(order.map((old, i) => [old, i + 1]));
-  const paragraphs = seg.paragraphs.map((p) => ({ segments: p.segments.map((s) => ({ text: s.text, citations: s.citations.map((c) => renumber.get(c) ?? c) })) }));
-  if (seg.dropped) paragraphs.push({ segments: [{ text: 'Some parts of this question could not be verified from the indexed records.', citations: [] }] });
-
-  const cited = order.map((old) => evidence[old - 1]);
-  const docs = await summariesByIds(env, [...new Set(hits.map((h) => h.documentId))].slice(0, 30));
-  const rows = await env.CATALOG_DB.prepare(
-    `SELECT d.id, d.original_url, d.archive_status, d.archive_key, m.title AS meeting_title, a.number AS agenda_number FROM documents d
-     LEFT JOIN meetings m ON m.id = d.meeting_id LEFT JOIN agenda_items a ON a.id = d.agenda_item_id WHERE d.id IN (SELECT value FROM json_each(?))`,
-  )
-    .bind(JSON.stringify([...new Set(cited.map((c) => c.documentId))]))
-    .all<Record<string, unknown>>();
-  const extra = new Map((rows.results ?? []).map((r) => [String(r.id), r]));
-
-  const citations: Citation[] = cited.map((h, i) => {
-    const d = docs.get(h.documentId);
-    const x = extra.get(h.documentId) ?? {};
-    return {
-      index: i + 1,
-      documentId: h.documentId,
-      documentTitle: d?.title ?? h.title,
-      documentType: normalizeType(d?.documentType ?? h.documentType),
-      documentNumber: d?.documentNumber ?? h.documentNumber,
-      date: d?.date ?? h.documentDate,
-      governmentBodyName: d?.governmentBodyName ?? null,
-      meetingId: d?.meetingId ?? null,
-      meetingTitle: x.meeting_title == null ? null : String(x.meeting_title),
-      agendaItem: x.agenda_number == null ? null : String(x.agenda_number),
-      page: h.pageStart,
-      sectionTitle: h.sectionTitle,
-      excerpt: excerptFor(h, loose.words),
-      archiveUrl: x.archive_status === 'archived' && x.archive_key ? `/api/documents/${h.documentId}/file` : null,
-      originalUrl: x.original_url == null ? null : String(x.original_url),
-    };
-  });
-
-  const citedDocs = new Set(cited.map((c) => c.documentId));
-  const relatedDocuments = [...docs.values()].filter((d) => !citedDocs.has(d.id)).slice(0, 5);
-  const partial = seg.dropped > 0 || seg.insufficient;
-  const answer = paragraphs.map((p) => p.segments.map((s) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ')).join('\n\n');
-
-  const response: AskResponse = {
-    ...base,
-    retrievalStatus: partial ? 'partial' : 'grounded',
-    answer,
-    paragraphs,
-    citations,
-    relatedDocuments,
-    notice: partial ? 'Parts of this answer could not be verified and were left out.' : null,
-    engine: env.AI_MODEL || DEFAULT_AI_MODEL,
+    return fallback('search_only', SEARCH_ONLY_NOTICE);
   };
-  if (partial) response.searchResults = (await runSearch(env, { q: retrievalText, filters, match: 'any', titleOnly: false, sort: 'relevance', page: 1, pageSize: 10 })).items;
-  return respond(response);
+
+  const finish = async (raw: string): Promise<AskResponse> => {
+    await quotaP;
+    const seg = segmentAnswer(raw, evidence.length);
+    if (!seg.used.size) return fallback('no_results', null);
+
+    // Renumber cited sources 1..k in order of first use.
+    const order = [...seg.used].sort((a, b) => a - b);
+    const renumber = new Map(order.map((old, i) => [old, i + 1]));
+    const paragraphs = seg.paragraphs.map((p) => ({ segments: p.segments.map((s) => ({ text: s.text, citations: s.citations.map((c) => renumber.get(c) ?? c) })) }));
+    if (seg.dropped) paragraphs.push({ segments: [{ text: 'Some parts of this question could not be verified from the indexed records.', citations: [] }] });
+
+    const cited = order.map((old) => evidence[old - 1]);
+    const [docs, rows] = await Promise.all([docsP, extraP]);
+    const extra = new Map((rows.results ?? []).map((r) => [String(r.id), r]));
+
+    const citations: Citation[] = cited.map((h, i) => {
+      const d = docs.get(h.documentId);
+      const x = extra.get(h.documentId) ?? {};
+      return {
+        index: i + 1,
+        documentId: h.documentId,
+        documentTitle: d?.title ?? h.title,
+        documentType: normalizeType(d?.documentType ?? h.documentType),
+        documentNumber: d?.documentNumber ?? h.documentNumber,
+        date: d?.date ?? h.documentDate,
+        governmentBodyName: d?.governmentBodyName ?? null,
+        meetingId: d?.meetingId ?? null,
+        meetingTitle: x.meeting_title == null ? null : String(x.meeting_title),
+        agendaItem: x.agenda_number == null ? null : String(x.agenda_number),
+        page: h.pageStart,
+        sectionTitle: h.sectionTitle,
+        excerpt: excerptFor(h, loose.words),
+        archiveUrl: x.archive_status === 'archived' && x.archive_key ? `/api/documents/${h.documentId}/file` : null,
+        originalUrl: x.original_url == null ? null : String(x.original_url),
+      };
+    });
+
+    const citedDocs = new Set(cited.map((c) => c.documentId));
+    const relatedDocuments = [...docs.values()].filter((d) => !citedDocs.has(d.id)).slice(0, 5);
+    const partial = seg.dropped > 0 || seg.insufficient;
+    const answer = paragraphs.map((p) => p.segments.map((s) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ')).join('\n\n');
+
+    return {
+      ...base,
+      retrievalStatus: partial ? 'partial' : 'grounded',
+      answer,
+      paragraphs,
+      citations,
+      relatedDocuments,
+      notice: partial ? 'Parts of this answer could not be verified and were left out.' : null,
+      engine: env.AI_MODEL || DEFAULT_AI_MODEL,
+    };
+  };
+
+  return { kind: 'model', messages, finish, fail };
+}
+
+const SSE_HEADERS = {
+  'content-type': 'text/event-stream; charset=utf-8',
+  'cache-control': 'no-store',
+  'x-content-type-options': 'nosniff',
+  'x-accel-buffering': 'no',
+};
+
+/**
+ * Streaming variant: `event: delta` carries raw model text as it is written (for display only),
+ * then `event: done` carries the final, citation-checked AskResponse that replaces it.
+ */
+function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract<Prepared, { kind: 'model' }>): Response {
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+  const enc = new TextEncoder();
+  let open = true;
+  const send = async (event: string, data: unknown) => {
+    if (!open) return;
+    try {
+      await writer.write(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+    } catch {
+      open = false; // the reader went away
+    }
+  };
+  const work = (async () => {
+    let final: AskResponse;
+    try {
+      await send('status', { phase: 'writing' });
+      const raw = await streamModel(env, prep.messages, (t) => send('delta', { t }));
+      if (!raw.trim()) throw new Error('Empty AI response');
+      final = await prep.finish(raw);
+    } catch (e) {
+      final = await prep.fail(e);
+    }
+    await send('done', final);
+    if (open) await writer.close().catch(() => undefined);
+  })();
+  ctx?.waitUntil(work);
+  return new Response(readable, { status: 200, headers: SSE_HEADERS });
+}
+
+export async function handleAsk(env: Env, request: Request, ctx?: ExecutionContext): Promise<Response> {
+  const raw = await readJson<unknown>(request, 32 * 1024);
+  const body = validate(raw);
+  const wantsStream = Boolean(raw && typeof raw === 'object' && (raw as { stream?: unknown }).stream === true);
+  const clientKey = request.headers.get('cf-connecting-ip') ?? 'anon';
+  const retry = rateLimit(clientKey);
+  if (retry != null) throw new HttpError(429, 'rate_limited', 'Too many questions. Try again shortly.', retry);
+
+  const prep = await prepare(env, body);
+  if (prep.kind === 'final') return respond(prep.response);
+  if (wantsStream) return streamAnswer(env, ctx, prep);
+  let text: string;
+  try {
+    text = await callModel(env, prep.messages);
+  } catch (e) {
+    return respond(await prep.fail(e));
+  }
+  return respond(await prep.finish(text));
 }
 
 function respond(body: AskResponse): Response {
