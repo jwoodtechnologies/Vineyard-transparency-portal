@@ -1,47 +1,29 @@
 /* eslint-disable react-refresh/only-export-components -- route table, not a component module */
-import { lazy } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
-import { AppShell } from './AppShell';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { Navigate, createBrowserRouter, useSearchParams } from 'react-router-dom';
 import ConsolePage from '@/console/ConsolePage';
 
-const AskPage = lazy(() => import('@/pages/AskPage'));
-const SearchPage = lazy(() => import('@/pages/SearchPage'));
-const DocumentsPage = lazy(() => import('@/pages/DocumentsPage'));
-const DocumentPage = lazy(() => import('@/pages/DocumentPage'));
-const BrowsePage = lazy(() => import('@/pages/BrowsePage'));
-const MeetingsPage = lazy(() => import('@/pages/MeetingsPage'));
-const MeetingPage = lazy(() => import('@/pages/MeetingPage'));
-const BodyPage = lazy(() => import('@/pages/BodyPage'));
-const TopicPage = lazy(() => import('@/pages/TopicPage'));
-const CodePage = lazy(() => import('@/pages/CodePage'));
-const SourcesPage = lazy(() => import('@/pages/SourcesPage'));
-const AboutPage = lazy(() => import('@/pages/AboutPage'));
-const SavedPage = lazy(() => import('@/pages/SavedPage'));
-const StatusPage = lazy(() => import('@/pages/StatusPage'));
-const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+const MeetingsPage = lazy(() => import('@/console/MeetingsPage'));
+const MeetingPage = lazy(() => import('@/console/MeetingPage'));
+const DocumentView = lazy(() => import('@/console/DocumentView'));
 
+const quiet = (node: ReactNode) => <Suspense fallback={<div className="vc" />}>{node}</Suspense>;
+
+/** Old search links (/search?q=...) open the same question in the console. */
+function SearchRedirect() {
+  const [params] = useSearchParams();
+  const q = params.get('q')?.trim();
+  return <Navigate to={q ? `/?q=${encodeURIComponent(q)}` : '/'} replace />;
+}
+
+// The whole portal is four quiet screens: ask, the meeting schedule, one meeting, one record.
+// Everything else from the first version (browse, topics, sources, about, status...) folds into these.
 export const router = createBrowserRouter([
-  // The home experience is a standalone, full-screen console (no header or footer).
   { path: '/', element: <ConsolePage /> },
-  {
-    element: <AppShell />,
-    children: [
-      { path: '/ask', element: <AskPage /> },
-      { path: '/search', element: <SearchPage /> },
-      { path: '/documents', element: <DocumentsPage /> },
-      { path: '/documents/:documentId', element: <DocumentPage /> },
-      { path: '/browse', element: <BrowsePage /> },
-      { path: '/meetings', element: <MeetingsPage /> },
-      { path: '/meetings/:meetingId', element: <MeetingPage /> },
-      { path: '/bodies/:bodyId', element: <BodyPage /> },
-      { path: '/topics/:topicId', element: <TopicPage /> },
-      { path: '/code', element: <CodePage /> },
-      { path: '/sources', element: <SourcesPage /> },
-      { path: '/sources/:sourceId', element: <SourcesPage /> },
-      { path: '/about', element: <AboutPage /> },
-      { path: '/saved', element: <SavedPage /> },
-      { path: '/status', element: <StatusPage /> },
-      { path: '*', element: <NotFoundPage /> },
-    ],
-  },
+  { path: '/meetings', element: quiet(<MeetingsPage />) },
+  { path: '/meetings/:meetingId', element: quiet(<MeetingPage />) },
+  { path: '/documents/:documentId', element: quiet(<DocumentView />) },
+  { path: '/search', element: <SearchRedirect /> },
+  { path: '/ask', element: <SearchRedirect /> },
+  { path: '*', element: <Navigate to="/" replace /> },
 ]);

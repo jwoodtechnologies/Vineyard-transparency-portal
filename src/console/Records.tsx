@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Archive, Check, ChevronDown, X } from 'lucide-react';
+import { Archive, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { DocumentType, FacetBucket, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { docHref } from '@/lib/routes';
 import type { Turn } from './types';
@@ -69,9 +69,10 @@ interface Props {
   onFilters: (filters: SearchFilters, sort: SearchSort) => void;
   onMore: () => void;
   onPreview: (r: SearchResult) => void;
+  onHide?: () => void;
 }
 
-export function Records({ turn, onFilters, onMore, onPreview }: Props) {
+export function Records({ turn, onFilters, onMore, onPreview, onHide }: Props) {
   const r = turn.records;
   const f = turn.filters;
   const facets = r?.facets;
@@ -104,6 +105,11 @@ export function Records({ turn, onFilters, onMore, onPreview }: Props) {
           {active && (
             <button type="button" className="vc-chip vc-chip-clear" onClick={() => onFilters({}, turn.sort)}>
               <X size={13} strokeWidth={2.2} /> Clear
+            </button>
+          )}
+          {onHide && (
+            <button type="button" className="vc-chip vc-chip-hide" onClick={onHide} aria-label="Hide records">
+              <ChevronUp size={14} strokeWidth={2} /> Hide
             </button>
           )}
         </div>

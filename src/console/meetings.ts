@@ -1,0 +1,156 @@
+/** Meeting schedule data: loads a whole year of meetings at a time and caches it for the session. */
+import { useEffect, useState } from 'react';
+import type { GovernmentBody, MeetingSummary } from '@/types/models';
+import { BrowseService, MeetingService } from '@/services';
+
+const years = new Map<number, Promise<MeetingSummary[]>>();
+
+async function fetchYear(year: number): Promise<MeetingSummary[]> {
+  const out: MeetingSummary[] = [];
+  for (let page = 1; page <= 30; page++) {
+    const res = await MeetingService.list({ year, page, pageSize: 100, sort: 'date_asc' });
+    out.push(...res.items);
+    if (out.length >= res.total || res.items.length === 0) break;
+  }
+  return out;
+}
+
+export function loadYear(year: number): Promise<MeetingSummary[]> {
+  let p = years.get(year);
+  if (!p) {
+    p = fetchYear(year).catch((e: unknown) => {
+      years.delete(year);
+      throw e;
+    });
+    years.set(year, p);
+  }
+  return p;
+}
+
+export type Load<T> = { status: 'loading' } | { status: 'error' } | { status: 'done'; data: T };
+
+/** Loads the given years (deduplicated, cached) and returns their meetings sorted by date and time. */
+export function useMeetings(yearList: number[]): Load<MeetingSummary[]> {
+  const key = [...new Set(yearList)].sort().join(',');
+  const [state, setState] = useState<{ key: string; value: Load<MeetingSummary[]> }>({ key: '', value: { status: 'loading' } });
+  useEffect(() => {
+    let live = true;
+    const ys = key ? key.split(',').map(Number) : [];
+    Promise.all(ys.map(loadYear)).then(
+      (lists) => live && setState({ key, value: { status: 'done', data: lists.flat().sort(byWhen) } }),
+      () => live && setState({ key, value: { status: 'error' } }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [key]);
+  return state.key === key ? state.value : { status: 'loading' };
+}
+
+let bodiesPromise: Promise<GovernmentBody[]> | null = null;
+export function useBodies(): GovernmentBody[] {
+  const [bodies, setBodies] = useState<GovernmentBody[]>([]);
+  useEffect(() => {
+    let live = true;
+    bodiesPromise ??= BrowseService.bodies().catch(() => {
+      bodiesPromise = null;
+      return [];
+    });
+    void bodiesPromise.then((b) => live && setBodies(b));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return bodies;
+}
+
+export const byWhen = (a: MeetingSummary, b: MeetingSummary) => (a.date + (a.startTime ?? '')).localeCompare(b.date + (b.startTime ?? ''));
+
+/** Today in Vineyard (America/Denver), as YYYY-MM-DD. */
+export function todayIso(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+
+export function formatTime(t: string | null): string | null {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  if (Number.isNaN(h)) return null;
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')} ${suffix}`;
+}
+
+const LONG = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const DAY_MONTH = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+const utc = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+
+export const longDate = (iso: string) => LONG.format(utc(iso));
+export const dayMonth = (iso: string) => DAY_MONTH.format(utc(iso));
+export const monthLabel = (ym: string) => MONTH.format(utc(`${ym}-01`));
+export const dayNumber = (iso: string) => Number(iso.slice(8, 10));
+export const monthShort = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(utc(iso));
+export const weekdayShort = (iso: string) => new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(utc(iso));
+
+export function shiftMonth(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Six-week grid (Sunday first) for a YYYY-MM month: ISO dates, with the month flag. */
+export function monthGrid(ym: string): Array<{ iso: string; inMonth: boolean }> {
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const start = new Date(first);
+  start.setUTCDate(1 - first.getUTCDay());
+  const cells: Array<{ iso: string; inMonth: boolean }> = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start);
+    d.setUTCDate(start.getUTCDate() + i);
+    cells.push({ iso: d.toISOString().slice(0, 10), inMonth: d.getUTCMonth() === m - 1 });
+  }
+  // Drop a trailing week that is entirely next month.
+  return cells.slice(35).every((c) => !c.inMonth) ? cells.slice(0, 35) : cells;
+}
+
+const TONES: Record<string, number> = { 'city-council': 0, 'planning-commission': 1, 'redevelopment-agency': 2 };
+export function toneOf(bodyId: string | null | undefined): number {
+  if (!bodyId) return 5;
+  if (bodyId in TONES) return TONES[bodyId];
+  let h = 0;
+  for (const ch of bodyId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return 3 + (h % 3);
+}
+
+export function meetingHref(m: Pick<MeetingSummary, 'id'>): string {
+  return `/meetings/${encodeURIComponent(m.id)}`;
+}
+
+export const statusLabel = (m: Pick<MeetingSummary, 'status' | 'date'>, today: string): string | null =>
+  m.status === 'cancelled' ? 'Cancelled' : m.status === 'postponed' ? 'Postponed' : m.date >= today ? 'Upcoming' : null;
+
+/** Pull a readable agenda outline ("1. CALL TO ORDER", "3.1 Discussion of ...") out of agenda text. */
+export interface OutlineItem {
+  number: string;
+  title: string;
+  detail: string | null;
+  depth: number;
+}
+const ITEM = /^\s*((?:\d{1,2}|[A-Z])(?:\.\d{1,2}){0,3})[.)]?\s+(\S.{2,})$/;
+export function agendaOutline(text: string): OutlineItem[] {
+  const out: OutlineItem[] = [];
+  const lines = text.replace(/\r/g, '').split('\n');
+  for (const raw of lines) {
+    const line = raw.replace(/\s+/g, ' ').trim();
+    if (!line) continue;
+    const m = ITEM.exec(line);
+    if (m && !/^\d{1,2}\s+(am|pm)\b/i.test(line)) {
+      const title = m[2].replace(/\s*\.{3,}\s*\d*$/, '').trim();
+      out.push({ number: m[1], title: title.length > 220 ? `${title.slice(0, 217)}...` : title, detail: null, depth: m[1].split('.').length - 1 });
+    } else if (out.length) {
+      const last = out[out.length - 1];
+      if (!last.detail && line.length > 12 && line.length < 400 && !/^page \d+/i.test(line)) last.detail = line;
+    }
+  }
+  return out.length >= 2 ? out.slice(0, 80) : [];
+}
