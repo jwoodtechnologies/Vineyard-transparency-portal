@@ -29,8 +29,15 @@ def content_root(soup):
     return soup.body or soup
 
 
+def base_url(soup, page_url: str) -> str:
+    """Revize pages declare <base href="https://www.vineyardutah.gov/">; relative links resolve from it."""
+    b = soup.find("base", href=True)
+    return normalize_url(b["href"], page_url) if b else page_url
+
+
 def inventory(html: str, page_url: str) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
+    base = base_url(soup, page_url)
     main = content_root(soup)
     main_links = {id(a) for a in main.find_all("a", href=True)} if main is not None else set()
     out: list[dict] = []
@@ -39,7 +46,7 @@ def inventory(html: str, page_url: str) -> list[dict]:
     def add(kind: str, text: str, raw: str, el):
         if not raw or raw.startswith(("javascript:", "#", "mailto:", "tel:")):
             return
-        resolved = normalize_url(raw, page_url)
+        resolved = normalize_url(raw, base)
         k = f"{kind}|{resolved}|{text}"
         if k in seen:
             return

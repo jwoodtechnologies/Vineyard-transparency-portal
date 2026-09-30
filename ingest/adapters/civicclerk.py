@@ -41,7 +41,7 @@ def file_url(file_id: int) -> str:
 class CivicClerkAdapter(SourceAdapter):
     source_id = "vineyard-civicclerk-meetings"
 
-    def __init__(self, client, lookahead_days: int = 60, page_size: int = 100, max_pages: int = 200, since: str | None = None):
+    def __init__(self, client, lookahead_days: int = 60, page_size: int = 100, max_pages: int = 1000, since: str | None = None):
         super().__init__(client)
         self.lookahead_days = lookahead_days
         self.page_size = page_size
@@ -54,15 +54,20 @@ class CivicClerkAdapter(SourceAdapter):
     def events(self) -> Iterator[dict]:
         until = (datetime.now(timezone.utc) + timedelta(days=self.lookahead_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
         flt = f"startDateTime lt {until}" + (f" and startDateTime ge {self.since}T00:00:00Z" if self.since else "")
-        for page in range(self.max_pages):
-            url = f"{API}/Events?$filter={quote(flt)}&$orderby={quote('startDateTime desc')}&$top={self.page_size}&$skip={page * self.page_size}"
+        # The API pages server-side (15 events per page) and returns @odata.nextLink with a skip token.
+        url: str | None = f"{API}/Events?$filter={quote(flt)}&$orderby={quote('startDateTime desc')}&$top={self.page_size}"
+        seen: set[int] = set()
+        for _ in range(self.max_pages):
+            if not url:
+                return
             data = self.client.get_json(url)
-            items = data.get("value") or []
+            items = [e for e in (data.get("value") or []) if e.get("id") not in seen]
             if not items:
                 return
+            seen.update(e.get("id") for e in items)
             yield from items
-            if len(items) < self.page_size:
-                return
+            nxt = data.get("@odata.nextLink")
+            url = nxt if isinstance(nxt, str) and nxt.startswith(f"{API}/Events") else None
 
     def list_documents(self) -> Iterator[QueueItem]:
         now = datetime.now(timezone.utc)

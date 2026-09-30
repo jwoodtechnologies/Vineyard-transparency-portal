@@ -88,10 +88,10 @@ def transparency_html() -> str:
 
 def budget_html() -> str:
     t = "202608251021510" if VERSION["budget"] == 1 else "202609091629510"
-    return f"""<html><head><title>Budget</title></head><body><div id="post"><h1>Budget</h1>
+    return f"""<html><head><base href="https://www.vineyardutah.gov/"><title>Budget</title></head><body><div id="post"><h1>Budget</h1>
     <a href="https://transparent.utah.gov/">Transparent Utah</a>
     <h2>FY 2027 Documents</h2>
-    <a href="/FY 27 Budget Amendment 1 08.25.2026.pdf?t={t}">FY 27 Budget Amendment #1</a>
+    <a href="FY 27 Budget Amendment 1 08.25.2026.pdf?t={t}">FY 27 Budget Amendment #1</a>
     <h2>FY 2026 Documents</h2>
     <a href="/Finance/Finance/9.15.26 CC Agenda copy.pdf?t=1">9.15.26 CC Agenda (posted copy)</a>
     <a href="/Finance/Scanned Resolution 2026-12.pdf">Resolution 2026-12 (scanned)</a>
@@ -139,7 +139,8 @@ class FixtureAdapter(BaseAdapter):
         elif "government/finance.php" in url or "redevelopment_agency" in url:
             body = b"<html><body><div id='post'><h1>Page</h1><p>No documents.</p></div></body></html>"
         elif "api.civicclerk.com/v1/Events" in url:
-            body = json.dumps(EVENTS if "skip=0" in url else {"value": []}).encode()
+            nxt = "https://vineyardut.api.civicclerk.com/v1/Events?$orderby=startDateTime%20desc&$top=85&$skiptoken=startDateTime-2026-06-04T01%3A00%3A00Z,id-1560"
+            body = json.dumps({"value": EVENTS["value"][1:]} if "skiptoken" in url else {"value": EVENTS["value"][:1], "@odata.nextLink": nxt}).encode()
             ctype = "application/json"
         elif "GetMeetingFileStream(fileId=3340" in url or "9.15.26%20CC%20Agenda%20copy.pdf" in url:
             body, ctype = AGENDA, "application/pdf"  # same bytes at two URLs → duplicate detection
