@@ -163,3 +163,22 @@ Semantic landmarks, skip link, visible focus rings, native `<dialog>` for modals
 containment, Escape), WAI-ARIA tabs with arrow-key navigation, labeled form controls, `aria-live`
 status for result counts, toasts and loading, reduced-motion support, and contrast-checked light/dark
 tokens. Everything is keyboard-operable; the mobile filter UI is a bottom sheet.
+
+## Phase 2: production backend on Cloudflare
+
+```
+Browser ─► vineyardportal.org ─► Cloudflare Worker "vineyard-transparency-portal"
+                                   ├─ static SPA (dist/)                    [no Worker invocation]
+                                   └─ /api/* (worker/index.ts)
+                                        ├─ D1 vtp-catalog      metadata, provenance, versions, meetings, crawl state, quotas
+                                        ├─ D1 vtp-search-N     FTS5 chunks (sharded, SearchRepository)
+                                        ├─ R2 vtp-public-records  archived originals (content-addressed, hard stop)
+                                        └─ Workers AI          grounded answers, optional (search-only fallback)
+GitHub Actions / workstation ─► ingest/ (Python) ─► /api/admin/* (OIDC-authenticated writes)
+```
+
+The Phase 1 gateway (`API_ORIGIN` proxy) is replaced by the in-Worker API; the REST contract in
+API_CONTRACT.md is unchanged, so the frontend switches with `VITE_DATA_MODE=api` (`.env.production`).
+Production docs: [CLOUDFLARE.md](CLOUDFLARE.md), [INGESTION.md](INGESTION.md), [SOURCES.md](SOURCES.md),
+[API.md](API.md), [SEARCH.md](SEARCH.md), [AI_RAG.md](AI_RAG.md), [FREE_TIER_LIMITS.md](FREE_TIER_LIMITS.md).
+The Phase 1 TypeScript tooling in `scripts/` remains for local archives (`npm run ingest:local`).

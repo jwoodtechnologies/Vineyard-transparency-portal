@@ -137,3 +137,14 @@ source" links point to `example.org`. None of them is a record of any real gover
 
 Every document and answer has a **Report an issue** action. For code, run `npm run check` before
 opening a pull request.
+
+## Production (Phase 2)
+
+* Live site: https://vineyardportal.org (Worker `vineyard-transparency-portal` on Cloudflare Free).
+* Backend: `worker/` (API, D1 FTS5 search, R2 archive, Workers AI) and `migrations/`.
+* Ingestion: `ingest/` (Python), run by `.github/workflows/ingest.yml` (manual + daily).
+* Docs: docs/CLOUDFLARE.md, docs/INGESTION.md, docs/SOURCES.md, docs/API.md, docs/SEARCH.md,
+  docs/AI_RAG.md, docs/FREE_TIER_LIMITS.md.
+
+Vineyard Transparency Portal is an independent public-records project and is not an official
+website of Vineyard City. Records displayed here originate from publicly available government sources.

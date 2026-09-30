@@ -236,3 +236,31 @@ adapters, which only discover report *files*. Amounts are stored exactly as publ
 type, file name/size, title, date) for duplicate detection. `npm run reindex` loads records into
 `data/index.sqlite` (tables `documents`, `document_sources`, `versions`, `pages`, `chunks`,
 `chunks_fts`, `documents_fts`, `relationships`, `sources`, `meta`).
+
+## Phase 2: production D1 schema
+
+Catalog (`migrations/catalog/0001_catalog.sql`, database `vtp-catalog`):
+
+| Table | Purpose |
+| --- | --- |
+| `sources` | Registry: id, name, base_url, source_type, authority, discovered_from, crawl/archive flags, last_checked_at, last_success_at, status |
+| `documents` | id, slug, title, description, document_type, document_number, document_date, year, government_body_id/name, meeting_id, agenda_item_id, mime_type, original_filename, file_size, page_count, sha256, original_url, archive_key, archive_status, text_status, ocr_status, search_shard, chunk_count, created/updated/first_seen/last_seen/archived_at |
+| `document_sources` | Every provenance path: document_id, source_id, source_url, canonical_key, parent_url, link_text, retrieved_at, last_verified_at, etag, last_modified, http_status, original_available |
+| `document_versions` | id, document_id, version_number, sha256, previous_sha256, source_url, file_size, page_count, retrieved_at, archive_key, change_status |
+| `meetings`, `agenda_items`, `government_bodies` | From CivicClerk (meetings, bodies); media are links only |
+| `document_relationships` | MEETING_HAS_AGENDA / _MINUTES / _PACKET, AGENDA_ITEM_HAS_ATTACHMENT, RESOLUTION_CONSIDERED_AT, ORDINANCE_CONSIDERED_AT, DOCUMENT_RELATED_TO, DOCUMENT_SUPERSEDES, DOCUMENT_VERSION_OF (mapped to the frontend RelationshipType union by the API). Only created from source structure. |
+| `crawl_runs`, `crawl_queue`, `ingestion_errors` | Resumable crawl state and error log |
+| `archive_stats`, `quota_usage` | Stored R2 bytes; per-UTC-day D1 rows written, R2 bytes, AI requests |
+| `issue_reports` | Reader reports (submitted fields only) |
+
+Status vocabularies: `archive_status` = archived | not_archived | quota_deferred |
+remote_only_large_file | failed; `text_status` = pending | extracted | empty | unsupported | failed;
+`ocr_status` = not_required | needed | complete | failed (API maps `needed` → `pending`).
+
+Search shard (`migrations/search/0001_search.sql`): `shard_documents`, `chunks` (id, document_id,
+page_start, page_end, section_title, text, character_count, ocr, created_at) and the FTS5
+external-content table `chunks_fts`. Binaries are never stored in D1.
+
+Identity: `doc_` + first 16 hex of SHA-256(`vtp:` + canonical source key), assigned when a record is
+first seen. Duplicate detection is by SHA-256 of the bytes: a known hash at a new URL adds a
+`document_sources` row and no new binary.
