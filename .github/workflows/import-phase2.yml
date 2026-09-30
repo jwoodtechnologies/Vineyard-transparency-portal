@@ -27,6 +27,7 @@ jobs:
           sha256sum -c overlay/phase2.sha256
           mkdir -p "$RUNNER_TEMP/p2" && tar -xzf overlay/phase2.tar.gz -C "$RUNNER_TEMP/p2"
           node "$RUNNER_TEMP/p2/apply.mjs" "$RUNNER_TEMP/p2/files" .
+          if [[ -f overlay/COMMIT_MESSAGE ]]; then echo "COMMIT_MESSAGE=$(head -c 200 overlay/COMMIT_MESSAGE | tr -d '\n\r')" >> "$GITHUB_ENV"; fi
           git rm -r -q overlay
       - name: Verify (typecheck, lint, tests, build, ingestion tests)
         run: |
@@ -46,6 +47,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           T=$'\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X'
           c() { msg="$1"; shift; git add -A -- "$@" 2>/dev/null || true; git diff --cached --quiet || git commit -q -m "$msg$T"; }
+          if [[ -n "${COMMIT_MESSAGE:-}" ]]; then
+            git add -A && git commit -q -m "$COMMIT_MESSAGE$T" && git push
+            exit 0
+          fi
           c "feat: add Cloudflare backend (Worker API, D1 catalog schema, wrangler config)" worker/index.ts worker/env.ts worker/sql.d.ts worker/lib worker/api/documents.ts worker/api/misc.ts worker/admin migrations wrangler.jsonc package.json package-lock.json
           c "feat: add document search API (D1 FTS5, sharded SearchRepository)" worker/search worker/api/search.ts
           c "feat: connect document archive (R2 StorageProvider, content-addressed keys, hard stop)" worker/storage
