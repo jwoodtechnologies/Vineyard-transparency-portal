@@ -27,6 +27,7 @@ import { topicsFor } from './topics';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
+import { factsLine, rewriteQuestion } from './rewrite';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 
@@ -285,7 +286,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const staff = await currentStaff(env).catch(() => [] as StaffPerson[]);
   const turnsBack = (body.conversation ?? []).slice(-2).reverse().map((t) => t.content);
   const namedNow = namedIn(body.question, staff)[0] ?? null;
-  const who = namedNow ?? titleIn(body.question, staff) ?? (isPersonFollowUp(body.question) ? personFromTurns(turnsBack, staff) : null);
+  const who = namedNow ?? titleIn(body.question, staff) ?? ((body as { followUp?: boolean }).followUp !== false && isPersonFollowUp(body.question) ? personFromTurns(turnsBack, staff) : null);
   if (who && isIdentityQuestion(body.question, namedNow ?? who)) {
     const text = whoIsAnswer(who);
     return { kind: 'final', response: { ...base, question: body.question, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'directory', people: [who.slug] } as AskResponse };
@@ -296,7 +297,10 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const history = (body.conversation ?? []).filter((t) => t.role === 'user').map((t) => t.content).slice(-2);
   // Only a real follow-up ("what about that one?") borrows the previous question; a short question
   // that names someone or something stands on its own.
-  const retrievalText = isFollowUp(body.question) && history.length ? `${body.question} ${history[history.length - 1]}` : body.question;
+  // The model already decided follow-up or new and wrote a standalone question (see handleAsk);
+  // the keyword rule is only the fallback when it could not run.
+  const aiFollow = (body as { followUp?: boolean }).followUp;
+  const retrievalText = aiFollow !== undefined ? body.question : isFollowUp(body.question) && history.length ? `${body.question} ${history[history.length - 1]}` : body.question;
 
   const fallback = async (status: 'search_only' | 'no_results', notice: string | null): Promise<AskResponse> => ({
     ...base,
@@ -574,7 +578,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   // A new topic is answered on its own: earlier turns reach the model only for a real follow-up,
   // so a question about utilities is never pulled back to the road asked about before.
-  const follow = retrievalText !== body.question;
+  const follow = aiFollow ?? retrievalText !== body.question;
   const prior = follow ? (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) : [];
   const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(question, evidence, follow ? history : []) }];
 
@@ -726,11 +730,17 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
     return r;
   };
   const raw = await readJson<unknown>(request, 32 * 1024);
-  const body = validate(raw);
+  const typed = validate(raw);
   const wantsStream = Boolean(raw && typeof raw === 'object' && (raw as { stream?: unknown }).stream === true);
   const clientKey = request.headers.get('cf-connecting-ip') ?? 'anon';
   const retry = rateLimit(clientKey);
   if (retry != null) throw new HttpError(429, 'rate_limited', 'Too many questions. Try again shortly.', retry);
+
+  // The conversation brain: follow-up or new question, rewritten to stand on its own, and what the
+  // resident stated as fact. Everything after this reads the standalone question.
+  const rw = typed.conversation?.length && aiConfigured(env) && !aiBreakerOpen() ? await rewriteQuestion(env, fixSpelling(typed.question), typed.conversation).catch(() => null) : null;
+  const body = rw ? ({ ...typed, question: rw.standalone, followUp: rw.followUp } as AskRequest) : typed;
+  const shared = factsLine(rw?.facts ?? []);
 
   // Recurring reports (water quality, audits, budgets): every year's edition goes with the answer.
   const seriesP = seriesFor(env, body.question).catch(() => null);
@@ -741,6 +751,8 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   const contact = namedIn(body.question, staff).length ? null : contactFor(body.question, staff);
   const withContact = (r: AskResponse): AskResponse => {
     const x = r as AskResponse & { mode?: string; engine?: string; people?: string[] };
+    // What the resident shared is acknowledged as theirs, after the answer from the records.
+    if (shared && x.mode !== 'conversation') r = { ...r, answer: `${r.answer} ${shared}`.trim(), paragraphs: [...(r.paragraphs ?? []), { segments: [{ text: shared, citations: [] }] }] };
     if (!contact || x.mode === 'conversation' || x.engine === 'directory' || x.people?.length) return r;
     const line = contactLine(contact);
     const paragraphs = [...(r.paragraphs ?? []), { segments: [{ text: line, citations: [] }] }];
