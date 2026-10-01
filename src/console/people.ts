@@ -101,4 +101,4 @@ export function peopleIn(question: string, people: Person[]): Person[] {
   return found.sort((a, b) => (a.kind === 'elected' ? 0 : 1) - (b.kind === 'elected' ? 0 : 1)).slice(0, 2);
 }
 
-export const roleLine = (p: Person) => [p.role, p.kind === 'staff' && p.department && p.department !== p.role ? p.department : null].filter(Boolean).join(' · ');
+export const roleLine = (p: Person) => [p.role, p.kind === 'staff' && p.department && p.department !== p.role ? p.department : null].filter(Boolean).join(' · ').replace(/'S\b/g, "'s");

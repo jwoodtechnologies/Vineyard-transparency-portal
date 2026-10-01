@@ -140,3 +140,10 @@ describe('fiscal year spellings', () => {
     expect(r.removed).toBe(0);
   });
 });
+
+describe('emails and web addresses', () => {
+  it('stay whole', async () => {
+    const { segmentAnswer } = await import('../worker/ai/answer');
+    expect(segmentAnswer('Email info@vineyardutah.gov for help [1].', 1).paragraphs[0].segments[0].text).toBe('Email info@vineyardutah.gov for help.');
+  });
+});

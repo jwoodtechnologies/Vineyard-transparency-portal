@@ -269,7 +269,8 @@ export default function RecordsPage() {
             {cat.types.map((t) => (
               <button key={t.id} type="button" className="vc-rec-type" data-active={types.includes(t.id)} aria-pressed={types.includes(t.id)} onClick={() => toggleType(t.id)}>
                 {t.label}
-                {typeCount.get(t.id) ? <span className="vc-rec-type-n">{typeCount.get(t.id)}</span> : null}
+                {/* Archive-wide counts would mislead inside a body section (the RDA), so none there. */}
+                {!cat.body && typeCount.get(t.id) ? <span className="vc-rec-type-n">{typeCount.get(t.id)}</span> : null}
               </button>
             ))}
           </div>
