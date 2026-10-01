@@ -1,0 +1,1 @@
+Backfill: Amazon S3 PDFs follow RFC 9309 (no robots.txt); retry momentary server errors; one record's error never stops a runner; migrate requeues robots-skipped files
