@@ -21,6 +21,7 @@ import { Records } from './Records';
 import { AnswerActions } from './AnswerActions';
 import { QuickLinks } from './QuickLinks';
 import { EventCard } from './EventCard';
+import { SeriesPanel } from './SeriesPanel';
 import { PersonCard } from './PersonCard';
 import { peopleIn, usePeople } from './people';
 import { Drawer } from './Drawer';
@@ -380,6 +381,7 @@ export default function ConsolePage() {
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
                 {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
                 {t.answer.event && <EventCard event={t.answer.event} />}
+                {t.answer.series && <SeriesPanel series={t.answer.series} />}
                 {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} onCite={cite(t)} />}
                 <QuickLinks answer={t.answer} />
                 <div className="vc-answer-foot">

@@ -3648,3 +3648,58 @@ html.vc-locked .vc-landing {
 .vc-menu-tile span {
   font-size: 0.74rem;
 }
+
+/* Every year's edition of a recurring report */
+.vc-series {
+  margin: 0.9rem 0 0.3rem;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--vc-line-2);
+  border-radius: 16px;
+  background: var(--vc-surface);
+}
+.vc-series-label {
+  margin: 0 0 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--vc-faint);
+}
+.vc-series-list {
+  display: flex;
+  flex-direction: column;
+}
+.vc-series-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.45rem 0.35rem;
+  border-radius: 10px;
+  color: var(--vc-ink);
+  text-decoration: none;
+}
+.vc-series-item:hover {
+  background: var(--vc-surface-2);
+}
+.vc-series-year {
+  flex: none;
+  width: 2.6rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.vc-series-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.86rem;
+  color: var(--vc-ink-2);
+}
+.vc-series-title svg {
+  flex: none;
+  color: var(--vc-muted);
+}
+.vc-series-more {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+}

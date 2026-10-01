@@ -38,6 +38,14 @@ export const TOPICS: CivicTopic[] = [
   },
 ];
 
+/** How to request records, from the city's Records Request page (checked October 1, 2026). */
+TOPICS.push({
+  id: 'grama',
+  match: /\b(grama|records? requests?|public records?|request (a |the )?(record|document|copy)|open records)\b/i,
+  queries: [{ q: 'GRAMA "records request" recorder written request' }, { q: '"Record Request Form"' }],
+  note: 'Records requests (GRAMA, Utah Code 63G-2): a request goes in writing to the City Recorder and must include your name, address, phone number, email and a specific description of the records. Submit it by email to the City Recorder (robinr@vineyardutah.gov), by U.S. mail or in person at City Hall (125 S Main Street), using the city\'s Record Request Form, or through the Utah Open Records Portal. Police reports are requested from the Utah County Sheriff\'s Office. The city responds as soon as reasonably possible and no later than 10 business days. Give these steps plainly, citing the Records Request page.',
+});
+
 export function topicsFor(question: string, today = new Date().toISOString().slice(0, 10)): CivicTopic[] {
   const y = Number(today.slice(0, 4));
   const m = Number(today.slice(5, 7));

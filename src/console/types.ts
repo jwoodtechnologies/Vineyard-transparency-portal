@@ -2,7 +2,12 @@ import type { AskResponse, Citation, SearchFilters, SearchResponse, SearchResult
 
 import type { AnswerEvent } from './EventCard';
 
-export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent };
+export interface AnswerSeries {
+  label: string;
+  items: Array<{ id: string; title: string; date: string | null; year: number | null }>;
+}
+
+export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent; series?: AnswerSeries };
 
 export interface Turn {
   id: string;

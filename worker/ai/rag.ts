@@ -25,6 +25,8 @@ import { countAnswer, countKind, isMeetingCountQuestion, isScheduleQuestion, mee
 import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
+import { seriesFor } from './series';
+import { fixSpelling } from './spelling';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -261,6 +263,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const repo = new SearchRepository(env);
   const id = randomId('ask');
   const base = { id, question: body.question, relatedDocuments: [] as DocumentSummary[], suggestedFollowUps: [] as string[], generatedAt: nowIso() };
+  // Misspellings fixed before anything else reads the question ("grammar request" is GRAMA).
+  body = { ...body, question: fixSpelling(body.question) };
   const filters = body.filters ?? {};
 
   const history = (body.conversation ?? []).filter((t) => t.role === 'user').map((t) => t.content).slice(-2);
@@ -665,16 +669,20 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   const retry = rateLimit(clientKey);
   if (retry != null) throw new HttpError(429, 'rate_limited', 'Too many questions. Try again shortly.', retry);
 
+  // Recurring reports (water quality, audits, budgets): every year's edition goes with the answer.
+  const seriesP = seriesFor(env, body.question).catch(() => null);
   const prep = await prepare(env, body);
-  if (prep.kind === 'final') return respond(done(prep.response));
-  if (wantsStream) return streamAnswer(env, ctx, prep, done);
+  const series = await seriesP;
+  const attach = (r: AskResponse): AskResponse => done(series && (r as { mode?: string }).mode !== 'conversation' ? ({ ...r, series } as AskResponse) : r);
+  if (prep.kind === 'final') return respond(attach(prep.response));
+  if (wantsStream) return streamAnswer(env, ctx, prep, attach);
   let out: { text: string; engine: string };
   try {
     out = await callModel(env, prep.messages, { useBig: prep.useBig });
   } catch (e) {
-    return respond(done(await prep.fail(e)));
+    return respond(attach(await prep.fail(e)));
   }
-  return respond(done(await prep.finish(out.text, out.engine)));
+  return respond(attach(await prep.finish(out.text, out.engine)));
 }
 
 function respond(body: AskResponse): Response {
