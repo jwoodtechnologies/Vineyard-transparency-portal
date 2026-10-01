@@ -137,7 +137,7 @@ function mapBubbles(question: string, answerText: string, names: Names): Bubble[
   return out;
 }
 
-function serviceBubbles(question: string): Bubble[] {
+function serviceBubbles(question: string, hasCard = false): Bubble[] {
   const q = question;
   const out: Bubble[] = [];
   const add = (l: ServiceLink, key: string) => out.push({ key, ...l });
@@ -166,7 +166,8 @@ function serviceBubbles(question: string): Bubble[] {
   for (const e of directoryFor(q)) if (!out.some((b) => b.href === e.href)) out.push({ key: `dir:${e.id}`, label: e.label, hint: e.hint, href: e.href, kind: e.kind });
 
   const contactish = /\b(contact|phone|call|email|reach|who (do|should) i|who is|who's|staff|city hall|office hours|hours|address)\b/i.test(q);
-  const people = STAFF.filter((s) => s.match.test(q));
+  // A staff card already shows who to contact: no second bubble for the same person.
+  const people = hasCard ? [] : STAFF.filter((s) => s.match.test(q));
   for (const s of people.slice(0, 2)) {
     if (s.email) out.push({ key: `mail:${s.name}`, label: s.name, hint: `${s.title} · ${s.email}`, href: `mailto:${s.email}`, kind: 'mail' });
     else if (s.phone && s.phone !== '801-226-1929') out.push({ key: `tel:${s.name}`, label: s.name, hint: `${s.title} · ${s.phone}`, href: `tel:+1${s.phone.replace(/\D/g, '')}`, kind: 'call' });
@@ -191,7 +192,7 @@ function answerText(a: ConsoleAnswer): string {
 export function QuickLinks({ answer }: { answer: ConsoleAnswer }) {
   const question = answer.question ?? '';
   const text = answerText(answer);
-  const services = serviceBubbles(question);
+  const services = serviceBubbles(question, Boolean(answer.contact || answer.people?.length));
   // Map bubbles only when the question is about a place: a road, project, park, area or "where".
   // Questions about votes, meetings, people, money or law get none, whatever the answer mentions.
   const wantsMap = answer.mode !== 'conversation' && (/\bmap\b|\bwhere\b|\blocated\b/i.test(question) || (MAPPY.test(question) && !NOT_MAP.test(question)) || new RegExp(NUM_ROAD.source, 'i').test(question));

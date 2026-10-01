@@ -26,6 +26,7 @@ import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { seriesFor } from './series';
+import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
@@ -226,6 +227,17 @@ const PRESENT_Q = /\b(now|current|currently|today|this year|latest|recent|recent
 const RULE = /\b(can i|can we|can you|am i allowed|is it (legal|allowed|permitted)|allowed|permitted|prohibited|illegal|rules?|regulations?|required|requirements?|do i need|need a permit|code says|setbacks?|how (many|tall|high|far))\b/i;
 const VOTE = /\b(vote[sd]?|voting|motion|moved|second(ed)?|position|stance|support(ed)?|oppose[sd]?|against|for or against|aye|nay)\b/i;
 
+let staffCache: { at: number; list: StaffPerson[] } | null = null;
+/** Everyone the city website lists today (elected officials first), cached for ten minutes. */
+export async function currentStaff(env: Env): Promise<StaffPerson[]> {
+  if (!staffCache || Date.now() - staffCache.at > 10 * 60_000) {
+    await ensurePeopleTable(env);
+    const res = await env.CATALOG_DB.prepare("SELECT slug, name, kind, role, department, email, phone FROM people WHERE current = 1 ORDER BY CASE kind WHEN 'elected' THEN 0 ELSE 1 END, name").all<StaffPerson>();
+    staffCache = { at: Date.now(), list: res.results ?? [] };
+  }
+  return staffCache.list;
+}
+
 let peopleCache: { at: number; list: Array<{ name: string; last: string; role: string }> } | null = null;
 /** A current official or staff member named in the question (full name, or title + last name). */
 async function personIn(env: Env, q: string): Promise<{ name: string; last: string; role: string } | null> {
@@ -266,6 +278,17 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const base = { id, question: body.question, relatedDocuments: [] as DocumentSummary[], suggestedFollowUps: [] as string[], generatedAt: nowIso() };
   // Misspellings fixed before anything else reads the question ("grammar request" is GRAMA).
   body = { ...body, question: fixSpelling(body.question) };
+  // People: a name, a title, or "he"/"she" meaning the person in the last answer. Who someone is
+  // comes straight from the city's own directory; a follow-up about them names them for the search.
+  const staff = await currentStaff(env).catch(() => [] as StaffPerson[]);
+  const turnsBack = (body.conversation ?? []).slice(-2).reverse().map((t) => t.content);
+  const namedNow = namedIn(body.question, staff)[0] ?? null;
+  const who = namedNow ?? titleIn(body.question, staff) ?? (isPersonFollowUp(body.question) ? personFromTurns(turnsBack, staff) : null);
+  if (who && isIdentityQuestion(body.question, namedNow ?? who)) {
+    const text = whoIsAnswer(who);
+    return { kind: 'final', response: { ...base, question: body.question, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'directory', people: [who.slug] } as AskResponse };
+  }
+  if (who && !namedNow && PERSON_PRONOUN.test(body.question)) body = { ...body, question: body.question.replace(PERSON_PRONOUN, who.name) };
   const filters = body.filters ?? {};
 
   const history = (body.conversation ?? []).filter((t) => t.role === 'user').map((t) => t.content).slice(-2);
@@ -549,8 +572,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
     if (!seg.used.size) {
       // Nothing the model wrote could be tied to a source: show the records, never an unchecked answer.
-      const r = await fallback('search_only', null);
-      return { ...r, engine: `search-fallback (no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 220)})` };
+      const r = await fallback('no_results', null);
+      const text = "I couldn't find a record that answers that. The closest records are below.";
+      return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `search-fallback (no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 220)})` } as AskResponse;
     }
 
     // Renumber cited sources 1..k in order of first use.
@@ -680,7 +704,17 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   const seriesP = seriesFor(env, body.question).catch(() => null);
   const prep = await prepare(env, body);
   const series = await seriesP;
-  const attach = (r: AskResponse): AskResponse => done(series && (r as { mode?: string }).mode !== 'conversation' ? ({ ...r, series } as AskResponse) : r);
+  // Who to contact for what the resident is asking (current staff only), as a card and one line.
+  const staff = await currentStaff(env).catch(() => [] as StaffPerson[]);
+  const contact = namedIn(body.question, staff).length ? null : contactFor(body.question, staff);
+  const withContact = (r: AskResponse): AskResponse => {
+    const x = r as AskResponse & { mode?: string; engine?: string; people?: string[] };
+    if (!contact || x.mode === 'conversation' || x.engine === 'directory' || x.people?.length) return r;
+    const line = contactLine(contact);
+    const paragraphs = [...(r.paragraphs ?? []), { segments: [{ text: line, citations: [] }] }];
+    return { ...r, answer: `${r.answer} ${line}`.trim(), paragraphs, contact: contact.slug } as AskResponse;
+  };
+  const attach = (r: AskResponse): AskResponse => done(withContact(series && (r as { mode?: string }).mode !== 'conversation' ? ({ ...r, series } as AskResponse) : r));
   if (prep.kind === 'final') return respond(attach(prep.response));
   if (wantsStream) return streamAnswer(env, ctx, prep, attach);
   let out: { text: string; engine: string };

@@ -110,7 +110,14 @@ function Directory() {
           </section>
         ) : null,
       )}
-      {people.length > 0 && <p className="vc-person-asof">Names, titles, photos and contacts as the city website lists them.</p>}
+      {people.length > 0 && (
+        <p className="vc-person-asof vc-people-source">
+          Names, titles, photos and contacts as the city website lists them.{' '}
+          <a href="https://www.vineyardutah.gov/government/city_staff.php" target="_blank" rel="noopener noreferrer">
+            View on city website
+          </a>
+        </p>
+      )}
     </>
   );
 }

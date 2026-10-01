@@ -75,6 +75,13 @@ export function peopleIn(question: string, people: Person[]): Person[] {
   const add = (p: Person) => !found.includes(p) && found.push(p);
   const current = people.filter((p) => p.current);
   for (const p of current) if (q.includes(` ${p.name.toLowerCase()} `)) add(p);
+  // Part of a longer name: "David Kyle" or "Kyle Herring" for David Kyle Herring.
+  for (const p of current) {
+    const parts = p.name.toLowerCase().split(/\s+/);
+    if (parts.length < 3) continue;
+    for (let i = 0; i + 1 < parts.length; i++) if (q.includes(` ${parts[i]} ${parts[i + 1]} `)) add(p);
+    if (q.includes(` ${parts[0]} ${parts[parts.length - 1]} `)) add(p);
+  }
   for (const p of current) {
     const last = p.name.split(/\s+/).pop()!.toLowerCase();
     if (new RegExp(`\\b(mayor|council ?(member|man|woman)|councilor|deputy mayor|director|manager|recorder|mr|mrs|ms)\\s+${last}\\b`).test(q)) add(p);

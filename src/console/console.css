@@ -3477,6 +3477,9 @@ html.vc-locked .vc-landing {
 
 /* People: cards, profile, directory */
 .vc-person-card { display: flex; gap: 14px; align-items: flex-start; margin: 10px 0 14px; padding: 14px 16px; border: 1px solid var(--vc-line-2); border-radius: 18px; background: var(--vc-surface); box-shadow: var(--vc-shadow-sm); }
+.vc-person-card[data-contact] { position: relative; padding-top: 30px; }
+.vc-person-label { position: absolute; top: 10px; left: 16px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--vc-muted); }
+.vc-people-source a { margin-left: 4px; color: var(--vc-accent); font-weight: 600; text-decoration: none; }
 .vc-person-photo { flex: none; border-radius: 50%; object-fit: cover; background: var(--vc-bg-2); }
 .vc-person-noimg { display: grid; place-items: center; color: var(--vc-muted); }
 .vc-person-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }

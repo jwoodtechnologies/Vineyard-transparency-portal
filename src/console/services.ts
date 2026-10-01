@@ -11,6 +11,8 @@ export interface ServiceLink {
   /** Shown under the label in the bubble. */
   hint?: string;
   kind: 'form' | 'pay' | 'call' | 'mail' | 'page' | 'map';
+  /** A page inside the portal. */
+  internal?: boolean;
 }
 
 export const CITY_HALL = { address: '125 S Main St, Vineyard, UT 84059', hours: 'Mon to Thu 8am to 5pm, Fri 8am to noon', phone: '801-226-1929' };
@@ -24,7 +26,7 @@ export const LINKS = {
   stopService: { label: 'Stop service', href: 'https://www.vineyardutah.gov/services/termination_request.php', kind: 'form' },
   permits: { label: 'Permits and inspections', hint: 'CityInspect portal', href: 'https://vineyard.cityinspect.com/login', kind: 'form' },
   cityHall: { label: 'Call City Hall', hint: CITY_HALL.phone, href: 'tel:+18012261929', kind: 'call' },
-  staff: { label: 'City staff directory', href: 'https://www.vineyardutah.gov/government/city_staff.php', kind: 'page' },
+  staff: { label: 'City staff directory', hint: 'Names, titles and contacts', href: '/people', kind: 'page', internal: true },
   contact: { label: 'Contact the city', hint: 'Address and hours', href: 'https://www.vineyardutah.gov/contact/index.php', kind: 'page' },
   police: { label: 'Non-emergency police', hint: '801-798-5600', href: 'tel:+18017985600', kind: 'call' },
   fire: { label: 'Non-emergency fire and EMS', hint: '801-229-7070', href: 'tel:+18012297070', kind: 'call' },

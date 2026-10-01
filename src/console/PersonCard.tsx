@@ -37,10 +37,11 @@ function useSince(slug: string, known?: number | null): number | null {
   return since;
 }
 
-export function PersonCard({ person }: { person: Person & { since?: number | null } }) {
+export function PersonCard({ person, label }: { person: Person & { since?: number | null }; label?: string }) {
   const since = useSince(person.slug, person.since);
   return (
-    <div className="vc-person-card">
+    <div className="vc-person-card" data-contact={label ? 'true' : undefined}>
+      {label && <span className="vc-person-label">{label}</span>}
       <PersonPhoto person={person} />
       <div className="vc-person-main">
         <Link to={`/people/${person.slug}`} className="vc-person-name">
@@ -59,6 +60,12 @@ export function PersonCard({ person }: { person: Person & { since?: number | nul
           {person.phone && (
             <a href={`tel:+1${person.phone.replace(/\D/g, '')}`}>
               <Phone size={13} /> {person.phone}
+            </a>
+          )}
+          {/* The city lists no direct line: City Hall's main number reaches them. */}
+          {!person.email && !person.phone && person.current && (
+            <a href="tel:+18012261929">
+              <Phone size={13} /> City Hall 801-226-1929
             </a>
           )}
         </span>

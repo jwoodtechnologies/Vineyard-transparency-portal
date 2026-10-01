@@ -23,7 +23,7 @@ import { QuickLinks } from './QuickLinks';
 import { EventCard } from './EventCard';
 import { SeriesPanel } from './SeriesPanel';
 import { PersonCard } from './PersonCard';
-import { peopleIn, usePeople } from './people';
+import { peopleIn, usePeople, type Person } from './people';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
@@ -66,6 +66,21 @@ function restore(chat: SavedChat): Turn[] {
 }
 
 const isSearchOnly = (a: ConsoleAnswer | null) => a?.retrievalStatus === 'search_only' || a?.retrievalStatus === 'ai_unavailable';
+
+/** People the question names, plus whoever the answer resolved ("who is he" means the last answer's person). */
+function cardsFor(t: Turn, people: Person[]): Person[] {
+  const named = peopleIn(t.question, people);
+  const more = (t.answer?.people ?? []).map((slug) => people.find((p) => p.slug === slug)).filter((p): p is Person => Boolean(p) && !named.includes(p as Person));
+  return [...named, ...more].slice(0, 2);
+}
+
+/** The current staff member to contact for what was asked, under the answer. */
+function contactCard(t: Turn, people: Person[]) {
+  const slug = t.answer?.contact;
+  const p = slug ? people.find((x) => x.slug === slug && x.current) : null;
+  if (!p || cardsFor(t, people).includes(p)) return null;
+  return <PersonCard person={p} label="Contact for this" />;
+}
 
 function history(turns: Turn[]): ConversationTurn[] {
   return turns
@@ -354,7 +369,7 @@ export default function ConsolePage() {
             <div className="vc-you">
               <p className="vc-bubble">{t.question}</p>
             </div>
-            {peopleIn(t.question, people).map((p) => (
+            {cardsFor(t, people).map((p) => (
               <PersonCard key={p.slug} person={p} />
             ))}
             {t.status === 'loading' && !t.draft && <Thinking writing={t.phase === 'writing'} />}
@@ -380,6 +395,7 @@ export default function ConsolePage() {
               <>
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
                 {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
+                {contactCard(t, people)}
                 {t.answer.event && <EventCard event={t.answer.event} />}
                 {t.answer.series && <SeriesPanel series={t.answer.series} />}
                 {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} onCite={cite(t)} />}

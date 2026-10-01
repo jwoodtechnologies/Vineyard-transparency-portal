@@ -7,7 +7,7 @@ export interface AnswerSeries {
   items: Array<{ id: string; title: string; date: string | null; year: number | null }>;
 }
 
-export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent; series?: AnswerSeries };
+export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent; series?: AnswerSeries; people?: string[]; contact?: string };
 
 export interface Turn {
   id: string;

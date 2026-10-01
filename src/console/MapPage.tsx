@@ -892,12 +892,17 @@ function fitPadding() {
 function highlight(map: maplibregl.Map, f: Feature | FeatureCollection) {
   const data: FC = f.type === 'FeatureCollection' ? (f as FC) : { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: (f as Feature).geometry, properties: {} }] };
   const src = map.getSource('vtp-pick') as GeoJSONSource | undefined;
-  if (src) src.setData(data);
-  else {
+  if (src) {
+    src.setData(data);
+    // Keep the highlight above any layer turned on since.
+    for (const id of ['vtp-pick-fill', 'vtp-pick-glow', 'vtp-pick-line', 'vtp-pick-pt']) if (map.getLayer(id)) map.moveLayer(id);
+  } else {
     map.addSource('vtp-pick', { type: 'geojson', data });
-    map.addLayer({ id: 'vtp-pick-fill', type: 'fill', source: 'vtp-pick', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#7a2d52', 'fill-opacity': 0.18 } });
-    map.addLayer({ id: 'vtp-pick-line', type: 'line', source: 'vtp-pick', paint: { 'line-color': '#7a2d52', 'line-width': 4, 'line-opacity': 0.9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
-    map.addLayer({ id: 'vtp-pick-pt', type: 'circle', source: 'vtp-pick', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 10, 'circle-color': 'rgba(122,45,82,0.2)', 'circle-stroke-color': '#7a2d52', 'circle-stroke-width': 2.5 } });
+    map.addLayer({ id: 'vtp-pick-fill', type: 'fill', source: 'vtp-pick', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#ffd43b', 'fill-opacity': 0.4 } });
+    // What was asked about stands out in bright yellow, with a dark edge so it reads on any base map.
+    map.addLayer({ id: 'vtp-pick-glow', type: 'line', source: 'vtp-pick', paint: { 'line-color': '#5c3d00', 'line-width': 11, 'line-opacity': 0.55, 'line-blur': 1 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+    map.addLayer({ id: 'vtp-pick-line', type: 'line', source: 'vtp-pick', paint: { 'line-color': '#ffd43b', 'line-width': 7, 'line-opacity': 1 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+    map.addLayer({ id: 'vtp-pick-pt', type: 'circle', source: 'vtp-pick', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 11, 'circle-color': 'rgba(255,212,59,0.55)', 'circle-stroke-color': '#5c3d00', 'circle-stroke-width': 3 } });
   }
 }
 
