@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { MessageSquare, Plus, Trash2, X } from 'lucide-react';
-import { deleteChat, useChats, useHistoryEnabled, type SavedChat } from './history';
+import { useEffect, useRef, useState } from 'react';
+import { History, MessageSquare, Plus, Trash2, X } from 'lucide-react';
+import { clearChats, deleteChat, setHistoryEnabled, useChats, useHistoryEnabled, type SavedChat } from './history';
 
 const DAY = 86_400_000;
 
@@ -29,8 +29,11 @@ export function HistoryPanel({ activeId, onOpen, onNew, onClose }: Props) {
   const chats = useChats();
   const saving = useHistoryEnabled();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
+    // Only one panel at a time: chat history closes the menu.
+    window.dispatchEvent(new Event('vc:history-open'));
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
@@ -60,7 +63,7 @@ export function HistoryPanel({ activeId, onOpen, onNew, onClose }: Props) {
           </button>
         </div>
         <div className="vc-history-body">
-          {!saving && <p className="vc-history-empty">Saving chats is turned off in settings.</p>}
+          {!saving && <p className="vc-history-empty">Saving chats is turned off. Turn it on below.</p>}
           {saving && !chats.length && <p className="vc-history-empty">Your chats will appear here. They are saved in this browser only.</p>}
           {group(chats).map(([label, items]) => (
             <section key={label} className="vc-history-group">
@@ -78,6 +81,28 @@ export function HistoryPanel({ activeId, onOpen, onNew, onClose }: Props) {
               ))}
             </section>
           ))}
+        </div>
+        <div className="vc-history-foot">
+          <label className="vc-panel-row vc-switch-row">
+            <History size={15} strokeWidth={1.8} />
+            <span>Save chats on this device</span>
+            <input type="checkbox" className="vc-switch" checked={saving} onChange={(e) => setHistoryEnabled(e.target.checked)} />
+          </label>
+          <button
+            type="button"
+            className="vc-panel-row"
+            data-danger={confirm}
+            disabled={!chats.length}
+            onClick={() => {
+              if (!confirm) return setConfirm(true);
+              clearChats();
+              setConfirm(false);
+            }}
+          >
+            <Trash2 size={15} strokeWidth={1.8} />
+            {confirm ? `Delete all ${chats.length} chats?` : chats.length ? `Clear all ${chats.length} ${chats.length === 1 ? 'chat' : 'chats'}` : 'No saved chats'}
+          </button>
+          <p className="vc-panel-note">Chats stay in this browser only. Nothing is stored on a server.</p>
         </div>
       </aside>
     </>

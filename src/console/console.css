@@ -1432,7 +1432,7 @@
 /* history sheet */
 .vc-history {
   position: fixed;
-  z-index: 41;
+  z-index: 71;
   top: 0;
   left: 0;
   bottom: 0;
@@ -3635,4 +3635,9 @@ html.vc-locked .vc-landing {
 }
 .vc-menu-panel .vc-panel-row {
   padding: 0.5rem 0.55rem;
+}
+
+.vc-history-foot {
+  border-top: 1px solid var(--vc-line-2);
+  padding: 0.5rem 0.6rem calc(0.6rem + env(safe-area-inset-bottom));
 }

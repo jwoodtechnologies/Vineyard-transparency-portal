@@ -4,11 +4,10 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, CalendarDays, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Trash2, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Users } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { RECORD_CATEGORIES } from './categories';
-import { clearChats, setHistoryEnabled, useChats, useHistoryEnabled } from './history';
 
 function useScrolled() {
   const [scrolled, setScrolled] = useState(() => typeof window !== 'undefined' && window.scrollY > 8);
@@ -62,19 +61,32 @@ const CATEGORY_ICONS: Record<string, typeof FileText> = { meetings: FileText, fi
  */
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
-  const [confirm, setConfirm] = useState(false);
   const { resolved, setPreference } = useTheme();
-  const chats = useChats();
-  const saving = useHistoryEnabled();
-  const close = () => {
-    setOpen(false);
-    setConfirm(false);
-  };
+  const close = () => setOpen(false);
   const box = useDismiss(open, close);
+  // Only one panel at a time: opening chat history closes the menu, and the other way round.
+  useEffect(() => {
+    const onHistory = () => setOpen(false);
+    window.addEventListener('vc:history-open', onHistory);
+    return () => window.removeEventListener('vc:history-open', onHistory);
+  }, []);
 
   return (
     <div className="vc-settings" ref={box}>
-      <button type="button" className="vc-ghost" data-icon-only="true" aria-label="Menu" title="Menu" aria-haspopup="dialog" aria-expanded={open} onClick={() => (open ? close() : setOpen(true))}>
+      <button
+        type="button"
+        className="vc-ghost"
+        data-icon-only="true"
+        aria-label="Menu"
+        title="Menu"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => {
+          if (open) return close();
+          window.dispatchEvent(new Event('vc:menu-open'));
+          setOpen(true);
+        }}
+      >
         <MenuMark />
       </button>
       {open && (
@@ -118,27 +130,7 @@ export function SettingsMenu() {
             ))}
           </div>
 
-          <p className="vc-panel-label">Chat history</p>
-          <label className="vc-panel-row vc-switch-row">
-            <History size={15} strokeWidth={1.8} />
-            <span>Save chats on this device</span>
-            <input type="checkbox" className="vc-switch" checked={saving} onChange={(e) => setHistoryEnabled(e.target.checked)} />
-          </label>
-          <button
-            type="button"
-            className="vc-panel-row"
-            data-danger={confirm}
-            disabled={!chats.length}
-            onClick={() => {
-              if (!confirm) return setConfirm(true);
-              clearChats();
-              setConfirm(false);
-            }}
-          >
-            <Trash2 size={15} strokeWidth={1.8} />
-            {confirm ? `Delete all ${chats.length} chats?` : chats.length ? `Clear ${chats.length} saved ${chats.length === 1 ? 'chat' : 'chats'}` : 'No saved chats'}
-          </button>
-          <p className="vc-panel-note">Chats stay in this browser only. Nothing is stored on a server and there are no accounts. Independent project, not an official Vineyard City website.</p>
+          <p className="vc-panel-note">Independent project, not an official Vineyard City website. No accounts, no tracking.</p>
         </div>
       )}
     </div>

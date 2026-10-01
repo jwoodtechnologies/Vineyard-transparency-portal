@@ -297,6 +297,11 @@ export default function ConsolePage() {
   const open = (t: Turn) => (result: SearchResult) => setPreview({ kind: 'result', result, query: t.question });
   const closePreview = useCallback(() => setPreview(null), []);
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
+  useEffect(() => {
+    const onMenu = () => setHistoryOpen(false);
+    window.addEventListener('vc:menu-open', onMenu);
+    return () => window.removeEventListener('vc:menu-open', onMenu);
+  }, []);
   const newChat = () => {
     reset();
     setHistoryOpen(false);
