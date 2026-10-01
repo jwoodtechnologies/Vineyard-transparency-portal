@@ -3474,3 +3474,27 @@ html.vc-locked .vc-landing {
 .vc-rec-group { margin-top: 14px; }
 .vc-rec-month { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--vc-muted); margin: 0 0 8px; }
 @media (max-width: 560px) { .vc-rec-select { flex: 1 1 calc(50% - 8px); } .vc-rec-select select { max-width: none; width: 100%; } }
+
+/* People: cards, profile, directory */
+.vc-person-card { display: flex; gap: 14px; align-items: flex-start; margin: 10px 0 14px; padding: 14px 16px; border: 1px solid var(--vc-line-2); border-radius: 18px; background: var(--vc-surface); box-shadow: var(--vc-shadow-sm); }
+.vc-person-photo { flex: none; border-radius: 50%; object-fit: cover; background: var(--vc-bg-2); }
+.vc-person-noimg { display: grid; place-items: center; color: var(--vc-muted); }
+.vc-person-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vc-person-name { display: inline-flex; align-items: center; gap: 2px; font-family: var(--vc-serif); font-size: 1.15rem; font-weight: 600; color: var(--vc-ink); text-decoration: none; }
+.vc-person-name:hover { color: var(--vc-accent); }
+.vc-person-role { font-size: 0.86rem; font-weight: 600; color: var(--vc-accent); }
+.vc-person-term { font-size: 0.82rem; color: var(--vc-ink-2); }
+.vc-person-contact { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 2px; font-size: 0.82rem; }
+.vc-person-contact a { display: inline-flex; align-items: center; gap: 5px; color: var(--vc-ink-2); text-decoration: none; }
+.vc-person-contact a:hover { color: var(--vc-accent); }
+.vc-person-asof { font-size: 0.74rem; color: var(--vc-muted); margin-top: 2px; }
+.vc-person-asof a { color: inherit; }
+.vc-person-asks { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.vc-person-asks .vc-chip { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; height: auto; padding: 7px 12px; text-align: left; white-space: normal; }
+.vc-people { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.vc-people-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--vc-line); border-radius: 14px; background: var(--vc-surface); color: inherit; text-decoration: none; }
+.vc-people-item:hover { border-color: var(--vc-line-2); background: var(--vc-surface-2); }
+.vc-people-text { display: flex; flex-direction: column; min-width: 0; }
+.vc-people-name { font-weight: 600; font-size: 0.92rem; }
+.vc-people-role { font-size: 0.78rem; color: var(--vc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 560px) { .vc-person-card { padding: 12px; gap: 12px; } .vc-people { grid-template-columns: 1fr; } }

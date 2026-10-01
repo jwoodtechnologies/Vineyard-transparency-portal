@@ -16,6 +16,7 @@ import { HttpError, json, badRequest, notFound, readJson } from '../lib/http';
 import { nowIso, utcDay, chunked } from '../lib/util';
 import { categoriesForType, normalizeType } from '../lib/taxonomy';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
+import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
 import { ensureActivityTables } from '../panel/store';
 import { newSetupCode } from '../panel/auth';
@@ -809,6 +810,10 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   const budget = new Budget(env);
 
   if (path === '/migrate' && method === 'POST') return migrate(env);
+  if (path === '/people' && method === 'POST') {
+    const body = await readJson<{ people?: PersonInput[]; asOf?: string }>(request, 512 * 1024);
+    return upsertPeople(env, body.people ?? [], /^\d{4}-\d{2}-\d{2}$/.test(String(body.asOf)) ? String(body.asOf) : nowIso().slice(0, 10));
+  }
   if (path === '/quota' && method === 'GET') return quota(env);
   if (path === '/verify' && method === 'GET') return verify(env);
   if (path === '/queue' && method === 'GET') return listQueue(env, url);

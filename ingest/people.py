@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from urllib.parse import urljoin
 from datetime import date
 
 from .api import PortalApi
@@ -62,29 +63,49 @@ def _cards(soup) -> list[dict]:
         cats = [_clean(li.get_text()) for li in card.select(".category-list li")]
         mail = next((a["href"][7:].split("?")[0].strip() for a in card.select('a[href^="mailto:"]')), None)
         tel = next((_clean(a.get_text()) or a["href"][4:] for a in card.select('a[href^="tel:"]')), None)
-        out.append({"name": _titlecase(name), "title": title, "department": ", ".join(c for c in cats if c), "email": mail, "phone": tel})
+        photo = None
+        for el in card.select("[style]"):
+            m = re.search(r"url\(\s*['\"]?([^'\")]+)", el.get("style") or "")
+            if m:
+                photo = urljoin(BASE, m.group(1).strip())
+                break
+        if not photo:
+            img = card.find("img", src=True)
+            photo = urljoin(BASE, img["src"]) if img and not img["src"].startswith("data:") else None
+        more = card.select_one("a.rz-bus-readmore[href]")
+        out.append({"name": _titlecase(name), "title": title, "department": ", ".join(c for c in cats if c), "email": mail, "phone": tel, "photo": photo, "detail": urljoin(BASE, more["href"]) if more else None})
     return out
+
+
+def slugify(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:80]
 
 
 def council(client: PoliteClient) -> list[dict]:
     soup = _soup(client, PAGES["council"])
     if not soup:
         return []
+    cards = _cards(soup)
     text = _clean(soup.get_text(" "))
     people = []
     for m in re.finditer(r"\b(Mayor|Council Member|Councilmember)\s+([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}?)\s+TERM\s+(.+?)\s+Read More\s+(\S+@\S+)", text):
         term = re.sub(r"\bTHROUGH\b", "through", m.group(3).strip().rstrip("."))
         term = re.sub(r"\b([A-Z]{3,})\b", lambda x: x.group(1).title(), term)
-        people.append({"role": "Mayor" if m.group(1) == "Mayor" else "Council Member", "name": m.group(2).strip(), "term": term, "email": m.group(4).strip()})
+        name = m.group(2).strip()
+        card = next((c for c in cards if name.lower() in c["name"].lower()), {})
+        people.append({"role": "Mayor" if m.group(1) == "Mayor" else "Council Member", "name": name, "term": term, "email": m.group(4).strip(), "photo": card.get("photo"), "detail": card.get("detail")})
     return people
 
 
-def build(client: PoliteClient, today: str | None = None) -> list[tuple[str, str, str, str]]:
-    """(key, title, url, text) for each record."""
+def build(client: PoliteClient, today: str | None = None, people_out: list | None = None) -> list[tuple[str, str, str, str]]:
+    """(key, title, url, text) for each record; structured profiles go into people_out."""
     today = today or date.today().isoformat()
     records = []
+    people_out = people_out if people_out is not None else []
 
     officials = council(client)
+    for p in officials:
+        people_out.append({"slug": slugify(p["name"]), "name": p["name"], "kind": "elected", "role": p["role"], "title": p["role"], "department": "Mayor and City Council", "term": p["term"], "email": p["email"], "phone": None, "photoUrl": p.get("photo"), "sourceUrl": p.get("detail") or PAGES["council"]})
     if officials:
         mayor = [p for p in officials if p["role"] == "Mayor"]
         members = [p for p in officials if p["role"] != "Mayor"]
@@ -101,6 +122,11 @@ def build(client: PoliteClient, today: str | None = None) -> list[tuple[str, str
 
     soup = _soup(client, PAGES["staff"])
     staff = _cards(soup) if soup else []
+    elected = {p["slug"] for p in people_out}
+    for p in staff:
+        if slugify(p["name"]) in elected:
+            continue
+        people_out.append({"slug": slugify(p["name"]), "name": p["name"], "kind": "staff", "role": p["title"] or "Staff", "title": p["title"] or None, "department": p["department"].title() or None, "term": None, "email": p["email"], "phone": p["phone"], "photoUrl": p.get("photo"), "sourceUrl": PAGES["staff"]})
     if staff:
         by_dept: dict[str, list[dict]] = {}
         for p in staff:
@@ -138,8 +164,13 @@ def build(client: PoliteClient, today: str | None = None) -> list[tuple[str, str
 
 def run(api: PortalApi, client: PoliteClient) -> dict:
     today = date.today().isoformat()
-    records = build(client, today)
-    counts = {"records": len(records), "new_or_changed": 0, "unchanged": 0}
+    people: list[dict] = []
+    records = build(client, today, people)
+    counts = {"records": len(records), "new_or_changed": 0, "unchanged": 0, "profiles": 0}
+    if people:
+        # Profiles (photo, title, term, contact) for the portal's people cards and pages.
+        res = api.post("/people", {"people": people, "asOf": today})
+        counts["profiles"] = int(res.get("people") or 0)
     for key, title, url, text in records:
         sha = hashlib.sha256(text.encode()).hexdigest()
         res = api.post(

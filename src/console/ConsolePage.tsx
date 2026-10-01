@@ -20,6 +20,8 @@ import { AnswerBody, Sources } from './Answer';
 import { Records } from './Records';
 import { AnswerActions } from './AnswerActions';
 import { QuickLinks } from './QuickLinks';
+import { PersonCard } from './PersonCard';
+import { peopleIn, usePeople } from './people';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
@@ -144,6 +146,7 @@ export default function ConsolePage() {
   const [init] = useState(() => initialChat(params));
   const [chatId, setChatId] = useState(init.id);
   const [turns, setTurns] = useState<Turn[]>(init.turns);
+  const people = usePeople();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const started = useRef(new Set<string>(init.restored ? init.turns.map((t) => t.id) : []));
@@ -380,6 +383,9 @@ export default function ConsolePage() {
             <div className="vc-you">
               <p className="vc-bubble">{t.question}</p>
             </div>
+            {peopleIn(t.question, people).map((p) => (
+              <PersonCard key={p.slug} person={p} />
+            ))}
             {t.status === 'loading' && !t.draft && <Thinking writing={t.phase === 'writing'} />}
             {t.status === 'loading' && t.draft && (
               <div className="vc-answer" data-streaming="true" aria-live="polite">

@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { CalendarDays, History, Map as MapIcon, Moon, Newspaper, Settings2, Sun, Trash2 } from 'lucide-react';
+import { CalendarDays, History, Map as MapIcon, Moon, Newspaper, Settings2, Sun, Trash2, Users } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { clearChats, setHistoryEnabled, useChats, useHistoryEnabled } from './history';
@@ -132,6 +132,10 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
         <NavLink to="/meetings" className="vc-ghost vc-nav" aria-label="Calendar" title="Calendar">
           <CalendarDays size={16} strokeWidth={1.8} />
           <span className="vc-nav-text">Calendar</span>
+        </NavLink>
+        <NavLink to="/people" className="vc-ghost vc-nav" aria-label="People" title="People">
+          <Users size={16} strokeWidth={1.8} />
+          <span className="vc-nav-text">People</span>
         </NavLink>
         <NavLink to="/map" className="vc-ghost vc-nav" aria-label="Map" title="Map">
           <MapIcon size={16} strokeWidth={1.8} />

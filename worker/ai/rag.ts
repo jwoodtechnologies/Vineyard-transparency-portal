@@ -10,6 +10,7 @@
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
+import { ensurePeopleTable } from '../api/people';
 import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, aiText, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
@@ -210,6 +211,24 @@ async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: s
 
 const CURRENT = /\b(who is|who's|who are|current|currently|now|today|as of|latest|presently|still|this year|right now)\b/i;
 const ROLE = /\b(mayor|deputy mayor|council ?(member|man|woman)s?|city council|city manager|recorder|city attorney|director|department head|staff|employees?|who works|chief|official|commissioners?)\b/i;
+const VOTE = /\b(vote[sd]?|voting|motion|moved|second(ed)?|position|stance|support(ed)?|oppose[sd]?|against|for or against|aye|nay)\b/i;
+
+let peopleCache: { at: number; list: Array<{ name: string; last: string; role: string }> } | null = null;
+/** A current official or staff member named in the question (full name, or title + last name). */
+async function personIn(env: Env, q: string): Promise<{ name: string; last: string; role: string } | null> {
+  if (!peopleCache || Date.now() - peopleCache.at > 10 * 60_000) {
+    await ensurePeopleTable(env);
+    const res = await env.CATALOG_DB.prepare("SELECT name, role FROM people WHERE current = 1 ORDER BY CASE kind WHEN 'elected' THEN 0 ELSE 1 END").all<{ name: string; role: string }>();
+    peopleCache = { at: Date.now(), list: (res.results ?? []).map((r) => ({ name: r.name, role: r.role, last: r.name.split(/\s+/).pop() ?? r.name })) };
+  }
+  const text = ` ${q.toLowerCase()} `;
+  return (
+    peopleCache.list.find((p) => text.includes(` ${p.name.toLowerCase()} `) || text.includes(` ${p.name.toLowerCase()}'`)) ??
+    peopleCache.list.find((p) => new RegExp(`\\b(mayor|council ?(member|man|woman)|councilor)\\s+${p.last.toLowerCase()}\\b`).test(text)) ??
+    null
+  );
+}
+
 const PRONOUN = /\b(it|its|that|this|those|these|they|them|their|he|she|his|her|there|same|more|else)\b/i;
 
 /** "What about that one?" refers back; "Is David Kyle Herring the deputy mayor?" does not. */
@@ -322,6 +341,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const rewritten = terms ? await retrieve(terms, filters) : [];
     const seenChunks = new Set<string>();
     hits = [...rewritten.slice(0, 25), ...direct, ...rewritten.slice(25)].filter((h) => (seenChunks.has(h.chunkId) ? false : (seenChunks.add(h.chunkId), true)));
+  }
+  // A question about a named official's votes or positions reads the minutes for their recorded
+  // motions and votes (minutes list votes by last name).
+  const person = await personIn(env, body.question).catch(() => null);
+  if (person && VOTE.test(body.question)) {
+    const rest = body.question.replace(new RegExp(person.name.split(' ').join('\\s+'), 'ig'), ' ').replace(new RegExp(VOTE.source, 'gi'), ' ');
+    const votes = await retrieve(`${person.last} ${rest} motion`, { ...filters, documentTypes: ['minutes'] }).catch(() => [] as ChunkHit[]);
+    const seenV = new Set<string>();
+    hits = [...votes.slice(0, 12), ...hits].filter((h) => (seenV.has(h.chunkId) ? false : (seenV.add(h.chunkId), true)));
+    question = `${question}\n(${person.name} is ${person.role}. Minutes record votes by last name, for example "motion carried 4-0 (Holdaway, Lauret, McCumber, Wood)" or "${person.last} voted nay". Report how ${person.name} voted or moved only where a source shows it, with the meeting date.)`;
   }
   // "Who is ...", "current", "now": today's records (the staff directory, the mayor and council
   // list, current map data) lead, then the newest dated records, so the answer reflects today.
