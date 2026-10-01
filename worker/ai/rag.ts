@@ -9,7 +9,7 @@
  */
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
-import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
+import type { AskRequest, AskResponse, Citation, DocumentSummary, DocumentType, SearchFilters } from '../../src/types/models';
 import { ensurePeopleTable } from '../api/people';
 import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
@@ -421,6 +421,27 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     hits = [...hits.slice(0, 30), ...found, ...hits.slice(30)].filter((h) => (seenT.has(h.chunkId) ? false : (seenT.add(h.chunkId), true)));
   }
   const topicNotes = topics.map((t) => t.note).filter(Boolean).join(' ');
+  // "The first meeting in May 1989", "the earliest minutes": the actual earliest record of that kind
+  // in the window is read directly, so "first" means first by date, not best keyword match.
+  const firstIds = new Set<string>();
+  const FIRST = /\b(first|earliest|oldest)\b(?!\s+responders?)/i;
+  if (FIRST.test(body.question)) {
+    const type = /\b(minutes|meeting|decide|decided|approved)\b/i.test(body.question) ? 'minutes' : /\bresolution/i.test(body.question) ? 'resolution' : /\bordinance/i.test(body.question) ? 'ordinance' : null;
+    if (type) {
+      const row = await env.CATALOG_DB.prepare(
+        `SELECT min(document_date) AS d FROM documents WHERE document_type = ? AND document_date IS NOT NULL${frame ? ' AND document_date BETWEEN ? AND ?' : ''}${/town council|city council|council/i.test(body.question) ? " AND government_body_id = 'city-council'" : ''}`,
+      )
+        .bind(...(frame ? [type, frame.from, frame.to] : [type]))
+        .first<{ d: string | null }>()
+        .catch(() => null);
+      if (row?.d) {
+        const earliest = await retrieve(retrievalText, { ...filters, documentTypes: [type as DocumentType], dateFrom: row.d, dateTo: row.d }).catch(() => [] as ChunkHit[]);
+        earliest.slice(0, 4).forEach((h) => firstIds.add(h.chunkId));
+        const seenF = new Set<string>();
+        hits = [...earliest.slice(0, 4), ...hits].filter((h) => (seenF.has(h.chunkId) ? false : (seenF.add(h.chunkId), true)));
+      }
+    }
+  }
   const currentIds = new Set<string>();
   if (CURRENT.test(body.question) || ROLE.test(body.question)) {
     const current = await retrieve(retrievalText, { ...filters, currency: ['current'] }).catch(() => [] as ChunkHit[]);
@@ -467,6 +488,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     lead(pinnedVotes, 4);
     if (person && /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role)) lead(govIds, 2);
     lead(currentIds, 2);
+    lead(firstIds, 3);
     // "The first meeting", "the earliest ordinance": among the passages that answer, oldest first.
     if (/\b(first|earliest|oldest|original)\b(?!\s+responders?)/i.test(body.question)) {
       const top = best.slice(0, 8).sort((a, b) => String(a.documentDate ?? `${a.year ?? 9999}-12-31`).localeCompare(String(b.documentDate ?? `${b.year ?? 9999}-12-31`)));
