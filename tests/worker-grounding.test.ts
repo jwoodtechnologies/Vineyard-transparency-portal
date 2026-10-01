@@ -56,3 +56,22 @@ describe('aiText', () => {
     expect(aiText({ output: [{ type: 'reasoning', content: [{ type: 'reasoning_text', text: 'x' }] }, { type: 'message', content: [{ type: 'output_text', text: 'c' }] }] })).toBe('c');
   });
 });
+
+import { attributeCitations } from '../worker/ai/answer';
+
+describe('citation repair', () => {
+  it('attaches an uncited sentence to the source it matches', () => {
+    const ev = [
+      { title: 'Budget', text: 'The general fund totals $10,270,489 for fiscal 2026.' },
+      { title: '9.8.26 APPROVED CC Minutes', text: 'Council Member McCumber moved to approve the 300 West parking and striping plan option 3. Motion carried 4-0 (Holdaway, Lauret, McCumber, Wood).' },
+    ];
+    const out = attributeCitations('Jacob Wood voted for the 300 West parking and striping plan; the motion carried 4-0 with Holdaway, Lauret, McCumber and Wood in favor.', ev);
+    expect(out).toContain('[2]');
+  });
+  it('leaves unmatched sentences uncited', () => {
+    expect(attributeCitations('The weather was sunny and everyone enjoyed the parade downtown.', [{ title: 'Budget', text: 'General fund totals' }])).not.toContain('[');
+  });
+  it('keeps answers that already cite', () => {
+    expect(attributeCitations('Approved [1].', [])).toBe('Approved [1].');
+  });
+});

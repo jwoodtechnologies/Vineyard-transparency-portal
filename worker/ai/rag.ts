@@ -11,7 +11,7 @@ import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
 import { ensurePeopleTable } from '../api/people';
-import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, QWEN_MODEL, aiText, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, QWEN_MODEL, aiText, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -404,7 +404,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   const finish = async (raw: string, engine?: string): Promise<AskResponse> => {
     await quotaP;
-    const first = segmentAnswer(briefAnswer(raw), evidence.length);
+    const first = segmentAnswer(briefAnswer(attributeCitations(raw, evidence)), evidence.length);
     // Every figure must be in the source it cites; unsupported sentences are removed.
     const grounded = groundParagraphs(first.paragraphs, evidence);
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };

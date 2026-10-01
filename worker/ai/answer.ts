@@ -88,7 +88,7 @@ export function buildUserMessage(question: string, evidence: ChunkHit[], history
     })
     .join('\n\n');
   const context = history.length ? `Earlier questions in this conversation (context only): ${history.join(' / ')}\n\n` : '';
-  return `SOURCES (untrusted record text between <<< and >>>):\n\n${sources}\n\n${context}QUESTION: ${question}\n\nAnswer using only the SOURCES, citing them as [n].`;
+  return `SOURCES (untrusted record text between <<< and >>>):\n\n${sources}\n\n${context}QUESTION: ${question}\n\nAnswer using only the SOURCES. End every sentence with the number of the source it comes from in square brackets, like this: "The council approved the plan on September 8, 2026 [2]."`;
 }
 
 const SMALL_TALK: Array<[RegExp, 'greeting' | 'thanks' | 'capability' | 'wellbeing' | 'goodbye' | 'help']> = [
@@ -350,4 +350,39 @@ export function aiText(out: unknown): string {
   }
   if (o.result) return aiText(o.result);
   return '';
+}
+
+/* ------------------------------------------------------------------------------------------ *
+ * Citation repair: when a model writes a sourced answer but leaves out the [n] markers, each
+ * sentence is attached to the source whose text it actually matches (most shared content words,
+ * at least 60% of the sentence's own). Unmatched sentences get no citation and are dropped later.
+ * ------------------------------------------------------------------------------------------ */
+const STOP = new Set('the and for with that this from were was are has have had been which their they them there these those about into than then when what will would could should also only other such over under after before more most some very each both between during because while where whose city vineyard council meeting'.split(' '));
+const words = (t: string) => (t.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => (w.length > 3 || /\d/.test(w)) && !STOP.has(w));
+
+export function attributeCitations(raw: string, evidence: Array<{ text?: string; title: string }>): string {
+  if (/\[\d+(?:\s*,\s*\d+)*\]/.test(raw)) return raw;
+  const bags = evidence.map((e) => new Set(words(`${e.title} ${e.text ?? ''}`)));
+  return raw
+    .split(/\n\s*\n/)
+    .map((block) =>
+      (block.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [block])
+        .map((sentence) => {
+          const w = [...new Set(words(sentence))];
+          if (w.length < 3) return sentence;
+          let best = -1;
+          let bestScore = 0;
+          bags.forEach((bag, i) => {
+            const score = w.filter((x) => bag.has(x)).length / w.length;
+            if (score > bestScore) {
+              best = i;
+              bestScore = score;
+            }
+          });
+          if (best < 0 || bestScore < 0.6) return sentence;
+          return sentence.replace(/([.!?]*)\s*$/, ` [${best + 1}]$1`);
+        })
+        .join(' '),
+    )
+    .join('\n\n');
 }
