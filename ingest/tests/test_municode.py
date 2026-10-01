@@ -61,3 +61,9 @@ def test_adoption_date_from_signature_block():
     assert adoption_date("See the plan of March 3, 2019.", 2026) is None
     assert adoption_date("the meeting of March 3, 2026 was noticed", 2026) is None
     assert adoption_date("", 2026) is None
+
+
+def test_adoption_date_history_note():
+    from ingest.adapters.municode import adoption_date
+
+    assert adoption_date("HISTORY\n\nAdopted by Res.\n\n1989-02\n on 5/18/1989\n\nRESOLUTION", 1989) == "1989-05-18"

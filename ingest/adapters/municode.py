@@ -191,6 +191,7 @@ class MunicipalCodeAdapter(SourceAdapter):
 _MONTHS = "january|february|march|april|may|june|july|august|september|october|november|december"
 _DAY_OF = re.compile(rf"\b(\d{{1,2}})\s*(?:st|nd|rd|th)?\s+day\s+of\s+({_MONTHS})\s*,?\s*(\d{{4}})", re.I)
 _MDY = re.compile(rf"\b({_MONTHS})\s+(\d{{1,2}})\s*(?:st|nd|rd|th)?\s*,?\s*(\d{{4}})\b", re.I)
+_NUMERIC = re.compile(r"\b(?:adopted|passed|approved|effective)\b.{0,40}?\b(?:on\s+)?(\d{1,2})/(\d{1,2})/(\d{4})\b", re.I)
 _ADOPT = re.compile(r"\b(adopted|passed|approved|dated|effective|signed)\b", re.I)
 
 
@@ -212,6 +213,14 @@ def adoption_date(text: str, year: int | None) -> str | None:
     never given a made-up day."""
     if not text or not year:
         return None
+    import datetime as _dt
+
+    for m in _NUMERIC.finditer(re.sub(r"\s+", " ", text)):
+        if int(m.group(3)) == year:
+            try:
+                return _dt.date(int(m.group(3)), int(m.group(1)), int(m.group(2))).isoformat()
+            except ValueError:
+                pass
     best = None
     for m in _DAY_OF.finditer(text):
         if int(m.group(3)) == year:

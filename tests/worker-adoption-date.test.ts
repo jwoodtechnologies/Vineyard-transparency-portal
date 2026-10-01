@@ -12,3 +12,10 @@ describe('adoptionDate', () => {
     expect(adoptionDate('this 31st day of February, 2026', 2026)).toBeNull();
   });
 });
+
+describe('adoptionDate history note', () => {
+  it('reads the code site note', () => {
+    expect(adoptionDate('HISTORY\n\nAdopted by Res.\n\n1989-02\n on 5/18/1989\n\nRESOLUTION', 1989)).toBe('1989-05-18');
+    expect(adoptionDate('Adopted by Ord. 2020-04 on 13/40/2020', 2020)).toBeNull();
+  });
+});
