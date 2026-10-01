@@ -49,6 +49,14 @@ export async function listDocuments(env: Env, url: URL, filters: SearchFilters):
     const items = ids.map((id) => map.get(id)).filter((x): x is DocumentSummary => Boolean(x));
     return json({ items, page: 1, pageSize: items.length, total: items.length } satisfies Paginated<DocumentSummary>, { cache: CACHE.list });
   }
+  // ?url=: the archived copy of one page or file by its official address (the Services pages).
+  const byUrl = url.searchParams.get('url');
+  if (byUrl && /^https:\/\/[^\s]{8,500}$/.test(byUrl)) {
+    const bare = byUrl.replace(/[?#].*$/, '');
+    const rows = await env.CATALOG_DB.prepare('SELECT * FROM documents WHERE original_url = ? OR original_url = ? OR original_url LIKE ? ORDER BY coalesce(document_date, updated_at) DESC LIMIT 3').bind(byUrl, bare, `${bare}?%`).all<Row>();
+    const items = (rows.results ?? []).map(toDocumentSummary);
+    return json({ items, page: 1, pageSize: items.length, total: items.length } satisfies Paginated<DocumentSummary>, { cache: CACHE.list });
+  }
   const page = clampInt(url.searchParams.get('page'), 1, 1, 10000);
   const pageSize = clampInt(url.searchParams.get('pageSize'), 20, 1, 100);
   const order = ORDER_BY[url.searchParams.get('sort') ?? 'date_desc'] ?? ORDER_BY.date_desc;

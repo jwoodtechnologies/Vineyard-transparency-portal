@@ -122,3 +122,18 @@ NOMINATION: Commissioner David Pearce nominated Commissioner Nathan Steele. Comm
     expect(p.fullNames.Christensen).toBe('Jordan Christensen');
   });
 });
+
+describe('board roster from minutes', () => {
+  it('reads chair, vice chair, alternate and members', async () => {
+    const { rosterFrom } = await import('../worker/lib/votes');
+    const r = rosterFrom('NOTICE OF A REGULAR ARCH COMMISSION MEETING February 19, 2026, at 6:00 PM Present Absent Chair Jarom Sidwell Vice-Chair Elisabeth Shelley Commissioner Daniel George Commissioner Alternate Brooke Meyer Commissioner Sherrie-Kaye Miller Commissioner Bronson Tatton Staff Present Parks and Recreation Director Brian Vawdrey');
+    expect(r).toEqual([
+      { name: 'Jarom Sidwell', role: 'Chair' },
+      { name: 'Elisabeth Shelley', role: 'Vice Chair' },
+      { name: 'Daniel George', role: 'Member' },
+      { name: 'Brooke Meyer', role: 'Alternate' },
+      { name: 'Sherrie-Kaye Miller', role: 'Member' },
+      { name: 'Bronson Tatton', role: 'Member' },
+    ]);
+  });
+});

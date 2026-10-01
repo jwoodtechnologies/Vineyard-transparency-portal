@@ -26,8 +26,6 @@ type Base = 'streets' | 'satellite' | 'terrain' | 'blank';
 const BASES: Array<{ id: Base; label: string }> = [
   { id: 'streets', label: 'Streets' },
   { id: 'satellite', label: 'Satellite' },
-  { id: 'terrain', label: 'Terrain' },
-  { id: 'blank', label: 'Blank' },
 ];
 const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
 const USGS = (svc: string) => `https://basemap.nationalmap.gov/arcgis/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`;
@@ -59,7 +57,7 @@ function styleFor(base: Base, dark: boolean): string | maplibregl.StyleSpecifica
   };
 }
 
-const readBase = (v: string | null): Base | null => (v === 'streets' || v === 'satellite' || v === 'terrain' || v === 'blank' ? v : null);
+const readBase = (v: string | null): Base | null => (v === 'streets' || v === 'satellite' ? v : null);
 function savedBase(): Base | null {
   try {
     return readBase(localStorage.getItem('vtp:mapbase'));
@@ -234,11 +232,17 @@ function nameOf(layer: string, p: Record<string, unknown>): string {
   return 'Map feature';
 }
 
+/** What each color means, for layers colored by a field (snow plow priority, zoning, land use). */
+const LEGENDS = new Map<string, Array<[string, string]>>();
+const LEGEND_TITLE: Record<string, string> = { snowplow: 'Snow plow priority', zoning: 'Zoning', landuse: 'Future land use', evaczones: 'Evacuation zone', greenspace: 'Green space', watersedge: "Water's Edge district", rdaparcels: 'RDA', subdivisions: 'Neighborhood' };
+const legendValue = (layer: string, v: string) => (layer === 'snowplow' && /^\d+$/.test(v) ? `Priority ${v}${v === '1' ? ' (plowed first)' : ''}` : v);
+
 function colorize(layer: string, fc: FC): FC {
   const by = LOOK[layer]?.by;
   if (!by) return fc;
   const values = [...new Set(fc.features.map((f) => String(f.properties?.[by] ?? '')))].sort();
   const idx = new Map(values.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+  LEGENDS.set(layer, values.filter(Boolean).map((v) => [v, idx.get(v) as string]));
   return { ...fc, features: fc.features.map((f) => ({ ...f, properties: { ...f.properties, __c: idx.get(String(f.properties?.[by] ?? '')) } })) };
 }
 
@@ -841,6 +845,28 @@ export default function MapPage() {
             <p className="vc-panel-note">From the city&apos;s public GIS. Parcel owner names are not shown.</p>
           </aside>
         )}
+
+        {!panel && !picked && (() => {
+          const shown = [...on].filter((k) => data[k] && LEGENDS.get(k)?.length && (LEGENDS.get(k)?.length ?? 0) <= 14);
+          if (!shown.length) return null;
+          return (
+            <aside className="vc-map-legend" aria-label="Legend">
+              {shown.map((k) => (
+                <div key={k}>
+                  <p className="vc-map-legend-title">{LEGEND_TITLE[k] ?? catalog?.find((l) => l.key === k)?.label ?? k}</p>
+                  <ul>
+                    {LEGENDS.get(k)!.map(([v, c]) => (
+                      <li key={v}>
+                        <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: c }} />
+                        {legendValue(k, v)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </aside>
+          );
+        })()}
 
         {picked && (
           <aside className="vc-map-card" aria-label="Details">

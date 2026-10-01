@@ -6,10 +6,10 @@
 import './console.css';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { Frame } from './Chrome';
 import { useJson } from './api';
-import { useMemberNames, type MotionRow, type VoteMember } from './votes';
+import { motionLabel, useMemberNames, type MotionRow, type VoteMember } from './votes';
 import { usePeople } from './people';
 
 const BODIES: Array<[string, string]> = [
@@ -54,52 +54,81 @@ function AttendanceBlock({ a }: { a: Attendance }) {
 const VOTE_LABEL: Record<string, string> = { yes: 'Yes', no: 'No', abstain: 'Abstained', recused: 'Recused', absent: 'Absent' };
 const ORDER: Record<string, number> = { yes: 0, no: 1, abstain: 2, recused: 3, absent: 4 };
 
-const longDate = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : 'Date not recorded');
+const DAY = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00Z`) : null);
+const fmt = (iso: string | null, o: Intl.DateTimeFormatOptions) => (DAY(iso) ? DAY(iso)!.toLocaleDateString('en-US', { ...o, timeZone: 'UTC' }) : '');
+const last = (n: string) => n.split(' ').pop() ?? n;
 
-/** One motion as the minutes record it, with the full roll call by name. */
+/** One vote: what it was on, how it ended, and each member's vote. */
 export function MotionCard({ m, member }: { m: MotionRow; member?: string | null }) {
   const nameOf = useMemberNames();
-  const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'Outcome not recorded';
-  const who = [m.mover ? `Moved by ${nameOf(m.mover).name}` : null, m.seconder ? `seconded by ${nameOf(m.seconder).name}` : null].filter(Boolean).join(', ');
-  // How each member who voted cast their vote (absences are not part of the record shown).
+  const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result recorded';
   const roll = [...m.votes].filter((v) => v.vote !== 'absent').sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
   return (
-    <li className="vc-mo">
-      {m.item && <p className="vc-mo-item">{m.item}</p>}
-      <p className="vc-mo-text">Motion to {m.motion.replace(/^to\s+/i, '')}</p>
-      <p className="vc-mo-line">
-        {who ? `${who}. ` : ''}
-        <span className="vc-mo-result" data-result={m.result}>
+    <li className="vc-vt">
+      <div className="vc-vt-top">
+        <p className="vc-vt-label">{motionLabel(m)}</p>
+        <span className="vc-vt-result" data-result={m.result}>
           {outcome}
           {m.tally ? ` ${m.tally}` : ''}
         </span>
-        {m.tieBreak ? '. The mayor broke a tie.' : '.'}
-      </p>
+      </div>
       {roll.length > 0 && (
-        <ul className="vc-roll" aria-label="Roll call">
+        <ul className="vc-vt-votes" aria-label="How each member voted">
           {roll.map((v) => (
-            <li key={v.member} data-on={member && member === v.member ? 'true' : undefined}>
-              <span>{nameOf(v.member).name}</span>
-              <b data-vote={v.vote}>{VOTE_LABEL[v.vote] ?? v.vote}</b>
+            <li key={v.member} data-vote={v.vote} data-on={member && member === v.member ? 'true' : undefined} title={`${nameOf(v.member).name}: ${VOTE_LABEL[v.vote] ?? v.vote}`}>
+              {last(nameOf(v.member).name)}
+              <b>{v.vote === 'yes' ? 'Yes' : v.vote === 'no' ? 'No' : VOTE_LABEL[v.vote]}</b>
             </li>
           ))}
         </ul>
       )}
-      {m.inferred && <p className="vc-mo-note">The minutes record this vote as unanimous.</p>}
-      <Link to={`/documents/${encodeURIComponent(m.documentId)}${m.page ? `?page=${m.page}` : ''}`} className="vc-mo-src">
-        Minutes{m.page ? `, page ${m.page}` : ''}
-      </Link>
+      {(m.mover || m.tieBreak) && (
+        <p className="vc-vt-meta">
+          {m.mover ? `Moved by ${last(nameOf(m.mover).name)}${m.seconder ? `, seconded by ${last(nameOf(m.seconder).name)}` : ''}` : ''}
+          {m.tieBreak ? `${m.mover ? '. ' : ''}Mayor broke the tie` : ''}
+        </p>
+      )}
     </li>
   );
 }
 
-function YearSection({ year, meetings, query, open, onToggle, member, attendance }: { year: number; meetings: number; query: string; open: boolean; onToggle: () => void; member: string | null; attendance: Attendance | null }) {
+/** A meeting as a card: its date, body and every vote taken, opening the meeting itself. */
+function MeetingCard({ items, member, att }: { items: MotionRow[]; member: string | null; att?: { present: string[]; absent: string[] } | null }) {
+  const m0 = items[0];
+  const body = m0.bodyId === 'redevelopment-agency' ? 'RDA Board' : (m0.bodyName ?? 'Meeting');
+  const to = m0.meetingId ? `/meetings/${encodeURIComponent(m0.meetingId)}` : `/documents/${encodeURIComponent(m0.documentId)}`;
+  return (
+    <article className="vc-mcard">
+      <Link to={to} className="vc-mcard-head">
+        <span className="vc-mcard-date">
+          <span>{fmt(m0.date, { month: 'short' })}</span>
+          <b>{fmt(m0.date, { day: 'numeric' })}</b>
+        </span>
+        <span className="vc-mcard-title">
+          <span className="vc-mcard-body">{body}</span>
+          <span className="vc-mcard-sub">
+            {fmt(m0.date, { weekday: 'long' })} · {items.length} {items.length === 1 ? 'vote' : 'votes'}
+            {att ? ` · ${att.present.length} present` : ''}
+          </span>
+        </span>
+        <ChevronRight size={18} className="vc-mcard-go" />
+      </Link>
+      <ol className="vc-vts">
+        {items.map((m) => (
+          <MotionCard key={m.id} m={m} member={member} />
+        ))}
+      </ol>
+    </article>
+  );
+}
+
+function YearSection({ year, query, open, onToggle, member, attendance }: { year: number; query: string; open: boolean; onToggle: () => void; member: string | null; attendance: Attendance | null }) {
   const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?scope=current&${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
   const groups = useMemo(() => {
     if (list.status !== 'done') return [];
     const by = new Map<string, MotionRow[]>();
     for (const m of list.data.items) {
-      const k = `${m.date ?? ''}|${m.bodyName ?? ''}`;
+      const k = `${m.date ?? ''}|${m.bodyId ?? ''}`;
       (by.get(k) ?? by.set(k, []).get(k)!).push(m);
     }
     return [...by.entries()];
@@ -108,9 +137,6 @@ function YearSection({ year, meetings, query, open, onToggle, member, attendance
     <section className="vc-year">
       <button type="button" className="vc-year-head" onClick={onToggle} aria-expanded={open}>
         <span className="vc-year-num">{year}</span>
-        <span className="vc-year-sub">
-          {meetings} {meetings === 1 ? 'meeting' : 'meetings'}
-        </span>
         <ChevronDown size={18} className="vc-board-chev" data-open={open} />
       </button>
       {open && list.status === 'loading' && (
@@ -120,31 +146,31 @@ function YearSection({ year, meetings, query, open, onToggle, member, attendance
         </div>
       )}
       {open && list.status === 'error' && <p className="vc-mo-note">This year could not load just now.</p>}
-      {open &&
-        groups.map(([k, items]) => (
-          <div key={k} className="vc-meet">
-            <h3 className="vc-meet-head">
-              {longDate(items[0].date)}
-              <span>{items[0].bodyName}</span>
-            </h3>
-            {(() => {
-              const at = attendance?.meetings.find((x) => x.date === items[0].date);
-              if (!at) return null;
-              return (
-                <p className="vc-mo-line">
-                  Present: {at.present.join(', ') || 'not recorded'}
-                  {at.absent.length ? `. Absent: ${at.absent.join(', ')}` : ''}.
-                </p>
-              );
-            })()}
-            <ol className="vc-mos">
-              {items.map((m) => (
-                <MotionCard key={m.id} m={m} member={member} />
-              ))}
-            </ol>
-          </div>
-        ))}
+      {open && list.status === 'done' && !groups.length && <p className="vc-mo-note">No votes match.</p>}
+      {open && (
+        <div className="vc-mcards">
+          {groups.map(([k, items]) => (
+            <MeetingCard key={k} items={items} member={member} att={attendance?.meetings.find((x) => x.date === items[0].date) ?? null} />
+          ))}
+        </div>
+      )}
     </section>
+  );
+}
+
+/** How many of this year's meetings have minutes posted (votes come only from posted minutes). */
+function Coverage({ bodies }: { bodies: string[] }) {
+  const [today] = useState(() => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
+  const y = Number(today.slice(0, 4));
+  const a = useJson<{ items: Array<{ date: string | null; title: string; status?: string; minutesDocumentId: string | null }> }>(`/api/meetings?body=${bodies[0]}&year=${y}&pageSize=100`);
+  const b = useJson<{ items: Array<{ date: string | null; title: string; status?: string; minutesDocumentId: string | null }> }>(bodies[1] ? `/api/meetings?body=${bodies[1]}&year=${y}&pageSize=100` : null);
+  if (a.status !== 'done' || (bodies[1] && b.status !== 'done')) return null;
+  const all = [...a.data.items, ...(b.status === 'done' ? b.data.items : [])].filter((m) => m.date && m.date.slice(0, 10) <= today && !/cancel/i.test(`${m.title} ${m.status ?? ''}`));
+  const posted = all.filter((m) => m.minutesDocumentId).length;
+  return (
+    <p className="vc-coverage">
+      {all.length} {all.length === 1 ? 'meeting' : 'meetings'} held so far in {y}; the city has posted minutes for {posted}. Votes appear here once a meeting&apos;s minutes are posted.
+    </p>
   );
 }
 
@@ -190,7 +216,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
         <p className="vc-page-sub">
           {commission
             ? 'The current commissioners, their attendance and every motion they have voted on since January 2026, from the commission’s minutes.'
-            : 'How the current mayor and City Council have voted since January 2026: every motion in the minutes, by meeting, with each member’s vote. The council also sits as the Redevelopment Agency (RDA) board.'}
+            : 'How the current City Council has voted since January 2026, meeting by meeting, newest first. Includes the council’s votes as the Redevelopment Agency (RDA) board.'}
         </p>
       </header>
 
@@ -233,6 +259,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
       </div>
 
 
+      <Coverage bodies={commission ? ['planning-commission'] : body ? [body] : ['city-council', 'redevelopment-agency']} />
       {att && att.meetings.length > 0 && <AttendanceBlock a={att} />}
 
       {years.status === 'loading' && (
@@ -242,9 +269,9 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
       )}
       {years.status === 'done' && !yearList.length && <p className="vc-mo-note">No motions match.</p>}
       {yearList.map((y, i) => (
-        <YearSection key={y.year} year={y.year} meetings={y.meetings} query={query} member={member || null} attendance={att} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
+        <YearSection key={y.year} year={y.year} query={query} member={member || null} attendance={att} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
       ))}
-      <p className="vc-person-asof">Read from each meeting&apos;s approved minutes (a draft only until the approved minutes are posted). Every motion links to the page of the minutes it comes from.</p>
+      <p className="vc-person-asof">From each meeting&apos;s posted minutes. Routine motions (approving minutes or the agenda, adjourning, closed sessions, opening hearings) are left out. Tap a meeting to open its agenda, minutes and video.</p>
     </Frame>
   );
 }

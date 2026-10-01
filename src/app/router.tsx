@@ -4,6 +4,7 @@ import { Navigate, createBrowserRouter, useSearchParams } from 'react-router-dom
 import ConsolePage from '@/console/ConsolePage';
 
 const ServicesPage = lazy(() => import('@/console/ServicesPage'));
+const ServiceView = lazy(() => import('@/console/ServiceView'));
 const MeetingsPage = lazy(() => import('@/console/MeetingsPage'));
 const MeetingPage = lazy(() => import('@/console/MeetingPage'));
 const DocumentView = lazy(() => import('@/console/DocumentView'));
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
   { path: '/meetings/:meetingId', element: quiet(<MeetingPage />) },
   { path: '/documents/:documentId', element: quiet(<DocumentView />) },
   { path: '/services', element: quiet(<ServicesPage />) },
+  { path: '/services/:id', element: quiet(<ServiceView />) },
   // Latest was folded into Records (newest first) and the calendar.
   { path: '/latest', element: <Navigate to="/records" replace /> },
   { path: '/news', element: <Navigate to="/records" replace /> },

@@ -7,6 +7,7 @@ export interface VoteRow {
 }
 export interface MotionRow {
   id: string;
+  meetingId?: string | null;
   date: string | null;
   bodyId: string | null;
   bodyName: string | null;
@@ -49,4 +50,13 @@ export function useMemberNames(): (member: string, full?: string | null) => { na
     const person = people.find((p) => p.kind === 'elected' && (p.name.toLowerCase() === lower || (!member.includes(' ') && p.name.toLowerCase().split(/\s+/).pop() === last))) ?? null;
     return { name: full ?? (member.includes(' ') ? member : (person?.name ?? member)), short: member.split(' ').pop() ?? member, person };
   };
+}
+
+/** What was voted on, in a few words: the agenda item when the motion just says "approve item 5.4". */
+export function motionLabel(m: MotionRow): string {
+  const item = (m.item ?? '').replace(/^\d+(?:\.\d+)*\.?\s+/, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const text = m.motion.replace(/^to\s+/i, '').replace(/\s+/g, ' ').trim();
+  const generic = /^(approve|adopt|accept|deny|table|continue)\b[^.]{0,40}\b(as presented|as written|item|\d+\.\d+)/i.test(text) || text.length < 18;
+  const out = item && generic ? item : text.charAt(0).toUpperCase() + text.slice(1);
+  return out.length > 140 ? `${out.slice(0, 137).replace(/\s+\S*$/, '')}...` : out;
 }

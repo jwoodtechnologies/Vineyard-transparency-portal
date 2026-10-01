@@ -290,3 +290,27 @@ function isoDate(y: number, m: number, d: number): string | null {
   const dt = new Date(Date.UTC(y, m - 1, d));
   return m >= 1 && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? dt.toISOString().slice(0, 10) : null;
 }
+
+export interface RosterEntry {
+  name: string;
+  role: 'Chair' | 'Vice Chair' | 'Alternate' | 'Member';
+}
+
+/**
+ * The members a meeting's minutes list at the top, with their roles: "Chair Jarom Sidwell",
+ * "Vice-Chair Elisabeth Shelley", "Commissioner Alternate Brooke Meyer", "Commissioner Daniel George".
+ * Staff and the public are not members. Full names only (a bare last name is skipped).
+ */
+export function rosterFrom(head: string): RosterEntry[] {
+  const t = head.replace(/\s+/g, ' ').split(/\b(?:staff present|staff:|city staff|also present|others present|public present)\b/i)[0];
+  const out: RosterEntry[] = [];
+  const re = /\b(Vice[- ]?Chair(?:person|man|woman)?|Chair(?:person|man|woman)?|Commissioner Alternate|Alternate Commissioner|Alternate|Commissioner|Board Member|Council ?member|Member)\s+((?:[A-Z][a-z'’]+(?:-[A-Z][a-z'’]+)?)(?:\s+[A-Z]\.)?\s+(?:[A-Z][a-z'’]+(?:-[A-Z][a-z'’]+)?|Mc[A-Z][a-z]+|[A-Z][a-z]+[A-Z][a-z]+))\b/g;
+  for (const m of t.matchAll(re)) {
+    const title = m[1].toLowerCase();
+    const name = m[2].replace(/\s+[A-Z]\.\s+/, ' ');
+    if (name.split(' ').some((w) => STOP.has(w.toLowerCase()))) continue;
+    const role: RosterEntry['role'] = /alternate/.test(title) ? 'Alternate' : /vice/.test(title) ? 'Vice Chair' : /chair/.test(title) ? 'Chair' : 'Member';
+    if (!out.some((x) => x.name === name)) out.push({ name, role });
+  }
+  return out;
+}

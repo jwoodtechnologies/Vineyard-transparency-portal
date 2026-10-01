@@ -6,12 +6,12 @@
  */
 import type { Env } from '../env';
 import { SearchRepository } from '../search/SearchRepository';
-import { parseMinutes, type ParsedMotion } from '../lib/votes';
+import { parseMinutes, rosterFrom, type ParsedMotion } from '../lib/votes';
 import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 5;
+export const VOTES_PARSER = 6;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -28,6 +28,8 @@ export async function ensureVotesTables(env: Env): Promise<void> {
       `CREATE TABLE IF NOT EXISTS vote_members (member TEXT PRIMARY KEY, full_name TEXT, first_date TEXT, last_date TEXT)`,
       `CREATE TABLE IF NOT EXISTS meeting_attendance (document_id TEXT NOT NULL, body_id TEXT, meeting_date TEXT, member TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY (document_id, member))`,
       `CREATE INDEX IF NOT EXISTS meeting_attendance_body ON meeting_attendance(body_id, meeting_date)`,
+      `CREATE TABLE IF NOT EXISTS meeting_roster (document_id TEXT NOT NULL, body_id TEXT, meeting_date TEXT, name TEXT NOT NULL, role TEXT NOT NULL, PRIMARY KEY (document_id, name))`,
+      `CREATE INDEX IF NOT EXISTS meeting_roster_body ON meeting_roster(body_id, meeting_date)`,
     ].map((q) => env.CATALOG_DB.prepare(q)),
   );
   ready = true;
@@ -114,6 +116,7 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
     stmts.push(db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ?)').bind(docId));
     stmts.push(db.prepare('DELETE FROM motions WHERE document_id = ?').bind(docId));
     stmts.push(db.prepare('DELETE FROM meeting_attendance WHERE document_id = ?').bind(docId));
+    stmts.push(db.prepare('DELETE FROM meeting_roster WHERE document_id = ?').bind(docId));
   };
   clear(d.id);
   if (other) {
@@ -155,6 +158,8 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   for (const [list, status] of [[parsed.present, 'present'], [parsed.absent, 'absent']] as const)
     for (const n of new Set(list.map((x) => full(x) as string)))
       stmts.push(db.prepare('INSERT OR REPLACE INTO meeting_attendance (document_id, body_id, meeting_date, member, status) VALUES (?, ?, ?, ?, ?)').bind(d.id, body, date, n, status));
+  // The members the minutes list at the top, with chair, vice chair and alternate roles.
+  for (const r of rosterFrom(text.slice(0, 3000))) stmts.push(db.prepare('INSERT OR REPLACE INTO meeting_roster (document_id, body_id, meeting_date, name, role) VALUES (?, ?, ?, ?, ?)').bind(d.id, body, date, r.name, r.role));
   stmts.push(db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(d.id, key, body, date, rank, motions.length || 1, VOTES_PARSER, now));
   for (let i = 0; i < stmts.length; i += 80) await db.batch(stmts.slice(i, i + 80));
   return { motions: motions.length, votes, superseded: false };
@@ -236,39 +241,51 @@ const REPLACED = new Set(['natalie harbin']);
 /** Roles the sources do not print: Graden Ostler is an alternate. */
 const ROLE_OVERRIDES: Record<string, string> = { ostler: 'Alternate' };
 
-export async function currentCommission(env: Env): Promise<Commissioner[]> {
+/**
+ * A board as it sits now: the members its newest minutes this year list (with chair, vice chair and
+ * alternate roles), plus anyone the city website lists for it with a current or open term.
+ */
+export async function currentRoster(env: Env, body: string, siteNames: string[]): Promise<Commissioner[]> {
   await ensureVotesTables(env);
   const db = env.CATALOG_DB;
   const year = Number(new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 4));
-  const docs = (await db.prepare(`SELECT DISTINCT a.document_id, a.meeting_date FROM meeting_attendance a WHERE a.body_id = ? AND a.meeting_date >= ? ORDER BY a.meeting_date DESC`).bind(PC, SCOPE_FROM).all<{ document_id: string; meeting_date: string }>()).results ?? [];
-  const att = (await db.prepare(`SELECT member, meeting_date, document_id FROM meeting_attendance WHERE body_id = ? AND meeting_date >= ?`).bind(PC, SCOPE_FROM).all<{ member: string; meeting_date: string; document_id: string }>()).results ?? [];
-  const site = (await db.prepare("SELECT slug, name, role, term, photo_url FROM people WHERE current = 1 AND kind = 'board' AND department LIKE '%Planning Commission%'").all<{ slug: string; name: string; role: string; term: string | null; photo_url: string | null }>()).results ?? [];
-  const latest = new Set(docs.slice(0, 2).map((d) => d.document_id));
   const lastOf = (n: string) => (n.split(' ').pop() ?? n).toLowerCase();
-  const recent = new Set(att.filter((a) => latest.has(a.document_id)).map((a) => a.member));
   const out = new Map<string, Commissioner>();
-  for (const n of recent) out.set(lastOf(n), { name: n, role: 'Commissioner', term: null, slug: null, photo: null });
-  for (const p of site) {
-    const end = (p.term ?? '').match(/((?:19|20)\d{2})\s*$/);
-    const termOk = !end || Number(end[1]) >= year;
-    // Listed with a current or open term: on the commission, whether or not posted minutes show them yet.
-    if (termOk && !REPLACED.has(p.name.toLowerCase())) {
-      const role = /alternate/i.test(p.role) ? 'Alternate' : /chair/i.test(p.role) ? p.role : 'Commissioner';
-      // The name as the minutes print it ("Brad Fagg"), with the website's term and profile.
-      out.set(lastOf(p.name), { name: out.get(lastOf(p.name))?.name ?? p.name, role, term: p.term, slug: p.slug, photo: p.photo_url ? `/api/people/${p.slug}/photo` : null });
+  const roster = (await db.prepare('SELECT document_id, meeting_date, name, role FROM meeting_roster WHERE body_id = ? AND meeting_date >= ? ORDER BY meeting_date DESC').bind(body, SCOPE_FROM).all<{ document_id: string; meeting_date: string; name: string; role: string }>()).results ?? [];
+  const rosterDocs = [...new Set(roster.map((r) => r.document_id))].slice(0, 2);
+  for (const r of roster.filter((x) => rosterDocs.includes(x.document_id))) {
+    if (!out.has(lastOf(r.name))) out.set(lastOf(r.name), { name: r.name, role: r.role === 'Member' ? 'Commissioner' : r.role, term: null, slug: null, photo: null });
+  }
+  // Minutes that list members without titles ("Present: Daria Evans, Brad Fagg"): the attendance list.
+  const docs = (await db.prepare('SELECT DISTINCT document_id, meeting_date FROM meeting_attendance WHERE body_id = ? AND meeting_date >= ? ORDER BY meeting_date DESC').bind(body, SCOPE_FROM).all<{ document_id: string; meeting_date: string }>()).results ?? [];
+  if (!rosterDocs.length && docs.length) {
+    const latest = docs.slice(0, 2).map((d) => d.document_id);
+    const att = (await db.prepare('SELECT member, document_id FROM meeting_attendance WHERE body_id = ? AND meeting_date >= ?').bind(body, SCOPE_FROM).all<{ member: string; document_id: string }>()).results ?? [];
+    for (const a of att.filter((x) => latest.includes(x.document_id) && x.member.includes(' '))) if (!out.has(lastOf(a.member))) out.set(lastOf(a.member), { name: a.member, role: 'Commissioner', term: null, slug: null, photo: null });
+  }
+  if (siteNames.length) {
+    const like = siteNames.map(() => 'department LIKE ?').join(' OR ');
+    const site = (await db.prepare(`SELECT slug, name, role, term, photo_url FROM people WHERE current = 1 AND kind = 'board' AND (${like})`).bind(...siteNames.map((n) => `%${n}%`)).all<{ slug: string; name: string; role: string; term: string | null; photo_url: string | null }>()).results ?? [];
+    for (const p of site) {
+      const end = (p.term ?? '').match(/((?:19|20)\d{2})\s*$/);
+      const termOk = !end || Number(end[1]) >= year;
+      if (!termOk || REPLACED.has(p.name.toLowerCase())) continue;
+      const have = out.get(lastOf(p.name));
+      const siteRole = /alternate/i.test(p.role) ? 'Alternate' : /vice/i.test(p.role) ? 'Vice Chair' : /chair/i.test(p.role) ? 'Chair' : /^member$/i.test(p.role) ? 'Commissioner' : p.role;
+      out.set(lastOf(p.name), { name: have?.name ?? p.name, role: have && have.role !== 'Commissioner' ? have.role : siteRole, term: p.term, slug: p.slug, photo: p.photo_url ? `/api/people/${p.slug}/photo` : null });
     }
   }
-  // Chair and vice chair as the latest minutes name them; alternates as the minutes call them.
-  const latestDoc = docs[0]?.document_id;
-  if (latestDoc) {
+  // Roles the latest minutes state in the text ("Chairperson Steele called the meeting to order").
+  const latestDoc = rosterDocs[0] ?? docs[0]?.document_id;
+  if (latestDoc && !rosterDocs.length) {
     const repo = new SearchRepository(env);
     const row = await db.prepare('SELECT search_shard FROM documents WHERE id = ?').bind(latestDoc).first<{ search_shard: number | null }>();
     if (row?.search_shard != null && repo.activeShards.includes(Number(row.search_shard))) {
       const text = (await repo.documentChunks(Number(row.search_shard), latestDoc)).map((c) => c.text).join(' ').replace(/\s+/g, ' ');
       const mark = (re: RegExp, role: string) => {
         for (const m of text.matchAll(re)) {
-          const last = m[1].toLowerCase();
-          for (const c of out.values()) if ((c.name.split(' ').pop() ?? '').toLowerCase() === last && (role !== 'Chair' || c.role === 'Commissioner')) c.role = role;
+          const c = out.get(m[1].toLowerCase());
+          if (c && c.role === 'Commissioner') c.role = role;
         }
       };
       mark(/\balternate (?:commissioner|member)\s+(?:[A-Z][a-z]+\s+)?([A-Z][A-Za-z'-]+)/g, 'Alternate');
@@ -277,12 +294,14 @@ export async function currentCommission(env: Env): Promise<Commissioner[]> {
     }
   }
   for (const c of out.values()) {
-    const o = ROLE_OVERRIDES[(c.name.split(' ').pop() ?? '').toLowerCase()];
-    if (o) c.role = o;
+    const o = ROLE_OVERRIDES[lastOf(c.name)];
+    if (o && body === PC) c.role = o;
   }
   const rank = (r: string) => (r === 'Chair' ? 0 : r === 'Vice Chair' ? 1 : r === 'Alternate' ? 3 : 2);
   return [...out.values()].sort((a, b) => rank(a.role) - rank(b.role) || a.name.localeCompare(b.name));
 }
+
+export const currentCommission = (env: Env) => currentRoster(env, PC, ['Planning Commission']);
 
 /** The officials whose votes a scope shows: the current council, or the current commission. */
 async function officialsFor(env: Env, body: string | null | undefined): Promise<string[]> {
@@ -306,8 +325,12 @@ export async function commissionAttendance(env: Env): Promise<{ meetings: Array<
 const BODY_NAMES: Record<string, string> = { 'city-council': 'City Council', 'redevelopment-agency': 'Redevelopment Agency', 'planning-commission': 'Planning Commission' };
 const bodyName = (id: string | null) => (id ? (BODY_NAMES[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())) : null);
 
+/** Housekeeping motions: approving minutes or the agenda, adjourning, closed sessions, opening and closing hearings. */
+export const PROCEDURAL = /^(?:to\s+)?(?:(?:approve|accept|adopt)\s+(?:the\s+)?(?:(?:[\w,']+\s+){0,6})?(?:minutes|agenda)\b(?![^.]*\b(?:and|with)\b[^.]*(?:resolution|ordinance|item|consent))|adjourn|recess|(?:go|move|enter|convene|went)\s+(?:in)?to\s+(?:a\s+)?(?:closed|executive|regular|work)\s+(?:session|meeting)|(?:close|end|leave|exit|return from)\s+(?:the\s+)?(?:closed|executive)\s+(?:session|meeting)|(?:return|reconvene|go back)\s+(?:in)?to\s+(?:the\s+)?(?:regular|open)|(?:open|close|continue)\s+(?:the\s+)?public hearing|excuse\b|take a (?:short )?(?:break|recess)|nominate\b(?!.*commission))/i;
+
 export interface MotionOut {
   id: string;
+  meetingId: string | null;
   date: string | null;
   bodyId: string | null;
   bodyName: string | null;
@@ -327,7 +350,7 @@ export interface MotionOut {
 }
 
 /** Motions, newest first, filtered by member, body, year, result and words in the motion. */
-export async function queryMotions(env: Env, f: { member?: string | null; body?: string | null; year?: number | null; q?: string | null; result?: string | null; vote?: string | null; page?: number; pageSize?: number }): Promise<{ items: MotionOut[]; total: number }> {
+export async function queryMotions(env: Env, f: { all?: boolean; member?: string | null; body?: string | null; year?: number | null; q?: string | null; result?: string | null; vote?: string | null; page?: number; pageSize?: number }): Promise<{ items: MotionOut[]; total: number }> {
   await ensureVotesTables(env);
   let sql = scopeSql(f.body);
   const params: unknown[] = [];
@@ -355,6 +378,7 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
     sql += " AND (lower(m.motion) LIKE ? OR lower(coalesce(m.item, '')) LIKE ? OR lower(coalesce(m.refs, '')) LIKE ?)";
     params.push(`%${w}%`, `%${w}%`, `%${w}%`);
   }
+  if (!f.all) sql += " AND m.motion NOT LIKE 'approve the minutes%' AND m.motion NOT LIKE 'adjourn%' AND lower(m.motion) NOT LIKE '%closed session%' AND lower(m.motion) NOT LIKE '%public hearing%' AND lower(m.motion) NOT LIKE 'approve the agenda%'";
   const pageSize = Math.min(400, Math.max(1, f.pageSize ?? 30));
   const page = Math.max(1, f.page ?? 1);
   const [rows, count] = await Promise.all([
@@ -365,7 +389,7 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
       .bind(...params)
       .first<{ n: number }>(),
   ]);
-  const list = rows.results ?? [];
+  const list = (rows.results ?? []).filter((r) => f.all || !PROCEDURAL.test(String(r.motion ?? '').trim()));
   const votes = list.length
     ? await env.CATALOG_DB.prepare('SELECT motion_id, member, vote FROM motion_votes WHERE motion_id IN (SELECT value FROM json_each(?))')
         .bind(JSON.stringify(list.map((r) => r.id)))
@@ -375,11 +399,18 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
   for (const v of votes.results ?? []) (byMotion.get(v.motion_id) ?? byMotion.set(v.motion_id, []).get(v.motion_id)!).push({ member: v.member, vote: v.vote });
   const order = { yes: 0, no: 1, abstain: 2, recused: 3, absent: 4 } as Record<string, number>;
   const council = await officialsFor(env, f.body);
+  // Members who sat this year and have since left (a resignation) still show in the votes they cast,
+  // by the full name the minutes print; they are not offered as a filter.
+  const past = new Set(
+    ((await env.CATALOG_DB.prepare(`SELECT member FROM motion_votes m WHERE ${scopeSql(f.body)} AND member LIKE '% %' GROUP BY member HAVING count(*) >= 5`).all<{ member: string }>().catch(() => ({ results: [] }))).results ?? []).map((r) => r.member),
+  );
   const named = (n: string | null) => (n ? (councilName(n, council) ?? n) : null);
+  const voter = (n: string) => councilName(n, council) ?? (past.has(n) ? n : '');
   return {
     total: Number(count?.n ?? 0),
     items: list.map((r) => ({
       id: String(r.id),
+      meetingId: (r.meeting_id as string | null) ?? null,
       date: (r.meeting_date as string | null) ?? null,
       bodyId: (r.body_id as string | null) ?? null,
       bodyName: bodyName((r.body_id as string | null) ?? null),
@@ -396,7 +427,7 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
       mover: named((r.mover as string | null) ?? null),
       seconder: named((r.seconder as string | null) ?? null),
       votes: (byMotion.get(String(r.id)) ?? [])
-        .map((v) => ({ member: councilName(v.member, council) ?? '', vote: v.vote }))
+        .map((v) => ({ member: voter(v.member), vote: v.vote }))
         .filter((v) => v.member)
         .sort((a, b) => (order[a.vote] ?? 9) - (order[b.vote] ?? 9) || a.member.localeCompare(b.member)),
     })),

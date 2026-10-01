@@ -3,8 +3,9 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, ChevronDown, ClipboardList, CreditCard, Map as MapIcon, Phone, Search } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronRight, ClipboardList, CreditCard, Map as MapIcon, Phone, Search } from 'lucide-react';
 import { Frame } from './Chrome';
+import { Link } from 'react-router-dom';
 import { DIRECTORY, DIRECTORY_GROUPS } from './directory';
 
 const ICON = { form: ClipboardList, pay: CreditCard, call: Phone, mail: Phone, page: ArrowUpRight, map: MapIcon } as const;
@@ -44,7 +45,7 @@ export default function ServicesPage() {
                   const Icon = ICON[e.kind];
                   return (
                     <li key={e.id}>
-                      <a href={e.href} className="vc-svc-row" target="_blank" rel="noopener noreferrer">
+                      <Link to={`/services/${e.id}`} className="vc-svc-row">
                         <span className="vc-svc-icon" data-kind={e.kind}>
                           <Icon size={14} strokeWidth={2} />
                         </span>
@@ -52,8 +53,8 @@ export default function ServicesPage() {
                           <span className="vc-svc-label">{e.label}</span>
                           {e.hint && <span className="vc-svc-hint">{e.hint}</span>}
                         </span>
-                        <ArrowUpRight size={15} strokeWidth={1.8} className="vc-svc-go" />
-                      </a>
+                        <ChevronRight size={15} strokeWidth={1.8} className="vc-svc-go" />
+                      </Link>
                     </li>
                   );
                 })}

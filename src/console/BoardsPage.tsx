@@ -84,7 +84,7 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
               {b.hiddenExpired === 1 ? 'One person' : `${b.hiddenExpired} people`} the city website still lists here {b.hiddenExpired === 1 ? 'has a term' : 'have terms'} that ended before this year and {b.hiddenExpired === 1 ? 'does' : 'do'} not appear in this year&apos;s minutes, so {b.hiddenExpired === 1 ? 'is' : 'are'} not shown.
             </p>
           )}
-          {b.meetingName !== b.name && <p className="vc-board-none">Its meetings are posted as {b.meetingName}.</p>}
+          {b.meetingName.toLowerCase() !== b.name.toLowerCase() && !b.meetingName.toLowerCase().includes(b.name.toLowerCase()) && <p className="vc-board-none">The city website still lists this body as the {b.meetingName}.</p>}
           <div className="vc-board-links">
             {b.meetings > 0 && (
               <Link to={`/meetings?type=meetings&body=${encodeURIComponent(b.id)}`} className="vc-chip">

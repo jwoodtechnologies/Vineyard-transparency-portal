@@ -283,12 +283,6 @@ export default function RecordsPage() {
     setParams(next, { replace: true });
     setPages(1);
   };
-  const toggleType = (id: string) => {
-    const set = new Set(types);
-    if (set.has(id)) set.delete(id);
-    else set.add(id);
-    update({ t: [...set].join(',') || null });
-  };
 
   const typeCount = new Map((facets.status === 'done' ? facets.data.documentTypes : []).map((b) => [b.value, b.count]));
   const years = facets.status === 'done' ? facets.data.years : [];
@@ -301,17 +295,6 @@ export default function RecordsPage() {
         <h1 className="vc-page-title">{cat?.label ?? 'All records'}</h1>
         <p className="vc-page-sub">{cat?.blurb ?? 'Every record in the archive. Pick a category or narrow by type, year and meeting body.'}</p>
       </header>
-
-      <div className="vc-filters vc-body-chips vc-latest-tabs" role="tablist" aria-label="Category">
-        <button type="button" role="tab" aria-selected={!cat} className="vc-chip" data-active={!cat} onClick={() => update({ c: null }, false)}>
-          All records
-        </button>
-        {RECORD_CATEGORIES.map((c) => (
-          <button key={c.id} type="button" role="tab" aria-selected={cat?.id === c.id} className="vc-chip" data-active={cat?.id === c.id} onClick={() => update({ c: c.id }, false)}>
-            {c.label}
-          </button>
-        ))}
-      </div>
 
       <form
         className="vc-rec-search"
@@ -339,18 +322,32 @@ export default function RecordsPage() {
       </form>
 
       <div className="vc-rec-filters">
-        {cat && (
-          <div className="vc-rec-types" role="group" aria-label="Record type">
-            {cat.types.map((t) => (
-              <button key={t.id} type="button" className="vc-rec-type" data-active={types.includes(t.id)} aria-pressed={types.includes(t.id)} onClick={() => toggleType(t.id)}>
-                {t.label}
-                {/* Archive-wide counts would mislead inside a body section (the RDA), so none there. */}
-                {!cat.body && typeCount.get(t.id) ? <span className="vc-rec-type-n">{typeCount.get(t.id)}</span> : null}
-              </button>
-            ))}
-          </div>
-        )}
         <div className="vc-rec-selects">
+          <label className="vc-rec-select">
+            <span>Show</span>
+            <select value={cat?.id ?? ''} onChange={(e) => update({ c: e.target.value || null, t: null }, false)}>
+              <option value="">All records</option>
+              {RECORD_CATEGORIES.filter((c) => c.id !== 'code' && c.id !== 'plans').map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {cat && (
+            <label className="vc-rec-select">
+              <span>Type</span>
+              <select value={types[0] ?? ''} onChange={(e) => update({ t: e.target.value || null })}>
+                <option value="">{cat.id === 'meetings' ? 'Meetings' : 'All types'}</option>
+                {cat.types.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                    {!cat.body && typeCount.get(t.id) ? ` (${typeCount.get(t.id)!.toLocaleString()})` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="vc-rec-select">
             <span>Year</span>
             <select value={year} onChange={(e) => update({ y: e.target.value || null })}>

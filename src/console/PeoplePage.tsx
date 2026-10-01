@@ -9,7 +9,7 @@ import { Frame } from './Chrome';
 import { useJson } from './api';
 import { TYPE_LABEL, formatDate } from './format';
 import { PersonCard, PersonPhoto } from './PersonCard';
-import { roleLine, usePeople, type PersonDetail, type PersonRecord } from './people';
+import { usePeople, type Person, type PersonDetail, type PersonRecord } from './people';
 
 function RecordRows({ rows }: { rows: PersonRecord[] }) {
   return (
@@ -74,6 +74,20 @@ function Profile({ slug }: { slug: string }) {
   );
 }
 
+function Item({ p, big = false }: { p: Person; big?: boolean }) {
+  return (
+    <li>
+      <Link to={`/people/${p.slug}`} className="vc-people-item" data-big={big || undefined}>
+        <PersonPhoto person={p} size={big ? 52 : 40} />
+        <span className="vc-people-text">
+          <span className="vc-people-name">{p.name}</span>
+          <span className="vc-people-role">{p.role}</span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 function Directory() {
   const people = usePeople();
   const [q, setQ] = useState('');
@@ -84,36 +98,75 @@ function Directory() {
     const t = q.trim().toLowerCase();
     return people.filter((p) => p.current && p.kind !== 'board' && (!t || `${p.name} ${p.role} ${p.department ?? ''}`.toLowerCase().includes(t)));
   }, [people, q]);
-  const groups: Array<[string, typeof shown]> = [
-    ['Mayor and City Council', shown.filter((p) => p.kind === 'elected')],
-    ['City staff', shown.filter((p) => p.kind === 'staff')],
-    ['Boards and commissions', shown.filter((p) => p.kind === 'board')],
-  ];
+  const council = shown.filter((p) => p.kind === 'elected');
+  const staff = shown.filter((p) => p.kind === 'staff');
+  const exec = (p: Person) => /official|executive/i.test(p.department ?? '') || /city manager|deputy mayor/i.test(p.role);
+  const manager = staff.find((p) => /^city manager$/i.test(p.role)) ?? null;
+  const executive = staff.filter((p) => p !== manager && exec(p));
+  // Departments, each led by its director (or chief, or manager), largest title first.
+  const rank = (r: string) => (/director|chief|city recorder|city attorney|city engineer/i.test(r) ? 0 : /manager|official/i.test(r) ? 1 : /lead|supervisor|senior|assistant city/i.test(r) ? 2 : 3);
+  const depts = new Map<string, Person[]>();
+  for (const p of staff.filter((x) => x !== manager && !exec(x))) {
+    const d = (p.department ?? 'Other').replace(/'S\b/g, "'s");
+    (depts.get(d) ?? depts.set(d, []).get(d)!).push(p);
+  }
+  const deptList = [...depts.entries()].map(([d, list]) => {
+    const sorted = [...list].sort((a, b) => rank(a.role) - rank(b.role) || a.name.localeCompare(b.name));
+    const head = rank(sorted[0].role) <= 1 ? sorted[0] : null;
+    return { d, head, team: head ? sorted.slice(1) : sorted };
+  });
+  deptList.sort((a, b) => Number(!a.head) - Number(!b.head) || a.d.localeCompare(b.d));
   return (
     <>
       <form className="vc-rec-search" role="search" onSubmit={(e) => e.preventDefault()}>
         <Search size={16} strokeWidth={1.9} />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search names, titles, departments" aria-label="Search people" />
       </form>
-      {groups.map(([label, list]) =>
-        list.length ? (
-          <section key={label} className="vc-rec-group">
-            <h2 className="vc-rec-month">{label}</h2>
-            <ul className="vc-people">
-              {list.map((p) => (
-                <li key={p.slug}>
-                  <Link to={`/people/${p.slug}`} className="vc-people-item">
-                    <PersonPhoto person={p} size={44} />
-                    <span className="vc-people-text">
-                      <span className="vc-people-name">{p.name}</span>
-                      <span className="vc-people-role">{roleLine(p)}</span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null,
+      {council.length > 0 && (
+        <section className="vc-rec-group">
+          <h2 className="vc-rec-month">Mayor and City Council</h2>
+          <ul className="vc-people">
+            {council.map((p) => (
+              <Item key={p.slug} p={p} />
+            ))}
+          </ul>
+        </section>
+      )}
+      {(manager || executive.length > 0) && (
+        <section className="vc-rec-group">
+          <h2 className="vc-rec-month">City administration</h2>
+          <ul className="vc-people vc-org-top">
+            {manager && <Item p={manager} big />}
+            {executive.map((p) => (
+              <Item key={p.slug} p={p} />
+            ))}
+          </ul>
+          {manager && <p className="vc-org-note">The City Manager runs day-to-day operations and oversees the department heads below.</p>}
+        </section>
+      )}
+      {deptList.length > 0 && (
+        <section className="vc-rec-group">
+          <h2 className="vc-rec-month">Departments</h2>
+          <div className="vc-org">
+            {deptList.map(({ d, head, team }) => (
+              <details key={d} className="vc-org-dept" open={Boolean(q)}>
+                <summary>
+                  <span className="vc-org-name">{d}</span>
+                  <span className="vc-org-sub">
+                    {head ? `${head.name}, ${head.role}` : `${team.length} staff`}
+                    {head && team.length ? ` · ${team.length} staff` : ''}
+                  </span>
+                </summary>
+                <ul className="vc-people">
+                  {head && <Item p={head} big />}
+                  {team.map((p) => (
+                    <Item key={p.slug} p={p} />
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </div>
+        </section>
       )}
       {people.length > 0 && (
         <p className="vc-person-asof vc-people-source">

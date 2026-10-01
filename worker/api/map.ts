@@ -63,7 +63,6 @@ export const MAP_LAYERS: MapLayerDef[] = [
   },
   { key: 'pdoverlay', label: 'Planned development overlay', group: 'Land', path: 'VNY_PLPZ_PD_Overlay_view/FeatureServer/10', fields: ['GRANTEE', 'ACRES'], geometry: 'polygon' },
   { key: 'subdivisions', label: 'Neighborhoods', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon' },
-  { key: 'rda', label: 'RDA areas', group: 'Plans', path: 'Redevelopment_Area/FeatureServer/454', fields: ['REDEV', 'REDLAB', 'INCEPT', 'YEAR_'], geometry: 'polygon' },
   {
     key: 'rdaparcels',
     label: 'RDA phases by parcel',

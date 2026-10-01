@@ -186,6 +186,10 @@ async function fixRecordDates(env: Env): Promise<{ cleared: number; dated: numbe
       await repo.shard(d.search_shard).prepare('UPDATE shard_documents SET document_date = ?, year = ? WHERE document_id = ?').bind(date, year, d.id).run().catch(() => undefined);
     titled++;
   }
+  // RDA audits, financial reports, budgets and plans filed without a body belong to the RDA.
+  const rdaWhere = "government_body_id IS NULL AND document_type IN ('audit', 'financial_report', 'budget', 'plan', 'resolution', 'other') AND (title LIKE '%RDA%' OR lower(title) LIKE '%redevelopment%')";
+  await db.prepare(`UPDATE documents SET government_body_id = 'redevelopment-agency' WHERE ${rdaWhere}`).run().catch(() => undefined);
+  for (const [, sdb] of SearchRepository.boundShards(env)) await sdb.prepare(`UPDATE shard_documents SET government_body_id = 'redevelopment-agency' WHERE ${rdaWhere}`).run().catch(() => undefined);
   return { cleared: Number(c.meta?.changes ?? 0), dated: dated + titled };
 }
 

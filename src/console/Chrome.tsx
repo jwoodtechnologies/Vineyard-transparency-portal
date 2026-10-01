@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Building2, CalendarDays, ClipboardList, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Users, Vote } from 'lucide-react';
+import { BookOpen, Building2, CalendarDays, ClipboardList, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, Sun, Users, Vote } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { RECORD_CATEGORIES } from './categories';
@@ -114,22 +114,6 @@ export function SettingsMenu() {
           </div>
 
           <p className="vc-panel-label">Records</p>
-          <Link to="/records" className="vc-panel-row">
-            <ScrollText size={15} strokeWidth={1.8} />
-            <span>All records</span>
-          </Link>
-          <Link to="/votes" className="vc-panel-row">
-            <Vote size={15} strokeWidth={1.8} />
-            <span>Voting records</span>
-          </Link>
-          <Link to="/planning" className="vc-panel-row">
-            <Building2 size={15} strokeWidth={1.8} />
-            <span>Planning Commission</span>
-          </Link>
-          <Link to="/boards" className="vc-panel-row">
-            <Landmark size={15} strokeWidth={1.8} />
-            <span>Boards and commissions</span>
-          </Link>
           {RECORD_CATEGORIES.filter((c) => MENU_CATEGORIES.includes(c.id)).map((c) => {
             const Icon = CATEGORY_ICONS[c.id] ?? FileText;
             return (
@@ -139,6 +123,14 @@ export function SettingsMenu() {
               </Link>
             );
           })}
+          <Link to="/votes" className="vc-panel-row">
+            <Vote size={15} strokeWidth={1.8} />
+            <span>Voting records</span>
+          </Link>
+          <Link to="/boards" className="vc-panel-row">
+            <Users size={15} strokeWidth={1.8} />
+            <span>Boards and commissions</span>
+          </Link>
 
           <p className="vc-panel-label">Appearance</p>
           <div className="vc-segment" role="radiogroup" aria-label="Theme">
