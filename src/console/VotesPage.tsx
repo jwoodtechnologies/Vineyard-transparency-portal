@@ -10,6 +10,7 @@ import { ChevronDown, Search } from 'lucide-react';
 import { Frame } from './Chrome';
 import { useJson } from './api';
 import { useMemberNames, type MotionRow, type VoteMember } from './votes';
+import { usePeople } from './people';
 
 const BODIES: Array<[string, string]> = [
   ['', 'Council and RDA'],
@@ -93,7 +94,7 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
 }
 
 function YearSection({ year, meetings, query, open, onToggle, member, attendance }: { year: number; meetings: number; query: string; open: boolean; onToggle: () => void; member: string | null; attendance: Attendance | null }) {
-  const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
+  const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?scope=current&${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
   const groups = useMemo(() => {
     if (list.status !== 'done') return [];
     const by = new Map<string, MotionRow[]>();
@@ -150,7 +151,7 @@ function YearSection({ year, meetings, query, open, onToggle, member, attendance
 /** The council's voting record, or (commission) the Planning Commission's own page. */
 export function VotesView({ commission = false }: { commission?: boolean }) {
   const [params, setParams] = useSearchParams();
-  const member = params.get('member') ?? '';
+  const askedMember = params.get('member') ?? '';
   const asked = params.get('body') ?? '';
   const body = commission ? 'planning-commission' : ['city-council', 'redevelopment-agency'].includes(asked) ? asked : '';
   const q = params.get('q') ?? '';
@@ -162,18 +163,22 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
     else next.delete(k);
     setParams(next, { replace: true });
   };
+  const people = usePeople();
+  // Only the officials serving now: the mayor and City Council (or, on the commission page, its members).
+  const council = useMemo(() => new Set(people.filter((p) => p.current && p.kind === 'elected').map((p) => p.name.toLowerCase())), [people]);
+  const member = commission || council.has(askedMember.toLowerCase()) ? askedMember : '';
   const query = useMemo(() => {
     const u = new URLSearchParams();
     for (const [k, v] of Object.entries({ member, body, q, result, vote })) if (v) u.set(k, v);
     return u.toString();
   }, [member, body, q, result, vote]);
   const yearsQ = new URLSearchParams(Object.entries({ member, body }).filter(([, v]) => v)).toString();
-  const years = useJson<{ years: Array<{ year: number; motions: number; meetings: number }> }>(`/api/votes/years${yearsQ ? `?${yearsQ}` : ''}`);
-  const members = useJson<{ members: VoteMember[] }>(`/api/votes/members${body ? `?body=${body}` : ''}`);
+  const years = useJson<{ years: Array<{ year: number; motions: number; meetings: number }> }>(`/api/votes/years?scope=current${yearsQ ? `&${yearsQ}` : ''}`);
+  const members = useJson<{ members: VoteMember[] }>(`/api/votes/members?scope=current${body ? `&body=${body}` : ''}`);
   const attendance = useJson<Attendance>(body === 'planning-commission' ? '/api/votes/attendance' : null);
   const att = attendance.status === 'done' ? attendance.data : null;
   const nameOf = useMemberNames();
-  const memberList = members.status === 'done' ? members.data.members : [];
+  const memberList = (members.status === 'done' ? members.data.members : []).filter((m) => commission || council.has(m.member.toLowerCase()));
   const [open, setOpen] = useState<Record<number, boolean>>({});
   const yearList = years.status === 'done' ? years.data.years : [];
   const isOpen = (y: number, i: number) => open[y] ?? i === 0;
