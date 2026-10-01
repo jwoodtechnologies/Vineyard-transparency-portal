@@ -198,7 +198,7 @@ async function streamSmall(env: Env, messages: Msg[], onDelta: (text: string) =>
 
 const RECENT = /\b(most recent|latest|last|recent|previous|past|upcoming|next|this week'?s|tonight'?s|today'?s)\b/i;
 const MEETINGISH = /\b(meetings?|council|commission|agenda|minutes|session|hearing)\b/i;
-const FILLER = /\b(most recent|latest|last|recent|previous|past|upcoming|next|this week'?s|tonight'?s|today'?s|what|whats|what's|happened|happen|happening|at|the|in|on|was|were|did|do|does|will|be|discussed|discuss|meetings?|city|council|commission|planning|agenda|minutes|session|vineyard|of|about|is|are|for|tell|me|summarize|summary|a|an)\b/gi;
+const FILLER = /\b(most recent|latest|last|recent|previous|past|upcoming|next|this week'?s|tonight'?s|today'?s|what|whats|what's|happened|happen|happening|at|the|in|on|was|were|did|do|does|will|be|discussed|discuss|meetings?|city|council|commission|planning|agenda|minutes|session|vineyard|of|about|is|are|for|tell|me|summarize|summary|a|an|decide|decided|decision|decisions|vote|voted|votes|approve|approved|adopt|adopted|pass|passed|deny|denied|action|actions|outcome|outcomes|result|results|they|we)\b/gi;
 
 /** The meeting a "last / next meeting" question is about, with the search terms left over. */
 async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: string; date: string | null; terms: string; minutesOnly: boolean } | null> {

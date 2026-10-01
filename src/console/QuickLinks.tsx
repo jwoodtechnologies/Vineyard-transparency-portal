@@ -141,7 +141,7 @@ function serviceBubbles(question: string, hasCard = false): Bubble[] {
   const q = question;
   const out: Bubble[] = [];
   const add = (l: ServiceLink, key: string) => out.push({ key, ...l });
-  if (/\b(code enforcement|violation|complain|report(ing)? (a |an )?(concern|problem|issue)|concern|nuisance|weeds?|junk|graffiti|pothole|abandoned|illegal(ly)? park|noise|trash (in|on)|overgrown|unsafe)\b/i.test(q)) add(LINKS.concern, 'concern');
+  if (/\b(code enforcement|violations?|complain\w*|report(ing)? (a |an )?(concern|problem|issue)|concerns?|nuisances?|weeds?|junk|graffiti|pot ?holes?|abandoned|illegal(ly)? park\w*|noise|noisy|loud|barking|trash (in|on)|overgrown|unsafe)\b/i.test(q)) add(LINKS.concern, 'concern');
   if (/\b(street ?lights?|light (is )?out|lights? out)\b/i.test(q)) add(LINKS.streetlight, 'streetlight');
   if (/\b(utilit(y|ies)|water bill|sewer|garbage|trash (service|pickup|can)|recycl|pay (my )?bill|bill pay|autopay|storm ?water fee)\b/i.test(q)) {
     add(LINKS.payBill, 'pay');
