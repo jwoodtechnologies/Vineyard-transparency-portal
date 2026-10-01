@@ -269,7 +269,7 @@ export function trimNegative(sentence: string, sources: string[]): string | null
   return kept.join('; ').replace(/[\s,;:]+$/, '').replace(/[.!?]?$/, '.');
 }
 
-const NUM = /\$?\d[\d,]*(?:\.\d+)?\s*(million|billion|thousand|[mk]\b)?/gi;
+const NUM = /\$?\d(?:[\d,]*\d)?(?:\.\d+)?\s*(million|billion|thousand|[mk]\b)?/gi;
 
 const flat = (t: string) => t.replace(/(\d),(?=\d{3}\b)/g, '$1');
 

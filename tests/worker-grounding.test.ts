@@ -155,3 +155,10 @@ describe('U.S. mail', () => {
     expect(segmentAnswer(raw, 1).paragraphs[0].segments.map((s) => s.text)).toEqual(['Send it by email, U.S. mail or in person.', 'It is free.']);
   });
 });
+
+describe('figures followed by a comma', () => {
+  it('keeps "$10,000,000, funded by grants"', () => {
+    const r = groundParagraphs(para(['The 1200 North Bridge project has a total budget of $10,000,000, funded by grants.', [1]]), [src('Capital project: 1200 North Bridge. Total budget: $10,000,000. Funding source: Grants.', 'Capital project: 1200 North Bridge', null)]);
+    expect(r.removed).toBe(0);
+  });
+});
