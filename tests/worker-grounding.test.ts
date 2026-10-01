@@ -162,3 +162,10 @@ describe('figures followed by a comma', () => {
     expect(r.removed).toBe(0);
   });
 });
+
+describe('code section numbers', () => {
+  it('reads 8.08.010 as one number', () => {
+    const r = groundParagraphs(para(['Vineyard Municipal Code 8.08.010 limits noise to 55 decibels from 7:00 am to 10:30 pm.', [1]]), [src('Activities that result in a noise level that exceeds 55 decibels (dBA) between 7:00 a.m. and 10:30 p.m.', 'Municipal Code: 8.08.010 Nuisances Generally', null)]);
+    expect(r.removed).toBe(0);
+  });
+});
