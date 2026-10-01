@@ -1,0 +1,1 @@
+GIS ingest: follow RFC 9309 for public ArcGIS API hosts (no robots.txt, 403 means no restrictions)
