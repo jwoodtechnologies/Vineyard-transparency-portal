@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 9;
+export const VOTES_PARSER = 10;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -92,7 +92,8 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   const chunks = await repo.documentChunks(Number(d.search_shard), d.id);
   const text = chunks.map((c) => c.text).join('\n\n');
   const now = new Date().toISOString();
-  const guessDate = titleDate(d.title) ?? d.document_date;
+  // Attachments carry the packet they came in ("..., 2026-05-26, item 1)"): that is not the minutes' own date.
+  const guessDate = titleDate((d.title ?? '').replace(/\s*\([^()]*\d{4}-\d{2}-\d{2}[^()]*\)\s*$/, '')) ?? d.document_date;
   const parsed = parseMinutes(text, guessDate);
   // Hearing notices and announcements are sometimes filed as minutes: no attendance list, no "minutes" in the name.
   if (!/minute/i.test(d.title ?? '') && parsed.present.length < 3) {
@@ -120,13 +121,19 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
 
   // One copy per meeting.
   const other = await db
-    .prepare('SELECT document_id, rank, motions FROM vote_docs WHERE meeting_key = ? AND document_id != ? AND motions > 0 ORDER BY motions DESC, rank DESC LIMIT 1')
-    .bind(key, d.id)
+    .prepare('SELECT document_id, rank, motions FROM vote_docs WHERE meeting_key = ? AND document_id != ? AND motions > 0 AND parser = ? ORDER BY motions DESC, rank DESC LIMIT 1')
+    .bind(key, d.id, VOTES_PARSER)
     .first<{ document_id: string; rank: number; motions: number }>();
   // A copy with no readable motions (a scan before OCR, say) never displaces one that has them.
   // The fuller copy wins (a draft with every motion beats an approved file that lost its text); approved breaks ties.
   if (other && (!motions.length || other.motions > motions.length || (other.motions === motions.length && other.rank >= rank))) {
-    await db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)').bind(d.id, key, body, date, rank, VOTES_PARSER, now).run();
+    await db.batch([
+      db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ?)').bind(d.id),
+      db.prepare('DELETE FROM motions WHERE document_id = ?').bind(d.id),
+      db.prepare('DELETE FROM meeting_attendance WHERE document_id = ?').bind(d.id),
+      db.prepare('DELETE FROM meeting_roster WHERE document_id = ?').bind(d.id),
+      db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)').bind(d.id, key, body, date, rank, VOTES_PARSER, now),
+    ]);
     return { motions: 0, votes: 0, superseded: true };
   }
   const stmts: D1PreparedStatement[] = [];
@@ -137,6 +144,11 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
     stmts.push(db.prepare('DELETE FROM meeting_roster WHERE document_id = ?').bind(docId));
   };
   clear(d.id);
+  // One file per meeting: anything another file left under this body and date goes (it is re-read on its own turn).
+  if (date && motions.length) {
+    stmts.push(db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE body_id = ? AND meeting_date = ? AND document_id != ?)').bind(body, date, d.id));
+    stmts.push(db.prepare('DELETE FROM motions WHERE body_id = ? AND meeting_date = ? AND document_id != ?').bind(body, date, d.id));
+  }
   if (other) {
     clear(other.document_id);
     stmts.push(db.prepare('UPDATE vote_docs SET motions = 0 WHERE document_id = ?').bind(other.document_id));

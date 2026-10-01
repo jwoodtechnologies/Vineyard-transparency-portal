@@ -285,7 +285,9 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
   }
   const headFlat = head.replace(/\s+/g, ' ');
   const dm = headFlat.slice(0, 600).match(new RegExp(`\\b(${MONTH_NAMES})\\s+(\\d{1,2}),?\\s+((?:19|20)\\d{2})\\b`, 'i'));
-  const printed = dm ? isoDate(Number(dm[3]), MONTH_NAMES.split('|').indexOf(dm[1].toLowerCase()) + 1, Number(dm[2])) : null;
+  // Drafts with numbered lines carry the date only in the page footer ("Page 1 of 5; May 12, 2026, City Council ...").
+  const fm = dm ?? text.slice(0, 12000).replace(/\s+/g, ' ').match(new RegExp(`\\bPage\\s+\\d+\\s+of\\s+\\d+[;,.]?\\s+(${MONTH_NAMES})\\s+(\\d{1,2}),?\\s+((?:19|20)\\d{2})\\b`, 'i'));
+  const printed = fm ? isoDate(Number(fm[3]), MONTH_NAMES.split('|').indexOf(fm[1].toLowerCase()) + 1, Number(fm[2])) : null;
   const top = headFlat.slice(0, 400);
   const body = /redevelopment agency|\bRDA\b/i.test(top) ? 'redevelopment-agency' : /planning commission/i.test(top) ? 'planning-commission' : /(city|town) council/i.test(top) ? 'city-council' : null;
   return { present: [...new Set(present.map((p) => canon(p.replace(/^Mayor /, '')) as string))], absent: absent.map((a) => canon(a) as string), fullNames, date: printed, body, motions };
