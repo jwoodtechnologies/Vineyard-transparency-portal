@@ -209,6 +209,7 @@ async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: s
 }
 
 const CURRENT = /\b(who is|who's|who are|current|currently|now|today|as of|latest|presently|still|this year|right now)\b/i;
+const ROLE = /\b(mayor|deputy mayor|council ?(member|man|woman)s?|city council|city manager|recorder|city attorney|director|department head|staff|employees?|who works|chief|official|commissioners?)\b/i;
 const PRONOUN = /\b(it|its|that|this|those|these|they|them|their|he|she|his|her|there|same|more|else)\b/i;
 
 /** "What about that one?" refers back; "Is David Kyle Herring the deputy mayor?" does not. */
@@ -322,13 +323,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seenChunks = new Set<string>();
     hits = [...rewritten.slice(0, 25), ...direct, ...rewritten.slice(25)].filter((h) => (seenChunks.has(h.chunkId) ? false : (seenChunks.add(h.chunkId), true)));
   }
-  // "Who is ...", "current", "now": the newest records lead, so the answer reflects today.
-  if (CURRENT.test(body.question)) {
+  // "Who is ...", "current", "now": today's records (the staff directory, the mayor and council
+  // list, current map data) lead, then the newest dated records, so the answer reflects today.
+  if (CURRENT.test(body.question) || ROLE.test(body.question)) {
+    const current = await retrieve(retrievalText, { ...filters, currency: ['current'] }).catch(() => [] as ChunkHit[]);
     const top = hits.slice(0, 30).sort((a, b) => String(b.documentDate ?? '').localeCompare(String(a.documentDate ?? '')));
-    hits = [...top, ...hits.slice(30)];
+    const seenC = new Set<string>();
+    hits = [...current.slice(0, 6), ...top, ...hits.slice(30)].filter((h) => (seenC.has(h.chunkId) ? false : (seenC.add(h.chunkId), true)));
   }
   const today = new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10);
-  question = `${question}\n(Today is ${today}.${CURRENT.test(body.question) ? ' Answer with the current information and say what date your source is from.' : ''})`;
+  question = `${question}\n(Today is ${today}.${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
   if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
