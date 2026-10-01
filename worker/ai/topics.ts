@@ -34,10 +34,13 @@ export const TOPICS: CivicTopic[] = [
     id: 'elections',
     match: /\b(elections?|candidates?|ballot|canvass|primary|general election|running for|re-?elect|campaign|term ends?|referendum|initiative)\b/i,
     queries: [{ q: 'municipal election canvass results council', from: '2023-01-01' }, { q: 'election candidates council seats', from: '2025-01-01' }],
-    note: 'Elections: Vineyard holds municipal elections in odd-numbered years for City Council seats (and the mayor when that term ends). Use the newest canvass, candidate and election records, give their dates, and never present an old election as the current one.',
+    note: 'Elections: Utah cities hold municipal general elections in November of odd-numbered years, so the next Vineyard municipal election is in November {NEXT_ELECTION}. Council seats (and the mayor when that term ends) are on that ballot. Use the newest canvass, candidate and election records, give their dates, and never present an old election as the current one.',
   },
 ];
 
-export function topicsFor(question: string): CivicTopic[] {
-  return TOPICS.filter((t) => t.match.test(question));
+export function topicsFor(question: string, today = new Date().toISOString().slice(0, 10)): CivicTopic[] {
+  const y = Number(today.slice(0, 4));
+  const m = Number(today.slice(5, 7));
+  const next = y % 2 === 1 && m <= 11 ? y : y % 2 === 1 ? y + 2 : y + 1;
+  return TOPICS.filter((t) => t.match.test(question)).map((t) => ({ ...t, note: t.note.replace('{NEXT_ELECTION}', String(next)) }));
 }

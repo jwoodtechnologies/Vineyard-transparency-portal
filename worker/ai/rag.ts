@@ -406,7 +406,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // searched by name and lead, and the model is told the plain state of things it must cite.
   const govIds = new Set<string>();
   const topicIds = new Set<string>();
-  const topics = topicsFor(body.question);
+  const topics = topicsFor(body.question, todayUT);
   for (const t of topics) {
     const lists = await Promise.all(t.queries.map((x) => retrieve(x.q, { ...filters, ...(x.from ? { dateFrom: x.from } : {}) }).catch(() => [] as ChunkHit[])));
     const found = interleave(lists, 4);

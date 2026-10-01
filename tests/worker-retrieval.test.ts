@@ -67,3 +67,11 @@ describe('meeting count intent', () => {
     expect(countKind('How many ordinances passed last year?')).toBe('ordinance');
   });
 });
+
+describe('elections are not meetings', () => {
+  it('does not answer an election question with a meeting', async () => {
+    const { isScheduleQuestion, isMeetingCountQuestion } = await import('../worker/ai/scheduleIntent');
+    expect(isScheduleQuestion('When is the next city council election?')).toBe(false);
+    expect(isMeetingCountQuestion('How many candidates are running in the election?')).toBe(false);
+  });
+});

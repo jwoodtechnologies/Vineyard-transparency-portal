@@ -154,6 +154,13 @@ function serviceBubbles(question: string): Bubble[] {
   if (/\b(power outage|electric(ity)?|rocky mountain power)\b/i.test(q)) add(LINKS.power, 'power');
   if (/\b(gas (leak|service)|natural gas|dominion|enbridge)\b/i.test(q)) add(LINKS.gas, 'gas');
 
+  // Politics, elections and current issues: a one-tap search of news coverage (opens the news site
+  // itself; the portal does not copy news articles).
+  if (/\b(elections?|candidates?|ballot|referendum|petition|campaign|controvers|news|issue|issues|debate|politic|recall|lawsuit|protest|opposition|residents? (say|think|want))\b/i.test(q)) {
+    const topic = q.replace(/[^\w\s'-]/g, ' ').replace(/\b(what|whats|is|are|the|a|an|about|with|on|in|of|for|how|why|who|does|do|did|happening|going|vineyard|utah|city)\b/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+    out.push({ key: 'news', label: 'News coverage', hint: 'Search news about this', href: `https://news.google.com/search?q=${encodeURIComponent(`Vineyard Utah ${topic}`.trim())}`, kind: 'page' });
+  }
+
   const contactish = /\b(contact|phone|call|email|reach|who (do|should) i|who is|who's|staff|city hall|office hours|hours|address)\b/i.test(q);
   const people = STAFF.filter((s) => s.match.test(q));
   for (const s of people.slice(0, 2)) {
