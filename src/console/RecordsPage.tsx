@@ -97,7 +97,7 @@ function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boo
 interface HeldMeeting {
   id: string;
   title: string;
-  meetingDate: string | null;
+  date: string | null;
   governmentBodyName: string | null;
   docTypes?: string[];
 }
@@ -125,7 +125,7 @@ function HeldMeetings({ year, body, oldest }: { year: string; body: string; olde
   const items = rows.key === key ? rows.items : [];
   const groups: Array<{ label: string; items: HeldMeeting[] }> = [];
   for (const m of items) {
-    const label = monthOf(m.meetingDate, null);
+    const label = monthOf(m.date, null);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.items.push(m);
     else groups.push({ label, items: [m] });
@@ -146,7 +146,7 @@ function HeldMeetings({ year, body, oldest }: { year: string; body: string; olde
                   <span className="vc-mdoc-main">
                     <span className="vc-mdoc-title">{m.title}</span>
                     <span className="vc-mdoc-meta">
-                      {[formatDate(m.meetingDate), m.governmentBodyName, (m.docTypes ?? []).map((t) => DOC_LABEL[t]).filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+                      {[formatDate(m.date), m.governmentBodyName, (m.docTypes ?? []).map((t) => DOC_LABEL[t]).filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   <ChevronRight size={16} className="vc-mdoc-go" />
