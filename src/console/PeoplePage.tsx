@@ -50,7 +50,7 @@ function Profile({ slug }: { slug: string }) {
       <PersonCard person={person} />
       <div className="vc-person-asks">
         {person.kind === 'elected' && last && (
-          <Link to={`/votes?member=${encodeURIComponent(last)}`} className="vc-chip">
+          <Link to={`/votes?member=${encodeURIComponent(person.name)}`} className="vc-chip">
             <Vote size={13} /> Full voting record
           </Link>
         )}

@@ -26,7 +26,7 @@ export function VoteChips({ votes, highlight }: { votes: VoteRow[]; highlight?: 
     <div className="vc-vote-chips">
       {votes.map((v) => (
         <span key={v.member} className="vc-vote-chip" data-vote={v.vote} data-on={highlight && highlight === v.member ? 'true' : undefined} title={`${nameOf(v.member).name}: ${VOTE_LABEL[v.vote] ?? v.vote}`}>
-          {v.member} <b>{VOTE_LABEL[v.vote] ?? v.vote}</b>
+          {nameOf(v.member).short} <b>{VOTE_LABEL[v.vote] ?? v.vote}</b>
         </span>
       ))}
     </div>

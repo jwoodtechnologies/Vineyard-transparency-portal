@@ -40,12 +40,13 @@ export interface VoteMember {
   bodies: string[];
 }
 
-/** "Holdaway" -> the current official's full name and profile when there is one. */
-export function useMemberNames(): (member: string, full?: string | null) => { name: string; person: Person | null } {
+/** A member as the minutes name them ("Jacob Holdaway", or "Holdaway" when only that is printed), with the current official's profile when it is them. */
+export function useMemberNames(): (member: string, full?: string | null) => { name: string; short: string; person: Person | null } {
   const people = usePeople();
   return (member, full) => {
-    const person = people.find((p) => p.kind === 'elected' && p.name.split(/\s+/).pop()?.toLowerCase() === member.toLowerCase()) ?? null;
-    return { name: person?.name ?? full ?? member, person };
+    const lower = member.toLowerCase();
+    const last = lower.split(' ').pop() ?? lower;
+    const person = people.find((p) => p.kind === 'elected' && (p.name.toLowerCase() === lower || (!member.includes(' ') && p.name.toLowerCase().split(/\s+/).pop() === last))) ?? null;
+    return { name: full ?? (member.includes(' ') ? member : (person?.name ?? member)), short: member.split(' ').pop() ?? member, person };
   };
 }
-

@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 1;
+export const VOTES_PARSER = 2;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -43,6 +43,9 @@ export async function processVotes(env: Env, budgetMs = 20_000, max = 400): Prom
   const repo = new SearchRepository(env);
   const started = Date.now();
   const out = { read: 0, motions: 0, votes: 0, superseded: 0, left: 0 };
+  // A new parser version starts the member list over (dates and names are rebuilt as minutes are re-read).
+  const begun = await db.prepare('SELECT count(*) AS n FROM vote_docs WHERE parser = ?').bind(VOTES_PARSER).first<{ n: number }>();
+  if (!Number(begun?.n ?? 0)) await db.prepare('DELETE FROM vote_members').run();
   while (Date.now() - started < budgetMs && out.read < max) {
     const rows = await db
       .prepare(
@@ -74,6 +77,7 @@ export async function processVotes(env: Env, budgetMs = 20_000, max = 400): Prom
     .bind(VOTES_PARSER)
     .first<{ n: number }>();
   out.left = Number(left?.n ?? 0);
+  if (!out.left) await resolveBareNames(env).catch(() => undefined);
   return out;
 }
 
@@ -88,7 +92,10 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   const body = parsed.body ?? d.government_body_id ?? 'unknown';
   const key = `${body}|${date ?? d.id}`;
   const rank = rankOf(d.title);
-  const motions = parsed.motions;
+  // Members by full name where the minutes print it ("Jacob Holdaway", not "Holdaway"), so people
+  // who share a last name across the years stay separate.
+  const full = (n: string | null) => (n ? (parsed.fullNames[n] ?? n) : n);
+  const motions = parsed.motions.map((m) => ({ ...m, mover: full(m.mover), seconder: full(m.seconder), votes: m.votes.map((v) => ({ ...v, member: full(v.member) as string })) }));
 
   // One copy per meeting: approved or final minutes win over drafts; among equals, the fuller one.
   const other = await db
@@ -138,11 +145,43 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
              first_date = min(coalesce(vote_members.first_date, excluded.first_date), coalesce(excluded.first_date, vote_members.first_date)),
              last_date = max(coalesce(vote_members.last_date, excluded.last_date), coalesce(excluded.last_date, vote_members.last_date))`,
         )
-        .bind(member, parsed.fullNames[member] ?? null, date, date),
+        .bind(member, member.includes(' ') ? member : null, date, date),
     );
   stmts.push(db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(d.id, key, body, date, rank, motions.length, VOTES_PARSER, now));
   for (let i = 0; i < stmts.length; i += 80) await db.batch(stmts.slice(i, i + 80));
   return { motions: motions.length, votes, superseded: false };
+}
+
+/**
+ * Minutes that print only a last name ("COUNCILMEMBER HOLDAWAY") are matched to the one member with
+ * that last name who was voting at the time, so their votes join that person's record.
+ */
+export async function resolveBareNames(env: Env): Promise<number> {
+  const db = env.CATALOG_DB;
+  const members = (await db.prepare('SELECT member, first_date, last_date FROM vote_members').all<{ member: string; first_date: string | null; last_date: string | null }>()).results ?? [];
+  const fulls = members.filter((m) => m.member.includes(' ') && m.first_date && m.last_date);
+  let changed = 0;
+  for (const bare of members.filter((m) => !m.member.includes(' '))) {
+    const same = fulls.filter((f) => f.member.split(' ').pop() === bare.member);
+    if (!same.length) continue;
+    const dates = (await db.prepare('SELECT DISTINCT meeting_date AS d FROM motion_votes WHERE member = ?').bind(bare.member).all<{ d: string | null }>()).results ?? [];
+    for (const { d } of dates) {
+      if (!d) continue;
+      const slack = (x: string, days: number) => new Date(Date.parse(`${x}T12:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+      const fit = same.filter((f) => d >= slack(f.first_date!, -200) && d <= slack(f.last_date!, 200));
+      if (fit.length !== 1) continue;
+      const who = fit[0].member;
+      await db.batch([
+        db.prepare('UPDATE OR IGNORE motion_votes SET member = ? WHERE member = ? AND meeting_date = ?').bind(who, bare.member, d),
+        db.prepare('UPDATE motions SET mover = ? WHERE mover = ? AND meeting_date = ?').bind(who, bare.member, d),
+        db.prepare('UPDATE motions SET seconder = ? WHERE seconder = ? AND meeting_date = ?').bind(who, bare.member, d),
+      ]);
+      changed++;
+    }
+    const left = await db.prepare('SELECT count(*) AS n FROM motion_votes WHERE member = ?').bind(bare.member).first<{ n: number }>();
+    if (!Number(left?.n ?? 0)) await db.prepare('DELETE FROM vote_members WHERE member = ?').bind(bare.member).run();
+  }
+  return changed;
 }
 
 // ------------------------------------------------------------------------------------------ read API
@@ -310,7 +349,7 @@ export async function handleVotes(env: Env, url: URL, sub: string | undefined): 
   const year = Number(p.get('year')) || null;
   const body = p.get('body') && /^[a-z0-9-]{2,60}$/.test(p.get('body')!) ? p.get('body') : null;
   if (sub === 'members') return json({ members: await voteMembers(env, { year, body }) }, { cache: 'public, max-age=300' });
-  const member = p.get('member') && /^[A-Za-z'’-]{2,40}$/.test(p.get('member')!) ? p.get('member') : null;
+  const member = p.get('member') && /^[A-Za-z'’. -]{2,60}$/.test(p.get('member')!) ? p.get('member') : null;
   const result = ['carried', 'failed', 'unknown'].includes(p.get('result') ?? '') ? p.get('result') : null;
   const vote = ['yes', 'no', 'abstain', 'recused', 'absent'].includes(p.get('vote') ?? '') ? p.get('vote') : null;
   const r = await queryMotions(env, { member, body, year, result, vote, q: (p.get('q') ?? '').slice(0, 120), page: Number(p.get('page')) || 1, pageSize: Number(p.get('pageSize')) || 30 });
@@ -324,15 +363,18 @@ const NOT_TERMS = new Set('how did does do what when where which who whom whose 
 export async function votesFor(env: Env, question: string, people: Array<{ name: string }>): Promise<{ member: string | null; q: string; items: MotionOut[] } | null> {
   if (!VOTE_Q.test(question)) return null;
   await ensureVotesTables(env);
-  const known = await env.CATALOG_DB.prepare('SELECT member FROM vote_members').all<{ member: string }>();
+  const known = await env.CATALOG_DB.prepare('SELECT member FROM vote_members ORDER BY last_date DESC').all<{ member: string }>();
   const lower = ` ${question.toLowerCase().replace(/[^a-z0-9' -]+/g, ' ')} `;
   const members = (known.results ?? []).map((r) => r.member);
-  const fromPeople = people.map((p) => p.name.split(/\s+/).pop() ?? '').filter((l) => members.includes(l) && (lower.includes(` ${l.toLowerCase()} `) || lower.includes(` ${l.toLowerCase()}'`)));
-  const member = fromPeople[0] ?? members.find((m) => m.length >= 4 && lower.includes(` ${m.toLowerCase()} `)) ?? null;
+  const lastOf = (m: string) => (m.split(' ').pop() ?? m).toLowerCase();
+  const said = (m: string) => lower.includes(` ${m.toLowerCase()} `) || lower.includes(` ${lastOf(m)} `) || lower.includes(` ${lastOf(m)}'`);
+  // A current official named in the question first, then the most recent member with that name.
+  const fromPeople = people.map((p) => p.name).filter((n) => members.includes(n) && said(n));
+  const member = fromPeople[0] ?? members.find((m) => lastOf(m).length >= 4 && said(m)) ?? null;
   const words = lower
     .split(/\s+/)
     .map((w) => w.replace(/'s$/, ''))
-    .filter((w) => w.length >= 3 && !NOT_TERMS.has(w) && !(member && w === member.toLowerCase()) && !people.some((p) => p.name.toLowerCase().split(/\s+/).includes(w)));
+    .filter((w) => w.length >= 3 && !NOT_TERMS.has(w) && !(member && member.toLowerCase().split(' ').includes(w)) && !people.some((p) => p.name.toLowerCase().split(/\s+/).includes(w)));
   if (!member && !words.length) return null;
   for (const q of [words.slice(0, 3).join(' '), words.slice(0, 1).join(' ')]) {
     if (!q && !member) continue;
