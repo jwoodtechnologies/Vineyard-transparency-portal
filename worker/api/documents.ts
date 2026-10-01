@@ -209,6 +209,32 @@ function parseRange(header: string | null, size: number): RangeRequest | 'invali
   return { offset: start, length: end - start + 1 };
 }
 
+/** The current signed link for a CivicClerk agenda item attachment (links expire, so read fresh). */
+async function civicClerkAttachmentUrl(agendaId: number, attachmentId: number): Promise<string | null> {
+  const r = await fetch(`https://vineyardut.api.civicclerk.com/v1/Meetings/${agendaId}`, {
+    headers: { accept: 'application/json', 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)' },
+    cf: { cacheTtl: 600, cacheEverything: true },
+  } as RequestInit).catch(() => null);
+  if (!r?.ok) return null;
+  const data = (await r.json().catch(() => null)) as { items?: unknown[] } | null;
+  type Att = { id?: number; isPublished?: boolean; pdfVersionFullPath?: string; mediaFullPath?: string };
+  type Item = { attachmentsList?: Att[]; childItems?: Item[]; items?: Item[]; hasConfidentialAttachment?: boolean };
+  const walk = (items: Item[] | undefined): string | null => {
+    for (const it of items ?? []) {
+      if (!it.hasConfidentialAttachment)
+        for (const a of it.attachmentsList ?? []) if (a.id === attachmentId && a.isPublished) return a.pdfVersionFullPath ?? (a.mediaFullPath ? `https://civicclerk.blob.core.windows.net/${a.mediaFullPath}` : null);
+      const deeper = walk(it.childItems ?? it.items);
+      if (deeper) return deeper;
+    }
+    return null;
+  };
+  const u = walk(data?.items as Item[] | undefined);
+  return u && /^https:\/\/civicclerk\.blob\.core\.windows\.net\//.test(u) ? u : null;
+}
+
+/** Official hosts whose PDFs the portal may stream when it has no archived copy of its own. */
+const PROXY_HOSTS = /^https:\/\/(vineyardut\.api\.civicclerk\.com|s3[.-][a-z0-9-]*\.amazonaws\.com\/municipalcodeonline|s3\.amazonaws\.com\/municipalcodeonline|(www\.)?vineyardutah\.(gov|org)|cms3\.revize\.com)\//i;
+
 export async function getDocumentFile(env: Env, request: Request, id: string, url: URL): Promise<Response> {
   const row = await getDocumentRow(env, id);
   const docId = String(row.id);
@@ -227,6 +253,31 @@ export async function getDocumentFile(env: Env, request: Request, id: string, ur
   const storage = storageFor(env.ARCHIVE);
   if (!key || !storage.available || !isArchiveKey(key)) {
     const original = String(row.original_url ?? '');
+    // No archived copy yet: stream the official PDF through the portal (same origin, cached at the
+    // edge) so it opens in the portal's own PDF viewer, exactly as published.
+    const att = original.match(/^https:\/\/vineyardut\.portal\.civicclerk\.com\/event\/\d+\/files#attachment-(\d+)-(\d+)$/);
+    const pdfSource = att ? await civicClerkAttachmentUrl(Number(att[2]), Number(att[1])) : PROXY_HOSTS.test(original) ? original : null;
+    if (!versionParam && /^application\/pdf/i.test(String(row.mime_type ?? '')) && pdfSource) {
+      const upstream = await fetch(pdfSource, {
+        headers: { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)', ...(request.headers.get('range') ? { range: request.headers.get('range')! } : {}) },
+        cf: att ? { cacheTtl: 3600 } : { cacheTtl: 86400, cacheEverything: true },
+      } as RequestInit).catch(() => null);
+      if (upstream && (upstream.ok || upstream.status === 206)) {
+        const h: Record<string, string> = {
+          ...API_SECURITY_HEADERS,
+          'content-type': 'application/pdf',
+          'cross-origin-resource-policy': 'same-origin',
+          'cache-control': 'public, max-age=3600',
+          'content-disposition': `inline; filename="${sanitizeFileName(String(row.original_filename ?? ''), docId)}"`,
+          'x-vtp-archive': 'proxied-original',
+        };
+        for (const k of ['content-length', 'content-range', 'accept-ranges', 'etag', 'last-modified']) {
+          const v = upstream.headers.get(k);
+          if (v) h[k] = v;
+        }
+        return new Response(upstream.body, { status: upstream.status, headers: h });
+      }
+    }
     if (/^https?:\/\//i.test(original) && !versionParam) {
       return new Response(null, { status: 302, headers: { location: original, 'cache-control': 'public, max-age=300', 'x-vtp-archive': 'remote-only', ...API_SECURITY_HEADERS } });
     }

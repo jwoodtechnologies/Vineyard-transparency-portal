@@ -183,7 +183,9 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
             api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": "attachment no longer published", "runId": run_id}]})
             return
         url = fresh
-        source_url = meta.get("sourceUrl") or item["url"].split("#")[0]
+        # The portal page people can open; the fragment lets the portal stream this exact file later.
+        parent = (item.get("parent_url") or meta.get("sourceUrl") or "").split("#")[0]
+        source_url = f"{parent}#attachment-{int(meta.get('attachmentId') or 0)}-{int(meta.get('agendaId') or 0)}" if parent else item["url"].split("#")[0]
         ext = "pdf" if ".pdf" in fresh.split("?")[0].lower() else (extension(fresh.split("?")[0]) or ext)
 
     if ext in MEDIA_EXTENSIONS:

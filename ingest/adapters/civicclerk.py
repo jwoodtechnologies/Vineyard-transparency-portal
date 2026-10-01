@@ -128,7 +128,8 @@ class CivicClerkAdapter(SourceAdapter):
                     "location": location,
                     "status": "cancelled" if "cancel" in f"{name} {agenda_name}".lower() else "held" if dt_utc and dt_utc < now else "scheduled",
                     "sourceId": self.source_id,
-                    "sourceUrl": f"{PORTAL}/event/{int(ev['id'])}/files",
+                    # The portal page people can open; the fragment lets the portal stream this exact file.
+                    "sourceUrl": f"{PORTAL}/event/{int(ev['id'])}/files#attachment-{att_id}-{agenda_id}",
                     "externalId": str(ev["id"]),
                     "media": media,
                 }

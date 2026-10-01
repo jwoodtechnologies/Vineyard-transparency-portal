@@ -65,7 +65,9 @@ function Viewer({ doc, page, setPage, highlight }: { doc: DocumentDetail; page: 
       live = false;
     };
   }, [doc.id, doc.archiveUrl]);
-  const needText = !isPdf || failed || !doc.archiveUrl;
+  // PDFs always open as the actual PDF: the archived copy, or the official file streamed through
+  // the portal when there is no copy yet. Text is the fallback only when the PDF cannot load.
+  const needText = !isPdf || failed;
   const text = useLoad(needText ? `text:${doc.id}` : null, () => DocumentService.text(doc.id));
 
   if (!needText && fileUrl) {
@@ -273,8 +275,8 @@ export default function DocumentView() {
               <Layers size={15} strokeWidth={1.8} /> Everything from this meeting <span className="vc-count">{siblings.docs.length}</span>
             </button>
           )}
-          {doc.archiveUrl && (
-            <a href={doc.archiveUrl} className="vc-secondary" download>
+          {(doc.archiveUrl || doc.mimeType === 'application/pdf') && (
+            <a href={doc.archiveUrl ?? `/api/documents/${encodeURIComponent(doc.id)}/file`} className="vc-secondary" download>
               <Download size={15} strokeWidth={1.8} /> Download
             </a>
           )}
