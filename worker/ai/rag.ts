@@ -426,7 +426,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     };
   };
 
-  return { kind: 'model', messages, useBig: budgetOk < BIG_MODEL_PER_DAY, finish, fail };
+  return { kind: 'model', messages, useBig: budgetOk < intVar(env.AI_BIG_PER_DAY, BIG_MODEL_PER_DAY), finish, fail };
 }
 
 const SSE_HEADERS = {
