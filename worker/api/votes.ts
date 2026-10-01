@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 8;
+export const VOTES_PARSER = 9;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -94,7 +94,21 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   const now = new Date().toISOString();
   const guessDate = titleDate(d.title) ?? d.document_date;
   const parsed = parseMinutes(text, guessDate);
-  const date = parsed.date ?? guessDate;
+  // Hearing notices and announcements are sometimes filed as minutes: no attendance list, no "minutes" in the name.
+  if (!/minute/i.test(d.title ?? '') && parsed.present.length < 3) {
+    await db.batch([
+      db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ?)').bind(d.id),
+      db.prepare('DELETE FROM motions WHERE document_id = ?').bind(d.id),
+      db.prepare('DELETE FROM meeting_attendance WHERE document_id = ?').bind(d.id),
+      db.prepare('DELETE FROM meeting_roster WHERE document_id = ?').bind(d.id),
+      db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, parser, parsed_at, motions) VALUES (?, ?, ?, 0)').bind(d.id, VOTES_PARSER, now),
+    ]);
+    return { motions: 0, votes: 0, superseded: false };
+  }
+  // The date printed in the minutes wins (a file named for the meeting that approved it holds an earlier
+  // meeting), unless it is far from the file's own date (a date quoted in the text, not the meeting's).
+  const near = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) <= 75 * 86_400_000;
+  const date = parsed.date && (!guessDate || near(parsed.date, guessDate)) ? parsed.date : guessDate;
   // The record's own body wins; the heading only fills in when the record has none.
   const body = (d.government_body_id && d.government_body_id !== 'general' ? d.government_body_id : null) ?? parsed.body ?? 'unknown';
   const key = `${body}|${date ?? d.id}`;
@@ -104,13 +118,14 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   const full = (n: string | null) => (n ? (parsed.fullNames[n] ?? n) : n);
   const motions = parsed.motions.map((m) => ({ ...m, mover: full(m.mover), seconder: full(m.seconder), votes: m.votes.map((v) => ({ ...v, member: full(v.member) as string })) }));
 
-  // One copy per meeting: approved or final minutes win over drafts; among equals, the fuller one.
+  // One copy per meeting.
   const other = await db
-    .prepare('SELECT document_id, rank, motions FROM vote_docs WHERE meeting_key = ? AND document_id != ? AND motions > 0 ORDER BY rank DESC, motions DESC LIMIT 1')
+    .prepare('SELECT document_id, rank, motions FROM vote_docs WHERE meeting_key = ? AND document_id != ? AND motions > 0 ORDER BY motions DESC, rank DESC LIMIT 1')
     .bind(key, d.id)
     .first<{ document_id: string; rank: number; motions: number }>();
   // A copy with no readable motions (a scan before OCR, say) never displaces one that has them.
-  if (other && (!motions.length || other.rank > rank || (other.rank === rank && other.motions >= motions.length))) {
+  // The fuller copy wins (a draft with every motion beats an approved file that lost its text); approved breaks ties.
+  if (other && (!motions.length || other.motions > motions.length || (other.motions === motions.length && other.rank >= rank))) {
     await db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)').bind(d.id, key, body, date, rank, VOTES_PARSER, now).run();
     return { motions: 0, votes: 0, superseded: true };
   }
