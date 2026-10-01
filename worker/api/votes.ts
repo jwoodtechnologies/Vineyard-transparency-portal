@@ -231,6 +231,11 @@ export interface Commissioner {
  * the website still lists who have not sat this year are left out. Chair and alternates as the
  * minutes or the website label them.
  */
+/** Website listings known to be out of date: Natalie Harbin was replaced by Daria Evans (2026). */
+const REPLACED = new Set(['natalie harbin']);
+/** Roles the sources do not print: Graden Ostler is an alternate. */
+const ROLE_OVERRIDES: Record<string, string> = { ostler: 'Alternate' };
+
 export async function currentCommission(env: Env): Promise<Commissioner[]> {
   await ensureVotesTables(env);
   const db = env.CATALOG_DB;
@@ -240,14 +245,14 @@ export async function currentCommission(env: Env): Promise<Commissioner[]> {
   const site = (await db.prepare("SELECT slug, name, role, term, photo_url FROM people WHERE current = 1 AND kind = 'board' AND department LIKE '%Planning Commission%'").all<{ slug: string; name: string; role: string; term: string | null; photo_url: string | null }>()).results ?? [];
   const latest = new Set(docs.slice(0, 2).map((d) => d.document_id));
   const lastOf = (n: string) => (n.split(' ').pop() ?? n).toLowerCase();
-  const sat = (n: string) => att.some((a) => lastOf(a.member) === lastOf(n));
   const recent = new Set(att.filter((a) => latest.has(a.document_id)).map((a) => a.member));
   const out = new Map<string, Commissioner>();
   for (const n of recent) out.set(lastOf(n), { name: n, role: 'Commissioner', term: null, slug: null, photo: null });
   for (const p of site) {
     const end = (p.term ?? '').match(/((?:19|20)\d{2})\s*$/);
     const termOk = !end || Number(end[1]) >= year;
-    if (!docs.length ? termOk : sat(p.name) && termOk) {
+    // Listed with a current or open term: on the commission, whether or not posted minutes show them yet.
+    if (termOk && !REPLACED.has(p.name.toLowerCase())) {
       const role = /alternate/i.test(p.role) ? 'Alternate' : /chair/i.test(p.role) ? p.role : 'Commissioner';
       // The name as the minutes print it ("Brad Fagg"), with the website's term and profile.
       out.set(lastOf(p.name), { name: out.get(lastOf(p.name))?.name ?? p.name, role, term: p.term, slug: p.slug, photo: p.photo_url ? `/api/people/${p.slug}/photo` : null });
@@ -270,6 +275,10 @@ export async function currentCommission(env: Env): Promise<Commissioner[]> {
       mark(/\bvice[- ]chair(?:person|man|woman)?\s+(?:[A-Z][a-z]+\s+)?([A-Z][A-Za-z'-]+)/gi, 'Vice Chair');
       mark(/(?<!vice[- ])\bchair(?:person|man|woman)?\s+(?:[A-Z][a-z]+\s+)?([A-Z][A-Za-z'-]+)\s+(?:called|opened|adjourned)/gi, 'Chair');
     }
+  }
+  for (const c of out.values()) {
+    const o = ROLE_OVERRIDES[(c.name.split(' ').pop() ?? '').toLowerCase()];
+    if (o) c.role = o;
   }
   const rank = (r: string) => (r === 'Chair' ? 0 : r === 'Vice Chair' ? 1 : r === 'Alternate' ? 3 : 2);
   return [...out.values()].sort((a, b) => rank(a.role) - rank(b.role) || a.name.localeCompare(b.name));

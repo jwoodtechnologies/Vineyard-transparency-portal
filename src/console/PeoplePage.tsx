@@ -82,7 +82,7 @@ function Directory() {
   }, []);
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return people.filter((p) => p.current && (!t || `${p.name} ${p.role} ${p.department ?? ''}`.toLowerCase().includes(t)));
+    return people.filter((p) => p.current && p.kind !== 'board' && (!t || `${p.name} ${p.role} ${p.department ?? ''}`.toLowerCase().includes(t)));
   }, [people, q]);
   const groups: Array<[string, typeof shown]> = [
     ['Mayor and City Council', shown.filter((p) => p.kind === 'elected')],
