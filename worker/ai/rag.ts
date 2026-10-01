@@ -23,6 +23,7 @@ import { readAiStream } from './sse';
 import { interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
 import { countAnswer, countKind, isMeetingCountQuestion, isScheduleQuestion, meetingsInFrame, scheduleAnswer } from './schedule';
 import { resolveTime, timeNote, utahToday } from './timeframe';
+import { topicsFor } from './topics';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -401,19 +402,19 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seenR = new Set<string>();
     hits = [...hits.slice(0, 30), ...code.slice(0, 8), ...hits.slice(30)].filter((h) => (seenR.has(h.chunkId) ? false : (seenR.add(h.chunkId), true)));
   }
-  // Questions about the mayor, voting or the form of government also read the records that set
-  // Vineyard's form of government (six-member council since January 1, 2026: the mayor does not vote).
+  // Issues of today (City Hall, the form of government, elections): the records that settle them are
+  // searched by name and lead, and the model is told the plain state of things it must cite.
   const govIds = new Set<string>();
-  if (/\b(mayor|vot(e|es|ed|ing)|form of government|six-member|five-member|tie|council members?|who decides|city manager)\b/i.test(body.question)) {
-    const [a, b] = await Promise.all([
-      retrieve('"six-member council" "took effect" January 2026', { ...filters, dateFrom: '2025-06-01' }).catch(() => [] as ChunkHit[]),
-      retrieve('"six-member" mayor vote tie', { ...filters, dateFrom: '2024-01-01' }).catch(() => [] as ChunkHit[]),
-    ]);
-    const gov = interleave([a, b], 4);
-    gov.forEach((h) => govIds.add(h.chunkId));
-    const seenG = new Set<string>();
-    hits = [...hits.slice(0, 30), ...gov.slice(0, 4), ...hits.slice(30)].filter((h) => (seenG.has(h.chunkId) ? false : (seenG.add(h.chunkId), true)));
+  const topicIds = new Set<string>();
+  const topics = topicsFor(body.question);
+  for (const t of topics) {
+    const lists = await Promise.all(t.queries.map((x) => retrieve(x.q, { ...filters, ...(x.from ? { dateFrom: x.from } : {}) }).catch(() => [] as ChunkHit[])));
+    const found = interleave(lists, 4);
+    found.forEach((h) => (t.id === 'form-of-government' ? govIds : topicIds).add(h.chunkId));
+    const seenT = new Set<string>();
+    hits = [...hits.slice(0, 30), ...found, ...hits.slice(30)].filter((h) => (seenT.has(h.chunkId) ? false : (seenT.add(h.chunkId), true)));
   }
+  const topicNotes = topics.map((t) => t.note).filter(Boolean).join(' ');
   const currentIds = new Set<string>();
   if (CURRENT.test(body.question) || ROLE.test(body.question)) {
     const current = await retrieve(retrievalText, { ...filters, currency: ['current'] }).catch(() => [] as ChunkHit[]);
@@ -423,7 +424,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seenC = new Set<string>();
     hits = [...current.slice(0, 6), ...top, ...hits.slice(30)].filter((h) => (seenC.has(h.chunkId) ? false : (seenC.add(h.chunkId), true)));
   }
-  question = `${question}\n(${timeNote(todayUT, frame)}${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
+  question = `${question}\n(${timeNote(todayUT, frame)}${topicNotes ? ` ${topicNotes}` : ''}${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
   if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
@@ -455,6 +456,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       if (ins.length) best = [...ins, ...best.filter((h) => !inside(h))];
     }
     lead(govIds, 1);
+    lead(topicIds, 2);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
     if (person && /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role)) lead(govIds, 2);
