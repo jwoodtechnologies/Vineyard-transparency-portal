@@ -6,8 +6,10 @@ import type { ChunkHit } from '../search/types';
 
 export const SEARCH_ONLY_NOTICE = 'AI answers are temporarily unavailable. Search results from the public-record archive are shown below.';
 export const NO_RESULTS_ANSWER = 'Nothing in the archive matches that yet. Try other words, a street or project name, or a meeting date.';
-/** Answers come from the larger model; the small one covers errors and the rest of the free daily allowance. */
-export const DEFAULT_AI_MODEL = '@cf/openai/gpt-oss-120b';
+/** Answers come from Qwen; the small Llama model covers errors. */
+export const DEFAULT_AI_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
+/** Qwen writes answers and search terms: strong instruction following at about 30 Neurons an answer. */
+export const QWEN_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
 export const FALLBACK_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
 
 /** Who the assistant is, shared by both modes. */

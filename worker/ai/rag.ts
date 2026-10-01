@@ -11,7 +11,7 @@ import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
 import { ensurePeopleTable } from '../api/people';
-import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, aiText, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, QWEN_MODEL, aiText, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -141,11 +141,15 @@ const BIG_MODEL_PER_DAY = 35;
 
 async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: number, temperature: number): Promise<string> {
   const big = model.includes('gpt-oss');
-  const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : { messages, max_tokens: maxTokens, temperature };
+  const qwen = model.includes('qwen');
+  // Qwen 3 thinks out loud unless told not to; answers here need no visible reasoning.
+  const msgs = qwen ? messages.map((m, i) => (i === 0 && m.role === 'system' ? { ...m, content: `${m.content}\n/no_think` } : m)) : messages;
+  const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : qwen ? { messages: msgs, max_tokens: 900, temperature: 0.2 } : { messages, max_tokens: maxTokens, temperature };
   const run = (env.AI as unknown as AiRunner).run(model, input);
   const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), AI_TIMEOUT_MS));
   const text = aiText(await Promise.race([run, timeout]))
     .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/<think>[\s\S]*$/, '')
     .trim();
   if (!text) throw new Error('Empty AI response');
   return text;
@@ -250,16 +254,16 @@ const TERMS_PROMPT = [
 /** Search words for a question, from the small model (about 3 Neurons). Null on any problem. */
 async function searchTerms(env: Env, q: string, previous: string | null): Promise<string | null> {
   try {
-    const run = (env.AI as unknown as AiRunner).run(FALLBACK_AI_MODEL, {
+    const run = (env.AI as unknown as AiRunner).run(QWEN_MODEL, {
       messages: [
-        { role: 'system', content: TERMS_PROMPT },
+        { role: 'system', content: `${TERMS_PROMPT}\n/no_think` },
         { role: 'user', content: previous ? `Earlier question: ${previous}\nQuestion: ${q}` : `Question: ${q}` },
       ],
-      max_tokens: 40,
+      max_tokens: 120,
       temperature: 0,
     });
     const out = aiText(await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), 4000))]));
-    const line = out.split('\n').map((l) => l.trim()).find(Boolean) ?? '';
+    const line = out.replace(/<think>[\s\S]*?<\/think>/g, '').split('\n').map((l) => l.trim()).find(Boolean) ?? '';
     const clean = line.replace(/^(search|keywords?|query)\s*:\s*/i, '').replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim();
     const words = clean.split(' ').filter(Boolean);
     return words.length >= 2 && words.length <= 14 ? clean : null;
