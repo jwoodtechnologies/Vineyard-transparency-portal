@@ -117,7 +117,9 @@ def entry_metadata(book: str, path: list[str], name: str) -> dict:
             title=title,
             documentType=kind,
             documentNumber=f"{num.group(1)}-{num.group(2)}" if num else None,
-            documentDate=f"{year}-01-01" if year else None,
+            # Only the year is known until the record's own text gives the adoption date (pipeline).
+            documentDate=None,
+            year=year,
             datePrecision="year",
             governmentBodyId="redevelopment-agency" if rda else "city-council",
             governmentBodyName="Vineyard Redevelopment Agency" if rda else "City Council",
@@ -184,3 +186,39 @@ class MunicipalCodeAdapter(SourceAdapter):
                         priority=30 if BOOKS[book][1] in ("minutes", "resolution", "ordinance") else 60,
                         metadata=meta,
                     )
+
+
+_MONTHS = "january|february|march|april|may|june|july|august|september|october|november|december"
+_DAY_OF = re.compile(rf"\b(\d{{1,2}})\s*(?:st|nd|rd|th)?\s+day\s+of\s+({_MONTHS})\s*,?\s*(\d{{4}})", re.I)
+_MDY = re.compile(rf"\b({_MONTHS})\s+(\d{{1,2}})\s*(?:st|nd|rd|th)?\s*,?\s*(\d{{4}})\b", re.I)
+_ADOPT = re.compile(r"\b(adopted|passed|approved|dated|effective|signed)\b", re.I)
+
+
+def _iso(y: str, month: str, d: str) -> str | None:
+    import datetime as _dt
+
+    try:
+        m = _MONTHS.split("|").index(month.lower()) + 1
+        return _dt.date(int(y), m, int(d)).isoformat()
+    except (ValueError, IndexError):
+        return None
+
+
+def adoption_date(text: str, year: int | None) -> str | None:
+    """The date a resolution or ordinance was adopted, from its own text, in its numbered year.
+
+    "PASSED AND ADOPTED this 10th day of May, 1989" wins (the last such phrase, the signature
+    block); otherwise "adopted ... May 10, 1989". None when the text does not say, so a record is
+    never given a made-up day."""
+    if not text or not year:
+        return None
+    best = None
+    for m in _DAY_OF.finditer(text):
+        if int(m.group(3)) == year:
+            best = _iso(m.group(3), m.group(2), m.group(1)) or best
+    if best:
+        return best
+    for m in _MDY.finditer(text):
+        if int(m.group(3)) == year and _ADOPT.search(text[max(0, m.start() - 90) : m.start()]):
+            best = _iso(m.group(3), m.group(1), m.group(2)) or best
+    return best

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from .adapters import CivicClerkAdapter, MunicipalCodeAdapter, SheriffAdapter, VineyardWebsiteAdapter
 from .adapters.base import QueueItem
-from .adapters.municode import HEADERS as MCO_HEADERS
+from .adapters.municode import HEADERS as MCO_HEADERS, adoption_date
 from .extract import Extraction, Page
 from .urls import key_for
 from .api import BudgetReached, PortalApi
@@ -220,13 +220,15 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
                     extraction.status = "extracted"
         title = clean_title(meta.get("title") or html_heading or meta.get("linkText") or meta.get("pageTitle"), meta.get("fileName") or filename(url))
         doc_type = meta.get("documentType") or classify_type(title, meta.get("fileName"), meta.get("sectionHeading"), meta.get("pageTitle"))
-        doc_date = meta.get("documentDate") or parse_date(title, meta.get("fileName"), meta.get("linkText"))
+        doc_date, year_only = _record_date(meta, " ".join(p.text for p in extraction.pages) if extraction else "")
+        if not doc_date and not year_only:
+            doc_date = parse_date(title, meta.get("fileName"), meta.get("linkText"))
         document = {
             "title": title,
             "documentType": doc_type,
             "documentNumber": meta.get("documentNumber") or parse_document_number(title, meta.get("fileName")),
             "documentDate": doc_date,
-            "year": int(doc_date[:4]) if doc_date else None,
+            "year": int(doc_date[:4]) if doc_date else year_only,
             "governmentBodyId": meta.get("governmentBodyId"),
             "governmentBodyName": meta.get("governmentBodyName"),
             "meetingId": meta.get("meetingId"),
@@ -317,6 +319,15 @@ def _mco_text(html: str) -> tuple[str, list[tuple[str, str]]]:
     return text, files
 
 
+def _record_date(meta: dict, text: str) -> tuple[str | None, int | None]:
+    """(exact date, year) for a record. Resolutions and ordinances numbered by year get the adoption
+    date from their own text, or the year alone: never a placeholder day like January 1."""
+    if meta.get("datePrecision") != "year":
+        return meta.get("documentDate"), None
+    year = meta.get("year") or (int(str(meta["documentDate"])[:4]) if meta.get("documentDate") else None)
+    return adoption_date(text, year), year
+
+
 def process_mco(api: PortalApi, client: PoliteClient, item: dict, run_id: str, counts: RunCounts, meta: dict) -> None:
     """A municipal code site entry: queue its record file(s), or index its own text when it has none."""
     key = item["url_key"]
@@ -356,14 +367,14 @@ def process_mco(api: PortalApi, client: PoliteClient, item: dict, run_id: str, c
         return
     sha = hashlib.sha256(text.encode()).hexdigest()
     extraction = Extraction(pages=[Page(number=None, text=text, section=meta.get("entryName"))], page_count=None)
-    doc_date = meta.get("documentDate")
+    doc_date, year_only = _record_date(meta, text)
     title = clean_title(meta.get("title"), None)
     document = {
         "title": title,
         "documentType": meta.get("documentType") or "other",
         "documentNumber": meta.get("documentNumber"),
         "documentDate": doc_date,
-        "year": int(doc_date[:4]) if doc_date else None,
+        "year": int(doc_date[:4]) if doc_date else year_only,
         "governmentBodyId": meta.get("governmentBodyId"),
         "governmentBodyName": meta.get("governmentBodyName"),
         "categories": categories_for(meta.get("documentType") or "other"),

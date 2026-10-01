@@ -15,6 +15,7 @@ import { intVar } from '../env';
 import { HttpError, json, badRequest, notFound, readJson } from '../lib/http';
 import { nowIso, utcDay, chunked } from '../lib/util';
 import { categoriesForType, normalizeType } from '../lib/taxonomy';
+import { adoptionDate } from '../lib/adoptionDate';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
@@ -147,6 +148,31 @@ async function mergeDuplicateMeetings(env: Env): Promise<{ dated: number; merged
   return { dated, merged };
 }
 
+/**
+ * Resolutions and ordinances from the code site are numbered by year. They once took January 1 of
+ * that year as a placeholder date; drop it, then take the adoption date from the record's own text
+ * (signature block), or leave the year alone. A slice per run, so repeated migrates finish the job.
+ */
+async function fixRecordDates(env: Env): Promise<{ cleared: number; dated: number }> {
+  const db = env.CATALOG_DB;
+  const repo = new SearchRepository(env);
+  const scope = "source_id = 'vineyard-municipal-code' AND document_type IN ('resolution','ordinance')";
+  const c = await db.prepare(`UPDATE documents SET document_date = NULL WHERE ${scope} AND document_date LIKE '%-01-01'`).run();
+  for (const [, sdb] of SearchRepository.boundShards(env)) await sdb.prepare(`UPDATE shard_documents SET document_date = NULL WHERE ${scope} AND document_date LIKE '%-01-01'`).run().catch(() => undefined);
+  const rows = await db.prepare(`SELECT id, year, search_shard FROM documents WHERE ${scope} AND document_date IS NULL AND year IS NOT NULL AND search_shard IS NOT NULL ORDER BY random() LIMIT 300`).all<{ id: string; year: number; search_shard: number }>();
+  let dated = 0;
+  for (const d of rows.results ?? []) {
+    if (!repo.activeShards.includes(d.search_shard)) continue;
+    const t = await repo.shard(d.search_shard).prepare('SELECT group_concat(text, \' \') AS t FROM chunks WHERE document_id = ?').bind(d.id).first<{ t: string | null }>().catch(() => null);
+    const date = adoptionDate(t?.t, Number(d.year));
+    if (!date) continue;
+    await db.prepare('UPDATE documents SET document_date = ? WHERE id = ?').bind(date, d.id).run();
+    await repo.shard(d.search_shard).prepare('UPDATE shard_documents SET document_date = ? WHERE document_id = ?').bind(date, d.id).run().catch(() => undefined);
+    dated++;
+  }
+  return { cleared: Number(c.meta?.changes ?? 0), dated };
+}
+
 async function migrate(env: Env): Promise<Response> {
   const catalog = splitSql(catalogSql);
   const search = splitSql(searchSql);
@@ -160,12 +186,13 @@ async function migrate(env: Env): Promise<Response> {
   }
   await env.CATALOG_DB.prepare("UPDATE documents SET document_date = NULL, year = NULL, currency = 'current' WHERE source_id = 'vineyard-gis' AND document_date IS NOT NULL").run();
   const meetings = await mergeDuplicateMeetings(env).catch((e) => ({ error: String(e).slice(0, 200) }));
+  const recordDates = await fixRecordDates(env).catch((e) => ({ error: String(e).slice(0, 200) }));
   // Files skipped only because a robots.txt answered 403 (ArcGIS, Amazon S3) go back in the queue.
   await env.CATALOG_DB.prepare("UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL WHERE status = 'skipped' AND last_error LIKE 'RobotsDisallowed%'").run().catch(() => undefined);
   await ensureActivityTables(env);
   // While no panel owner exists, each migrate run prints a fresh one-time setup code (24 hours).
   const panelSetupCode = await newSetupCode(env);
-  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, meetings, ...(panelSetupCode ? { panelSetupCode } : {}) });
+  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, meetings, recordDates, ...(panelSetupCode ? { panelSetupCode } : {}) });
 }
 
 async function quota(env: Env): Promise<Response> {

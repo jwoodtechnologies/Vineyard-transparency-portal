@@ -20,7 +20,7 @@ class MunicodeTests(unittest.TestCase):
 
     def test_resolution_and_ordinance(self):
         r = entry_metadata("resolutions", ["City Resolutions", "1989 Resolutions"], "1989-01 Town Birthday")
-        self.assertEqual((r["documentType"], r["documentNumber"], r["documentDate"]), ("resolution", "1989-01", "1989-01-01"))
+        self.assertEqual((r["documentType"], r["documentNumber"], r["documentDate"], r["year"]), ("resolution", "1989-01", None, 1989))
         o = entry_metadata("orddoc", ["1989-1999", "1989"], "ORD 1989-01 Elected Officials Duties, Etc.")
         self.assertEqual((o["documentType"], o["documentNumber"]), ("ordinance", "1989-01"))
         self.assertTrue(o["title"].startswith("Ordinance 1989-01"))
@@ -49,3 +49,15 @@ class MunicodeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_adoption_date_from_signature_block():
+    from ingest.adapters.municode import adoption_date
+
+    t = "RESOLUTION 1989-02 ... PASSED AND ADOPTED by the Town Council this 10th day of May, 1989. Attest"
+    assert adoption_date(t, 1989) == "1989-05-10"
+    assert adoption_date("approved on June 23, 2026 by the council", 2026) == "2026-06-23"
+    # A date in another year, or with no adoption wording, is not taken as the adoption date.
+    assert adoption_date("See the plan of March 3, 2019.", 2026) is None
+    assert adoption_date("the meeting of March 3, 2026 was noticed", 2026) is None
+    assert adoption_date("", 2026) is None

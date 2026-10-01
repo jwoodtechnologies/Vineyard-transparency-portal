@@ -28,10 +28,10 @@ export function catalogFilterSql(f: SearchFilters): { sql: string; params: unkno
 }
 
 export const ORDER_BY: Record<string, string> = {
-  date_desc: 'doc.document_date IS NULL, doc.document_date DESC, doc.title',
-  date_asc: 'doc.document_date IS NULL, doc.document_date ASC, doc.title',
+  date_desc: "coalesce(doc.document_date, CAST(doc.year AS TEXT) || '-12-31') IS NULL, coalesce(doc.document_date, CAST(doc.year AS TEXT) || '-12-31') DESC, doc.title",
+  date_asc: "coalesce(doc.document_date, CAST(doc.year AS TEXT) || '-12-31') IS NULL, coalesce(doc.document_date, CAST(doc.year AS TEXT) || '-12-31') ASC, doc.title",
   title: 'doc.title COLLATE NOCASE ASC',
-  relevance: 'doc.document_date IS NULL, doc.document_date DESC, doc.title',
+  relevance: "coalesce(doc.document_date, CAST(doc.year AS TEXT) || '-12-31') IS NULL, coalesce(doc.document_date, CAST(doc.year AS TEXT) || '-12-31') DESC, doc.title",
 };
 
 export async function summariesByIds(env: Env, ids: string[]): Promise<Map<string, DocumentSummary>> {

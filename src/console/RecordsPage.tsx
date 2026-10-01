@@ -19,6 +19,8 @@ interface Row {
   title: string;
   documentType: string;
   date: string | null;
+  /** Records numbered by year whose own text gives no adoption day carry the year alone. */
+  year: number | null;
   governmentBodyName: string | null;
   snippet?: string | null;
 }
@@ -46,6 +48,7 @@ function rowsOf(r: Resp, searching: boolean): Row[] {
       title: String(d.title),
       documentType: String(d.documentType ?? 'other'),
       date: (d.date as string | null) ?? null,
+      year: typeof d.year === 'number' ? d.year : null,
       governmentBodyName: (d.governmentBodyName as string | null) ?? null,
       snippet: ex ? ex.replace(/\s+/g, ' ').slice(0, 200) : null,
     };
@@ -53,12 +56,12 @@ function rowsOf(r: Resp, searching: boolean): Row[] {
 }
 
 const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-const monthOf = (d: string | null) => (d && /^\d{4}-\d{2}/.test(d) ? MONTH.format(new Date(`${d.slice(0, 7)}-01T00:00:00Z`)) : 'Undated');
+const monthOf = (d: string | null, y: number | null) => (d && /^\d{4}-\d{2}/.test(d) ? MONTH.format(new Date(`${d.slice(0, 7)}-01T00:00:00Z`)) : y ? `${y}, day not stated` : 'Undated');
 
 function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boolean }) {
   const groups: Array<{ label: string; rows: Row[] }> = [];
   for (const r of rows) {
-    const label = grouped ? monthOf(r.date) : '';
+    const label = grouped ? monthOf(r.date, r.year) : '';
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.rows.push(r);
     else groups.push({ label, rows: [r] });
@@ -77,7 +80,7 @@ function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boo
                   </span>
                   <span className="vc-mdoc-main">
                     <span className="vc-mdoc-title">{d.title}</span>
-                    <span className="vc-mdoc-meta">{[TYPE_LABEL[d.documentType as keyof typeof TYPE_LABEL] ?? 'Record', d.governmentBodyName, formatDate(d.date)].filter(Boolean).join(' · ')}</span>
+                    <span className="vc-mdoc-meta">{[TYPE_LABEL[d.documentType as keyof typeof TYPE_LABEL] ?? 'Record', d.governmentBodyName, formatDate(d.date) ?? (d.year ? String(d.year) : null)].filter(Boolean).join(' · ')}</span>
                     {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
                   </span>
                   <ChevronRight size={16} className="vc-mdoc-go" />

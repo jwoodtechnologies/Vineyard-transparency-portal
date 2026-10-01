@@ -82,7 +82,7 @@ export function buildUserMessage(question: string, evidence: ChunkHit[], history
   const sources = evidence
     .map((h, i) => {
       const page = h.pageStart == null ? '' : h.pageEnd != null && h.pageEnd !== h.pageStart ? `, pages ${h.pageStart}-${h.pageEnd}` : `, page ${h.pageStart}`;
-      const meta = [h.title, h.documentType.replace(/_/g, ' '), h.documentDate ?? 'date unknown'].join(' | ');
+      const meta = [h.title, h.documentType.replace(/_/g, ' '), h.documentDate ?? ((h as { year?: number | null }).year ? `${(h as { year?: number | null }).year} (exact date not stated)` : 'date unknown')].join(' | ');
       const text = (h.text ?? '').slice(0, MAX_CHUNK_CHARS).replace(/<<<|>>>/g, '');
       return `[${i + 1}] ${meta}${page}\n<<<\n${text}\n>>>`;
     })
