@@ -40,6 +40,13 @@ export const TOPICS: CivicTopic[] = [
 
 /** How to request records, from the city's Records Request page (checked October 1, 2026). */
 TOPICS.push({
+  id: 'budget',
+  match: /\bbudgets?\b|\bfiscal year\b|\bappropriat/i,
+  queries: [{ q: 'FY {FYS} Final Budget', from: '{FY_START}-05-01' }, { q: 'FY {FYS} Budget Amendment', from: '{FY_START}-07-01' }, { q: 'FY {FYS} budget general fund total', from: '{FY_START}-04-01' }],
+  note: 'Budgets: the city budget runs on a fiscal year from July 1 to June 30. The budget in effect now is the fiscal year {FY} budget (July {FY_START} to June {FY}), adopted by the City Council in June {FY_START}; its records are titled "FY {FYS} Final Budget", with amendments titled "FY {FYS} Budget Amendment". When the question says this year, current, now, or names no year, answer from the FY {FYS} final budget and its amendments: say it is fiscal year {FY} (July {FY_START} to June {FY}), give the totals the source states with the adoption date, and never present an older fiscal year\'s budget as this year\'s. When the question names another year, use that fiscal year\'s budget. Every year\'s budget is listed for the reader under your answer, so do not list them yourself.',
+});
+
+TOPICS.push({
   id: 'grama',
   match: /\b(grama|records? requests?|public records?|request (a |the )?(record|document|copy)|open records)\b/i,
   queries: [{ q: 'GRAMA "records request" recorder written request' }, { q: '"Record Request Form"' }],
@@ -64,5 +71,12 @@ export function topicsFor(question: string, today = new Date().toISOString().sli
   const y = Number(today.slice(0, 4));
   const m = Number(today.slice(5, 7));
   const next = y % 2 === 1 && m <= 11 ? y : y % 2 === 1 ? y + 2 : y + 1;
-  return TOPICS.filter((t) => t.match.test(question)).map((t) => ({ ...t, note: t.note.replace('{NEXT_ELECTION}', String(next)) }));
+  const fy = m >= 7 ? y + 1 : y;
+  const fill = (s: string) =>
+    s
+      .replace(/\{NEXT_ELECTION\}/g, String(next))
+      .replace(/\{FY\}/g, String(fy))
+      .replace(/\{FYS\}/g, String(fy % 100))
+      .replace(/\{FY_START\}/g, String(fy - 1));
+  return TOPICS.filter((t) => t.match.test(question)).map((t) => ({ ...t, note: fill(t.note), queries: t.queries.map((x) => ({ ...x, q: fill(x.q), ...(x.from ? { from: fill(x.from) } : {}) })) }));
 }

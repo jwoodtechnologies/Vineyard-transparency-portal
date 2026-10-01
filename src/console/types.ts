@@ -4,7 +4,7 @@ import type { AnswerEvent } from './EventCard';
 
 export interface AnswerSeries {
   label: string;
-  items: Array<{ id: string; title: string; date: string | null; year: number | null }>;
+  items: Array<{ id: string; title: string; date: string | null; year: number | null; tag?: string }>;
 }
 
 export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent; series?: AnswerSeries; people?: string[]; contact?: string };

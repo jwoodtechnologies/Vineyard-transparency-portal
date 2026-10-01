@@ -42,6 +42,8 @@ export function resolveTime(question: string, today: string): TimeFrame | null {
   if (/\bnext fiscal year\b/.test(q)) return { from: iso(fyEnd, 7, 1), to: iso(fyEnd + 1, 6, 30), label: `fiscal year ${fyEnd + 1} (July ${fyEnd} to June ${fyEnd + 1})`, future: true };
   if (/\blast fiscal year\b/.test(q)) return { from: iso(fyEnd - 2, 7, 1), to: iso(fyEnd - 1, 6, 30), label: `fiscal year ${fyEnd - 1} (July ${fyEnd - 2} to June ${fyEnd - 1})`, future: false };
 
+  // A budget's "this year" is the fiscal year: "this year's budget" in October 2026 is FY2027.
+  if (/\bbudgets?\b/.test(q) && /\b(this|the current) year'?s?\b|\bcurrent budget\b|\bthis budget\b/.test(q)) return { from: iso(fyEnd - 1, 4, 1), to: iso(fyEnd, 6, 30), label: `fiscal year ${fyEnd} (July ${fyEnd - 1} to June ${fyEnd})`, future: false };
   if (/\bnext year\b/.test(q)) return { ...year(Y + 1), future: true };
   if (/\b(last|previous|past) year\b/.test(q) && !/\bpast year of\b/.test(q)) return year(Y - 1);
   if (/\b(this|the current) year\b|\bso far this year\b|\byear to date\b|\bytd\b/.test(q)) return { ...year(Y), future: /\b(left|remaining|rest of|upcoming|will|still)\b/.test(q) };
@@ -91,3 +93,20 @@ export function timeNote(today: string, frame: TimeFrame | null): string {
   const base = `Today is ${long}. This year is ${Y}, next year is ${Y + 1}, last year was ${Y - 1}. The city is in fiscal year ${fy} (July ${fy - 1} to June ${fy}).`;
   return frame ? `${base} In this question the time asked about is ${frame.label} (${frame.from} to ${frame.to}); answer only about that time.` : base;
 }
+
+/** The fiscal year a budget record is for: FY 27, FY2027, FY 2026-2027, Fiscal Year 2025 (ending year). */
+export function fiscalYearOf(title: string, date: string | null): number | null {
+  const t = title.replace(/_/g, ' ');
+  const span = t.match(/\b(?:FY|fiscal year)\s*'?(20\d{2})\s*[-/]\s*(20)?(\d{2})\b/i);
+  if (span) return 2000 + Number(span[3]);
+  const fy = t.match(/\bFY\s*'?(\d{2}|20\d{2})\b/i) ?? t.match(/\bfiscal year\s*(20\d{2})\b/i);
+  if (fy) return fy[1].length === 2 ? 2000 + Number(fy[1]) : Number(fy[1]);
+  // A budget adopted in spring or summer is for the fiscal year that ends the next June.
+  if (date && /budget/i.test(t)) {
+    const y = Number(date.slice(0, 4));
+    const m = Number(date.slice(5, 7));
+    return m >= 4 ? y + 1 : y;
+  }
+  return null;
+}
+

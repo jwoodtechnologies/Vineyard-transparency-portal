@@ -13,7 +13,7 @@ export function SeriesPanel({ series }: { series: AnswerSeries }) {
       <div className="vc-series-list">
         {shown.map((it) => (
           <Link key={it.id} to={`/documents/${encodeURIComponent(it.id)}`} className="vc-series-item">
-            <span className="vc-series-year">{it.year ?? ''}</span>
+            <span className="vc-series-year">{it.tag ?? it.year ?? ''}</span>
             <span className="vc-series-title">
               <FileText size={13} strokeWidth={1.9} /> {it.title}
             </span>
