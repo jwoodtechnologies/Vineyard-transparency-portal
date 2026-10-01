@@ -163,7 +163,8 @@ export class ProductionApiAdapter implements DataAdapter {
   }
 
   getDocumentFileUrl(id: string, archiveUrl: string | null): string | null {
-    return archiveUrl ? this.url(`/documents/${encodeURIComponent(id)}/file`) : null;
+    void archiveUrl;
+    return this.url(`/documents/${encodeURIComponent(id)}/file`);
   }
 
   listMeetings(r: MeetingListRequest, opts?: RequestOptions): Promise<Paginated<MeetingSummary>> {
