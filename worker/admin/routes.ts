@@ -16,6 +16,7 @@ import { HttpError, json, badRequest, notFound, readJson } from '../lib/http';
 import { nowIso, utcDay, chunked } from '../lib/util';
 import { categoriesForType, normalizeType } from '../lib/taxonomy';
 import { adoptionDate, titleDate } from '../lib/adoptionDate';
+import { processVotes } from '../api/votes';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
@@ -202,12 +203,14 @@ async function migrate(env: Env): Promise<Response> {
   await env.CATALOG_DB.prepare("UPDATE documents SET document_date = NULL, year = NULL, currency = 'current' WHERE source_id = 'vineyard-gis' AND document_date IS NOT NULL").run();
   const meetings = await mergeDuplicateMeetings(env).catch((e) => ({ error: String(e).slice(0, 200) }));
   const recordDates = await fixRecordDates(env).catch((e) => ({ error: String(e).slice(0, 200) }));
+  // Voting records: the next sets of minutes are read (each migrate run continues the backfill).
+  const votes = await processVotes(env, 18_000).catch((e) => ({ error: String(e).slice(0, 200) }));
   // Files skipped only because a robots.txt answered 403 (ArcGIS, Amazon S3) go back in the queue.
   await env.CATALOG_DB.prepare("UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL WHERE status = 'skipped' AND last_error LIKE 'RobotsDisallowed%'").run().catch(() => undefined);
   await ensureActivityTables(env);
   // While no panel owner exists, each migrate run prints a fresh one-time setup code (24 hours).
   const panelSetupCode = await newSetupCode(env);
-  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, meetings, recordDates, ...(panelSetupCode ? { panelSetupCode } : {}) });
+  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, meetings, recordDates, votes, ...(panelSetupCode ? { panelSetupCode } : {}) });
 }
 
 async function quota(env: Env): Promise<Response> {
@@ -854,6 +857,7 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   const budget = new Budget(env);
 
   if (path === '/migrate' && method === 'POST') return migrate(env);
+  if (path === '/votes' && method === 'POST') return json(await processVotes(env, 25_000));
   if (path === '/people' && method === 'POST') {
     const body = await readJson<{ people?: PersonInput[]; asOf?: string }>(request, 512 * 1024);
     return upsertPeople(env, body.people ?? [], /^\d{4}-\d{2}-\d{2}$/.test(String(body.asOf)) ? String(body.asOf) : nowIso().slice(0, 10));

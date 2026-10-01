@@ -7,7 +7,13 @@ export interface AnswerSeries {
   items: Array<{ id: string; title: string; date: string | null; year: number | null; tag?: string }>;
 }
 
-export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent; series?: AnswerSeries; people?: string[]; contact?: string };
+export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent; series?: AnswerSeries; people?: string[]; contact?: string; votes?: AnswerVotes };
+
+export interface AnswerVotes {
+  member: string | null;
+  q: string;
+  items: import('./votes').MotionRow[];
+}
 
 export interface Turn {
   id: string;

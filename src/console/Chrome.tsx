@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Building2, CalendarDays, ClipboardList, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Users } from 'lucide-react';
+import { BookOpen, Building2, CalendarDays, ClipboardList, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Users, Vote } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { RECORD_CATEGORIES } from './categories';
@@ -117,6 +117,10 @@ export function SettingsMenu() {
           <Link to="/records" className="vc-panel-row">
             <ScrollText size={15} strokeWidth={1.8} />
             <span>All records</span>
+          </Link>
+          <Link to="/votes" className="vc-panel-row">
+            <Vote size={15} strokeWidth={1.8} />
+            <span>Voting records</span>
           </Link>
           {RECORD_CATEGORIES.filter((c) => MENU_CATEGORIES.includes(c.id)).map((c) => {
             const Icon = CATEGORY_ICONS[c.id] ?? FileText;

@@ -28,6 +28,7 @@ import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
+import { votesFor } from '../api/votes';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 
@@ -749,8 +750,11 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   // Who to contact for what the resident is asking (current staff only), as a card and one line.
   const staff = await currentStaff(env).catch(() => [] as StaffPerson[]);
   const contact = namedIn(body.question, staff).length ? null : contactFor(body.question, staff);
+  // "How did X vote on Y?": the recorded motions, straight from the voting records.
+  const votes = await votesFor(env, body.question, staff).catch(() => null);
   const withContact = (r: AskResponse): AskResponse => {
     const x = r as AskResponse & { mode?: string; engine?: string; people?: string[] };
+    if (votes && x.mode !== 'conversation') r = { ...r, votes } as AskResponse;
     // What the resident shared is acknowledged as theirs, after the answer from the records.
     if (shared && x.mode !== 'conversation') r = { ...r, answer: `${r.answer} ${shared}`.trim(), paragraphs: [...(r.paragraphs ?? []), { segments: [{ text: shared, citations: [] }] }] };
     if (!contact || x.mode === 'conversation' || x.engine === 'directory' || x.people?.length) return r;

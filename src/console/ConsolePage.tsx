@@ -10,7 +10,7 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronDown, History, Plus, RotateCcw } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { SearchService } from '@/services';
@@ -24,6 +24,7 @@ import { EventCard } from './EventCard';
 import { SeriesPanel } from './SeriesPanel';
 import { PersonCard } from './PersonCard';
 import { peopleIn, usePeople, type Person } from './people';
+import { MotionCard } from './VotesPage';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
@@ -395,6 +396,17 @@ export default function ConsolePage() {
               <>
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
                 {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
+                {t.answer.votes && t.answer.votes.items.length > 0 && (
+                  <section className="vc-answer-votes" aria-label="Recorded votes">
+                    <div className="vc-answer-votes-head">
+                      <span>Recorded votes</span>
+                      <Link to={`/votes?${new URLSearchParams({ ...(t.answer.votes.member ? { member: t.answer.votes.member } : {}), ...(t.answer.votes.q ? { q: t.answer.votes.q } : {}) })}`}>See all</Link>
+                    </div>
+                    {t.answer.votes.items.slice(0, 3).map((m) => (
+                      <MotionCard key={m.id} m={m} member={t.answer?.votes?.member ?? null} />
+                    ))}
+                  </section>
+                )}
                 {contactCard(t, people)}
                 {t.answer.event && <EventCard event={t.answer.event} />}
                 {t.answer.series && <SeriesPanel series={t.answer.series} />}

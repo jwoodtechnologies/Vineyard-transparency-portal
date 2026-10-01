@@ -14,6 +14,7 @@ import { Budget, upsertBodies, upsertMeetings, upsertQueue } from './admin/route
 import { CC_API, mapEvent, type CcEvent } from './lib/civicclerk';
 import { ensureNewsTables } from './lib/news';
 import { UCSO_ARCHIVE, UCSO_SOURCE, cleanText, mentionsVineyard, recent, releaseBody, ucsoPage, type UcsoItem } from './lib/sheriff';
+import { processVotes } from './api/votes';
 
 const UA = { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org; public records archive)', accept: 'application/json, text/html;q=0.9' };
 
@@ -127,6 +128,8 @@ export async function runHourly(env: Env): Promise<Record<string, unknown>> {
   const [cc, ucso] = await Promise.allSettled([refreshCivicClerk(env, budget), refreshSheriff(env, budget)]);
   summary.civicclerk = cc.status === 'fulfilled' ? cc.value : String(cc.reason).slice(0, 300);
   summary.sheriff = ucso.status === 'fulfilled' ? ucso.value : String(ucso.reason).slice(0, 300);
+  // New minutes become voting records within the hour.
+  summary.votes = await processVotes(env, 8_000, 40).catch((e) => String(e).slice(0, 200));
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('INSERT INTO cron_runs (started_at, finished_at, summary_json) VALUES (?, ?, ?)').bind(started, new Date().toISOString(), JSON.stringify(summary)),
     env.CATALOG_DB.prepare('DELETE FROM cron_runs WHERE id <= (SELECT max(id) - 500 FROM cron_runs)'),

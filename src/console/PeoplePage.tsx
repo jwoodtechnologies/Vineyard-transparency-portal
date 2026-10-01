@@ -4,7 +4,7 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowUpRight, FileText, MessageSquare, Search } from 'lucide-react';
+import { ArrowUpRight, FileText, MessageSquare, Search, Vote } from 'lucide-react';
 import { Frame } from './Chrome';
 import { useJson } from './api';
 import { TYPE_LABEL, formatDate } from './format';
@@ -49,6 +49,11 @@ function Profile({ slug }: { slug: string }) {
     <>
       <PersonCard person={person} />
       <div className="vc-person-asks">
+        {person.kind === 'elected' && last && (
+          <Link to={`/votes?member=${encodeURIComponent(last)}`} className="vc-chip">
+            <Vote size={13} /> Full voting record
+          </Link>
+        )}
         {asks.map((q) => (
           <Link key={q} to={`/?q=${encodeURIComponent(q)}`} className="vc-chip">
             <MessageSquare size={13} /> {q}
