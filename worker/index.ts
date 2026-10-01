@@ -21,7 +21,7 @@ import { getLatest } from './api/latest';
 import { getPerson, getPersonPhoto, listPeople } from './api/people';
 import { handleVotes } from './api/votes';
 import { listBoards } from './api/boards';
-import { runHourly } from './cron';
+import { runFrequent, runHourly } from './cron';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
 import { logQuestion, who } from './panel/store';
@@ -172,11 +172,13 @@ export default {
     }
   },
 
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    // Every five minutes the agenda portal is checked; once an hour the full check (news too) runs and is logged.
+    const hourly = new Date(controller.scheduledTime).getUTCMinutes() < 5;
     ctx.waitUntil(
-      runHourly(env).then(
-        (summary) => console.log('hourly', JSON.stringify(summary)),
-        (e) => console.error('hourly failed', String(e)),
+      (hourly ? runHourly(env) : runFrequent(env)).then(
+        (summary) => console.log(hourly ? 'hourly' : 'five-minute', JSON.stringify(summary)),
+        (e) => console.error('scheduled check failed', String(e)),
       ),
     );
   },

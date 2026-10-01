@@ -245,7 +245,7 @@ export function categoryOf(e: PortalEvent): CategoryId {
 export const eventTone = (e: PortalEvent) => (categoryOf(e) === 'meetings' ? 4 : (CATEGORIES.find((c) => c.id === categoryOf(e))?.tone ?? 3));
 
 export type CalItem =
-  | { kind: 'meeting'; key: string; date: string; time: string | null; m: MeetingSummary }
+  | { kind: 'meeting'; key: string; date: string; time: string | null; m: MeetingSummary; cityTime?: string | null }
   | { kind: 'event'; key: string; date: string; time: string | null; e: PortalEvent };
 
 const MEETING_WORDS = /council|planning|commission|redevelopment|youth|board|committee|coalition|arch|transportation|appeals|hearing/g;
@@ -257,7 +257,10 @@ const MEETING_WORDS = /council|planning|commission|redevelopment|youth|board|com
 export function mergeItems(meetings: MeetingSummary[], events: PortalEvent[]): CalItem[] {
   const byDate = new Map<string, MeetingSummary[]>();
   for (const m of meetings) byDate.set(m.date, [...(byDate.get(m.date) ?? []), m]);
-  const items: CalItem[] = meetings.map((m) => ({ kind: 'meeting', key: m.id, date: m.date, time: m.startTime, m }));
+  // The city keeps two calendars (the agenda portal and its website). When they give one meeting two
+  // different start times, the website's time is kept so the calendar can show both.
+  const cityTime = new Map<string, string>();
+  const extra: CalItem[] = [];
   const seen = new Set<string>();
   for (const e of events) {
     if (seen.has(e.id)) continue;
@@ -266,13 +269,18 @@ export function mergeItems(meetings: MeetingSummary[], events: PortalEvent[]): C
     const time = e.allDay ? null : e.start.slice(11, 16);
     if (categoryOf(e) === 'meetings') {
       const words = e.title.toLowerCase().match(MEETING_WORDS) ?? [];
-      const same = (byDate.get(date) ?? []).some((m) => {
+      const same = (byDate.get(date) ?? []).find((m) => {
         const t = `${m.title} ${m.governmentBodyName ?? ''}`.toLowerCase();
         return words.some((w) => t.includes(w)) || (time != null && m.startTime === time);
       });
-      if (same) continue;
+      if (same) {
+        const sameBody = words.some((w) => `${same.title} ${same.governmentBodyName ?? ''}`.toLowerCase().includes(w));
+        if (sameBody && time && same.startTime && time !== same.startTime.slice(0, 5) && !/cancel/i.test(`${e.title} ${same.title}`)) cityTime.set(same.id, time);
+        continue;
+      }
     }
-    items.push({ kind: 'event', key: e.id, date, time, e });
+    extra.push({ kind: 'event', key: e.id, date, time, e });
   }
+  const items: CalItem[] = [...meetings.map((m): CalItem => ({ kind: 'meeting', key: m.id, date: m.date, time: m.startTime, m, cityTime: cityTime.get(m.id) ?? null })), ...extra];
   return items.sort((a, b) => (a.date + (a.time ?? '00:00')).localeCompare(b.date + (b.time ?? '00:00')));
 }

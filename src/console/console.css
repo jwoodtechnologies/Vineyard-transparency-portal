@@ -3945,3 +3945,5 @@ html.vc-locked .vc-landing {
 @media (max-width: 560px) { .vc-att2-row { grid-template-columns: 1fr auto; } .vc-att2-marks { grid-column: 1 / -1; } }
 .vc-map-note { margin: 4px 0 10px; font-size: 0.76rem; line-height: 1.45; color: var(--vc-muted); }
 .vc-vt-what { min-width: 0; } .vc-vt-label { font-weight: 600; } .vc-vt-detail { margin: 3px 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--vc-ink-2); }
+
+.vc-time-alt { flex-basis: 100%; font-size: 12px; color: var(--vc-ink-3, #777); }

@@ -643,6 +643,14 @@ export async function motionEvidence(env: Env, question: string, from: string, t
     const text = [
       `${bodyName(r.body_id as string | null) ?? 'Meeting'} meeting of ${r.meeting_date}.`,
       r.item ? `Agenda item: ${r.item}.` : '',
+      (() => {
+        try {
+          const it = r.items ? (JSON.parse(String(r.items)) as string[]) : [];
+          return it.length ? `The consent items approved in this motion: ${it.map((x) => x.replace(/^\d+\.\d+\s+/, '')).join('; ')}.` : '';
+        } catch {
+          return '';
+        }
+      })(),
       `Motion${r.mover ? ` by ${r.mover}` : ''}${r.seconder ? `, seconded by ${r.seconder}` : ''}: to ${String(r.motion ?? '').replace(/^to\s+/i, '')}.`,
       `${result}${r.tally ? ` ${r.tally}` : ''}.`,
       by('yes') ? `Yes: ${by('yes')}.` : '',

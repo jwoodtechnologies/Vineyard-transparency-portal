@@ -16,10 +16,10 @@ export const CITY_CALENDAR_URL =
 let memo: { at: number; events: CityEvent[] } | null = null;
 
 export async function loadCity(): Promise<CityEvent[]> {
-  if (memo && Date.now() - memo.at < 10 * 60_000) return memo.events;
+  if (memo && Date.now() - memo.at < 5 * 60_000) return memo.events;
   const res = await fetch(CITY_CALENDAR_URL, {
     headers: { accept: 'application/json', 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)' },
-    cf: { cacheTtl: 3600, cacheEverything: true },
+    cf: { cacheTtl: 300, cacheEverything: true },
   } as RequestInit);
   if (!res.ok) throw new Error(`city calendar ${res.status}`);
   const body = (await res.json()) as unknown;
@@ -36,7 +36,7 @@ export async function listEvents(_env: Env, url: URL): Promise<Response> {
   if (!(span >= 0 && span <= 800)) throw badRequest('The date range must be between 0 and 800 days.');
   try {
     const items = expandCityEvents(await loadCity(), from, to);
-    return json({ items, source: CITY_CALENDAR_PAGE }, { cache: 'public, max-age=900, stale-while-revalidate=3600' });
+    return json({ items, source: CITY_CALENDAR_PAGE }, { cache: 'public, max-age=300, stale-while-revalidate=900' });
   } catch {
     // The city site being down never breaks the portal's calendar; meetings still show.
     return json({ items: [], source: CITY_CALENDAR_PAGE, unavailable: true }, { cache: 'public, max-age=60' });

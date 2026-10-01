@@ -118,6 +118,19 @@ async function refreshSheriff(env: Env, budget: Budget): Promise<Record<string, 
   return { recent: fresh.length, added: add.length, checked };
 }
 
+/**
+ * Every five minutes: the city's agenda portal is checked for new or changed meetings and newly
+ * posted files (agendas, packets, minutes). Meetings show on the calendar right away; files are
+ * queued and read by the ingest job on its next pass. Writes happen only when something changed.
+ */
+export async function runFrequent(env: Env): Promise<Record<string, unknown>> {
+  const budget = new Budget(env);
+  const summary: Record<string, unknown> = {};
+  summary.civicclerk = await refreshCivicClerk(env, budget).catch((e) => String(e).slice(0, 300));
+  summary.votes = await processVotes(env, 6_000, 20).catch((e) => String(e).slice(0, 200));
+  return summary;
+}
+
 export async function runHourly(env: Env): Promise<Record<string, unknown>> {
   await ensureNewsTables(env);
   const budget = new Budget(env);

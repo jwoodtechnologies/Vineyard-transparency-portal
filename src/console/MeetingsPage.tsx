@@ -62,7 +62,7 @@ function DateBox({ date }: { date: string }) {
   );
 }
 
-function MeetingRow({ m, today }: { m: MeetingSummary; today: string }) {
+function MeetingRow({ m, today, cityTime = null }: { m: MeetingSummary; today: string; cityTime?: string | null }) {
   const status = statusLabel(m, today);
   const tag = status === 'Upcoming' ? null : status;
   return (
@@ -78,6 +78,7 @@ function MeetingRow({ m, today }: { m: MeetingSummary; today: string }) {
               <span>{formatTime(m.startTime)}</span>
             </>
           )}
+          {cityTime && formatTime(cityTime) && <span className="vc-time-alt">Agenda time. The city website calendar lists {formatTime(cityTime)}.</span>}
           {tag && (
             <span className="vc-status-tag" data-kind={tag.toLowerCase()}>
               {tag}
@@ -162,7 +163,7 @@ function EventRow({ e }: { e: PortalEvent }) {
 }
 
 function Row({ item, today }: { item: CalItem; today: string }) {
-  return item.kind === 'meeting' ? <MeetingRow m={item.m} today={today} /> : <EventRow e={item.e} />;
+  return item.kind === 'meeting' ? <MeetingRow m={item.m} today={today} cityTime={item.cityTime ?? null} /> : <EventRow e={item.e} />;
 }
 
 const MAIN_BODIES = 4;
