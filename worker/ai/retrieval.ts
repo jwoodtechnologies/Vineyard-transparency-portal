@@ -152,7 +152,7 @@ export function relevant<T extends { rel: number }>(ranked: T[], min = 4): T[] {
   const top = ranked[0].rel;
   const probs = ranked.every((h) => h.rel >= 0 && h.rel <= 1);
   if (!probs) return ranked;
-  const floor = Math.max(0.01, top * 0.08);
+  const floor = Math.max(0.02, top * 0.15);
   const keep = ranked.filter((h) => h.rel >= floor);
   return keep.length >= min ? keep : ranked.slice(0, Math.max(min, keep.length));
 }
@@ -165,11 +165,15 @@ const PRESENT = /\b(now|current|currently|today|this year|latest|recent|recently
  * X" is answered from this year's minutes, not 2022's. Code sections and records marked current
  * are today's law and lists, so they never age.
  */
-export function recencyWeighted<T extends ChunkHit & { rel: number }>(ranked: T[], question: string, todayYear: number, currentIds: Set<string> = new Set()): T[] {
-  if (HISTORICAL.test(question) || !ranked.every((h) => h.rel >= 0 && h.rel <= 1)) return ranked;
+export function recencyWeighted<T extends ChunkHit & { rel: number }>(ranked: T[], question: string, todayYear: number, currentIds: Set<string> = new Set(), rules = false): T[] {
+  if (!ranked.every((h) => h.rel >= 0 && h.rel <= 1)) return ranked;
+  // Code sections lead only when the question is about rules; otherwise they never crowd out records.
+  const codeWeight = rules ? 1 : 0.6;
+  if (HISTORICAL.test(question)) return ranked.map((h, i) => ({ h, i, s: h.documentType === 'municipal_code' ? h.rel * codeWeight : h.rel })).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.h);
   const strength = PRESENT.test(question) ? 0.6 : 0.25;
   const weight = (h: T) => {
-    if (h.documentType === 'municipal_code' || currentIds.has(h.chunkId)) return 1;
+    if (h.documentType === 'municipal_code') return codeWeight;
+    if (currentIds.has(h.chunkId)) return 1;
     const y = h.documentDate ? Number(h.documentDate.slice(0, 4)) : h.year;
     if (!y) return 0.8;
     const age = Math.max(0, todayYear - y);

@@ -1,13 +1,13 @@
 /**
- * The one piece of chrome every screen shares: the side menu, the wordmark, and on desktop the Calendar, People and Map links and a settings menu.
- * The side menu holds every record category; no footer, no explainer pages.
+ * The one piece of chrome every screen shares: chat history on the left, the wordmark, and one menu on the right.
+ * The menu holds the calendar, people, map, every record category, appearance and chat history.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { CalendarDays, History, Map as MapIcon, Moon, Settings2, Sun, Trash2, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { BookOpen, CalendarDays, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Trash2, Users } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
-import { SiteMenu } from './SiteMenu';
+import { RECORD_CATEGORIES } from './categories';
 import { clearChats, setHistoryEnabled, useChats, useHistoryEnabled } from './history';
 
 function useScrolled() {
@@ -43,6 +43,23 @@ const THEMES: Array<{ value: Exclude<ThemePreference, 'system'>; label: string; 
   { value: 'dark', label: 'Dark', Icon: Moon },
 ];
 
+/** The one menu mark: two offset strokes and a dot. */
+function MenuMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path d="M3 6h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M7 12h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="3.6" cy="12" r="1.25" fill="currentColor" />
+    </svg>
+  );
+}
+
+const CATEGORY_ICONS: Record<string, typeof FileText> = { meetings: FileText, finance: Landmark, laws: Scale, code: BookOpen, plans: Layers };
+
+/**
+ * The one menu, on desktop and phones: the calendar, people, map and every record category, then
+ * appearance and chat history. A small panel that drops from the top right.
+ */
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -57,11 +74,41 @@ export function SettingsMenu() {
 
   return (
     <div className="vc-settings" ref={box}>
-      <button type="button" className="vc-ghost" data-icon-only="true" aria-label="Settings" aria-haspopup="dialog" aria-expanded={open} onClick={() => (open ? close() : setOpen(true))}>
-        <Settings2 size={17} strokeWidth={1.8} />
+      <button type="button" className="vc-ghost" data-icon-only="true" aria-label="Menu" title="Menu" aria-haspopup="dialog" aria-expanded={open} onClick={() => (open ? close() : setOpen(true))}>
+        <MenuMark />
       </button>
       {open && (
-        <div className="vc-panel" role="dialog" aria-label="Settings">
+        <div className="vc-panel vc-menu-panel" role="dialog" aria-label="Menu" onClick={(e) => (e.target as HTMLElement).closest('a') && close()}>
+          <div className="vc-menu-grid">
+            <Link to="/meetings" className="vc-menu-tile">
+              <CalendarDays size={17} strokeWidth={1.8} />
+              <span>Calendar</span>
+            </Link>
+            <Link to="/people" className="vc-menu-tile">
+              <Users size={17} strokeWidth={1.8} />
+              <span>People</span>
+            </Link>
+            <Link to="/map" className="vc-menu-tile">
+              <MapIcon size={17} strokeWidth={1.8} />
+              <span>Map</span>
+            </Link>
+          </div>
+
+          <p className="vc-panel-label">Records</p>
+          <Link to="/records" className="vc-panel-row">
+            <ScrollText size={15} strokeWidth={1.8} />
+            <span>All records</span>
+          </Link>
+          {RECORD_CATEGORIES.map((c) => {
+            const Icon = CATEGORY_ICONS[c.id] ?? FileText;
+            return (
+              <Link key={c.id} to={`/records?c=${c.id}`} className="vc-panel-row">
+                <Icon size={15} strokeWidth={1.8} />
+                <span>{c.label}</span>
+              </Link>
+            );
+          })}
+
           <p className="vc-panel-label">Appearance</p>
           <div className="vc-segment" role="radiogroup" aria-label="Theme">
             {THEMES.map(({ value, label, Icon }) => (
@@ -91,7 +138,7 @@ export function SettingsMenu() {
             <Trash2 size={15} strokeWidth={1.8} />
             {confirm ? `Delete all ${chats.length} chats?` : chats.length ? `Clear ${chats.length} saved ${chats.length === 1 ? 'chat' : 'chats'}` : 'No saved chats'}
           </button>
-          <p className="vc-panel-note">Chats stay in this browser only. Nothing is stored on a server and there are no accounts.</p>
+          <p className="vc-panel-note">Chats stay in this browser only. Nothing is stored on a server and there are no accounts. Independent project, not an official Vineyard City website.</p>
         </div>
       )}
     </div>
@@ -126,20 +173,7 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
       </div>
       <nav className="vc-topbar-actions" aria-label="Main">
         {children}
-        <NavLink to="/meetings" className="vc-ghost vc-nav vc-hide-mobile" aria-label="Calendar" title="Calendar">
-          <CalendarDays size={16} strokeWidth={1.8} />
-          <span className="vc-nav-text">Calendar</span>
-        </NavLink>
-        <NavLink to="/people" className="vc-ghost vc-nav vc-hide-mobile" aria-label="People" title="People">
-          <Users size={16} strokeWidth={1.8} />
-          <span className="vc-nav-text">People</span>
-        </NavLink>
-        <NavLink to="/map" className="vc-ghost vc-nav vc-hide-mobile" aria-label="Map" title="Map">
-          <MapIcon size={16} strokeWidth={1.8} />
-          <span className="vc-nav-text">Map</span>
-        </NavLink>
         <SettingsMenu />
-        <SiteMenu />
       </nav>
     </header>
   );

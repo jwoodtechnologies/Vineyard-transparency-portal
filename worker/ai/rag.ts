@@ -21,7 +21,7 @@ import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
 import { readAiStream } from './sse';
 import { interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
-import { isScheduleQuestion, scheduleAnswer } from './schedule';
+import { countAnswer, countQuestion, isRemainingQuestion, isScheduleQuestion, remainingAnswer, scheduleAnswer } from './schedule';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -286,6 +286,21 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'assistant', mode: 'conversation' } as AskResponse };
   }
 
+  // Knowledge-base questions answered straight from the calendar and the catalog: exact and free.
+  const quick = (text: string, event?: unknown, followUps: string[] = []) =>
+    ({
+      kind: 'final',
+      response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: followUps, notice: null, engine: 'catalog', mode: 'conversation', ...(event ? { event } : {}) } as AskResponse,
+    }) as Prepared;
+  if (isRemainingQuestion(body.question)) {
+    const r = await remainingAnswer(body.question).catch(() => null);
+    if (r) return quick(r.text, r.event, ["What's on the agenda for the next City Council meeting?"]);
+  }
+  const count = countQuestion(body.question);
+  if (count) {
+    const t = await countAnswer(env, count, body.question).catch(() => null);
+    if (t) return quick(t);
+  }
   // "When is the next council meeting?": the official calendar answers, never old minutes.
   if (isScheduleQuestion(body.question)) {
     const s = await scheduleAnswer(env, body.question).catch(() => null);
@@ -414,7 +429,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // the passages that answer it. A record marked current stays first for "who is / now" questions.
   const ranked = await rerank(env, retrievalText, hits.slice(0, 90));
   if (ranked) {
-    let best = recencyWeighted(relevant(ranked), retrievalText, Number(new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 4)), currentIds);
+    let best = recencyWeighted(relevant(ranked), retrievalText, Number(new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 4)), currentIds, RULE.test(body.question));
     // Records that must lead for some questions, in the reranker's own order: the current
     // directory for "who is", the person's recorded votes for "how did X vote", the code for rules.
     const lead = (ids: Set<string>, n: number) => {

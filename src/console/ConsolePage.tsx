@@ -10,8 +10,8 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { CalendarDays, ChevronDown, History, Plus, RotateCcw } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { ChevronDown, History, Plus, RotateCcw } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { SearchService } from '@/services';
 import { askStream, draftText } from './askStream';
@@ -28,7 +28,6 @@ import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
 import { getChat, newChatId, saveChat, type SavedChat } from './history';
 import type { ConsoleAnswer, Preview, Turn } from './types';
-import { SiteMenu } from './SiteMenu';
 
 const PAGE = 8;
 const STEPS = ['Searching the archive', 'Reading the records', 'Checking every source'];
@@ -315,12 +314,7 @@ export default function ConsolePage() {
             <History size={17} strokeWidth={1.8} />
           </button>
           <div className="vc-topbar-actions">
-            <Link to="/meetings" className="vc-ghost vc-nav vc-hide-mobile" aria-label="Calendar" title="Calendar">
-              <CalendarDays size={16} strokeWidth={1.8} />
-              <span className="vc-nav-text">Calendar</span>
-            </Link>
             <SettingsMenu />
-            <SiteMenu />
           </div>
         </div>
         <main className="vc-landing">

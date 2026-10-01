@@ -1263,7 +1263,7 @@
 }
 .vc-corners {
   position: fixed;
-  z-index: 20;
+  z-index: 60;
   top: 0;
   left: 0;
   right: 0;
@@ -3499,75 +3499,6 @@ html.vc-locked .vc-landing {
 .vc-people-role { font-size: 0.78rem; color: var(--vc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 560px) { .vc-person-card { padding: 12px; gap: 12px; } .vc-people { grid-template-columns: 1fr; } }
 
-/* Side menu (hamburger) */
-.vc-sidemenu {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-}
-.vc-sidemenu-scrim {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  background: rgba(10, 10, 12, 0.38);
-  animation: vc-fade 0.18s ease both;
-  cursor: pointer;
-}
-.vc-sidemenu-sheet {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  width: min(330px, 88vw);
-  overflow-y: auto;
-  padding: 0.75rem 0.7rem calc(1rem + env(safe-area-inset-bottom));
-  background: var(--vc-bg);
-  border-left: 1px solid var(--vc-line-2);
-  box-shadow: var(--vc-shadow);
-  animation: vc-slide-in 0.22s var(--vc-ease) both;
-}
-.dark .vc-sidemenu-sheet {
-  background: #121214;
-}
-.vc-sidemenu-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.1rem 0.15rem 0.5rem 0.55rem;
-}
-.vc-sidemenu-title {
-  font-size: 0.95rem;
-  font-weight: 650;
-  color: var(--vc-ink);
-}
-.vc-sidemenu-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-.vc-sidemenu-hint {
-  font-size: 0.74rem;
-  color: var(--vc-faint);
-}
-.vc-sidemenu .vc-panel-row {
-  padding: 0.7rem 0.6rem;
-  font-size: 0.9rem;
-}
-@keyframes vc-slide-in {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: none;
-  }
-}
-@keyframes vc-fade {
-  from {
-    opacity: 0;
-  }
-}
-
 /* Phones: the side menu is the one menu. */
 @media (max-width: 720px) {
   .vc-hide-mobile {
@@ -3669,4 +3600,39 @@ html.vc-locked .vc-landing {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.45rem;
+}
+
+/* The one menu (drops from the top right) */
+.vc-menu-panel {
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.vc-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.2rem;
+}
+.vc-menu-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0.25rem 0.65rem;
+  border-radius: 12px;
+  background: var(--vc-surface-2);
+  color: var(--vc-ink);
+  font-size: 0.78rem;
+  font-weight: 560;
+  text-decoration: none;
+}
+.vc-menu-tile svg {
+  color: var(--vc-muted);
+}
+.vc-menu-tile:hover {
+  background: var(--vc-bg-2);
+}
+.vc-menu-panel .vc-panel-row {
+  padding: 0.5rem 0.55rem;
 }
