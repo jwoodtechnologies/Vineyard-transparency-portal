@@ -174,11 +174,24 @@ export default function RecordsPage() {
   // Keep loading as the reader nears the end of the list, until every record is shown.
   const sentinel = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const el = sentinel.current;
-    if (!el || !more) return;
-    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && setPages((p) => p + 1), { rootMargin: '600px' });
-    io.observe(el);
-    return () => io.disconnect();
+    if (!more) return;
+    let asked = false;
+    const check = () => {
+      const el = sentinel.current;
+      if (asked || !el) return;
+      if (el.getBoundingClientRect().top < window.innerHeight + 900) {
+        asked = true;
+        setPages((p) => p + 1);
+      }
+    };
+    window.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check);
+    const t = setTimeout(check, 50);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('scroll', check);
+      window.removeEventListener('resize', check);
+    };
   }, [more, state.rows.length]);
 
   const update = (patch: Record<string, string | null>, keepTypes = true) => {
