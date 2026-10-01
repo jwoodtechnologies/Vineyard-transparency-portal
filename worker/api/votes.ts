@@ -239,16 +239,18 @@ export async function currentCommission(env: Env): Promise<Commissioner[]> {
   const att = (await db.prepare(`SELECT member, meeting_date, document_id FROM meeting_attendance WHERE body_id = ? AND meeting_date >= ?`).bind(PC, SCOPE_FROM).all<{ member: string; meeting_date: string; document_id: string }>()).results ?? [];
   const site = (await db.prepare("SELECT slug, name, role, term, photo_url FROM people WHERE current = 1 AND kind = 'board' AND department LIKE '%Planning Commission%'").all<{ slug: string; name: string; role: string; term: string | null; photo_url: string | null }>()).results ?? [];
   const latest = new Set(docs.slice(0, 2).map((d) => d.document_id));
-  const sat = (n: string) => att.some((a) => a.member.toLowerCase() === n.toLowerCase());
+  const lastOf = (n: string) => (n.split(' ').pop() ?? n).toLowerCase();
+  const sat = (n: string) => att.some((a) => lastOf(a.member) === lastOf(n));
   const recent = new Set(att.filter((a) => latest.has(a.document_id)).map((a) => a.member));
   const out = new Map<string, Commissioner>();
-  for (const n of recent) out.set(n.toLowerCase(), { name: n, role: 'Commissioner', term: null, slug: null, photo: null });
+  for (const n of recent) out.set(lastOf(n), { name: n, role: 'Commissioner', term: null, slug: null, photo: null });
   for (const p of site) {
     const end = (p.term ?? '').match(/((?:19|20)\d{2})\s*$/);
     const termOk = !end || Number(end[1]) >= year;
     if (!docs.length ? termOk : sat(p.name) && termOk) {
       const role = /alternate/i.test(p.role) ? 'Alternate' : /chair/i.test(p.role) ? p.role : 'Commissioner';
-      out.set(p.name.toLowerCase(), { name: p.name, role, term: p.term, slug: p.slug, photo: p.photo_url ? `/api/people/${p.slug}/photo` : null });
+      // The name as the minutes print it ("Brad Fagg"), with the website's term and profile.
+      out.set(lastOf(p.name), { name: out.get(lastOf(p.name))?.name ?? p.name, role, term: p.term, slug: p.slug, photo: p.photo_url ? `/api/people/${p.slug}/photo` : null });
     }
   }
   // Chair and vice chair as the latest minutes name them; alternates as the minutes call them.
