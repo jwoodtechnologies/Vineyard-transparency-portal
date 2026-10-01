@@ -110,7 +110,7 @@ function Directory() {
           </section>
         ) : null,
       )}
-      {people.length > 0 && <p className="vc-person-asof">From the city website, as of {formatDate(people[0].asOf)}.</p>}
+      {people.length > 0 && <p className="vc-person-asof">Names, titles, photos and contacts as the city website lists them.</p>}
     </>
   );
 }

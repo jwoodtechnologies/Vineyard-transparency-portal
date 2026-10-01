@@ -84,6 +84,19 @@ export function peopleIn(question: string, people: Person[]): Person[] {
       else if (q.includes(` ${first} ${last.slice(0, 3)}`) && last.length >= 3) add(p);
     }
   }
+  // A title asked about ("the city recorder", "finance director", "deputy mayor"): whoever holds it.
+  if (!found.length) {
+    for (const p of current) {
+      for (const t of [p.role, p.title].filter(Boolean) as string[]) {
+        const role = t.toLowerCase().replace(/[^a-z0-9 /-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        if (role.length >= 6 && !/^(council member|member|staff)$/.test(role) && role.split('/').some((r) => r.trim().length >= 6 && q.includes(` ${r.trim()} `))) add(p);
+      }
+    }
+  }
+  if (!found.length && / (the )?mayor('s)? /.test(q) && !/deputy mayor|mayor pro tem/.test(q)) {
+    const mayor = current.find((p) => p.kind === 'elected' && /^mayor$/i.test(p.role));
+    if (mayor) add(mayor);
+  }
   // Elected officials first, then staff; at most two cards.
   return found.sort((a, b) => (a.kind === 'elected' ? 0 : 1) - (b.kind === 'elected' ? 0 : 1)).slice(0, 2);
 }

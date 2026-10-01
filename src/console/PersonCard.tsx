@@ -1,7 +1,6 @@
 /** A person's card: photo, role, term and contact as the city lists them, linking to their profile. */
 import { Link } from 'react-router-dom';
 import { ChevronRight, Mail, Phone, UserRound } from 'lucide-react';
-import { formatDate } from './format';
 import { roleLine, type Person } from './people';
 
 export function PersonPhoto({ person, size = 56 }: { person: Person; size?: number }) {
@@ -38,11 +37,10 @@ export function PersonCard({ person }: { person: Person }) {
           )}
         </span>
         <span className="vc-person-asof">
-          {person.current ? 'Current' : 'Former'} per the{' '}
+          {person.current ? '' : 'Former · '}
           <a href={person.sourceUrl} target="_blank" rel="noopener noreferrer">
-            city website
+            Listed on the city website
           </a>
-          , {formatDate(person.asOf)}
         </span>
       </div>
     </div>

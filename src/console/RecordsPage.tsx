@@ -137,9 +137,10 @@ export default function RecordsPage() {
   const query = useMemo(() => {
     const u = new URLSearchParams();
     if (types.length) types.forEach((t) => u.append('type', t));
-    else (cat?.types ?? []).forEach((t) => u.append('type', t.id));
+    // A body category (the RDA) is every record of that body, whatever its type.
+    else if (!cat?.body) (cat?.types ?? []).forEach((t) => u.append('type', t.id));
     if (year) u.set('year', year);
-    if (body) u.set('body', body);
+    if (body || cat?.body) u.set('body', body || cat!.body!);
     u.set('sort', sort);
     if (q) {
       u.set('q', q);
