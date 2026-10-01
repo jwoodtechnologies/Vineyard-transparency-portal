@@ -76,7 +76,8 @@ class PortalApi:
             self.requests += 1
             if r.status_code == 429 and "quota_exhausted" in r.text:
                 raise BudgetReached(BUDGET_MESSAGE)
-            if r.status_code in (502, 503, 504) and attempt < 4:
+            # 500s from D1 under load are usually momentary: retry them like gateway errors.
+            if r.status_code in (500, 502, 503, 504) and attempt < 4:
                 time.sleep(2**attempt)
                 if hasattr(data, "seek"):
                     data.seek(0)

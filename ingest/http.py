@@ -24,9 +24,10 @@ MIN_INTERVAL = float(os.environ.get("VTP_MIN_INTERVAL_SECONDS", "1.0"))  # ~1 re
 MAX_RETRIES = 4
 
 
-# Public ArcGIS REST APIs (the city's GIS layers) publish no robots.txt and answer 403 for it.
+# Public ArcGIS REST APIs (the city's GIS layers) and Amazon S3 (where the municipal code site keeps
+# its PDFs) publish no robots.txt and answer 403 for it.
 # RFC 9309 section 2.3.1.3: a 4xx robots.txt response means no crawl restrictions.
-API_HOST = re.compile(r"(^|\.)services\d*\.arcgis\.com$", re.I)
+API_HOST = re.compile(r"(^|\.)services\d*\.arcgis\.com$|^s3([.-][a-z0-9-]+)?\.amazonaws\.com$|\.s3([.-][a-z0-9-]+)?\.amazonaws\.com$", re.I)
 
 
 class RobotsDisallowed(Exception):

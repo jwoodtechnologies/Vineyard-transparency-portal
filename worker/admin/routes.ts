@@ -160,6 +160,8 @@ async function migrate(env: Env): Promise<Response> {
   }
   await env.CATALOG_DB.prepare("UPDATE documents SET document_date = NULL, year = NULL, currency = 'current' WHERE source_id = 'vineyard-gis' AND document_date IS NOT NULL").run();
   const meetings = await mergeDuplicateMeetings(env).catch((e) => ({ error: String(e).slice(0, 200) }));
+  // Files skipped only because a robots.txt answered 403 (ArcGIS, Amazon S3) go back in the queue.
+  await env.CATALOG_DB.prepare("UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL WHERE status = 'skipped' AND last_error LIKE 'RobotsDisallowed%'").run().catch(() => undefined);
   await ensureActivityTables(env);
   // While no panel owner exists, each migrate run prints a fresh one-time setup code (24 hours).
   const panelSetupCode = await newSetupCode(env);

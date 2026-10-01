@@ -445,8 +445,13 @@ def ingest(api: PortalApi, client: PoliteClient, run_id: str, limit: int, archiv
                             errors = []
                     except BudgetReached:
                         raise
+                    except Exception as e2:  # noqa: BLE001 - one record's bookkeeping never stops a runner
+                        log(f"  could not record the error for {item['url'][:80]}: {e2}")
             if len(items) == 0:
                 break
     if errors:
-        api.post("/errors", {"errors": errors})
+        try:
+            api.post("/errors", {"errors": errors})
+        except Exception as e:  # noqa: BLE001
+            log(f"could not record errors: {e}")
     return counts
