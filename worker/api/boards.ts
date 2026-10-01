@@ -75,7 +75,7 @@ export async function listBoards(env: Env): Promise<Response> {
       push(id, { slug: p.slug, name: p.name, role: p.role, term: p.term, photo });
     }
   }
-  const rank = (r: string) => (/^mayor$|^chair/i.test(r) ? 0 : /vice/i.test(r) ? 1 : /council member|board member|commissioner|member/i.test(r) ? 3 : 2);
+  const rank = (r: string) => (/^mayor$/i.test(r) || (/\bchair\b/i.test(r) && !/vice/i.test(r)) ? 0 : /vice/i.test(r) ? 1 : /^(council member|board member|commissioner|member)$/i.test(r) ? 3 : 2);
   // The boards the city website lists today, plus the City Council and the Redevelopment Agency.
   const out = (bodies.results ?? [])
     .filter((b) => !SKIP.has(b.id) && (b.id === 'city-council' || b.id === 'redevelopment-agency' || websiteBoards.has(b.id)))

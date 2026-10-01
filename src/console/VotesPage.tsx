@@ -26,7 +26,8 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   const nameOf = useMemberNames();
   const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'Outcome not recorded';
   const who = [m.mover ? `Moved by ${nameOf(m.mover).name}` : null, m.seconder ? `seconded by ${nameOf(m.seconder).name}` : null].filter(Boolean).join(', ');
-  const roll = [...m.votes].sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
+  // How each member who voted cast their vote (absences are not part of the record shown).
+  const roll = [...m.votes].filter((v) => v.vote !== 'absent').sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
   return (
     <li className="vc-mo">
       {m.item && <p className="vc-mo-item">{m.item}</p>}
@@ -49,7 +50,7 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
           ))}
         </ul>
       )}
-      {m.inferred && <p className="vc-mo-note">The minutes say all were in favor; the names are the members the minutes list as present.</p>}
+      {m.inferred && <p className="vc-mo-note">The minutes record this vote as unanimous.</p>}
       <Link to={`/documents/${encodeURIComponent(m.documentId)}${m.page ? `?page=${m.page}` : ''}`} className="vc-mo-src">
         Minutes{m.page ? `, page ${m.page}` : ''}
       </Link>
@@ -57,7 +58,7 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   );
 }
 
-function YearSection({ year, motions, meetings, query, open, onToggle, member }: { year: number; motions: number; meetings: number; query: string; open: boolean; onToggle: () => void; member: string | null }) {
+function YearSection({ year, meetings, query, open, onToggle, member }: { year: number; meetings: number; query: string; open: boolean; onToggle: () => void; member: string | null }) {
   const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
   const groups = useMemo(() => {
     if (list.status !== 'done') return [];
@@ -73,7 +74,7 @@ function YearSection({ year, motions, meetings, query, open, onToggle, member }:
       <button type="button" className="vc-year-head" onClick={onToggle} aria-expanded={open}>
         <span className="vc-year-num">{year}</span>
         <span className="vc-year-sub">
-          {motions.toLocaleString()} {motions === 1 ? 'motion' : 'motions'} at {meetings} {meetings === 1 ? 'meeting' : 'meetings'}
+          {meetings} {meetings === 1 ? 'meeting' : 'meetings'}
         </span>
         <ChevronDown size={18} className="vc-board-chev" data-open={open} />
       </button>
@@ -125,7 +126,6 @@ export default function VotesPage() {
   const members = useJson<{ members: VoteMember[] }>(`/api/votes/members${body ? `?body=${body}` : ''}`);
   const nameOf = useMemberNames();
   const memberList = members.status === 'done' ? members.data.members : [];
-  const chosen = memberList.find((m) => m.member === member) ?? null;
   const [open, setOpen] = useState<Record<number, boolean>>({});
   const yearList = years.status === 'done' ? years.data.years : [];
   const isOpen = (y: number, i: number) => open[y] ?? i === 0;
@@ -163,7 +163,6 @@ export default function VotesPage() {
             <option value="yes">Voted yes</option>
             <option value="no">Voted no</option>
             <option value="abstain">Abstained</option>
-            <option value="absent">Absent</option>
           </select>
         ) : (
           <select value={result} onChange={(e) => set('result', e.target.value)} aria-label="Result">
@@ -174,12 +173,6 @@ export default function VotesPage() {
         )}
       </div>
 
-      {chosen && (
-        <p className="vc-vsummary">
-          <strong>{nameOf(chosen.member, chosen.fullName).name}</strong>: {chosen.yes} yes, {chosen.no} no, {chosen.abstain + chosen.recused} abstained or recused, absent {chosen.absent} times; moved {chosen.moved} and seconded {chosen.seconded} motions
-          {chosen.firstDate && chosen.lastDate ? `, ${chosen.firstDate.slice(0, 4)} to ${chosen.lastDate.slice(0, 4)}` : ''}.
-        </p>
-      )}
 
       {years.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
@@ -188,7 +181,7 @@ export default function VotesPage() {
       )}
       {years.status === 'done' && !yearList.length && <p className="vc-mo-note">No motions match.</p>}
       {yearList.map((y, i) => (
-        <YearSection key={y.year} year={y.year} motions={y.motions} meetings={y.meetings} query={query} member={member || null} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
+        <YearSection key={y.year} year={y.year} meetings={y.meetings} query={query} member={member || null} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
       ))}
       <p className="vc-person-asof">Read from each meeting&apos;s approved minutes (a draft only until the approved minutes are posted). Every motion links to the page of the minutes it comes from.</p>
     </Frame>
