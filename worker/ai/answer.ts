@@ -150,7 +150,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
     .replace(/\b([ap])\.m\./gi, (_, x: string) => `${x.toLowerCase()}m`)
     .replace(/\b(No|Nos|St|Ave|Blvd|Dr|Mr|Mrs|Ms|Inc|Co|approx|vs|e\.g|i\.e)\.(?=\s+[\w$])/g, '$1')
     // A middle initial ("Mayor J. Rulon Gammon") does not end a sentence.
-    .replace(/\b([A-Z])\.(?=\s+[A-Z][a-z])/g, '$1\u2024')
+    .replace(/\b([A-Z])\.(?=\s+[A-Z](?:[a-z]|\.))/g, '$1\u2024')
     .replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, '$1-$2')
     .replace(/\s*[\u2013\u2014]\s*/g, ', ')
     // "2026-10-01" reads as "October 1, 2026".
@@ -166,7 +166,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
   for (const block of cleaned.split(/\n\s*\n/)) {
     const text = block.replace(/\s*\n\s*/g, ' ').trim();
     if (!text) continue;
-    const sentences = text.match(/(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z][a-z]))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [text];
+    const sentences = text.match(/(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z](?:[a-z]|\.)))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [text];
     const segments: AnswerSegment[] = [];
     for (const s of sentences) {
       const sentence = s.trim();
@@ -204,7 +204,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
 /** Hard limit on answer length, whatever the model does. */
 export const MAX_ANSWER_SENTENCES = 9;
 
-const SENTENCE = /(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z][a-z]))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g;
+const SENTENCE = /(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z](?:[a-z]|\.)))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g;
 
 /** Number of finished sentences in streamed text so far. */
 export function finishedSentences(text: string): number {
@@ -410,7 +410,7 @@ export function attributeCitations(raw: string, evidence: Array<{ text?: string;
   return raw
     .split(/\n\s*\n/)
     .map((block) => {
-      const sentences = block.match(/(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z][a-z]))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [block];
+      const sentences = block.match(/(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z](?:[a-z]|\.)))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [block];
       return sentences
         .map((sentence, k) => {
           if (/\[\d+(?:\s*,\s*\d+)*\]/.test(sentence)) return sentence;

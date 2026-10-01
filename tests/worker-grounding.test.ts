@@ -125,3 +125,11 @@ describe('tidyOpeners', () => {
     expect(out[0].segments[1].text).toBe('However, it continues.');
   });
 });
+
+describe('U. S. Mail', () => {
+  it('stays in one sentence', async () => {
+    const { segmentAnswer, attributeCitations } = await import('../worker/ai/answer');
+    const raw = attributeCitations('You can submit the request by email, U. S. Mail, or in person [2].', [{ title: 't', text: 'x' }, { title: 'u', text: 'y' }]);
+    expect(segmentAnswer(raw, 2).paragraphs[0].segments.map((s) => s.text)).toEqual(['You can submit the request by email, U. S. Mail, or in person.']);
+  });
+});
