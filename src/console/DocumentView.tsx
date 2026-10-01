@@ -3,11 +3,11 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, CalendarDays, Download, Expand, Layers, MessageSquare, Printer, Share2, X } from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowUpRight, CalendarDays, Download, Expand, Layers, MessageSquare, Printer, Share2, X } from 'lucide-react';
 import type { DocumentDetail, DocumentPageText } from '@/types/models';
 import { DocumentService } from '@/services';
-import { Frame } from './Chrome';
+import { BackButton, Frame } from './Chrome';
 import { TYPE_LABEL, formatDate } from './format';
 import { meetingHref } from './meetings';
 import { MeetingDocsSheet } from './MeetingDocs';
@@ -203,7 +203,6 @@ function FullScreenShell({ title, children }: { title: string; children: ReactNo
 export default function DocumentView() {
   const { documentId = '' } = useParams();
   const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
   const page = Math.max(1, Number(params.get('page')) || 1);
   const q = (params.get('q') ?? '').slice(0, 200);
   const load = useLoad(`doc:${documentId}`, () => DocumentService.get(documentId));
@@ -227,9 +226,7 @@ export default function DocumentView() {
   if (load.status === 'error') {
     return (
       <Frame>
-        <Link to="/" className="vc-back">
-          <ArrowLeft size={15} /> Back
-        </Link>
+        <BackButton fallback="/records" />
         <div className="vc-empty" style={{ marginTop: '2rem' }}>
           That record is not in the archive.
         </div>
@@ -254,9 +251,7 @@ export default function DocumentView() {
 
   return (
     <Frame wide>
-      <button type="button" className="vc-back" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}>
-        <ArrowLeft size={15} /> Back
-      </button>
+      <BackButton fallback="/records" />
       <header className="vc-doc-head">
         <p className="vc-doc-facts">
           {facts.map((f, i) => (

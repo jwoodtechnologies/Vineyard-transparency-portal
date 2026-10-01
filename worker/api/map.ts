@@ -63,16 +63,6 @@ export const MAP_LAYERS: MapLayerDef[] = [
   },
   { key: 'pdoverlay', label: 'Planned development overlay', group: 'Land', path: 'VNY_PLPZ_PD_Overlay_view/FeatureServer/10', fields: ['GRANTEE', 'ACRES'], geometry: 'polygon' },
   { key: 'subdivisions', label: 'Neighborhoods', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon' },
-  {
-    key: 'rdaparcels',
-    label: 'RDA phases by parcel',
-    group: 'Plans',
-    path: 'Vineyard_RDA_2026_Parcels/FeatureServer/686',
-    fields: ['RDA', 'PARCEL_ID', 'PARCEL_ADD', 'acreage', 'total_taxable'],
-    where: "RDA IS NOT NULL AND RDA <> ''",
-    geometry: 'polygon',
-    pages: 2,
-  },
   { key: 'ura', label: 'Geneva URA project area', group: 'Plans', path: 'Original_Geneva_URA_Project_Area/FeatureServer/471', fields: ['Name'], geometry: 'polygon' },
   { key: 'watersedge', label: "Water's Edge districts", group: 'Plans', path: 'Waters_Edge_Subdistricts_-_Public_View/FeatureServer/9', fields: ['ZONE', 'District', 'Description', 'ACRES'], geometry: 'polygon' },
   {

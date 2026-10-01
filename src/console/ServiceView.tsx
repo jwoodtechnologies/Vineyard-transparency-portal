@@ -5,8 +5,8 @@
 import './console.css';
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, FileText } from 'lucide-react';
-import { Frame } from './Chrome';
+import { ArrowUpRight, FileText } from 'lucide-react';
+import { BackButton, Frame } from './Chrome';
 import { useJson } from './api';
 import { DIRECTORY } from './directory';
 
@@ -38,9 +38,7 @@ export default function ServiceView() {
   if (!entry) {
     return (
       <Frame>
-        <Link to="/services" className="vc-back">
-          <ArrowLeft size={15} /> City services
-        </Link>
+        <BackButton fallback="/services" />
         <div className="vc-empty" style={{ marginTop: '2rem' }}>
           That service is not listed.
         </div>
@@ -50,9 +48,7 @@ export default function ServiceView() {
   const external = !/vineyardportal\.org/.test(entry.href);
   return (
     <Frame>
-      <Link to="/services" className="vc-back">
-        <ArrowLeft size={15} /> City services
-      </Link>
+      <BackButton fallback="/services" />
       <header className="vc-page-head">
         <p className="vc-svc-kicker">{entry.group}</p>
         <h1 className="vc-page-title">{entry.label}</h1>

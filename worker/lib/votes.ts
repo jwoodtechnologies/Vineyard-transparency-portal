@@ -30,6 +30,8 @@ export interface ParsedMotion {
   inferred: boolean;
   votes: Array<{ member: string; vote: VoteValue }>;
   refs: string[];
+  /** For a consent motion: each consent item it approved ("5.1 Approval of the August 11 minutes"). */
+  items: string[];
   /** Character offset in the text (used for the page). */
   at: number;
 }
@@ -140,6 +142,26 @@ function lastItem(before: string): string | null {
   return null;
 }
 
+/**
+ * The consent items a consent motion covers: the numbered lines under the last CONSENT heading
+ * before the motion, narrowed to the numbers the motion names, without any it removed.
+ */
+export function consentItems(before: string, motion: string): string[] {
+  const at = before.search(/\bconsent\s+(?:items|agenda|calendar)\b(?![\s\S]*\bconsent\s+(?:items|agenda|calendar)\b)/i);
+  if (at < 0) return [];
+  const section = before.slice(at);
+  const out: Array<[string, string]> = [];
+  for (const m of section.matchAll(/(?:^|\n)\s*(\d{1,2}\.\d{1,2})\.?\s+([A-Z][^\n]{3,220})/g)) {
+    const title = m[2].replace(/\s+/g, ' ').replace(/\s*\((?:[A-Z][a-z]+ ?){1,3}\)\s*$/, '').trim();
+    if (/^(motion|vote|yes|no)\b/i.test(title)) continue;
+    if (!out.some(([n]) => n === m[1])) out.push([m[1], title.slice(0, 180)]);
+  }
+  const named = [...motion.matchAll(/\b(\d{1,2}\.\d{1,2})\b/g)].map((m) => m[1]);
+  const removed = (motion.match(/\b(?:remov\w*|except|exclud\w*|pull\w*|without)\b(?:[^.]|\.(?=\d))*/i)?.[0] ?? '').match(/\d{1,2}\.\d{1,2}/g) ?? ([] as string[]);
+  const keep = out.filter(([n]) => !removed.includes(n) && (!named.length || named.includes(n) || removed.length));
+  return keep.map(([n, t]) => `${n} ${t}`).slice(0, 20);
+}
+
 /** The item a motion names itself: "approve item 5.4", "the Consent Items 5.1, 5.2 and 5.3". */
 function itemFor(motion: string, flat: string): string | null {
   if (/\bconsent\b/i.test(motion)) return 'Consent items';
@@ -228,6 +250,7 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
       inferred,
       votes,
       refs,
+      items: /\bconsent\b/i.test(textOut) ? consentItems(flat.slice(Math.max(0, at - 8000), at), textOut) : [],
       at,
     });
   });

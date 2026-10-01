@@ -7,6 +7,7 @@ export interface VoteRow {
 }
 export interface MotionRow {
   id: string;
+  items?: string[];
   meetingId?: string | null;
   date: string | null;
   bodyId: string | null;
@@ -57,6 +58,17 @@ export function motionLabel(m: MotionRow): string {
   const item = (m.item ?? '').replace(/^\d+(?:\.\d+)*\.?\s+/, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
   const text = m.motion.replace(/^to\s+/i, '').replace(/\s+/g, ' ').trim();
   const generic = /^(approve|adopt|accept|deny|table|continue)\b[^.]{0,40}\b(as presented|as written|item|\d+\.\d+)/i.test(text) || text.length < 18;
+  if (/\bconsent\b/i.test(text) && (m.items?.length ?? 0) > 0) return 'Consent items';
   const out = item && generic ? item : text.charAt(0).toUpperCase() + text.slice(1);
   return out.length > 140 ? `${out.slice(0, 137).replace(/\s+\S*$/, '')}...` : out;
+}
+
+/** The motion's own wording, when it says more than "approve item 5.4 as presented" (amendments, conditions). */
+export function motionDetail(m: MotionRow): string | null {
+  const text = m.motion.replace(/^to\s+/i, '').replace(/\s+/g, ' ').trim();
+  const label = motionLabel(m);
+  if (!text || label === text || label.toLowerCase() === text.toLowerCase()) return null;
+  if (/^(approve|adopt|accept)\b[^.]{0,30}\b(as presented|as written)\.?(\s*\([^)]*\))?\s*$/i.test(text)) return null;
+  if (/\bconsent\b/i.test(text) && !/\b(remov|except|without|pull)/i.test(text)) return null;
+  return `Motion: ${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }

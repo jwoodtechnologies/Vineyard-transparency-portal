@@ -6,10 +6,10 @@
 import './console.css';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, MessageSquare, Search } from 'lucide-react';
 import { Frame } from './Chrome';
 import { useJson } from './api';
-import { motionLabel, useMemberNames, type MotionRow, type VoteMember } from './votes';
+import { motionDetail, motionLabel, useMemberNames, type MotionRow, type VoteMember } from './votes';
 import { usePeople } from './people';
 
 const BODIES: Array<[string, string]> = [
@@ -23,27 +23,38 @@ interface Attendance {
   roster: Array<{ name: string; role: string }>;
 }
 
-/** Planning Commission attendance this year, from each meeting's minutes. */
-function AttendanceBlock({ a }: { a: Attendance }) {
-  const n = a.meetings.length;
+/** Planning Commission attendance this year: one row per commissioner, one mark per meeting. */
+function AttendanceView({ a }: { a: Attendance }) {
   const seen = (name: string, list: string[]) => list.some((x) => x.toLowerCase() === name.toLowerCase() || x.toLowerCase() === (name.split(' ').pop() ?? '').toLowerCase());
+  const meetings = [...a.meetings].sort((x, y) => x.date.localeCompare(y.date));
+  const short = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  if (!meetings.length) return <p className="vc-mo-note">No Planning Commission minutes have been posted for this year yet.</p>;
   return (
-    <section className="vc-att">
-      <h2 className="vc-att-title">Attendance this year</h2>
-      <p className="vc-mo-note">From the {n} Planning Commission {n === 1 ? 'meeting' : 'meetings'} with minutes posted so far this year.</p>
-      <ul className="vc-roll">
+    <section className="vc-att2">
+      <p className="vc-coverage">From the {meetings.length} meetings this year with posted minutes.</p>
+      <ul className="vc-att2-list">
         {a.roster.map((c) => {
-          const present = a.meetings.filter((m) => seen(c.name, m.present)).length;
-          const missed = a.meetings.filter((m) => seen(c.name, m.absent) || !seen(c.name, m.present));
+          const here = meetings.filter((m) => seen(c.name, m.present)).length;
           return (
-            <li key={c.name}>
-              <span>
-                {c.name}
-                {c.role !== 'Commissioner' ? ` (${c.role})` : ''}
+            <li key={c.name} className="vc-att2-row">
+              <span className="vc-att2-who">
+                <b>{c.name}</b>
+                {c.role !== 'Commissioner' && <span>{c.role}</span>}
               </span>
-              <b data-vote={missed.length ? 'abstain' : 'yes'}>
-                {present} of {n}
-              </b>
+              <span className="vc-att2-marks">
+                {meetings.map((m) => {
+                  const p = seen(c.name, m.present);
+                  return (
+                    <Link key={m.date} to={`/documents/${encodeURIComponent(m.documentId)}`} className="vc-att2-mark" data-here={p} title={`${short(m.date)}: ${p ? 'present' : 'not present'}`}>
+                      <i aria-hidden="true">{p ? '✓' : '–'}</i>
+                      {short(m.date)}
+                    </Link>
+                  );
+                })}
+              </span>
+              <span className="vc-att2-total">
+                {here} of {meetings.length}
+              </span>
             </li>
           );
         })}
@@ -66,12 +77,23 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   return (
     <li className="vc-vt">
       <div className="vc-vt-top">
-        <p className="vc-vt-label">{motionLabel(m)}</p>
+        <span className="vc-vt-what">
+          <p className="vc-vt-label">{motionLabel(m)}</p>
+          {motionDetail(m) && <p className="vc-vt-detail">{motionDetail(m)}</p>}
+          {m.refs.length > 0 && !/resolution|ordinance/i.test(motionLabel(m)) && <p className="vc-vt-detail">{m.refs.join(', ')}</p>}
+        </span>
         <span className="vc-vt-result" data-result={m.result}>
           {outcome}
           {m.tally ? ` ${m.tally}` : ''}
         </span>
       </div>
+      {(m.items?.length ?? 0) > 0 && (
+        <ol className="vc-vt-items">
+          {m.items!.map((it) => (
+            <li key={it}>{it.replace(/^(\d+\.\d+)\s+/, '$1  ')}</li>
+          ))}
+        </ol>
+      )}
       {roll.length > 0 && (
         <ul className="vc-vt-votes" aria-label="How each member voted">
           {roll.map((v) => (
@@ -88,6 +110,14 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
           {m.tieBreak ? `${m.mover ? '. ' : ''}Mayor broke the tie` : ''}
         </p>
       )}
+      <div className="vc-vt-actions">
+        <Link to={`/documents/${encodeURIComponent(m.documentId)}${m.page ? `?page=${m.page}` : ''}`}>
+          <FileText size={13} /> Minutes{m.page ? `, page ${m.page}` : ''}
+        </Link>
+        <Link to={`/?q=${encodeURIComponent(`What did the ${m.bodyId === 'redevelopment-agency' ? 'RDA board' : 'City Council'} approve on ${m.date ?? ''}: ${motionLabel(m) === 'Consent items' ? 'the consent items' : motionLabel(m)}? What does it do?`)}`}>
+          <MessageSquare size={13} /> Ask about this
+        </Link>
+      </div>
     </li>
   );
 }
@@ -122,8 +152,24 @@ function MeetingCard({ items, member, att }: { items: MotionRow[]; member: strin
   );
 }
 
-function YearSection({ year, query, open, onToggle, member, attendance }: { year: number; query: string; open: boolean; onToggle: () => void; member: string | null; attendance: Attendance | null }) {
+interface HeldMeeting {
+  id: string;
+  date: string | null;
+  title: string;
+  status?: string;
+  minutesDocumentId: string | null;
+}
+
+function YearSection({ year, query, open, onToggle, member, attendance, bodies, plain }: { year: number; query: string; open: boolean; onToggle: () => void; member: string | null; attendance: Attendance | null; bodies: string[]; plain: boolean }) {
   const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?scope=current&${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
+  const m1 = useJson<{ items: HeldMeeting[] }>(open && plain ? `/api/meetings?body=${bodies[0]}&year=${year}&pageSize=100` : null);
+  const m2 = useJson<{ items: HeldMeeting[] }>(open && plain && bodies[1] ? `/api/meetings?body=${bodies[1]}&year=${year}&pageSize=100` : null);
+  const [today] = useState(() => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
+  // Meetings already held whose minutes the city has not posted: shown so the newest meeting is never missing.
+  const waiting = useMemo(() => {
+    const all = [...(m1.status === 'done' ? m1.data.items : []), ...(m2.status === 'done' ? m2.data.items : [])];
+    return all.filter((m) => m.date && m.date.slice(0, 10) <= today && !m.minutesDocumentId && !/cancel/i.test(`${m.title} ${m.status ?? ''}`) && !/work (meeting|session)/i.test(m.title));
+  }, [m1, m2, today]);
   const groups = useMemo(() => {
     if (list.status !== 'done') return [];
     const by = new Map<string, MotionRow[]>();
@@ -146,12 +192,28 @@ function YearSection({ year, query, open, onToggle, member, attendance }: { year
         </div>
       )}
       {open && list.status === 'error' && <p className="vc-mo-note">This year could not load just now.</p>}
-      {open && list.status === 'done' && !groups.length && <p className="vc-mo-note">No votes match.</p>}
+      {open && list.status === 'done' && !groups.length && !waiting.length && <p className="vc-mo-note">No votes match.</p>}
       {open && (
         <div className="vc-mcards">
-          {groups.map(([k, items]) => (
-            <MeetingCard key={k} items={items} member={member} att={attendance?.meetings.find((x) => x.date === items[0].date) ?? null} />
-          ))}
+          {[...groups.map(([k, items]) => ({ k, date: items[0].date ?? '', items, wait: null as HeldMeeting | null })), ...waiting.map((w) => ({ k: w.id, date: (w.date ?? '').slice(0, 10), items: [] as MotionRow[], wait: w }))]
+            .sort((a, b) => b.date.localeCompare(a.date))
+            .map((g) =>
+              g.wait ? (
+                <Link key={g.k} to={`/meetings/${encodeURIComponent(g.wait.id)}`} className="vc-mcard vc-mcard-head vc-mcard-wait">
+                  <span className="vc-mcard-date">
+                    <span>{fmt(g.date, { month: 'short' })}</span>
+                    <b>{fmt(g.date, { day: 'numeric' })}</b>
+                  </span>
+                  <span className="vc-mcard-title">
+                    <span className="vc-mcard-body">{g.wait.title.replace(/^Special /, 'Special ')}</span>
+                    <span className="vc-mcard-sub">Minutes not posted yet. Votes appear once the city posts them.</span>
+                  </span>
+                  <ChevronRight size={18} className="vc-mcard-go" />
+                </Link>
+              ) : (
+                <MeetingCard key={g.k} items={g.items} member={member} att={attendance?.meetings.find((x) => x.date === g.items[0].date) ?? null} />
+              ),
+            )}
         </div>
       )}
     </section>
@@ -183,6 +245,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
   const q = params.get('q') ?? '';
   const result = params.get('result') ?? '';
   const vote = params.get('vote') ?? '';
+  const view = params.get('view') ?? '';
   const set = (k: string, v: string) => {
     const next = new URLSearchParams(params);
     if (v) next.set(k, v);
@@ -220,7 +283,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
         </p>
       </header>
 
-      <div className="vc-vfilters">
+      <div className="vc-vfilters" hidden={view === 'attendance'}>
         <label className="vc-vfilter-search">
           <Search size={15} />
           <input type="search" placeholder="Search motions" defaultValue={q} onKeyDown={(e) => e.key === 'Enter' && set('q', (e.target as HTMLInputElement).value.trim())} onBlur={(e) => e.target.value.trim() !== q && set('q', e.target.value.trim())} />
@@ -259,17 +322,27 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
       </div>
 
 
-      <Coverage bodies={commission ? ['planning-commission'] : body ? [body] : ['city-council', 'redevelopment-agency']} />
-      {att && att.meetings.length > 0 && <AttendanceBlock a={att} />}
+      {view !== 'attendance' && <Coverage bodies={commission ? ['planning-commission'] : body ? [body] : ['city-council', 'redevelopment-agency']} />}
+      {commission && (
+        <div className="vc-segment vc-tabs" role="tablist" aria-label="View">
+          <button type="button" role="tab" aria-selected={view !== 'attendance'} data-on={view !== 'attendance'} onClick={() => set('view', '')}>
+            Votes
+          </button>
+          <button type="button" role="tab" aria-selected={view === 'attendance'} data-on={view === 'attendance'} onClick={() => set('view', 'attendance')}>
+            Attendance
+          </button>
+        </div>
+      )}
+      {commission && view === 'attendance' && att && <AttendanceView a={att} />}
 
       {years.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
           <span style={{ width: '60%' }} />
         </div>
       )}
-      {years.status === 'done' && !yearList.length && <p className="vc-mo-note">No motions match.</p>}
-      {yearList.map((y, i) => (
-        <YearSection key={y.year} year={y.year} query={query} member={member || null} attendance={att} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
+      {view !== 'attendance' && years.status === 'done' && !yearList.length && <p className="vc-mo-note">No motions match.</p>}
+      {view !== 'attendance' && yearList.map((y, i) => (
+        <YearSection key={y.year} year={y.year} bodies={commission ? ['planning-commission'] : body ? [body] : ['city-council', 'redevelopment-agency']} plain={!q && !member && !result && !vote} query={query} member={member || null} attendance={att} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
       ))}
       <p className="vc-person-asof">From each meeting&apos;s posted minutes. Routine motions (approving minutes or the agenda, adjourning, closed sessions, opening hearings) are left out. Tap a meeting to open its agenda, minutes and video.</p>
     </Frame>

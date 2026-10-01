@@ -3,11 +3,10 @@
  * The menu holds the calendar, people, map, every record category, appearance and chat history.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { BookOpen, Building2, CalendarDays, ClipboardList, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, Sun, Users, Vote } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Building2, CalendarDays, ClipboardList, FileText, History, Landmark, Map as MapIcon, Moon, Scale, Sun, Users, Vote } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
-import { RECORD_CATEGORIES } from './categories';
 
 function useScrolled() {
   const [scrolled, setScrolled] = useState(() => typeof window !== 'undefined' && window.scrollY > 8);
@@ -54,9 +53,16 @@ function MenuMark() {
 }
 
 /** The menu keeps the main record groups; the Records page has every category. */
-const MENU_CATEGORIES = ['meetings', 'finance', 'laws', 'rda'];
+/** The records menu, shortest to longest so it reads as one clean column. */
+const MENU_ROWS: Array<{ to: string; label: string; Icon: typeof FileText }> = [
+  { to: '/votes', label: 'Voting records', Icon: Vote },
+  { to: '/records?c=finance', label: 'Budget & finance', Icon: Landmark },
+  { to: '/records?c=meetings', label: 'Agendas & minutes', Icon: FileText },
+  { to: '/boards', label: 'Boards and commissions', Icon: Users },
+  { to: '/records?c=laws', label: 'Ordinances & resolutions', Icon: Scale },
+  { to: '/records?c=rda', label: 'RDA (Redevelopment Agency)', Icon: Building2 },
+];
 
-const CATEGORY_ICONS: Record<string, typeof FileText> = { meetings: FileText, finance: Landmark, laws: Scale, code: BookOpen, plans: Layers, rda: Building2 };
 
 /**
  * The one menu, on desktop and phones: the calendar, people, map and every record category, then
@@ -114,23 +120,12 @@ export function SettingsMenu() {
           </div>
 
           <p className="vc-panel-label">Records</p>
-          {RECORD_CATEGORIES.filter((c) => MENU_CATEGORIES.includes(c.id)).map((c) => {
-            const Icon = CATEGORY_ICONS[c.id] ?? FileText;
-            return (
-              <Link key={c.id} to={`/records?c=${c.id}`} className="vc-panel-row">
-                <Icon size={15} strokeWidth={1.8} />
-                <span>{c.label}</span>
-              </Link>
-            );
-          })}
-          <Link to="/votes" className="vc-panel-row">
-            <Vote size={15} strokeWidth={1.8} />
-            <span>Voting records</span>
-          </Link>
-          <Link to="/boards" className="vc-panel-row">
-            <Users size={15} strokeWidth={1.8} />
-            <span>Boards and commissions</span>
-          </Link>
+          {MENU_ROWS.map(({ to, label, Icon }) => (
+            <Link key={to} to={to} className="vc-panel-row">
+              <Icon size={15} strokeWidth={1.8} />
+              <span>{label}</span>
+            </Link>
+          ))}
 
           <p className="vc-panel-label">Appearance</p>
           <div className="vc-segment" role="radiogroup" aria-label="Theme">
@@ -179,6 +174,19 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
         <SettingsMenu />
       </nav>
     </header>
+  );
+}
+
+/** Back: to whatever the reader was looking at before (in the portal), else to a sensible page. */
+export function BackButton({ fallback, label = 'Back' }: { fallback: string; label?: string }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  // A first page load has the key 'default'; anything opened inside the portal has history to go back to.
+  const inApp = location.key !== 'default';
+  return (
+    <button type="button" className="vc-back" onClick={() => (inApp ? navigate(-1) : navigate(fallback))}>
+      <ArrowLeft size={15} /> {label}
+    </button>
   );
 }
 

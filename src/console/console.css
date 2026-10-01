@@ -3925,3 +3925,23 @@ html.vc-locked .vc-landing {
 .vc-svc-doc { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; font-size: 0.9rem; font-weight: 600; color: var(--vc-accent); text-decoration: none; }
 .vc-svc-page { padding: 16px 18px; border: 1px solid var(--vc-line-2); border-radius: 16px; background: var(--vc-surface); }
 .vc-svc-page p { margin: 0 0 10px; font-size: 0.95rem; line-height: 1.6; color: var(--vc-ink-2); }
+.vc-tabs { max-width: 320px; margin: 4px 0 14px; }
+.vc-vt-items { margin: 8px 0 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 0.84rem; color: var(--vc-ink-2); }
+.vc-vt-items li { padding-left: 14px; position: relative; line-height: 1.4; }
+.vc-vt-items li::before { content: ''; position: absolute; left: 3px; top: 0.6em; width: 5px; height: 5px; border-radius: 50%; background: var(--vc-accent); }
+.vc-vt-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+.vc-vt-actions a { display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 600; color: var(--vc-accent); text-decoration: none; }
+.vc-mcard-wait { border-bottom: 0; opacity: 0.85; }
+.vc-att2-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.vc-att2-row { display: grid; grid-template-columns: minmax(150px, 1.2fr) 2fr auto; align-items: center; gap: 10px 14px; padding: 12px 16px; border: 1px solid var(--vc-line-2); border-radius: 14px; background: var(--vc-surface); }
+.vc-att2-who { display: flex; flex-direction: column; }
+.vc-att2-who b { font-size: 0.95rem; color: var(--vc-ink); }
+.vc-att2-who span { font-size: 0.74rem; color: var(--vc-accent); font-weight: 600; }
+.vc-att2-marks { display: flex; flex-wrap: wrap; gap: 6px; }
+.vc-att2-mark { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px; font-size: 0.74rem; text-decoration: none; background: var(--vc-bg-2); color: var(--vc-muted); }
+.vc-att2-mark[data-here='true'] { background: rgba(47, 158, 68, 0.12); color: #237032; }
+.vc-att2-mark i { font-style: normal; font-weight: 700; }
+.vc-att2-total { font-weight: 700; font-size: 0.9rem; color: var(--vc-ink); }
+@media (max-width: 560px) { .vc-att2-row { grid-template-columns: 1fr auto; } .vc-att2-marks { grid-column: 1 / -1; } }
+.vc-map-note { margin: 4px 0 10px; font-size: 0.76rem; line-height: 1.45; color: var(--vc-muted); }
+.vc-vt-what { min-width: 0; } .vc-vt-label { font-weight: 600; } .vc-vt-detail { margin: 3px 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--vc-ink-2); }

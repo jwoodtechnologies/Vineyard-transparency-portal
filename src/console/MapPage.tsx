@@ -131,14 +131,14 @@ const LABEL: Record<string, string> = {
   Project_Name: 'Project',
   Department: 'Department',
   Project_Phase: 'Phase',
-  Phase_Status: 'Status',
+  Phase_Status: 'Phase progress',
   Total_Budget: 'Total budget',
   Funding_Source: 'Funding',
   Location: 'Location',
   Description: 'Description',
-  Construction_Fiscal: 'Construction year',
-  Start_Date: 'Starts',
-  Finish_Date: 'Finishes',
+  Construction_Fiscal: 'Construction budgeted for',
+  Start_Date: 'Start year (city estimate)',
+  Finish_Date: 'Finish year (city estimate)',
   Consultant: 'Consultant',
   ZONE: 'Zone',
   District: 'District',
@@ -209,6 +209,8 @@ function fmt(key: string, v: unknown): string | null {
   if (v == null || v === '' || v === ' ') return null;
   if ((key === 'Total_Budget' || key === 'total_taxable' || key === 'MKT_CUR_VALUE') && Number.isFinite(Number(v))) return `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if ((key === 'OrdinanceDate' || key === 'LASTUPDATE') && Number.isFinite(Number(v)) && Number(v) > 1e11) return new Date(Number(v)).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  // City fiscal years run July to June: fiscal 2026 is July 2025 to June 2026.
+  if (key === 'Construction_Fiscal' && /^\d{4}$/.test(String(v))) return `Fiscal year ${v} (July ${Number(v) - 1} to June ${v})`;
   if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
   const s = String(v).trim();
   return s && !/^(null|none|<null>)$/i.test(s) ? s : null;
@@ -235,14 +237,14 @@ function nameOf(layer: string, p: Record<string, unknown>): string {
 /** What each color means, for layers colored by a field (snow plow priority, zoning, land use). */
 const LEGENDS = new Map<string, Array<[string, string]>>();
 const LEGEND_TITLE: Record<string, string> = { snowplow: 'Snow plow priority', zoning: 'Zoning', landuse: 'Future land use', evaczones: 'Evacuation zone', greenspace: 'Green space', watersedge: "Water's Edge district", rdaparcels: 'RDA', subdivisions: 'Neighborhood' };
-const legendValue = (layer: string, v: string) => (layer === 'snowplow' && /^\d+$/.test(v) ? `Priority ${v}${v === '1' ? ' (plowed first)' : ''}` : v);
+const legendValue = (layer: string, v: string) => (!v.trim() || /^null$/i.test(v) ? (layer === 'snowplow' ? 'No priority listed' : 'Not listed') : layer === 'snowplow' && /^\d+$/.test(v) ? `Priority ${v}${v === '1' ? ' (plowed first)' : ''}` : v);
 
 function colorize(layer: string, fc: FC): FC {
   const by = LOOK[layer]?.by;
   if (!by) return fc;
   const values = [...new Set(fc.features.map((f) => String(f.properties?.[by] ?? '')))].sort();
   const idx = new Map(values.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
-  LEGENDS.set(layer, values.filter(Boolean).map((v) => [v, idx.get(v) as string]));
+  LEGENDS.set(layer, values.map((v) => [v, idx.get(v) as string]));
   return { ...fc, features: fc.features.map((f) => ({ ...f, properties: { ...f.properties, __c: idx.get(String(f.properties?.[by] ?? '')) } })) };
 }
 
@@ -847,23 +849,38 @@ export default function MapPage() {
         )}
 
         {!panel && !picked && (() => {
-          const shown = [...on].filter((k) => data[k] && LEGENDS.get(k)?.length && (LEGENDS.get(k)?.length ?? 0) <= 14);
+          // Every layer on the map, in drawing order: one swatch, or one per value for color-coded layers.
+          const shown = DRAW_ORDER.filter((k) => on.has(k) && data[k]).reverse();
           if (!shown.length) return null;
+          const name = (k: string) => catalog?.find((l) => l.key === k)?.label ?? k;
           return (
             <aside className="vc-map-legend" aria-label="Legend">
-              {shown.map((k) => (
-                <div key={k}>
-                  <p className="vc-map-legend-title">{LEGEND_TITLE[k] ?? catalog?.find((l) => l.key === k)?.label ?? k}</p>
-                  <ul>
-                    {LEGENDS.get(k)!.map(([v, c]) => (
-                      <li key={v}>
-                        <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: c }} />
-                        {legendValue(k, v)}
-                      </li>
-                    ))}
+              {shown.map((k) => {
+                const values = LOOK[k]?.by ? LEGENDS.get(k) : null;
+                if (values && values.length > 1 && values.length <= 16)
+                  return (
+                    <div key={k}>
+                      <p className="vc-map-legend-title">{LEGEND_TITLE[k] ?? name(k)}</p>
+                      <ul>
+                        {[...values].sort((a, b) => Number(!a[0].trim()) - Number(!b[0].trim()) || a[0].localeCompare(b[0], undefined, { numeric: true })).map(([v, c]) => (
+                          <li key={v || 'none'}>
+                            <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: c }} />
+                            {legendValue(k, v)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                return (
+                  <ul key={k}>
+                    <li>
+                      <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: LOOK[k]?.outline ?? LOOK[k]?.color }} />
+                      {name(k)}
+                      {values && values.length > 16 ? ' (colored by area)' : ''}
+                    </li>
                   </ul>
-                </div>
-              ))}
+                );
+              })}
             </aside>
           );
         })()}
@@ -891,6 +908,17 @@ export default function MapPage() {
                   </div>
                 ))}
             </dl>
+            {picked.layer === 'projects' && (() => {
+              const finish = Number(picked.props.Finish_Date);
+              const pct = String(picked.props.Phase_Status ?? '');
+              const thisYear = Number(new Date().toISOString().slice(0, 4));
+              return (
+                <p className="vc-map-note">
+                  The city&apos;s project list gives start and finish as years only, and a budgeted project may not have started yet.
+                  {finish && finish < thisYear && /^0%$/.test(pct) ? ' Its finish year has passed while it is still listed at 0%, so this schedule is out of date.' : ''}
+                </p>
+              );
+            })()}
             <div className="vc-map-card-actions">
               <Link to={ask} className="vc-primary">
                 <MessageSquare size={15} strokeWidth={1.8} /> Ask about this

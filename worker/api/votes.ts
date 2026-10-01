@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 6;
+export const VOTES_PARSER = 7;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -32,6 +32,8 @@ export async function ensureVotesTables(env: Env): Promise<void> {
       `CREATE INDEX IF NOT EXISTS meeting_roster_body ON meeting_roster(body_id, meeting_date)`,
     ].map((q) => env.CATALOG_DB.prepare(q)),
   );
+  // Consent items each consent motion approved (added after the table first shipped).
+  await env.CATALOG_DB.prepare('ALTER TABLE motions ADD COLUMN items TEXT').run().catch(() => undefined);
   ready = true;
 }
 
@@ -134,8 +136,8 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
     const id = `${d.id}:${m.seq}`;
     stmts.push(
       db
-        .prepare('INSERT INTO motions (id, document_id, meeting_id, body_id, meeting_date, seq, item, motion, mover, seconder, result, tally, tie_break, unanimous, inferred, refs, page) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .bind(id, d.id, d.meeting_id, body, date, m.seq, m.item, m.text, m.mover, m.seconder, m.result, m.tally, m.tieBreak ? 1 : 0, m.unanimous ? 1 : 0, m.inferred ? 1 : 0, m.refs.length ? JSON.stringify(m.refs) : null, pageOf(m)),
+        .prepare('INSERT INTO motions (id, document_id, meeting_id, body_id, meeting_date, seq, item, motion, mover, seconder, result, tally, tie_break, unanimous, inferred, refs, page, items) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .bind(id, d.id, d.meeting_id, body, date, m.seq, m.item, m.text, m.mover, m.seconder, m.result, m.tally, m.tieBreak ? 1 : 0, m.unanimous ? 1 : 0, m.inferred ? 1 : 0, m.refs.length ? JSON.stringify(m.refs) : null, pageOf(m), m.items.length ? JSON.stringify(m.items) : null),
     );
     for (const v of m.votes) {
       stmts.push(db.prepare('INSERT OR REPLACE INTO motion_votes (motion_id, member, vote, meeting_date, body_id) VALUES (?, ?, ?, ?, ?)').bind(id, v.member, v.vote, date, body));
@@ -345,6 +347,7 @@ export interface MotionOut {
   unanimous: boolean;
   inferred: boolean;
   refs: string[];
+  items: string[];
   documentId: string;
   page: number | null;
   votes: Array<{ member: string; vote: string }>;
@@ -423,6 +426,7 @@ export async function queryMotions(env: Env, f: { all?: boolean; member?: string
       unanimous: Number(r.unanimous) === 1,
       inferred: Number(r.inferred) === 1,
       refs: r.refs ? (JSON.parse(String(r.refs)) as string[]) : [],
+      items: r.items ? (JSON.parse(String(r.items)) as string[]) : [],
       documentId: String(r.document_id),
       page: r.page == null ? null : Number(r.page),
       mover: named((r.mover as string | null) ?? null),

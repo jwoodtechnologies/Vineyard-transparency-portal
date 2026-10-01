@@ -4,10 +4,10 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, Clock, FileText, MapPin, MessageSquare, Video } from 'lucide-react';
+import { ArrowUpRight, Clock, FileText, MapPin, MessageSquare, Video } from 'lucide-react';
 import type { Meeting } from '@/types/models';
 import { DocumentService, MeetingService } from '@/services';
-import { Frame } from './Chrome';
+import { BackButton, Frame } from './Chrome';
 import { agendaOutline, formatTime, longDate, statusLabel, todayIso, toneOf, type OutlineItem } from './meetings';
 import { MeetingDocList } from './MeetingDocs';
 import { useMeetingDocs } from './meetingDocs';
@@ -80,9 +80,7 @@ export default function MeetingPage() {
   if (load.status === 'error') {
     return (
       <Frame>
-        <Link to="/meetings" className="vc-back">
-          <ArrowLeft size={15} /> Calendar
-        </Link>
+        <BackButton fallback="/meetings" />
         <div className="vc-empty" style={{ marginTop: '2rem' }}>
           That meeting is not in the archive.
         </div>
@@ -112,9 +110,7 @@ export default function MeetingPage() {
 
   return (
     <Frame>
-      <Link to="/meetings" className="vc-back">
-        <ArrowLeft size={15} /> Calendar
-      </Link>
+      <BackButton fallback="/meetings" />
 
       <header className="vc-mtg-head" data-tone={toneOf(meeting.governmentBodyId)}>
         <p className="vc-mtg-body">

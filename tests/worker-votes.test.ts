@@ -137,3 +137,12 @@ describe('board roster from minutes', () => {
     ]);
   });
 });
+
+describe('consent items', () => {
+  it('lists the items a consent motion approved', async () => {
+    const { consentItems } = await import('../worker/lib/votes');
+    const before = `4. PUBLIC COMMENT\nNone.\n5. CONSENT ITEMS\n5.1 Approval of the July 14, 2026 City Council Minutes\n5.2 Resolution 2026-30 Interlocal Agreement for Dispatch Services (Brian Voeks)\n5.3 Appoint Steffani Winder to the Library Board\n`;
+    expect(consentItems(before, 'approve the Consent Items 5.1, 5.2, and 5.3 as presented')).toEqual(['5.1 Approval of the July 14, 2026 City Council Minutes', '5.2 Resolution 2026-30 Interlocal Agreement for Dispatch Services', '5.3 Appoint Steffani Winder to the Library Board']);
+    expect(consentItems(before, 'approve the consent items as presented with the removal of item 5.2')).toEqual(['5.1 Approval of the July 14, 2026 City Council Minutes', '5.3 Appoint Steffani Winder to the Library Board']);
+  });
+});
