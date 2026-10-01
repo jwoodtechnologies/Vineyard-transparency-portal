@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 11;
+export const VOTES_PARSER = 12;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -110,7 +110,9 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   // meeting), unless it is far from the file's own date (a date quoted in the text, not the meeting's).
   const near = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) <= 75 * 86_400_000;
   // Minutes are filed on or after their meeting, so a printed date later than the file's own is a date quoted in the text.
-  const date = parsed.date && (!guessDate || (parsed.date <= guessDate && near(parsed.date, guessDate))) ? parsed.date : guessDate;
+  // A file name with the wrong year ("12.3.2026" on December 3, 2025 minutes) or a date still in the future yields to the printed date.
+  const typo = Boolean(parsed.date && guessDate && (parsed.date.slice(5) === guessDate.slice(5) || guessDate > now.slice(0, 10)));
+  const date = parsed.date && (!guessDate || typo || (parsed.date <= guessDate && near(parsed.date, guessDate))) ? parsed.date : guessDate && guessDate > now.slice(0, 10) ? (d.document_date ?? guessDate) : guessDate;
   // The record's own body wins; the heading only fills in when the record has none.
   const body = (d.government_body_id && d.government_body_id !== 'general' ? d.government_body_id : null) ?? parsed.body ?? 'unknown';
   const key = `${body}|${date ?? d.id}`;
