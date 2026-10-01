@@ -26,6 +26,7 @@ import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { seriesFor } from './series';
+import { ROAD_STATUS, roadsIn } from './roads';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 
@@ -452,7 +453,25 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seenT = new Set<string>();
     hits = [...hits.slice(0, 30), ...found, ...hits.slice(30)].filter((h) => (seenT.has(h.chunkId) ? false : (seenT.add(h.chunkId), true)));
   }
-  const topicNotes = topics.map((t) => t.note).filter(Boolean).join(' ');
+  let topicNotes = topics.map((t) => t.note).filter(Boolean).join(' ');
+  // "Is 575 South under construction? When will it reopen?": the newest records about that road
+  // (council packets and minutes, construction notices, city email updates) say what is under way
+  // now. The capital project list shows planning phases and can lag, so it never settles this alone.
+  const roadIds = new Set<string>();
+  const roads = roadsIn(retrievalText);
+  let roadNote = '';
+  if (roads.length && ROAD_STATUS.test(retrievalText)) {
+    const since = new Date(Date.parse(`${todayUT}T12:00:00Z`) - 270 * 86_400_000).toISOString().slice(0, 10);
+    const qs = roads.slice(0, 2).flatMap((r) => [`"${r}" construction`, `"${r}" closure closed reopen`, `"${r}" road improvements contractor`]);
+    const lists = await Promise.all(qs.map((q) => retrieve(q, { ...filters, dateFrom: since }).catch(() => [] as ChunkHit[])));
+    const found = interleave(lists, 6);
+    found.forEach((h) => roadIds.add(h.chunkId));
+    const seenR2 = new Set<string>();
+    hits = [...hits.slice(0, 20), ...found, ...hits.slice(20)].filter((h) => (seenR2.has(h.chunkId) ? false : (seenR2.add(h.chunkId), true)));
+    if (found.length)
+      roadNote = `Road construction: answer from the newest records about ${roads.slice(0, 2).join(' and ')} (council packets and minutes, resolutions, construction notices, city email updates): say what work is under way or approved, any closure, and any completion or reopening date they give, each with its date. The capital project list shows planning phases and can lag behind, so never say a road is not under construction only because that list does not show it. If no record gives a finish date, say so and point to the city's road signs and Public Works.`;
+  }
+  if (roadNote) topicNotes = `${topicNotes} ${roadNote}`.trim();
   // "How do I...": the city website's own page for that service says how, so it is read first.
   const pageIds = new Set<string>();
   if (HOWTO.test(body.question)) {
@@ -526,6 +545,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     }
     lead(govIds, 1);
     lead(topicIds, 3);
+    lead(roadIds, 4);
     lead(pageIds, 2);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
