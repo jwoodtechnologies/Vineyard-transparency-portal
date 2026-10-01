@@ -19,3 +19,14 @@ describe('adoptionDate history note', () => {
     expect(adoptionDate('Adopted by Ord. 2020-04 on 13/40/2020', 2020)).toBeNull();
   });
 });
+
+describe('dates printed in titles', () => {
+  it('reads newsletters, email updates and notices', async () => {
+    const { titleDate } = await import('../worker/lib/adoptionDate');
+    expect(titleDate('September Newsletter 2026')).toBe('2026-09-01');
+    expect(titleDate('May 2026 Newsletter')).toBe('2026-05-01');
+    expect(titleDate('Email Update 3 - August 7, 2026')).toBe('2026-08-07');
+    expect(titleDate('9.15.26 CC Agenda')).toBe('2026-09-15');
+    expect(titleDate('Construction Notice: Center Street & 400 South Improvements')).toBeNull();
+  });
+});

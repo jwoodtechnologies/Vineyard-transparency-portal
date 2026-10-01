@@ -71,6 +71,18 @@ def parse_date(*texts: str | None) -> str | None:
     return None
 
 
+def parse_month_date(*texts: str | None) -> str | None:
+    """A monthly publication's month: "September Newsletter 2026", "May 2026 Newsletter" -> first of that month."""
+    for t in texts:
+        if not t or not re.search(r"newsletter|update|bulletin|report", t, re.I):
+            continue
+        s = t.replace("_", " ")
+        m = re.search(r"\b([A-Za-z]{3,9})\b[^0-9]{0,30}?\b((?:19|20)\d{2})\b", s)
+        if m and (mon := MONTHS.get(m[1].lower())) and (v := _valid(int(m[2]), mon, 1)):
+            return v
+    return None
+
+
 def parse_document_number(*texts: str | None) -> str | None:
     for t in texts:
         if not t:

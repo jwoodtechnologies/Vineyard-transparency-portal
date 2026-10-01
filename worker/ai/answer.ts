@@ -104,9 +104,9 @@ export function buildUserMessage(question: string, evidence: ChunkHit[], history
 
 const SMALL_TALK: Array<[RegExp, 'greeting' | 'thanks' | 'capability' | 'wellbeing' | 'goodbye' | 'help']> = [
   [/^(hi|hello|hey|hiya|howdy|yo|sup|hola|greetings|good (morning|afternoon|evening|day))\b[\s!.,]*(there|friend|claude|everyone|all)?[\s!.,]*$/i, 'greeting'],
-  [/^(thanks|thank you|thx|ty|appreciate it|much appreciated|awesome|great|perfect|cool|nice|ok(ay)?|got it)\b[\s\w!.,]{0,20}$/i, 'thanks'],
-  [/^(who|what) are you\b|^what can you do\b|^what do you do\b|^how does this work\b|^what is this( site| portal)?\b/i, 'capability'],
-  [/^how are you\b|^how's it going\b|^what'?s up\b/i, 'wellbeing'],
+  [/^(thanks|thank you|thx|ty|appreciate it|much appreciated|awesome|great|perfect|cool|nice|ok(ay)?|got it)(\s+(so much|a lot|a ton|again|very much|man|bro|claude|you|that's it|that helps|for (the|your) help))*[\s!.,]*$/i, 'thanks'],
+  [/^((who|what) are you|what can you do|what do you do|how does this work|what is this( site| portal| website| app)?)[\s?!.]*$/i, 'capability'],
+  [/^(how are you( doing)?( today)?|how's it going|what'?s up)[\s?!.]*$/i, 'wellbeing'],
   [/^(bye|goodbye|see you|later|good night)\b/i, 'goodbye'],
   [/^(can you help( me)?|help( me)?|i have a question|i need help)[\s?!.]*$/i, 'help'],
 ];

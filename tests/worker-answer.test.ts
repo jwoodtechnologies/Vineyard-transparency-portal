@@ -74,3 +74,14 @@ describe('conversation mode', () => {
     expect(safeSmallTalk('The council approved $4 million in 2026.', 'greeting')).toBe(SMALL_TALK_REPLIES.greeting);
   });
 });
+
+describe('small talk only when it is small talk', () => {
+  it('never swallows a records question', async () => {
+    const { smallTalkKind } = await import('../worker/ai/answer');
+    expect(smallTalkKind("What is this year's budget?")).toBeNull();
+    expect(smallTalkKind('ok what about the water report')).toBeNull();
+    expect(smallTalkKind('What is this?')).toBe('capability');
+    expect(smallTalkKind('thanks so much!')).toBe('thanks');
+    expect(smallTalkKind('hi')).toBe('greeting');
+  });
+});

@@ -15,7 +15,7 @@ import { intVar } from '../env';
 import { HttpError, json, badRequest, notFound, readJson } from '../lib/http';
 import { nowIso, utcDay, chunked } from '../lib/util';
 import { categoriesForType, normalizeType } from '../lib/taxonomy';
-import { adoptionDate } from '../lib/adoptionDate';
+import { adoptionDate, titleDate } from '../lib/adoptionDate';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
@@ -170,7 +170,22 @@ async function fixRecordDates(env: Env): Promise<{ cleared: number; dated: numbe
     await repo.shard(d.search_shard).prepare('UPDATE shard_documents SET document_date = ? WHERE document_id = ?').bind(date, d.id).run().catch(() => undefined);
     dated++;
   }
-  return { cleared: Number(c.meta?.changes ?? 0), dated };
+  // City website files filed without a date get the one their title prints (newsletters, email
+  // updates, notices), so "this year" questions find them.
+  const undated = await db
+    .prepare("SELECT id, title, search_shard FROM documents WHERE source_id = 'vineyard-city-website' AND document_date IS NULL AND title IS NOT NULL LIMIT 1500")
+    .all<{ id: string; title: string; search_shard: number | null }>();
+  let titled = 0;
+  for (const d of undated.results ?? []) {
+    const date = titleDate(d.title);
+    if (!date || date > new Date(Date.now() + 400 * 86_400_000).toISOString().slice(0, 10)) continue;
+    const year = Number(date.slice(0, 4));
+    await db.prepare('UPDATE documents SET document_date = ?, year = ? WHERE id = ?').bind(date, year, d.id).run();
+    if (d.search_shard != null && repo.activeShards.includes(d.search_shard))
+      await repo.shard(d.search_shard).prepare('UPDATE shard_documents SET document_date = ?, year = ? WHERE document_id = ?').bind(date, year, d.id).run().catch(() => undefined);
+    titled++;
+  }
+  return { cleared: Number(c.meta?.changes ?? 0), dated: dated + titled };
 }
 
 async function migrate(env: Env): Promise<Response> {

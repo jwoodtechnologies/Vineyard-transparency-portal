@@ -16,7 +16,7 @@ from .extract import Extraction, Page
 from .urls import key_for
 from .api import BudgetReached, PortalApi
 from .chunk import chunk_pages
-from .classify import categories_for, classify_type, clean_title, parse_date, parse_document_number
+from .classify import categories_for, classify_type, clean_title, parse_date, parse_document_number, parse_month_date
 from .discover import discover, main_content_seeds
 from .extract import extract, extract_html, sniff
 from .http import HttpFailure, PoliteClient, RobotsDisallowed
@@ -246,7 +246,7 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
         doc_type = meta.get("documentType") or classify_type(title, meta.get("fileName"), meta.get("sectionHeading"), meta.get("pageTitle"))
         doc_date, year_only = _record_date(meta, " ".join(p.text for p in extraction.pages) if extraction else "")
         if not doc_date and not year_only:
-            doc_date = parse_date(title, meta.get("fileName"), meta.get("linkText"))
+            doc_date = parse_date(title, meta.get("fileName"), meta.get("linkText")) or parse_month_date(title, meta.get("fileName"))
         document = {
             "title": title,
             "documentType": doc_type,

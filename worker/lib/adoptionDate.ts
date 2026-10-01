@@ -38,3 +38,36 @@ export function adoptionDate(text: string | null | undefined, year: number | nul
   }
   return best;
 }
+
+/**
+ * A date printed in a record's title, for records filed without one: "Email Update 3 - August 7,
+ * 2026", "9.15.26 CC Agenda", or a monthly issue ("September Newsletter 2026" is September 1, 2026).
+ * Mirrors ingest/classify.py parse_date and parse_month_date.
+ */
+export function titleDate(title: string | null | undefined): string | null {
+  if (!title) return null;
+  const s = title.replace(/_/g, ' ');
+  const valid = (y: number, m: number, d: number) => {
+    if (y < 1980 || y > 2100) return null;
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? dt.toISOString().slice(0, 10) : null;
+  };
+  for (const m of s.matchAll(/(?<!\d)(\d{4})[-.](\d{1,2})[-.](\d{1,2})(?!\d)/g)) {
+    const v = valid(Number(m[1]), Number(m[2]), Number(m[3]));
+    if (v) return v;
+  }
+  for (const m of s.matchAll(/(?<!\d)(\d{1,2})[-./](\d{1,2})[-./](\d{4}|\d{2})(?!\d)(?!\.\d)/g)) {
+    const y = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]);
+    const v = valid(y, Number(m[1]), Number(m[2]));
+    if (v) return v;
+  }
+  for (const m of s.matchAll(MDY)) {
+    const v = iso(m[3], m[1], m[2]);
+    if (v) return v;
+  }
+  if (/newsletter|update|bulletin|report/i.test(s)) {
+    const m = s.match(new RegExp(`\\b(${M})\\b[^0-9]{0,30}?\\b((?:19|20)\\d{2})\\b`, 'i'));
+    if (m) return iso(m[2], m[1], '1');
+  }
+  return null;
+}
