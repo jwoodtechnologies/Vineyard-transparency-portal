@@ -15,7 +15,42 @@ const BODIES: Array<[string, string]> = [
   ['', 'Council and RDA'],
   ['city-council', 'City Council meetings'],
   ['redevelopment-agency', 'RDA board meetings'],
+  ['planning-commission', 'Planning Commission'],
 ];
+
+interface Attendance {
+  meetings: Array<{ date: string; documentId: string; present: string[]; absent: string[] }>;
+  roster: Array<{ name: string; role: string }>;
+}
+
+/** Planning Commission attendance this year, from each meeting's minutes. */
+function AttendanceBlock({ a }: { a: Attendance }) {
+  const n = a.meetings.length;
+  const seen = (name: string, list: string[]) => list.some((x) => x.toLowerCase() === name.toLowerCase() || x.toLowerCase() === (name.split(' ').pop() ?? '').toLowerCase());
+  return (
+    <section className="vc-att">
+      <h2 className="vc-att-title">Attendance this year</h2>
+      <p className="vc-mo-note">From the {n} Planning Commission {n === 1 ? 'meeting' : 'meetings'} with minutes posted so far this year.</p>
+      <ul className="vc-roll">
+        {a.roster.map((c) => {
+          const present = a.meetings.filter((m) => seen(c.name, m.present)).length;
+          const missed = a.meetings.filter((m) => seen(c.name, m.absent) || !seen(c.name, m.present));
+          return (
+            <li key={c.name}>
+              <span>
+                {c.name}
+                {c.role !== 'Commissioner' ? ` (${c.role})` : ''}
+              </span>
+              <b data-vote={missed.length ? 'abstain' : 'yes'}>
+                {present} of {n}
+              </b>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 const VOTE_LABEL: Record<string, string> = { yes: 'Yes', no: 'No', abstain: 'Abstained', recused: 'Recused', absent: 'Absent' };
 const ORDER: Record<string, number> = { yes: 0, no: 1, abstain: 2, recused: 3, absent: 4 };
 
@@ -58,7 +93,7 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   );
 }
 
-function YearSection({ year, meetings, query, open, onToggle, member }: { year: number; meetings: number; query: string; open: boolean; onToggle: () => void; member: string | null }) {
+function YearSection({ year, meetings, query, open, onToggle, member, attendance }: { year: number; meetings: number; query: string; open: boolean; onToggle: () => void; member: string | null; attendance: Attendance | null }) {
   const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
   const groups = useMemo(() => {
     if (list.status !== 'done') return [];
@@ -92,6 +127,16 @@ function YearSection({ year, meetings, query, open, onToggle, member }: { year: 
               {longDate(items[0].date)}
               <span>{items[0].bodyName}</span>
             </h3>
+            {(() => {
+              const at = attendance?.meetings.find((x) => x.date === items[0].date);
+              if (!at) return null;
+              return (
+                <p className="vc-mo-line">
+                  Present: {at.present.join(', ') || 'not recorded'}
+                  {at.absent.length ? `. Absent: ${at.absent.join(', ')}` : ''}.
+                </p>
+              );
+            })()}
             <ol className="vc-mos">
               {items.map((m) => (
                 <MotionCard key={m.id} m={m} member={member} />
@@ -124,6 +169,8 @@ export default function VotesPage() {
   const yearsQ = new URLSearchParams(Object.entries({ member, body }).filter(([, v]) => v)).toString();
   const years = useJson<{ years: Array<{ year: number; motions: number; meetings: number }> }>(`/api/votes/years${yearsQ ? `?${yearsQ}` : ''}`);
   const members = useJson<{ members: VoteMember[] }>(`/api/votes/members${body ? `?body=${body}` : ''}`);
+  const attendance = useJson<Attendance>(body === 'planning-commission' ? '/api/votes/attendance' : null);
+  const att = attendance.status === 'done' ? attendance.data : null;
   const nameOf = useMemberNames();
   const memberList = members.status === 'done' ? members.data.members : [];
   const [open, setOpen] = useState<Record<number, boolean>>({});
@@ -134,7 +181,7 @@ export default function VotesPage() {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Voting records</h1>
-        <p className="vc-page-sub">How the current mayor and City Council have voted since their term began in January 2026: every motion in the minutes, by meeting, with each member&apos;s vote. The council also sits as the Redevelopment Agency (RDA) board.</p>
+        <p className="vc-page-sub">How the current mayor and City Council have voted since January 2026: every motion in the minutes, by meeting, with each member&apos;s vote. The council also sits as the Redevelopment Agency (RDA) board. Choose Planning Commission for the commissioners&apos; votes and attendance.</p>
       </header>
 
       <div className="vc-vfilters">
@@ -174,6 +221,8 @@ export default function VotesPage() {
       </div>
 
 
+      {att && att.meetings.length > 0 && <AttendanceBlock a={att} />}
+
       {years.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
           <span style={{ width: '60%' }} />
@@ -181,7 +230,7 @@ export default function VotesPage() {
       )}
       {years.status === 'done' && !yearList.length && <p className="vc-mo-note">No motions match.</p>}
       {yearList.map((y, i) => (
-        <YearSection key={y.year} year={y.year} meetings={y.meetings} query={query} member={member || null} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
+        <YearSection key={y.year} year={y.year} meetings={y.meetings} query={query} member={member || null} attendance={att} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
       ))}
       <p className="vc-person-asof">Read from each meeting&apos;s approved minutes (a draft only until the approved minutes are posted). Every motion links to the page of the minutes it comes from.</p>
     </Frame>

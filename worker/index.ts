@@ -98,7 +98,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       if (!b) return listBoards(env);
       break;
     case 'votes':
-      if (!b || ((b === 'members' || b === 'years') && !c)) return handleVotes(env, url, b);
+      if (!b || ((b === 'members' || b === 'years' || b === 'attendance') && !c)) return handleVotes(env, url, b);
       break;
     case 'map':
       if (b === 'layers' && !c) return listMapLayers();
@@ -131,7 +131,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
  * and POST /api/ask, admin, health and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|latest|people(\/[a-z0-9-]+)?|votes(\/members|\/years)?|boards|map\/layers(\/[a-z]+)?|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|latest|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance)?|boards|map\/layers(\/[a-z]+)?|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
 
 async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '');

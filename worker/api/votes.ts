@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 4;
+export const VOTES_PARSER = 5;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -26,6 +26,8 @@ export async function ensureVotesTables(env: Env): Promise<void> {
       `CREATE TABLE IF NOT EXISTS motion_votes (motion_id TEXT NOT NULL, member TEXT NOT NULL, vote TEXT NOT NULL, meeting_date TEXT, body_id TEXT, PRIMARY KEY (motion_id, member))`,
       `CREATE INDEX IF NOT EXISTS motion_votes_member ON motion_votes(member, meeting_date)`,
       `CREATE TABLE IF NOT EXISTS vote_members (member TEXT PRIMARY KEY, full_name TEXT, first_date TEXT, last_date TEXT)`,
+      `CREATE TABLE IF NOT EXISTS meeting_attendance (document_id TEXT NOT NULL, body_id TEXT, meeting_date TEXT, member TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY (document_id, member))`,
+      `CREATE INDEX IF NOT EXISTS meeting_attendance_body ON meeting_attendance(body_id, meeting_date)`,
     ].map((q) => env.CATALOG_DB.prepare(q)),
   );
   ready = true;
@@ -111,6 +113,7 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   const clear = (docId: string) => {
     stmts.push(db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ?)').bind(docId));
     stmts.push(db.prepare('DELETE FROM motions WHERE document_id = ?').bind(docId));
+    stmts.push(db.prepare('DELETE FROM meeting_attendance WHERE document_id = ?').bind(docId));
   };
   clear(d.id);
   if (other) {
@@ -148,7 +151,11 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
         )
         .bind(member, member.includes(' ') ? member : null, date, date),
     );
-  stmts.push(db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(d.id, key, body, date, rank, motions.length, VOTES_PARSER, now));
+  // Who attended (present or absent as the minutes list them), by full name where printed.
+  for (const [list, status] of [[parsed.present, 'present'], [parsed.absent, 'absent']] as const)
+    for (const n of new Set(list.map((x) => full(x) as string)))
+      stmts.push(db.prepare('INSERT OR REPLACE INTO meeting_attendance (document_id, body_id, meeting_date, member, status) VALUES (?, ?, ?, ?, ?)').bind(d.id, body, date, n, status));
+  stmts.push(db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(d.id, key, body, date, rank, motions.length || 1, VOTES_PARSER, now));
   for (let i = 0; i < stmts.length; i += 80) await db.batch(stmts.slice(i, i + 80));
   return { motions: motions.length, votes, superseded: false };
 }
@@ -194,6 +201,7 @@ export async function resolveBareNames(env: Env): Promise<number> {
  */
 export const SCOPE_FROM = '2026-01-01';
 export const SCOPE_BODIES = ['city-council', 'redevelopment-agency'];
+export const PC = 'planning-commission';
 let councilCache: { at: number; names: string[] } | null = null;
 export async function currentCouncil(env: Env): Promise<string[]> {
   if (!councilCache || Date.now() - councilCache.at > 10 * 60_000) {
@@ -208,6 +216,81 @@ export function councilName(member: string, council: string[]): string | null {
   return council.find((n) => n.toLowerCase() === m) ?? (!member.includes(' ') ? (council.find((n) => (n.split(' ').pop() ?? '').toLowerCase() === m) ?? null) : null);
 }
 const SCOPE_SQL = `m.body_id IN ('city-council', 'redevelopment-agency') AND m.meeting_date >= '${SCOPE_FROM}'`;
+const scopeSql = (body: string | null | undefined) => (body === PC ? `m.body_id = '${PC}' AND m.meeting_date >= '${SCOPE_FROM}'` : SCOPE_SQL);
+
+export interface Commissioner {
+  name: string;
+  role: string;
+  term: string | null;
+  slug: string | null;
+  photo: string | null;
+}
+/**
+ * The Planning Commission as it sits now: commissioners in this year's minutes (the latest two
+ * meetings with minutes), and city website members with a current term who sat this year. Names
+ * the website still lists who have not sat this year are left out. Chair and alternates as the
+ * minutes or the website label them.
+ */
+export async function currentCommission(env: Env): Promise<Commissioner[]> {
+  await ensureVotesTables(env);
+  const db = env.CATALOG_DB;
+  const year = Number(new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 4));
+  const docs = (await db.prepare(`SELECT DISTINCT a.document_id, a.meeting_date FROM meeting_attendance a WHERE a.body_id = ? AND a.meeting_date >= ? ORDER BY a.meeting_date DESC`).bind(PC, SCOPE_FROM).all<{ document_id: string; meeting_date: string }>()).results ?? [];
+  const att = (await db.prepare(`SELECT member, meeting_date, document_id FROM meeting_attendance WHERE body_id = ? AND meeting_date >= ?`).bind(PC, SCOPE_FROM).all<{ member: string; meeting_date: string; document_id: string }>()).results ?? [];
+  const site = (await db.prepare("SELECT slug, name, role, term, photo_url FROM people WHERE current = 1 AND kind = 'board' AND department LIKE '%Planning Commission%'").all<{ slug: string; name: string; role: string; term: string | null; photo_url: string | null }>()).results ?? [];
+  const latest = new Set(docs.slice(0, 2).map((d) => d.document_id));
+  const sat = (n: string) => att.some((a) => a.member.toLowerCase() === n.toLowerCase());
+  const recent = new Set(att.filter((a) => latest.has(a.document_id)).map((a) => a.member));
+  const out = new Map<string, Commissioner>();
+  for (const n of recent) out.set(n.toLowerCase(), { name: n, role: 'Commissioner', term: null, slug: null, photo: null });
+  for (const p of site) {
+    const end = (p.term ?? '').match(/((?:19|20)\d{2})\s*$/);
+    const termOk = !end || Number(end[1]) >= year;
+    if (!docs.length ? termOk : sat(p.name) && termOk) {
+      const role = /alternate/i.test(p.role) ? 'Alternate' : /chair/i.test(p.role) ? p.role : 'Commissioner';
+      out.set(p.name.toLowerCase(), { name: p.name, role, term: p.term, slug: p.slug, photo: p.photo_url ? `/api/people/${p.slug}/photo` : null });
+    }
+  }
+  // Chair and vice chair as the latest minutes name them; alternates as the minutes call them.
+  const latestDoc = docs[0]?.document_id;
+  if (latestDoc) {
+    const repo = new SearchRepository(env);
+    const row = await db.prepare('SELECT search_shard FROM documents WHERE id = ?').bind(latestDoc).first<{ search_shard: number | null }>();
+    if (row?.search_shard != null && repo.activeShards.includes(Number(row.search_shard))) {
+      const text = (await repo.documentChunks(Number(row.search_shard), latestDoc)).map((c) => c.text).join(' ').replace(/\s+/g, ' ');
+      const mark = (re: RegExp, role: string) => {
+        for (const m of text.matchAll(re)) {
+          const last = m[1].toLowerCase();
+          for (const c of out.values()) if ((c.name.split(' ').pop() ?? '').toLowerCase() === last && (role !== 'Chair' || c.role === 'Commissioner')) c.role = role;
+        }
+      };
+      mark(/\balternate (?:commissioner|member)\s+(?:[A-Z][a-z]+\s+)?([A-Z][A-Za-z'-]+)/g, 'Alternate');
+      mark(/\bvice[- ]chair(?:person|man|woman)?\s+(?:[A-Z][a-z]+\s+)?([A-Z][A-Za-z'-]+)/gi, 'Vice Chair');
+      mark(/(?<!vice[- ])\bchair(?:person|man|woman)?\s+(?:[A-Z][a-z]+\s+)?([A-Z][A-Za-z'-]+)\s+(?:called|opened|adjourned)/gi, 'Chair');
+    }
+  }
+  const rank = (r: string) => (r === 'Chair' ? 0 : r === 'Vice Chair' ? 1 : r === 'Alternate' ? 3 : 2);
+  return [...out.values()].sort((a, b) => rank(a.role) - rank(b.role) || a.name.localeCompare(b.name));
+}
+
+/** The officials whose votes a scope shows: the current council, or the current commission. */
+async function officialsFor(env: Env, body: string | null | undefined): Promise<string[]> {
+  return body === PC ? (await currentCommission(env)).map((c) => c.name) : currentCouncil(env);
+}
+
+/** Planning Commission attendance this year: each meeting with minutes, who was present or absent. */
+export async function commissionAttendance(env: Env): Promise<{ meetings: Array<{ date: string; documentId: string; present: string[]; absent: string[] }>; roster: Commissioner[] }> {
+  const roster = await currentCommission(env);
+  const rows = (await env.CATALOG_DB.prepare(`SELECT a.document_id, a.meeting_date, a.member, a.status FROM meeting_attendance a JOIN vote_docs v ON v.document_id = a.document_id AND v.motions > 0 WHERE a.body_id = ? AND a.meeting_date >= ? ORDER BY a.meeting_date DESC`).bind(PC, SCOPE_FROM).all<{ document_id: string; meeting_date: string; member: string; status: string }>()).results ?? [];
+  const by = new Map<string, { date: string; documentId: string; present: string[]; absent: string[] }>();
+  for (const r of rows) {
+    const k = r.meeting_date;
+    const m = by.get(k) ?? by.set(k, { date: r.meeting_date, documentId: r.document_id, present: [], absent: [] }).get(k)!;
+    (r.status === 'present' ? m.present : m.absent).push(r.member);
+  }
+  // A commissioner on the roster who is in neither list was not recorded at that meeting.
+  return { meetings: [...by.values()], roster };
+}
 
 const BODY_NAMES: Record<string, string> = { 'city-council': 'City Council', 'redevelopment-agency': 'Redevelopment Agency', 'planning-commission': 'Planning Commission' };
 const bodyName = (id: string | null) => (id ? (BODY_NAMES[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())) : null);
@@ -235,7 +318,7 @@ export interface MotionOut {
 /** Motions, newest first, filtered by member, body, year, result and words in the motion. */
 export async function queryMotions(env: Env, f: { member?: string | null; body?: string | null; year?: number | null; q?: string | null; result?: string | null; vote?: string | null; page?: number; pageSize?: number }): Promise<{ items: MotionOut[]; total: number }> {
   await ensureVotesTables(env);
-  let sql = SCOPE_SQL;
+  let sql = scopeSql(f.body);
   const params: unknown[] = [];
   const last = f.member ? (f.member.split(' ').pop() ?? f.member) : null;
   if (f.member && f.vote) {
@@ -245,7 +328,7 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
     sql += ' AND (m.mover IN (?, ?) OR m.seconder IN (?, ?) OR EXISTS (SELECT 1 FROM motion_votes v WHERE v.motion_id = m.id AND v.member IN (?, ?)))';
     params.push(f.member, last, f.member, last, f.member, last);
   }
-  if (f.body) {
+  if (f.body && f.body !== PC) {
     sql += ' AND m.body_id = ?';
     params.push(f.body);
   }
@@ -280,7 +363,7 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
   const byMotion = new Map<string, Array<{ member: string; vote: string }>>();
   for (const v of votes.results ?? []) (byMotion.get(v.motion_id) ?? byMotion.set(v.motion_id, []).get(v.motion_id)!).push({ member: v.member, vote: v.vote });
   const order = { yes: 0, no: 1, abstain: 2, recused: 3, absent: 4 } as Record<string, number>;
-  const council = await currentCouncil(env);
+  const council = await officialsFor(env, f.body);
   const named = (n: string | null) => (n ? (councilName(n, council) ?? n) : null);
   return {
     total: Number(count?.n ?? 0),
@@ -328,13 +411,13 @@ export interface VoteMember {
 /** The current council's totals in scope (optionally for one year or body), by full name. */
 export async function voteMembers(env: Env, f: { year?: number | null; body?: string | null } = {}): Promise<VoteMember[]> {
   await ensureVotesTables(env);
-  const cond: string[] = [`body_id IN ('city-council', 'redevelopment-agency')`, `meeting_date >= '${SCOPE_FROM}'`];
+  const cond: string[] = [f.body === PC ? `body_id = '${PC}'` : `body_id IN ('city-council', 'redevelopment-agency')`, `meeting_date >= '${SCOPE_FROM}'`];
   const p: unknown[] = [];
   if (f.year) {
     cond.push('substr(meeting_date, 1, 4) = ?');
     p.push(String(f.year));
   }
-  if (f.body) {
+  if (f.body && f.body !== PC) {
     cond.push('body_id = ?');
     p.push(f.body);
   }
@@ -346,7 +429,7 @@ export async function voteMembers(env: Env, f: { year?: number | null; body?: st
     env.CATALOG_DB.prepare(`SELECT who, kind, count(*) AS n FROM (SELECT mover AS who, 'moved' AS kind, meeting_date, body_id FROM motions UNION ALL SELECT seconder, 'seconded', meeting_date, body_id FROM motions) ${w} GROUP BY who, kind`)
       .bind(...p)
       .all<{ who: string | null; kind: string; n: number }>(),
-    currentCouncil(env),
+    officialsFor(env, f.body),
   ]);
   const map = new Map<string, VoteMember>();
   for (const name of council) map.set(name, { member: name, fullName: name, firstDate: null, lastDate: null, motions: 0, yes: 0, no: 0, abstain: 0, recused: 0, absent: 0, moved: 0, seconded: 0, bodies: [] });
@@ -374,13 +457,14 @@ export async function handleVotes(env: Env, url: URL, sub: string | undefined): 
   const p = url.searchParams;
   const year = Number(p.get('year')) || null;
   const body = p.get('body') && /^[a-z0-9-]{2,60}$/.test(p.get('body')!) ? p.get('body') : null;
+  if (sub === 'attendance') return json(await commissionAttendance(env), { cache: 'public, max-age=300' });
   if (sub === 'members') return json({ members: await voteMembers(env, { year, body }) }, { cache: 'public, max-age=300' });
   if (sub === 'years') {
     await ensureVotesTables(env);
     const m = p.get('member') && /^[A-Za-z'’. -]{2,60}$/.test(p.get('member')!) ? p.get('member') : null;
-    const cond = ['meeting_date IS NOT NULL', `body_id IN ('city-council', 'redevelopment-agency')`, `meeting_date >= '${SCOPE_FROM}'`];
+    const cond = ['meeting_date IS NOT NULL', body === PC ? `body_id = '${PC}'` : `body_id IN ('city-council', 'redevelopment-agency')`, `meeting_date >= '${SCOPE_FROM}'`];
     const args: unknown[] = [];
-    if (body) {
+    if (body && body !== PC) {
       cond.push('body_id = ?');
       args.push(body);
     }

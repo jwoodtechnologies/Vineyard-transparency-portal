@@ -26,7 +26,7 @@ interface Board {
   members: Array<{ slug: string; name: string; role: string; term: string | null; photo: string | null }>;
 }
 
-const VOTING = new Set(['city-council', 'redevelopment-agency']);
+const VOTING = new Set(['city-council', 'redevelopment-agency', 'planning-commission']);
 
 function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: () => void }) {
   return (
@@ -50,7 +50,19 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
             <ul className="vc-people">
               {b.members.map((m) => (
                 <li key={m.slug}>
-                  <Link to={`/people/${m.slug}`} className="vc-people-item">
+                  {m.slug.startsWith('pc-') ? (
+                    <span className="vc-people-item">
+                    <PersonPhoto person={{ name: m.name, photo: m.photo } as unknown as Person} size={40} />
+                    <span className="vc-people-text">
+                      <span className="vc-people-name">{m.name}</span>
+                      <span className="vc-people-role">
+                        {m.role}
+                        {m.term ? ` · Term ${m.term}` : ''}
+                      </span>
+                    </span>
+                  </span>
+                  ) : (
+                    <Link to={`/people/${m.slug}`} className="vc-people-item">
                     <PersonPhoto person={{ name: m.name, photo: m.photo } as unknown as Person} size={40} />
                     <span className="vc-people-text">
                       <span className="vc-people-name">{m.name}</span>
@@ -60,6 +72,7 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
                       </span>
                     </span>
                   </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -80,7 +93,7 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
             )}
             {VOTING.has(b.id) && (
               <Link to={`/votes?body=${encodeURIComponent(b.id)}`} className="vc-chip">
-                <Vote size={13} /> Voting records
+                <Vote size={13} /> {b.id === 'planning-commission' ? 'Votes and attendance' : 'Voting records'}
               </Link>
             )}
             {b.firstMeeting && <span className="vc-board-since">Meetings on file since {b.firstMeeting.slice(0, 4)}</span>}

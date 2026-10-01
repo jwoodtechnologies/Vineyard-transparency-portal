@@ -105,3 +105,20 @@ MOTION: Board Member McCumber motion to go into a closed session. Board Member L
     expect(p.motions[0].item).toBe('3 CLOSED SESSION');
   });
 });
+
+describe('Planning Commission attendance', () => {
+  it('reads a list of names with no titles', () => {
+    const p = parseMinutes(`PLANNING COMMISSION MINUTES
+May 6, 2026
+Present: Daria Evans, Brad Fagg, Martina Huntington, Graden Ostler, David Pearce, and Nathan Steele. Staff Present: Planner Anthony Fletcher.
+NOMINATION: Commissioner David Pearce nominated Commissioner Nathan Steele. Commissioner Brad Fagg seconded the motion. Yes: Commissioners Evans, Fagg, Huntington, Ostler, Pearce, and Steele. No: None. Motion carried 6-0.`, '2026-05-06');
+    expect(p.present).toEqual(['Evans', 'Fagg', 'Huntington', 'Ostler', 'Pearce', 'Steele']);
+    expect(p.fullNames.Evans).toBe('Daria Evans');
+    expect(p.body).toBe('planning-commission');
+  });
+  it('reads COMMISSIONERS PRESENT', () => {
+    const p = parseMinutes(`ATTENDANCE: COMMISSIONERS PRESENT: David Pearce, Graden Ostler, Jordan Christensen, and Martina Huntington STAFF PRESENT: Cache Hancey, Senior Planner`, '2026-03-04');
+    expect(p.present).toEqual(['Pearce', 'Ostler', 'Christensen', 'Huntington']);
+    expect(p.fullNames.Christensen).toBe('Jordan Christensen');
+  });
+});

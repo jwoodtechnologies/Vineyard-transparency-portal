@@ -3854,3 +3854,6 @@ html.vc-locked .vc-landing {
 .vc-board-none { font-size: 0.84rem; color: var(--vc-muted); margin: 0 0 10px; }
 .vc-board-links { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
 .vc-board-since { font-size: 0.76rem; color: var(--vc-muted); }
+.vc-att { margin: 14px 0 6px; padding-bottom: 12px; border-bottom: 1px solid var(--vc-line); }
+.vc-att-title { margin: 0 0 2px; font-family: var(--vc-serif); font-size: 1.15rem; font-weight: 600; color: var(--vc-ink); }
+.vc-att .vc-roll { margin-top: 8px; }

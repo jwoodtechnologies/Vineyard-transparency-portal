@@ -6,6 +6,7 @@
 import type { Env } from '../env';
 import { ensurePeopleTable } from './people';
 import { json } from '../lib/http';
+import { currentCommission } from './votes';
 
 /** The city website's board names, matched to the meeting portal's bodies. */
 const ALIAS: Record<string, string> = {
@@ -76,6 +77,12 @@ export async function listBoards(env: Env): Promise<Response> {
     }
   }
   const rank = (r: string) => (/^mayor$/i.test(r) || (/\bchair\b/i.test(r) && !/vice/i.test(r)) ? 0 : /vice/i.test(r) ? 1 : /^(council member|board member|commissioner|member)$/i.test(r) ? 3 : 2);
+  // The Planning Commission as it sits now (this year's minutes checked against the website).
+  const commission = await currentCommission(env).catch(() => null);
+  if (commission?.length) {
+    members.set('planning-commission', commission.map((c) => ({ slug: c.slug ?? `pc-${slug(c.name)}`, name: c.name, role: c.role, term: c.term, photo: c.photo })));
+    hidden.delete('planning-commission');
+  }
   // The boards the city website lists today, plus the City Council and the Redevelopment Agency.
   const out = (bodies.results ?? [])
     .filter((b) => !SKIP.has(b.id) && (b.id === 'city-council' || b.id === 'redevelopment-agency' || websiteBoards.has(b.id)))

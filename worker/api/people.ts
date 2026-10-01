@@ -2,7 +2,7 @@
  * People: the mayor, City Council, staff and board members as the city lists them today, with
  * their photo, title, term and contact, plus what the archive says about them.
  *
- *   GET /api/people              everyone currently listed (and former officials still on file)
+ *   GET /api/people              everyone currently listed (former officials are not listed)
  *   GET /api/people/:slug        one profile + records that mention them + their recorded
  *                                motions and votes from council minutes (newest first)
  *   GET /api/people/:slug/photo  their photo from the city website (cached at the edge)
@@ -92,7 +92,7 @@ function card(r: Row) {
 export async function listPeople(env: Env): Promise<Response> {
   await ensurePeopleTable(env);
   const res = await env.CATALOG_DB.prepare(
-    `SELECT * FROM people ORDER BY current DESC, CASE kind WHEN 'elected' THEN 0 WHEN 'staff' THEN 1 ELSE 2 END, CASE role WHEN 'Mayor' THEN 0 ELSE 1 END, name`,
+    `SELECT * FROM people WHERE current = 1 ORDER BY CASE kind WHEN 'elected' THEN 0 WHEN 'staff' THEN 1 ELSE 2 END, CASE role WHEN 'Mayor' THEN 0 ELSE 1 END, name`,
   ).all<Row>();
   return json({ people: (res.results ?? []).map(card) }, { cache: CACHE.list });
 }
@@ -110,7 +110,8 @@ function byDocument(hits: ChunkHit[], max: number) {
 
 export async function getPerson(env: Env, slug: string): Promise<Response> {
   await ensurePeopleTable(env);
-  const row = await env.CATALOG_DB.prepare('SELECT * FROM people WHERE slug = ?').bind(slug).first<Row>();
+  // Only people serving now have profiles; former officials appear only in the records themselves.
+  const row = await env.CATALOG_DB.prepare('SELECT * FROM people WHERE slug = ? AND current = 1').bind(slug).first<Row>();
   if (!row) throw notFound('That person is not in the city directory.');
   const person = card(row);
   const repo = new SearchRepository(env);

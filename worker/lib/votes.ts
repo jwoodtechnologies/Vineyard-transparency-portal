@@ -71,7 +71,18 @@ export function namesIn(list: string): string[] {
 }
 
 /** Attendance at the top of the minutes: "Present: Mayor Zack Stratton, Councilmember Parker McCumber ...". */
-export function attendance(head: string): { present: string[]; absent: string[] } {
+/** "Daria Evans, Brad Fagg, and Nathan Steele" (a list with no titles) -> full names. */
+function plainNames(s: string): string[] {
+  const out: string[] = [];
+  for (const part of s.replace(/\band\b|&|;/gi, ',').split(',')) {
+    const w = part.replace(/\b(commissioners?|chair(?:man|woman|person)?|vice[- ]chair|alternate)\b/gi, ' ').replace(/[^A-Za-z'\u2019\s-]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (w.length < 2 || w.length > 3 || w.some((x) => !/^[A-Z]/.test(x) || STOP.has(x.toLowerCase()))) continue;
+    out.push(w.map(titleCase).join(' '));
+  }
+  return out;
+}
+
+export function attendance(head: string): { present: string[]; absent: string[]; full: Record<string, string> } {
   const t = head.replace(/\s+/g, ' ');
   const p = t.match(/\b(?:present|in attendance|attending)\b:?\s*(.{0,700}?)(?=\b(?:absent|excused|staff present|staff|also present|others present|others|city staff|public present|guests|call to order|1\.\s|opening)\b|$)/i);
   const a = t.match(/\b(?:absent|excused)\b:?\s*(.{0,200}?)(?=\b(?:staff|also present|others|city staff|guests|call to order|1\.\s|opening)\b|$)/i);
@@ -88,9 +99,23 @@ export function attendance(head: string): { present: string[]; absent: string[] 
   // everyone listed is taken as present and nobody as absent.
   if (p && !officials(p[1]).length && /\bpresent\s+absent\b/i.test(t)) {
     const after = t.slice(t.search(/\bpresent\s+absent\b/i)).replace(/^present\s+absent/i, '').split(/\bstaff present\b|\bstaff\b|\bothers\b/i)[0];
-    return { present: [...new Set(officials(after))], absent: [] };
+    return { present: [...new Set(officials(after))], absent: [], full: {} };
   }
-  return { present: [...new Set(p ? officials(p[1]) : [])], absent: [...new Set(a && !/^none\b/i.test(a[1].trim()) ? officials(a[1]) : [])] };
+  const full: Record<string, string> = {};
+  const listed = (s: string | undefined) => {
+    if (!s) return [];
+    const titled = officials(s);
+    if (titled.length) return titled;
+    // Planning Commission minutes: "Present: Daria Evans, Brad Fagg, ..." with no titles.
+    return plainNames(s).map((n) => {
+      const last = n.split(' ').pop() as string;
+      full[last] = n;
+      return last;
+    });
+  };
+  const present = [...new Set(listed(p?.[1]))];
+  const absent = a && !/^none\b/i.test(a[1].trim()) ? [...new Set(listed(a[1]))] : [];
+  return { present, absent, full };
 }
 
 const LABEL = String.raw`(?:yes|ayes?|no|nays?|abstain\w*|abstentions?|recused|absent|excused)`;
@@ -128,7 +153,7 @@ function itemFor(motion: string, flat: string): string | null {
 /** Every motion in a set of minutes, with mover, seconder, result and each member's vote. */
 export function parseMinutes(text: string, date: string | null = null): ParsedMinutes {
   const head = text.slice(0, 2500);
-  const { present, absent } = attendance(head);
+  const { present, absent, full: listedFull } = attendance(head);
   // Line-numbered minutes put a bare number on its own line; those are not part of the words.
   const flat = text.replace(/[‘’]/g, "'").replace(/[ \t]+/g, ' ').replace(/\n\s*\d{1,4}\s*(?=\n)/g, '\n');
   const starts: number[] = [];
@@ -230,6 +255,7 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     m.votes = m.votes.map((v) => ({ ...v, member: canon(v.member) as string })).filter((v) => (seen.has(v.member) ? false : (seen.add(v.member), true)));
   }
   const fullNames: Record<string, string> = {};
+  for (const [last, n] of Object.entries(listedFull)) fullNames[canon(last) as string] = n;
   for (const m of head.replace(/\s+/g, ' ').matchAll(new RegExp(`\\b(?:[Mm]ayor|MAYOR|[Cc]ouncil ?[Mm]ember|COUNCIL ?MEMBER|[Cc]ouncilm[ae]n|[Cc]ouncilwoman|[Cc]ommissioner|COMMISSIONER|[Cc]hair(?:man|woman|person)?|[Vv]ice[- ][Cc]hair|[Bb]oard ?[Mm]ember)\\s+([A-Z][A-Za-z'-]+)\\s+(?:[A-Z]\\.\\s+)?([A-Z][A-Za-z'-]+)\\b`, 'g'))) {
     const last = canon(titleCase(m[2])) as string;
     if (!STOP.has(m[1].toLowerCase()) && !fullNames[last]) fullNames[last] = `${titleCase(m[1])} ${last}`;
