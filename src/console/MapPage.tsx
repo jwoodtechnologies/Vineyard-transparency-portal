@@ -545,7 +545,7 @@ export default function MapPage() {
     // One click handler for every layer: the topmost feature under the pointer wins.
     map.on('click', (e) => {
       if (window.innerWidth <= 820) setPanel(false);
-      const ids = (map.getStyle().layers ?? []).map((l) => l.id).filter((id) => /^vtp-(?!pick|boundary)[a-z]+-(fill|line|circle)$/.test(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
+      const ids = (map.getStyle().layers ?? []).map((l) => l.id).filter((id) => /^vtp-(?!pick|boundary|mask)[a-z]+-(fill|line|circle)$/.test(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
       const hits = map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: ids });
       const order = (f: MapGeoJSONFeature) => (f.layer.type === 'circle' ? 0 : f.layer.type === 'line' && !f.layer.id.includes('parcels') ? 1 : 2);
       const f = [...hits].sort((a, b) => order(a) - order(b))[0];
