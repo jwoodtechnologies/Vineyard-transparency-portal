@@ -103,6 +103,10 @@ def main(argv: list[str] | None = None) -> int:
             except BudgetReached:
                 pass
             log(f"Run {run_id}: {status} {total} (source requests {client.requests_made}, API requests {api.requests})")
+        elif cmd == "people":
+            from . import people
+
+            print(json.dumps(people.run(api, client)))
         elif cmd == "backup":
             from . import backup
 

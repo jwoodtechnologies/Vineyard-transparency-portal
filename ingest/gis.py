@@ -316,8 +316,10 @@ def run(api: PortalApi, client: PoliteClient) -> dict:
                 "document": {
                     "title": r.title[:300],
                     "documentType": r.doc_type,
-                    "documentDate": date.today().isoformat(),
-                    "year": date.today().year,
+                    # Current map data, not an event: no record date (the text says "read <date>").
+                    "documentDate": None,
+                    "year": None,
+                    "currency": "current",
                     "governmentBodyName": "Vineyard City",
                     "mimeType": "text/plain",
                     "fileName": f"{slug(r.title)}.txt",

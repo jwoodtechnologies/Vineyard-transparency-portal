@@ -41,11 +41,12 @@ export async function getLatest(env: Env): Promise<Response> {
                 m.title AS meeting_title, m.meeting_date
          FROM documents d LEFT JOIN meetings m ON m.id = d.meeting_id
          WHERE d.source_id NOT IN ('vineyard-gis', 'ucso-press-releases') AND d.mime_type NOT LIKE 'text/html%'
-           AND ((d.document_date >= ? AND d.document_date <= ?)
-            OR (d.source_id = 'vineyard-city-website' AND d.first_seen_at >= ? AND (d.document_date IS NULL OR d.document_date >= ?)))
-         ORDER BY coalesce(d.document_date, substr(d.first_seen_at, 1, 10)) DESC, d.first_seen_at DESC LIMIT 24`,
+           AND coalesce(d.currency, '') <> 'current' AND d.mime_type NOT LIKE 'text/plain%'
+           -- Only records the city dated in the last 45 days (or upcoming), never old files just indexed.
+           AND d.document_date >= ? AND d.document_date <= ?
+         ORDER BY d.document_date DESC, d.first_seen_at DESC LIMIT 24`,
       )
-      .bind(shiftDays(today, -45), shiftDays(today, 60), shiftDays(today, -21) + 'T00:00:00Z', shiftDays(today, -400))
+      .bind(shiftDays(today, -45), shiftDays(today, 60))
       .all<Row>(),
     db.prepare(`SELECT id, title, url, published_at, summary FROM news_items WHERE source = 'ucso-press-releases' AND mentions_vineyard = 1 ORDER BY published_at DESC LIMIT 8`).all<Row>(),
     db.prepare('SELECT finished_at FROM cron_runs ORDER BY id DESC LIMIT 1').first<Row>(),

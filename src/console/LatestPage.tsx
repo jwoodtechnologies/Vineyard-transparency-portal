@@ -159,7 +159,7 @@ export default function LatestPage() {
           <span className="vc-live-dot" aria-hidden="true" /> Live posts · records checked every hour{updated ? `, last ${updated}` : ''}
         </p>
         <h1 className="vc-page-title">Latest</h1>
-        <p className="vc-page-sub">The newest posts from the City and the Sheriff&apos;s Office, upcoming meetings, events around town and newly posted records.</p>
+
       </header>
 
       <div className="vc-filters vc-body-chips vc-latest-tabs" role="tablist" aria-label="Show">

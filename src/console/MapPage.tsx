@@ -229,7 +229,7 @@ const streetOf = (full: string) => titleWords(full.trim().replace(/^[NSEW]\s+(?=
 function nameOf(layer: string, p: Record<string, unknown>): string {
   for (const f of NAME_FIELD[layer] ?? []) {
     const v = fmt(f, p[f]);
-    if (v) return layer === 'roads' ? streetOf(v) : v;
+    if (v) return layer === 'roads' ? streetOf(v) : layer === 'rda' || layer === 'rdaparcels' ? areaName(v, layer) : v;
   }
   return 'Map feature';
 }
@@ -315,6 +315,128 @@ const norm = (t: string) =>
     .join(' ');
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda', 'ura'];
 const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+
+/** Readable area names: "GENEVA PHASE 2-MEGAPLEX" becomes "Geneva Phase 2, Megaplex". */
+function areaName(v: unknown, key: string): string {
+  let t = String(v ?? '').trim();
+  if (!t || t === 'null') return '';
+  if (t === t.toUpperCase() && /[A-Z]{3}/.test(t)) t = t.toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()).replace(/\b(Rda|Ura|Ldda|Pd|Cda)\b/g, (m) => m.toUpperCase());
+  if (key === 'rda' || key === 'rdaparcels') t = t.replace(/([A-Za-z0-9])\s*-\s*(?=[A-Za-z])/g, '$1, ');
+  return t;
+}
+
+type Ring = number[][];
+const ringArea = (r: Ring) => {
+  let a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]);
+  return Math.abs(a / 2);
+};
+function ringCentroid(r: Ring): [number, number] {
+  let x = 0, y = 0, a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const f = r[j][0] * r[i][1] - r[i][0] * r[j][1];
+    x += (r[j][0] + r[i][0]) * f;
+    y += (r[j][1] + r[i][1]) * f;
+    a += f;
+  }
+  if (!a) return [r[0][0], r[0][1]];
+  return [x / (3 * a), y / (3 * a)];
+}
+function inRing(p: [number, number], r: Ring): boolean {
+  let inside = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    if (r[i][1] > p[1] !== r[j][1] > p[1] && p[0] < ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) inside = !inside;
+  }
+  return inside;
+}
+
+/** One label point per area feature, inside its largest part. */
+function labelPoints(fc: FC, field: string, key: string): FC {
+  const features = [];
+  for (const f of fc.features) {
+    const g = f.geometry as { type: string; coordinates: unknown } | null;
+    if (!g) continue;
+    const polys = (g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : []) as Ring[][];
+    let best: Ring | null = null;
+    let bestArea = -1;
+    for (const poly of polys) {
+      const outer = poly[0];
+      if (!outer?.length) continue;
+      const a = ringArea(outer);
+      if (a > bestArea) {
+        best = outer;
+        bestArea = a;
+      }
+    }
+    if (!best) continue;
+    let pt = ringCentroid(best);
+    if (!inRing(pt, best)) {
+      // Concave shape: use the middle of the widest horizontal span through its center line.
+      const ys = best.map((c) => c[1]);
+      const y = (Math.min(...ys) + Math.max(...ys)) / 2;
+      const xs: number[] = [];
+      for (let i = 0, j = best.length - 1; i < best.length; j = i++) {
+        const [x1, y1] = best[j], [x2, y2] = best[i];
+        if ((y1 > y) !== (y2 > y)) xs.push(x1 + ((y - y1) * (x2 - x1)) / (y2 - y1));
+      }
+      xs.sort((a, b) => a - b);
+      let span = [pt[0], pt[0]];
+      for (let i = 0; i + 1 < xs.length; i += 2) if (xs[i + 1] - xs[i] > span[1] - span[0]) span = [xs[i], xs[i + 1]];
+      pt = [(span[0] + span[1]) / 2, y];
+    }
+    const label = areaName(f.properties?.[field], key);
+    if (!label) continue;
+    features.push({ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: pt }, properties: { __label: label, __c: f.properties?.__c ?? null } });
+  }
+  return { type: 'FeatureCollection', features } as FC;
+}
+
+/** A specific question about the feature tapped on the map, built from its own details. */
+function askFor(p: { layer: string; name: string; props: Record<string, unknown> }): string {
+  const v = (k: string) => fmt(k, p.props[k]);
+  const name = p.name;
+  switch (p.layer) {
+    case 'projects': {
+      const bits = [v('Project_Phase') && `${v('Project_Phase')} phase`, v('Total_Budget') && `budget ${v('Total_Budget')}`, v('Construction_Fiscal') && `construction fiscal ${v('Construction_Fiscal')}`].filter(Boolean).join(', ');
+      return `What is the current status, budget, funding and schedule of the ${name} capital project${bits ? ` (${bits})` : ''}, and what has the City Council decided about it?`;
+    }
+    case 'roads':
+      return `What capital projects, City Council decisions and plans involve ${name} in Vineyard?`;
+    case 'parcels': {
+      const addr = v('SITE_FULL_ADDRESS') || v('SITE_FULLADDRESS');
+      const num = v('PARCEL_NO') || v('PARCELID_LABEL');
+      return `What has the City Council or Planning Commission approved or discussed for ${addr ? `the property at ${addr}` : 'this property'}${num ? ` (parcel ${num})` : ''}, and how is it zoned?`;
+    }
+    case 'zoning':
+      return `What does the ${v('ZONE') ?? name} zone${v('District') ? ` (${v('District')})` : ''} allow in Vineyard, and which ordinance${v('Ordinance') ? ` (${v('Ordinance')})` : ''} created or changed it?`;
+    case 'landuse':
+      return `What does Vineyard's General Plan say about the ${name} future land use designation?`;
+    case 'rda':
+    case 'rdaparcels':
+      return `What is the ${name} redevelopment project area in Vineyard: when was it created, what is it for, and what has the Redevelopment Agency decided about it?`;
+    case 'ura':
+      return `What is the ${name} urban renewal or community reinvestment area in Vineyard, and what has been decided about it?`;
+    case 'subdivisions':
+      return `When was the ${name} subdivision approved in Vineyard, and what did the approval include?`;
+    case 'parks':
+    case 'greenspace':
+      return `What plans, improvements and City Council decisions involve ${name} in Vineyard?`;
+    case 'schools':
+    case 'crossings':
+      return `What City of Vineyard decisions, crossings or safety projects involve ${name}?`;
+    case 'trails':
+      return `What plans and projects involve the ${name} trail or bike route in Vineyard?`;
+    case 'snowplow':
+      return `What is the snow removal priority and route for ${name} in Vineyard?`;
+    case 'evaczones':
+    case 'evacroutes':
+      return `What is Vineyard's evacuation plan for ${name}?`;
+    case 'pdoverlay':
+      return `What planned development overlay applies to ${name} in Vineyard, and what did the City Council approve?`;
+    default:
+      return `What do Vineyard's records say about ${name}${p.layer ? ` (${p.layer})` : ''}?`;
+  }
+}
 
 export default function MapPage() {
   const [params, setParams] = useSearchParams();
@@ -521,15 +643,18 @@ export default function MapPage() {
         } else {
           map.addLayer({ id: `${src}-circle`, type: 'circle', source: src, minzoom, paint: { 'circle-color': color, 'circle-radius': hover(look.radius ?? 4, (look.radius ?? 4) + 3), 'circle-stroke-color': dark ? '#0a0a0b' : '#ffffff', 'circle-stroke-width': 2 } });
         }
-        // Names on the map: neighborhoods, projects, zones, parks, schools and streets.
+        // Names on the map: neighborhoods, projects, zones, parks, schools and streets. Areas get
+        // exactly one label each (at their largest part), never one per tile or per piece.
+        const areaLabels = look.kind === 'fill' && key !== 'boundary';
+        if (look.label && map.getStyle().glyphs && areaLabels && !map.getSource(`${src}-pts`)) map.addSource(`${src}-pts`, { type: 'geojson', data: labelPoints(fc, look.label, key) });
         if (look.label && map.getStyle().glyphs) {
           map.addLayer({
             id: `${src}-label`,
             type: 'symbol',
-            source: src,
+            source: areaLabels ? `${src}-pts` : src,
             minzoom: Math.max(minzoom, look.labelZoom ?? 13),
             layout: {
-              'text-field': ['get', look.label],
+              'text-field': ['get', areaLabels ? '__label' : look.label],
               'text-font': ['Noto Sans Bold'],
               'text-size': ['interpolate', ['linear'], ['zoom'], 12, 11, 16, 14],
               'text-max-width': 9,
@@ -620,7 +745,7 @@ export default function MapPage() {
     return [...g.entries()].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
   }, [catalog]);
 
-  const ask = picked ? `/?q=${encodeURIComponent(picked.layer === 'roads' ? `What projects, decisions and plans involve ${picked.name} in Vineyard?` : picked.layer === 'projects' ? `What is the status of the ${picked.name} project?` : `Tell me about ${picked.name} in Vineyard.`)}` : '/';
+  const ask = picked ? `/?q=${encodeURIComponent(askFor(picked))}` : '/';
 
   return (
     <div className="vc vc-map-page" data-state="page">

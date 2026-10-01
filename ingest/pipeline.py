@@ -123,6 +123,15 @@ def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | No
             statuses.append({"id": "vineyard-municipal-code", "status": "blocked" if isinstance(e, RobotsDisallowed) else "unreachable", "message": str(e)[:300]})
             log(f"Municipal code site failed: {e}")
 
+    if not only or "vineyard-city-website" in only:
+        # Who's who as of today: mayor, council, staff, boards (replaces yesterday's lists).
+        try:
+            from . import people
+
+            people.run(api, client)
+        except (HttpFailure, RobotsDisallowed, KeyError, ValueError) as e:
+            log(f"Staff and officials refresh failed: {e}")
+
     if not only or "ucso-press-releases" in only:
         try:
             enqueue(SheriffAdapter(client).list_documents())

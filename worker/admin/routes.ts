@@ -87,7 +87,10 @@ async function migrate(env: Env): Promise<Response> {
   for (const [shard, db] of SearchRepository.boundShards(env)) {
     const r = await db.batch(search.map((q) => db.prepare(q)));
     shards[shard] = sum(r);
+    // GIS summaries are current map data, not dated events (they once took the day they were read).
+    await db.prepare("UPDATE shard_documents SET document_date = NULL, year = NULL WHERE source_id = 'vineyard-gis' AND document_date IS NOT NULL").run().catch(() => undefined);
   }
+  await env.CATALOG_DB.prepare("UPDATE documents SET document_date = NULL, year = NULL, currency = 'current' WHERE source_id = 'vineyard-gis' AND document_date IS NOT NULL").run();
   await ensureActivityTables(env);
   // While no panel owner exists, each migrate run prints a fresh one-time setup code (24 hours).
   const panelSetupCode = await newSetupCode(env);
@@ -372,9 +375,10 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
       db
         .prepare(
           `UPDATE documents SET sha256 = ?, file_size = ?, page_count = ?, current_version = ?, archive_key = NULL, archive_status = 'not_archived', archived_at = NULL,
-             text_status = ?, ocr_status = ?, updated_at = ?, last_seen_at = ?, mime_type = ?, original_url = ? WHERE id = ?`,
+             text_status = ?, ocr_status = ?, updated_at = ?, last_seen_at = ?, mime_type = ?, original_url = ?,
+             title = ?, document_date = coalesce(?, document_date), year = coalesce(?, year), currency = coalesce(?, currency) WHERE id = ?`,
         )
-        .bind(sha, n(d.fileSize), n(d.pageCount), version, s(d.textStatus, 20) ?? 'pending', s(d.ocrStatus, 20) ?? 'not_required', now, now, s(d.mimeType, 100) ?? known.mime_type, sourceUrl, known.id),
+        .bind(sha, n(d.fileSize), n(d.pageCount), version, s(d.textStatus, 20) ?? 'pending', s(d.ocrStatus, 20) ?? 'not_required', now, now, s(d.mimeType, 100) ?? known.mime_type, sourceUrl, title, s(d.documentDate, 10), n(d.year), s(d.currency, 20), known.id),
       sourceRow(),
     ]);
     const rows = sum(r);

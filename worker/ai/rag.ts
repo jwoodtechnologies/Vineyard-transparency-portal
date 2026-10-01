@@ -208,6 +208,46 @@ async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: s
   return { id: row.id, title: row.title, date: row.meeting_date, minutesOnly: outcome, terms: rest.length >= 3 ? rest : 'approve approved motion ordinance resolution item public hearing presentation' };
 }
 
+const CURRENT = /\b(who is|who's|who are|current|currently|now|today|as of|latest|presently|still|this year|right now)\b/i;
+const PRONOUN = /\b(it|its|that|this|those|these|they|them|their|he|she|his|her|there|same|more|else)\b/i;
+
+/** "What about that one?" refers back; "Is David Kyle Herring the deputy mayor?" does not. */
+export function isFollowUp(q: string): boolean {
+  const words = q.trim().split(/\s+/);
+  if (words.length > 9) return false;
+  if (/[A-Z][a-z]+\s+[A-Z][a-z]+/.test(q) || /\b\d{3,4}\b/.test(q)) return false;
+  return PRONOUN.test(q) || /^(and|also|what about|how about)\b/i.test(q.trim());
+}
+
+const TERMS_PROMPT = [
+  'You turn a resident\'s question about Vineyard, Utah city government into a keyword search over city records:',
+  'agendas, minutes, ordinances, resolutions, budgets, the city staff directory, elected officials, capital projects, roads and zoning.',
+  'Output one line of 3 to 10 search words. Keep every person name, job title, place, project, road, ordinance or resolution number and year exactly as written.',
+  'You may add up to two words the records would use (for example a question about the deputy mayor can add "staff directory").',
+  'No punctuation except hyphens. No explanation, no quotes, no sentence.',
+].join(' ');
+
+/** Search words for a question, from the small model (about 3 Neurons). Null on any problem. */
+async function searchTerms(env: Env, q: string, previous: string | null): Promise<string | null> {
+  try {
+    const run = (env.AI as unknown as AiRunner).run(FALLBACK_AI_MODEL, {
+      messages: [
+        { role: 'system', content: TERMS_PROMPT },
+        { role: 'user', content: previous ? `Earlier question: ${previous}\nQuestion: ${q}` : `Question: ${q}` },
+      ],
+      max_tokens: 40,
+      temperature: 0,
+    });
+    const out = aiText(await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), 4000))]));
+    const line = out.split('\n').map((l) => l.trim()).find(Boolean) ?? '';
+    const clean = line.replace(/^(search|keywords?|query)\s*:\s*/i, '').replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim();
+    const words = clean.split(' ').filter(Boolean);
+    return words.length >= 2 && words.length <= 14 ? clean : null;
+  } catch {
+    return null;
+  }
+}
+
 type Prepared =
   | { kind: 'final'; response: AskResponse }
   | { kind: 'model'; messages: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
@@ -223,7 +263,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const filters = body.filters ?? {};
 
   const history = (body.conversation ?? []).filter((t) => t.role === 'user').map((t) => t.content).slice(-2);
-  const retrievalText = body.question.split(/\s+/).length < 6 && history.length ? `${body.question} ${history[history.length - 1]}` : body.question;
+  // Only a real follow-up ("what about that one?") borrows the previous question; a short question
+  // that names someone or something stands on its own.
+  const retrievalText = isFollowUp(body.question) && history.length ? `${body.question} ${history[history.length - 1]}` : body.question;
 
   const fallback = async (status: 'search_only' | 'no_results', notice: string | null): Promise<AskResponse> => ({
     ...base,
@@ -272,7 +314,21 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
         ? `${body.question}\n(Answer from the minutes of the ${when}, the most recent meeting with minutes in the archive. Start by naming that meeting and its date.)`
         : `${body.question}\n(This refers to the ${when}. Every source below is from that meeting's agenda or packet, so describe items as scheduled or recommended, not as decided. Minutes reprinted inside a packet are from an earlier meeting; do not present those actions as happening at this meeting.)`;
   }
-  if (!hits.length) hits = await retrieve(retrievalText, filters);
+  if (!hits.length) {
+    // The question as asked, plus a clean keyword version from the small model (names, titles,
+    // places, numbers), so phrasing never decides whether the right record is found.
+    const [terms, direct] = await Promise.all([aiReady ? searchTerms(env, body.question, retrievalText !== body.question ? history[history.length - 1] : null) : Promise.resolve(null), retrieve(retrievalText, filters)]);
+    const rewritten = terms ? await retrieve(terms, filters) : [];
+    const seenChunks = new Set<string>();
+    hits = [...rewritten.slice(0, 25), ...direct, ...rewritten.slice(25)].filter((h) => (seenChunks.has(h.chunkId) ? false : (seenChunks.add(h.chunkId), true)));
+  }
+  // "Who is ...", "current", "now": the newest records lead, so the answer reflects today.
+  if (CURRENT.test(body.question)) {
+    const top = hits.slice(0, 30).sort((a, b) => String(b.documentDate ?? '').localeCompare(String(a.documentDate ?? '')));
+    hits = [...top, ...hits.slice(30)];
+  }
+  const today = new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10);
+  question = `${question}\n(Today is ${today}.${CURRENT.test(body.question) ? ' Answer with the current information and say what date your source is from.' : ''})`;
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
   if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
