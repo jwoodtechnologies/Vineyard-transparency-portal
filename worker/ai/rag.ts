@@ -183,6 +183,29 @@ async function streamSmall(env: Env, messages: Msg[], onDelta: (text: string) =>
   return text;
 }
 
+const RECENT = /\b(most recent|latest|last|recent|previous|past|upcoming|next|this week'?s|tonight'?s|today'?s)\b/i;
+const MEETINGISH = /\b(meetings?|council|commission|agenda|minutes|session|hearing)\b/i;
+const FILLER = /\b(most recent|latest|last|recent|previous|past|upcoming|next|this week'?s|tonight'?s|today'?s|what|whats|what's|happened|happen|happening|at|the|in|on|was|were|did|do|does|will|be|discussed|discuss|meetings?|city|council|commission|planning|agenda|minutes|session|vineyard|of|about|is|are|for|tell|me|summarize|summary|a|an)\b/gi;
+
+/** The meeting a "last / next meeting" question is about, with the search terms left over. */
+async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: string; date: string | null; terms: string } | null> {
+  if (!RECENT.test(q) || !MEETINGISH.test(q)) return null;
+  const next = /\b(upcoming|next|tonight|today|this week)\b/i.test(q);
+  const body = /planning commission/i.test(q) ? '%Planning%' : /\bRDA\b|redevelopment/i.test(q) ? '%Redevelopment%' : /\barch|architect/i.test(q) ? '%ARCH%' : '%Council%';
+  const today = new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10); // Utah
+  const row = await env.CATALOG_DB.prepare(
+    `SELECT m.id, m.title, m.meeting_date FROM meetings m
+     WHERE coalesce(m.government_body_name, m.title) LIKE ? AND m.meeting_date ${next ? '>=' : '<='} ?
+       AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = m.id)
+     ORDER BY m.meeting_date ${next ? 'ASC' : 'DESC'} LIMIT 1`,
+  )
+    .bind(body, today)
+    .first<{ id: string; title: string; meeting_date: string | null }>();
+  if (!row) return null;
+  const rest = q.replace(/[?.!,]/g, ' ').replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
+  return { id: row.id, title: row.title, date: row.meeting_date, terms: rest.length >= 3 ? rest : 'approve approved motion ordinance resolution item public hearing presentation' };
+}
+
 type Prepared =
   | { kind: 'final'; response: AskResponse }
   | { kind: 'model'; messages: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
@@ -221,18 +244,31 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   if (!repo.available) throw new HttpError(503, 'search_unavailable', 'The full-text index is not available right now.');
 
-  const strict = parseQuery(retrievalText, { match: 'all' });
-  const loose = parseQuery(retrievalText, { match: 'any' });
-  if (!loose.fts) return { kind: 'final', response: await fallback('no_results', null) };
-
   const aiReady = aiConfigured(env) && !aiBreakerOpen();
-  const [strictHits, looseHits, budgetOk] = await Promise.all([
-    strict.fts && strict.fts !== loose.fts ? repo.searchChunks(strict.fts, filters, 40, true, false) : Promise.resolve([] as ChunkHit[]),
-    repo.searchChunks(loose.fts, filters, 40, true, false),
-    aiReady ? aiBudgetLeft(env) : Promise.resolve(null),
-  ]);
-  const seen = new Set(strictHits.map((h) => h.chunkId));
-  const hits = [...strictHits, ...looseHits.filter((h) => !seen.has(h.chunkId))];
+  const budgetP = aiReady ? aiBudgetLeft(env) : Promise.resolve(null);
+  const retrieve = async (text: string, f: SearchFilters): Promise<ChunkHit[]> => {
+    const strict = parseQuery(text, { match: 'all' });
+    const loose = parseQuery(text, { match: 'any' });
+    if (!loose.fts) return [];
+    const [strictHits, looseHits] = await Promise.all([
+      strict.fts && strict.fts !== loose.fts ? repo.searchChunks(strict.fts, f, 40, true, false) : Promise.resolve([] as ChunkHit[]),
+      repo.searchChunks(loose.fts, f, 40, true, false),
+    ]);
+    const seen = new Set(strictHits.map((h) => h.chunkId));
+    return [...strictHits, ...looseHits.filter((h) => !seen.has(h.chunkId))];
+  };
+
+  // "What happened at the last council meeting?" is answered from that meeting's own records.
+  const focus = await meetingFocus(env, body.question).catch(() => null);
+  let hits: ChunkHit[] = [];
+  let question = body.question;
+  if (focus) {
+    hits = await retrieve(focus.terms, { ...filters, meetingId: focus.id });
+    if (hits.length) question = `${body.question}\n(This refers to the ${focus.title}${focus.date ? ` held ${focus.date}` : ''}. Every source below is from that meeting.)`;
+  }
+  if (!hits.length) hits = await retrieve(retrievalText, filters);
+  const loose = parseQuery(retrievalText, { match: 'any' });
+  const budgetOk = await budgetP;
   if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
   if (!aiReady || budgetOk == null) return { kind: 'final', response: await fallback('search_only', SEARCH_ONLY_NOTICE) };
 
@@ -250,7 +286,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const quotaP = bumpQuota(env, 'ai_requests').catch(() => undefined);
 
   const prior = (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }));
-  const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(body.question, evidence, history) }];
+  const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(question, evidence, history) }];
 
   const fail = async (e: unknown): Promise<AskResponse> => {
     const msg = e instanceof Error ? e.message : String(e);

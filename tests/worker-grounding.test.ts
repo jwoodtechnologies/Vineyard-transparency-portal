@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiText, groundParagraphs, sentenceNumbers } from '../worker/ai/answer';
+import { aiText, groundParagraphs, sentenceNumbers, trimNegative } from '../worker/ai/answer';
 
 const src = (text: string, title = 'Agenda packet', documentDate: string | null = '2026-06-23') => ({ text, title, documentDate });
 const para = (...segs: Array<[string, number[]]>) => [{ segments: segs.map(([text, citations]) => ({ text, citations })) }];
@@ -34,6 +34,18 @@ describe('answer grounding', () => {
 
   it('ignores small counts and phase numbers', () => {
     expect(sentenceNumbers('Phase 1 has 3 parts and costs $5,000.')).toEqual([['5000']]);
+  });
+});
+
+describe('unsupported status claims', () => {
+  it('cuts a "has not been approved" clause the source does not state', () => {
+    expect(trimNegative('The intersection is a recommended Phase 1 improvement; it has not been approved, funded, or built yet.', ['Recommended Phase 1 improvements'])).toBe('The intersection is a recommended Phase 1 improvement.');
+  });
+  it('drops a sentence that is only that claim', () => {
+    expect(trimNegative('The project has not yet been funded.', ['Project list'])).toBeNull();
+  });
+  it('keeps it when the source says so', () => {
+    expect(trimNegative('The project has not yet been funded.', ['This project has not yet been funded by council.'])).toBe('The project has not yet been funded.');
   });
 });
 

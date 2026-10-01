@@ -131,6 +131,9 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
   const paragraphs: AnswerParagraph[] = [];
   const cleaned = raw
     .replace(/\r/g, '')
+    .replace(/[\u2010\u2011\u2012]/g, '-')
+    .replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, '$1-$2')
+    .replace(/\s*[\u2013\u2014]\s*/g, ', ')
     .replace(/^#+[ \t]*/gm, '')
     .replace(/\*\*|__|`/g, '')
     .replace(/^[ \t]*[-*•][ \t]+/gm, '')
@@ -212,6 +215,26 @@ export function briefAnswer(raw: string, max = MAX_ANSWER_SENTENCES): string {
 
 const ABSENCE = /\b(is|are|was|were|isn't|aren't|wasn't|weren't) not (listed|mentioned|included|specified|identified|found|provided|available|stated|disclosed)\b|\b(isn't|aren't|wasn't|weren't) (listed|mentioned|included|specified)\b|\b(does|do|did|doesn't|don't|didn't)( not)? (list|mention|include|specify|identify|provide|state|say|disclose)\b|\bno (mention|record|records|information|details?|data) (of|about|on|regarding)\b|\bnot (clear|known|specified) (from|in)\b/i;
 
+/** "It has not been approved or funded yet": a status the excerpts rarely prove. */
+const NEG_STATUS = /\b(has|have|had)( not|n't) (yet )?been\b|\bnot yet\b|\byet to be\b|\bno (funding|approval|vote|decision) has\b/i;
+
+/**
+ * Removes an unsupported "has not been ..." clause from a sentence, or returns null when the whole
+ * sentence is that claim. Kept as is when the cited source itself says so.
+ */
+export function trimNegative(sentence: string, sources: string[]): string | null {
+  if (!NEG_STATUS.test(sentence)) return sentence;
+  if (sources.some((t) => NEG_STATUS.test(t))) return sentence;
+  const parts = sentence.split(/;\s+|,\s+(?:but|and|so)\s+(?=it\b|they\b|this\b|the\b|that\b)|,\s+(?=it has|it was|they have)/);
+  const kept: string[] = [];
+  for (const part of parts) {
+    if (NEG_STATUS.test(part)) break;
+    kept.push(part);
+  }
+  if (!kept.length) return null;
+  return kept.join('; ').replace(/[\s,;:]+$/, '').replace(/[.!?]?$/, '.');
+}
+
 const NUM = /\$?\d[\d,]*(?:\.\d+)?\s*(million|billion|thousand|[mk]\b)?/gi;
 
 const flat = (t: string) => t.replace(/(\d),(?=\d{3}\b)/g, '$1');
@@ -254,7 +277,7 @@ export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: Ground
   const out: AnswerParagraph[] = [];
   for (const p of paragraphs) {
     const segments: AnswerSegment[] = [];
-    for (const seg of p.segments) {
+    for (let seg of p.segments) {
       if (!seg.citations.length) {
         segments.push(seg);
         continue;
@@ -262,6 +285,15 @@ export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: Ground
       if (ABSENCE.test(seg.text)) {
         removed++;
         continue;
+      }
+      const trimmed = trimNegative(seg.text, seg.citations.map((i) => texts[i - 1] ?? ''));
+      if (trimmed == null) {
+        removed++;
+        continue;
+      }
+      if (trimmed !== seg.text) {
+        seg = { ...seg, text: trimmed };
+        removed++;
       }
       const nums = sentenceNumbers(seg.text);
       const ok = (i: number) => nums.every((forms) => has(texts[i - 1] ?? '', forms));
