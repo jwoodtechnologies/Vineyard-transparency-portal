@@ -491,7 +491,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       if (ins.length) best = [...ins, ...best.filter((h) => !inside(h))];
     }
     lead(govIds, 1);
-    lead(topicIds, 2);
+    lead(topicIds, 3);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
     if (person && /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role)) lead(govIds, 2);

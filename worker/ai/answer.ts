@@ -147,7 +147,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
   const cleaned = raw
     .replace(/\r/g, '')
     .replace(/[\u2010\u2011\u2012]/g, '-')
-    .replace(/\b([ap])\.m\./gi, (_, x: string) => `${x.toLowerCase()}m`)
+    .replace(/\b([ap])\.\s?m\./gi, (_, x: string) => `${x.toLowerCase()}m`)
     .replace(/\b(No|Nos|St|Ave|Blvd|Dr|Mr|Mrs|Ms|Inc|Co|approx|vs|e\.g|i\.e)\.(?=\s+[\w$])/g, '$1')
     // A middle initial ("Mayor J. Rulon Gammon") does not end a sentence.
     .replace(/\b([A-Z])\.(?=\s+[A-Z](?:[a-z]|\.))/g, '$1\u2024')
@@ -407,7 +407,9 @@ export function aiText(out: unknown): string {
 const STOP = new Set('the and for with that this from were was are has have had been which their they them there these those about into than then when what will would could should also only other such over under after before more most some very each both between during because while where whose city vineyard council meeting'.split(' '));
 const words = (t: string) => (t.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => (w.length > 3 || /\d/.test(w)) && !STOP.has(w));
 
-export function attributeCitations(raw: string, evidence: Array<{ text?: string; title: string }>): string {
+export function attributeCitations(rawIn: string, evidence: Array<{ text?: string; title: string }>): string {
+  // "7:00 a.m." must not end a sentence anywhere downstream.
+  const raw = rawIn.replace(/\b([ap])\.\s?m\.(?=[\s,;)]|$)/gi, (_, x: string) => `${x.toLowerCase()}m`);
   const bags = evidence.map((e) => new Set(words(`${e.title} ${e.text ?? ''}`)));
   const overlap = (w: string[], i: number) => (bags[i] ? w.filter((x) => bags[i].has(x)).length / w.length : 0);
   const citesOf = (s: string) => [...s.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\]/g)].flatMap((m) => m[1].split(',').map((n) => Number(n.trim()) - 1));

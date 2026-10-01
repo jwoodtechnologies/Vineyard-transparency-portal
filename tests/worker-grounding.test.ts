@@ -169,3 +169,11 @@ describe('code section numbers', () => {
     expect(r.removed).toBe(0);
   });
 });
+
+describe('a.m. and p.m.', () => {
+  it('never split a sentence', async () => {
+    const { segmentAnswer, attributeCitations } = await import('../worker/ai/answer');
+    const raw = attributeCitations('Quiet hours run from 10:30 p.m. to 7:00 a.m. under the code [1]. Report noise to the Sheriff [1].', [{ title: 't', text: 'x' }]);
+    expect(segmentAnswer(raw, 1).paragraphs[0].segments.map((s) => s.text)).toEqual(['Quiet hours run from 10:30 pm to 7:00 am under the code.', 'Report noise to the Sheriff.']);
+  });
+});
