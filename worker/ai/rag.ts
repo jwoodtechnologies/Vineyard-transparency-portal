@@ -517,8 +517,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   extraP.catch(() => undefined);
   const quotaP = bumpQuota(env, 'ai_requests').catch(() => undefined);
 
-  const prior = (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }));
-  const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(question, evidence, history) }];
+  // A new topic is answered on its own: earlier turns reach the model only for a real follow-up,
+  // so a question about utilities is never pulled back to the road asked about before.
+  const follow = retrievalText !== body.question;
+  const prior = follow ? (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) : [];
+  const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(question, evidence, follow ? history : []) }];
 
   const fail = async (e: unknown): Promise<AskResponse> => {
     const msg = e instanceof Error ? e.message : String(e);
