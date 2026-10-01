@@ -335,16 +335,26 @@ export default function ConsolePage() {
               const Icon = [FileText, Landmark, Scale][i];
               return (
                 <Link key={c.id} to={`/records?c=${c.id}`} className="vc-cat">
-                  <Icon size={15} strokeWidth={1.9} />
-                  <span className="vc-cat-long">{c.label}</span>
-                  <span className="vc-cat-short">{c.short}</span>
+                  <span className="vc-cat-icon">
+                    <Icon size={15} strokeWidth={1.9} />
+                  </span>
+                  <span className="vc-cat-text">
+                    <span className="vc-cat-long">{c.label}</span>
+                    <span className="vc-cat-short">{c.short}</span>
+                    <span className="vc-cat-hint">{c.hint}</span>
+                  </span>
                 </Link>
               );
             })}
             <Link to="/map" className="vc-cat">
-              <MapIcon size={15} strokeWidth={1.9} />
-              <span className="vc-cat-long">City map</span>
-              <span className="vc-cat-short">Map</span>
+              <span className="vc-cat-icon">
+                <MapIcon size={15} strokeWidth={1.9} />
+              </span>
+              <span className="vc-cat-text">
+                <span className="vc-cat-long">City map</span>
+                <span className="vc-cat-short">City map</span>
+                <span className="vc-cat-hint">Roads, projects</span>
+              </span>
             </Link>
           </nav>
         </main>
