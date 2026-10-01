@@ -332,7 +332,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
   if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
-  if (!aiReady || budgetOk == null) return { kind: 'final', response: await fallback('search_only', SEARCH_ONLY_NOTICE) };
+  if (!aiReady || budgetOk == null) {
+    const why = !aiConfigured(env) ? 'AI not configured' : aiBreakerOpen() ? 'paused after a quota error' : 'daily answer limit reached';
+    const r = await fallback('search_only', SEARCH_ONLY_NOTICE);
+    return { kind: 'final', response: { ...r, engine: `search-fallback (${why})` } };
+  }
 
   const evidence = selectEvidence(hits);
   // Start the catalog reads the final answer needs now, so they finish while the model writes.
