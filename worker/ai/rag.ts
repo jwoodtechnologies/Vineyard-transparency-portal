@@ -541,7 +541,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     }
     const first = segmentAnswer(briefAnswer(attributeCitations(raw.replace(/\bNO_RECORD\b/g, ''), evidence)), evidence.length);
     // Every figure must be in the source it cites; unsupported sentences are removed.
-    const grounded = groundParagraphs(first.paragraphs, evidence);
+    const grounded = groundParagraphs(first.paragraphs, evidence, topicNotes);
     grounded.paragraphs = tidyOpeners(grounded.paragraphs);
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
     if (!seg.used.size) {

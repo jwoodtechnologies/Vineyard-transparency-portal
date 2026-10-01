@@ -177,3 +177,14 @@ describe('a.m. and p.m.', () => {
     expect(segmentAnswer(raw, 1).paragraphs[0].segments.map((s) => s.text)).toEqual(['Quiet hours run from 10:30 pm to 7:00 am under the code.', 'Report noise to the Sheriff.']);
   });
 });
+
+describe('checked civic notes', () => {
+  it('vouch for steps the cited record does not spell out', () => {
+    const r = groundParagraphs(
+      para(['To file a complaint, use the Report a Concern form, which goes to Code Enforcement [1].', [1]], ['At night, call the Utah County Sheriff non-emergency line at 801-798-5600.', [1]]),
+      [src('NON-EMERGENCY POLICE 801-798-5600', 'March Newsletter 2023', '2023-03-01')],
+      'Report a Concern goes to Code Enforcement. Utah County Sheriff non-emergency 801-798-5600.',
+    );
+    expect(r.removed).toBe(0);
+  });
+});

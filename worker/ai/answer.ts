@@ -306,7 +306,7 @@ function has(text: string, forms: string[]): boolean {
 
 /** Capitalized words that are not ordinary civic vocabulary: names that must be in the source. */
 const COMMON_CAPS = new Set(
-  'the a an and or but in on at for of to by with from as this that these those it its he she they his her their yes no if when while after before during since about also however additionally vineyard utah city town county council mayor deputy member members commission commissioner planning redevelopment agency rda fiscal year fy resolution resolutions ordinance ordinances code municipal zoning general plan budget fund funds department director manager recorder attorney treasurer clerk chapter section title state street road north south east west avenue boulevard lane drive lake center park the january february march april may june july august september october november december monday tuesday wednesday thursday friday saturday sunday final amendment approved minutes agenda packet meeting meetings public hearing staff report office special regular work session phase project'.split(
+  'the a an and or but in on at for of to by with from as this that these those it its he she they his her their yes no if when while after before during since about also however additionally vineyard utah city town county council mayor deputy member members commission commissioner planning redevelopment agency rda fiscal year fy resolution resolutions ordinance ordinances code municipal zoning general plan budget fund funds department director manager recorder attorney treasurer clerk chapter section title state street road north south east west avenue boulevard lane drive lake center park the january february march april may june july august september october november december monday tuesday wednesday thursday friday saturday sunday final amendment approved minutes agenda packet meeting meetings public hearing staff report office special regular work session phase project concern concerns form forms enforcement sheriff police non-emergency emergency portal records request requests online website services service utilities utility water sewer storm drain parks recreation library fire officer line call'.split(
     ' ',
   ),
 );
@@ -328,8 +328,13 @@ export interface GroundSource {
   documentDate: string | null;
 }
 
-export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: GroundSource[]): { paragraphs: AnswerParagraph[]; removed: number; recited: number } {
-  const texts = evidence.map((e) => flat(`${e.title}\n${e.documentDate ?? ''}\n${(e.text ?? '').slice(0, MAX_CHUNK_CHARS)}`));
+/**
+ * `verified` is text the portal itself stands behind (the checked civic notes, written from the
+ * city's own pages): a figure or name found there passes too, keeping the sentence's citation.
+ */
+export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: GroundSource[], verified = ''): { paragraphs: AnswerParagraph[]; removed: number; recited: number } {
+  const known = flat(verified);
+  const texts = evidence.map((e) => flat(`${e.title}\n${e.documentDate ?? ''}\n${(e.text ?? '').slice(0, MAX_CHUNK_CHARS)}`) + (known ? `\n${known}` : ''));
   let removed = 0;
   let recited = 0;
   const out: AnswerParagraph[] = [];
