@@ -381,8 +381,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // Vineyard's form of government (six-member council since January 1, 2026: the mayor does not vote).
   const govIds = new Set<string>();
   if (/\b(mayor|vot(e|es|ed|ing)|form of government|six-member|five-member|tie|council members?|who decides|city manager)\b/i.test(body.question)) {
-    const gov = await retrieve('"six-member council" mayor vote tie', { ...filters, dateFrom: '2024-01-01' }).catch(() => [] as ChunkHit[]);
-    gov.slice(0, 4).forEach((h) => govIds.add(h.chunkId));
+    const [a, b] = await Promise.all([
+      retrieve('"six-member council" "took effect" January 2026', { ...filters, dateFrom: '2025-06-01' }).catch(() => [] as ChunkHit[]),
+      retrieve('"six-member" mayor vote tie', { ...filters, dateFrom: '2024-01-01' }).catch(() => [] as ChunkHit[]),
+    ]);
+    const gov = interleave([a, b], 4);
+    gov.forEach((h) => govIds.add(h.chunkId));
     const seenG = new Set<string>();
     hits = [...hits.slice(0, 30), ...gov.slice(0, 4), ...hits.slice(30)].filter((h) => (seenG.has(h.chunkId) ? false : (seenG.add(h.chunkId), true)));
   }
@@ -421,7 +425,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     lead(govIds, 1);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
-    if (person && /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role)) lead(govIds, 1);
+    if (person && /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role)) lead(govIds, 2);
     lead(currentIds, 2);
     // "The first meeting", "the earliest ordinance": among the passages that answer, oldest first.
     if (/\b(first|earliest|oldest|original)\b(?!\s+responders?)/i.test(body.question)) {
