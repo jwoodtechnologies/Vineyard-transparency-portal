@@ -57,6 +57,8 @@ def cmd_verify(api: PortalApi) -> int:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m ingest", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("command")
+    p.add_argument("--shard", type=int, default=None, help="this runner's queue slice (0..shards-1)")
+    p.add_argument("--shards", type=int, default=None, help="number of parallel runners")
     p.add_argument("--limit", type=int, default=25, help="max documents to process (ingest)")
     p.add_argument("--source", action="append", help="restrict crawl to a source id (repeatable)")
     p.add_argument("--no-archive", action="store_true", help="do not upload originals to R2")
@@ -85,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             status, message = "completed", None
             total = {}
             try:
-                if cmd in ("ingest", "ingest:resume") and not a.source:
+                if cmd in ("ingest", "ingest:resume") and not a.source and not a.shard:
                     # Who holds which office, refreshed first while the day's write allowance is fresh
                     # (a few rows; unchanged lists only re-verify).
                     try:
@@ -100,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
                     c = crawl(api, client, run_id, set(a.source) if a.source else None, a.manifest, a.since)
                     total.update(c.api())
                 if cmd in ("ingest", "ingest:resume", "run"):
-                    c = ingest(api, client, run_id, a.limit, archive=not a.no_archive, ocr=a.ocr, time_budget_s=int(a.hours * 3600), statuses=("pending", "error") if a.include_errors else ("pending",))
+                    c = ingest(api, client, run_id, a.limit, archive=not a.no_archive, ocr=a.ocr, time_budget_s=int(a.hours * 3600), statuses=("pending", "error") if a.include_errors else ("pending",), shard=a.shard, shards=a.shards)
                     for k, v in c.api().items():
                         total[k] = total.get(k, 0) + v
                     log(f"Ingest: {c.by_status} archived={c.archived} deferred={c.quota_deferred} chunks={c.chunks} errors={c.errors}")

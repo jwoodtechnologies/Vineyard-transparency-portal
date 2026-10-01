@@ -262,11 +262,15 @@ async function listQueue(env: Env, url: URL): Promise<Response> {
   const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') ?? 50)));
   const source = url.searchParams.get('source');
   const maxAttempts = Number(url.searchParams.get('maxAttempts') ?? 5);
+  // Parallel runners each take a slice of the queue by the first hex digit of the URL key.
+  const shards = Math.min(16, Math.max(0, Number(url.searchParams.get('shards') ?? 0) || 0));
+  const shard = Math.max(0, Number(url.searchParams.get('shard') ?? 0) || 0);
+  const slice = shards > 1 ? ` AND ((instr('0123456789abcdef', substr(q.url_key, 1, 1)) - 1) % ${shards}) = ${shard % shards}` : '';
   const res = await env.CATALOG_DB.prepare(
     `SELECT q.*, (SELECT ds.etag FROM document_sources ds WHERE ds.canonical_key = q.url_key LIMIT 1) AS known_etag,
             (SELECT ds.last_modified FROM document_sources ds WHERE ds.canonical_key = q.url_key LIMIT 1) AS known_last_modified,
             (SELECT ds.document_id FROM document_sources ds WHERE ds.canonical_key = q.url_key LIMIT 1) AS known_document_id
-     FROM crawl_queue q WHERE q.status = ? ${source ? 'AND q.source_id = ?' : ''} AND q.attempts < ?
+     FROM crawl_queue q WHERE q.status = ? ${source ? 'AND q.source_id = ?' : ''} AND q.attempts < ?${slice}
        AND (q.next_attempt_at IS NULL OR q.next_attempt_at <= ?)
      ORDER BY q.priority, q.discovered_at LIMIT ?`,
   )

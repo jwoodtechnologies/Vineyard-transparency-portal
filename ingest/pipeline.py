@@ -54,7 +54,8 @@ class RunCounts:
 
 def new_run_id() -> str:
     gh = os.environ.get("GITHUB_RUN_ID")
-    return f"run_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}" + (f"_gh{gh}" if gh else "")
+    job = os.environ.get("GITHUB_JOB_INDEX") or os.environ.get("VTP_SHARD")
+    return f"run_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}" + (f"_gh{gh}" if gh else "") + (f"_s{job}" if job else "")
 
 
 # --------------------------------------------------------------------------------------------- crawl
@@ -396,7 +397,7 @@ def requests_quote(url: str) -> str:
     return requote_uri(url)
 
 
-def ingest(api: PortalApi, client: PoliteClient, run_id: str, limit: int, archive: bool = True, ocr: bool = False, time_budget_s: int = 5 * 3600, statuses=("pending",)) -> RunCounts:
+def ingest(api: PortalApi, client: PoliteClient, run_id: str, limit: int, archive: bool = True, ocr: bool = False, time_budget_s: int = 5 * 3600, statuses=("pending",), shard: int | None = None, shards: int | None = None) -> RunCounts:
     counts = RunCounts()
     storage: StorageProvider | None = None
     if archive:
@@ -407,7 +408,8 @@ def ingest(api: PortalApi, client: PoliteClient, run_id: str, limit: int, archiv
     errors: list[dict] = []
     for status in statuses:
         while processed < limit and time.time() - started < time_budget_s:
-            page = api.get("/queue", status=status, limit=min(50, limit - processed))
+            # Parallel backfill: each runner takes its own slice of the queue (by the first hex digit of the URL key).
+            page = api.get("/queue", status=status, limit=min(50, limit - processed), **({"shard": shard, "shards": shards} if shards else {}))
             items = page.get("items") or []
             if not items:
                 break
