@@ -1,8 +1,17 @@
 /** Small typed readers for the portal API used by the console screens. */
 import { useEffect, useState } from 'react';
 
+/**
+ * Adds a marker that changes every five minutes, so no browser or network cache can hand back a
+ * list older than that, whatever cache time it was stored with.
+ */
+export function fresh(url: string): string {
+  if (!url.startsWith('/api/')) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}_=${Math.floor(Date.now() / 300_000)}`;
+}
+
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(url, { signal, headers: { accept: 'application/json' } });
+  const res = await fetch(fresh(url), { signal, headers: { accept: 'application/json' } });
   if (!res.ok) throw new Error(`${url} ${res.status}`);
   return (await res.json()) as T;
 }

@@ -140,9 +140,15 @@ async function cached(request: Request, url: URL, ctx: ExecutionContext, compute
   const key = new Request(url.toString(), { method: 'GET' });
   const hit = await cache.match(key).catch(() => undefined);
   if (hit) {
-    const etag = hit.headers.get('etag');
-    if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: hit.headers });
-    return hit;
+    // A stored copy comes back with the zone's browser cache time (hours). Browsers get a short one
+    // instead, so a phone never keeps showing a list or count that has since changed.
+    const headers = new Headers(hit.headers);
+    headers.set('cache-control', 'public, max-age=60');
+    headers.delete('cf-cache-status');
+    headers.delete('expires');
+    const etag = headers.get('etag');
+    if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
+    return new Response(hit.body, { status: hit.status, headers });
   }
   const res = await compute();
   const cc = res.headers.get('cache-control') ?? '';

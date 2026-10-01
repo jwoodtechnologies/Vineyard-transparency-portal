@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { GovernmentBody, MeetingSummary } from '@/types/models';
 import { BrowseService, MeetingService } from '@/services';
+import { fresh } from './api';
 
 const years = new Map<number, Promise<MeetingSummary[]>>();
 
@@ -197,7 +198,7 @@ export function loadEventYear(year: number): Promise<PortalEvent[]> {
   if (!eventsEnabled) return Promise.resolve([]);
   let p = eventYears.get(year);
   if (!p) {
-    p = fetch(`/api/events?from=${year}-01-01&to=${year}-12-31`)
+    p = fetch(fresh(`/api/events?from=${year}-01-01&to=${year}-12-31`))
       .then((r) => (r.ok ? (r.json() as Promise<{ items?: PortalEvent[] }>) : { items: [] }))
       .then((j) => j.items ?? [])
       .catch(() => {

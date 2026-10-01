@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronRight, FileText, Search, X } from 'lucide-react';
 import { Frame } from './Chrome';
-import { getJson, useJson } from './api';
+import { fresh, getJson, useJson } from './api';
 import { RECORD_CATEGORIES, categoryById } from './categories';
 import { TYPE_LABEL, formatDate } from './format';
 
@@ -114,7 +114,7 @@ function HeldMeetings({ year, body, oldest }: { year: string; body: string; olde
     const u = new URLSearchParams({ held: '1', pageSize: '50', page: String(page), sort: oldest ? 'date_asc' : 'date_desc' });
     if (year) u.set('year', year);
     if (body) u.set('body', body);
-    void fetch(`/api/meetings?${u}`)
+    void fetch(fresh(`/api/meetings?${u}`))
       .then((r) => r.json() as Promise<{ items: HeldMeeting[]; total: number }>)
       .then((d) => live && setRows((prev) => ({ key, items: prev.key === key && page > 1 ? [...prev.items, ...d.items] : d.items, total: d.total })))
       .catch(() => undefined);
