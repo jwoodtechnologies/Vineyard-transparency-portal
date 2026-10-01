@@ -287,7 +287,11 @@ export function sentenceNumbers(sentence: string): string[][] {
     const scale = unit === 'billion' ? 1e9 : unit === 'million' || unit === 'm' ? 1e6 : unit === 'thousand' || unit === 'k' ? 1e3 : 0;
     if (scale) forms.push(String(Math.round(Number(digits) * scale)));
     // Years may be written "6.23.26" or "FY26" in city documents.
-    if (/^20\d{2}$/.test(digits)) forms.push(`FY${digits.slice(2)}`, `.${digits.slice(2)}`, `/${digits.slice(2)}`, `-${digits.slice(2)}`);
+    if (/^20\d{2}$/.test(digits)) {
+      const yy = digits.slice(2);
+      // "FY 27", "FY'27", "FY 26-27", "26 - 27", "6.23.27", "FY2026-2027"
+      forms.push(`FY${yy}`, `FY ${yy}`, `FY'${yy}`, `FY '${yy}`, `.${yy}`, `/${yy}`, `-${yy}`, `- ${yy}`, `-${digits}`);
+    }
     out.push(forms);
   }
   return out;
@@ -445,6 +449,12 @@ const CONNECTIVE = /^(however|additionally|also|furthermore|moreover|in addition
  * The connective goes and the sentence reads on its own.
  */
 export function tidyOpeners(paragraphs: AnswerParagraph[]): AnswerParagraph[] {
+  // An answer that now opens with "This figure..." or "It..." lost the sentence it pointed back to:
+  // that sentence goes too when something else remains.
+  const first = paragraphs[0]?.segments[0];
+  if (first && /^(this|these|that|those|it|they|he|she)\b/i.test(first.text) && (paragraphs[0].segments.length > 1 || paragraphs.length > 1)) {
+    paragraphs = [{ segments: paragraphs[0].segments.slice(1) }, ...paragraphs.slice(1)].filter((p) => p.segments.length);
+  }
   return paragraphs.map((p, pi) => ({
     segments: p.segments.map((s, si) => {
       if (si !== 0 && !(pi === 0 && si === 0)) return s;

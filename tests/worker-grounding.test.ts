@@ -133,3 +133,10 @@ describe('U. S. Mail', () => {
     expect(segmentAnswer(raw, 2).paragraphs[0].segments.map((s) => s.text)).toEqual(['You can submit the request by email, U. S. Mail, or in person.']);
   });
 });
+
+describe('fiscal year spellings', () => {
+  it('accepts FY 27 and 26 - 27 for 2027', () => {
+    const r = groundParagraphs(para(['The general fund budget for fiscal year 2027 is $15,834,792.', [1]]), [src('AMENDMENT DRAFT FY 26 - 27 General Fund 15,834,792 $', 'FY 27 First Budget Amendment')]);
+    expect(r.removed).toBe(0);
+  });
+});
