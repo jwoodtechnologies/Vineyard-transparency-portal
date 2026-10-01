@@ -28,7 +28,7 @@ import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
-import { motionEvidence, votesFor } from '../api/votes';
+import { LATEST_ACTION_Q, motionEvidence, votesFor } from '../api/votes';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 
@@ -488,6 +488,26 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seenV = new Set<string>();
     hits = [...hits.slice(0, 15), ...mh, ...hits.slice(15)].filter((h) => (seenV.has(h.chunkId) ? false : (seenV.add(h.chunkId), true)));
   }
+  // "What's the latest thing that passed?" with no topic: the newest recorded votes answer it, nothing else.
+  let latestAction = false;
+  let latestHits: ChunkHit[] = [];
+  if (LATEST_ACTION_Q.test(retrievalText) && !voteIds.size && !isScheduleQuestion(retrievalText)) {
+    const raw = await motionEvidence(env, '', '', todayUT, 8, true).catch(() => [] as ChunkHit[]);
+    // One passage per meeting (all its votes together), so every item the newest meeting passed is read.
+    const byDoc = new Map<string, ChunkHit[]>();
+    for (const h of raw) (byDoc.get(h.documentId) ?? byDoc.set(h.documentId, []).get(h.documentId)!).push(h);
+    const mh = [...byDoc.values()].map((g) => (g.length === 1 ? g[0] : { ...g[0], sectionTitle: null, text: g.map((h, i) => `Vote ${i + 1}: ${h.text}`).join(' ') }));
+    if (mh.length) {
+      latestAction = true;
+      latestHits = mh;
+      mh.forEach((h) => voteIds.add(h.chunkId));
+      const seenV = new Set<string>();
+      hits = [...mh, ...hits].filter((h) => (seenV.has(h.chunkId) ? false : (seenV.add(h.chunkId), true)));
+      const newest = mh[0].documentDate ?? '';
+      const n = raw.filter((h) => h.documentDate === newest).length;
+      topicNotes = `${topicNotes} Latest council action: the recorded votes listed first are the newest in the posted minutes, newest first. The most recent meeting with posted minutes is ${newest}, and ${n} policy ${n === 1 ? 'item' : 'items'} passed at it. Answer with what passed at that meeting: each item, the vote count and the date. Never present an older vote as the latest. Add that minutes for any later meeting may not be posted yet.`.trim();
+    }
+  }
   // "How do I...": the city website's own page for that service says how, so it is read first.
   const pageIds = new Set<string>();
   if (HOWTO.test(body.question)) {
@@ -562,7 +582,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     lead(govIds, 1);
     lead(topicIds, 3);
     lead(roadIds, 4);
-    lead(voteIds, 3);
+    lead(voteIds, latestAction ? 8 : 3);
     lead(pageIds, 2);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
@@ -576,6 +596,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     }
     hits = best;
   }
+  // The newest votes stay first, in date order, whatever the ranking made of them.
+  if (latestHits.length) hits = [...latestHits, ...hits.filter((h) => !voteIds.has(h.chunkId))];
   const evidence = selectEvidence(hits);
   // Start the catalog reads the final answer needs now, so they finish while the model writes.
   const docsP = summariesByIds(env, [...new Set(hits.map((h) => h.documentId))].slice(0, 30));

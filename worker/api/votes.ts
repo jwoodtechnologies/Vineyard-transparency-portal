@@ -597,24 +597,41 @@ export async function votesFor(env: Env, question: string, people: Array<{ name:
   return null;
 }
 
-const STOP_TERMS = new Set('what when where which while with that this these those there their they them have has had been being from into about after before over under than then also just only very more most much many some such each every other city council vineyard meeting meetings year years month today current currently now recent recently lately going happening happen status update plans planned plan does will would could should doing done right still latest this year'.split(' '));
+/** "What's the latest thing that passed?", "what did the council approve most recently": no topic, just the newest action. */
+export const LATEST_ACTION_Q = /\b(latest|most recent(ly)?|last|newest|recent(ly)?|just)\b[^.?!]{0,60}\b(pass(ed|es)?|approv(ed|e|al)|adopt(ed)?|vot(ed|e|es)|decid(ed|e)|decisions?|motions?|actions?|enacted)\b|\b(pass(ed)?|approv(ed|e)|adopt(ed)?|vot(ed|e)[^.?!]{0,12}on|decid(ed|e))\b[^.?!]{0,60}\b(latest|most recent(ly)?|last|recent(ly)?|lately)\b/i;
+
+const STOP_TERMS = new Set('what when where which while with that this these those there their they them have has had been being from into about after before over under than then also just only very more most much many some such each every other city council vineyard meeting meetings year years month today current currently now recent recently lately going happening happen status update plans planned plan does will would could should doing done right still latest this year thing things passed pass passes approved approve approval adopted adopt voted vote votes decided decide decision decisions motion motions action actions enacted last newest most that them did were been'.split(' '));
 
 /**
  * What the council has actually done on a topic this year, as evidence the answer can cite: each
  * recorded motion (with its result and vote) becomes a passage from the minutes it came from.
  */
-export async function motionEvidence(env: Env, question: string, from: string, to: string, limit = 8): Promise<import('../search/types').ChunkHit[]> {
+export async function motionEvidence(env: Env, question: string, from: string, to: string, limit = 8, latest = false): Promise<import('../search/types').ChunkHit[]> {
   await ensureVotesTables(env);
   const terms = [...new Set(question.toLowerCase().replace(/[^a-z0-9' -]+/g, ' ').split(/\s+/).filter((w) => w.length >= 4 && !STOP_TERMS.has(w)))].slice(0, 6);
-  if (!terms.length) return [];
+  if (!terms.length && !latest) return [];
   const like = terms.map(() => "(lower(m.motion) LIKE ? OR lower(coalesce(m.item, '')) LIKE ?)").join(' OR ');
-  const rows = await env.CATALOG_DB.prepare(
-    `SELECT m.*, d.title AS doc_title FROM motions m JOIN documents d ON d.id = m.document_id
-     WHERE ${SCOPE_SQL} AND m.meeting_date BETWEEN ? AND ? AND (${like}) ORDER BY m.meeting_date DESC, m.seq LIMIT ?`,
-  )
-    .bind(from, to, ...terms.flatMap((t) => [`%${t}%`, `%${t}%`]), limit)
-    .all<Record<string, unknown>>();
-  const list = rows.results ?? [];
+  // "The latest thing passed": the newest policy votes that carried, whatever they were about.
+  const rows = latest
+    ? await env.CATALOG_DB.prepare(
+        `SELECT m.*, d.title AS doc_title FROM motions m JOIN documents d ON d.id = m.document_id
+         WHERE ${SCOPE_SQL} AND m.meeting_date <= ? AND m.result = 'carried' ORDER BY m.meeting_date DESC, m.seq LIMIT 40`,
+      )
+        .bind(to)
+        .all<Record<string, unknown>>()
+    : await env.CATALOG_DB.prepare(
+        `SELECT m.*, d.title AS doc_title FROM motions m JOIN documents d ON d.id = m.document_id
+         WHERE ${SCOPE_SQL} AND m.meeting_date BETWEEN ? AND ? AND (${like}) ORDER BY m.meeting_date DESC, m.seq LIMIT ?`,
+      )
+        .bind(from, to, ...terms.flatMap((t) => [`%${t}%`, `%${t}%`]), limit)
+        .all<Record<string, unknown>>();
+  let list = rows.results ?? [];
+  if (latest) {
+    list = list.filter((r) => !PROCEDURAL.test(String(r.motion ?? '').trim()) && !/public hearing|closed session/i.test(String(r.motion ?? '')));
+    // The newest meeting's votes, all of them; older meetings only to fill out the list.
+    const newest = list[0]?.meeting_date;
+    list = [...list.filter((r) => r.meeting_date === newest), ...list.filter((r) => r.meeting_date !== newest)].slice(0, Math.max(limit, list.filter((r) => r.meeting_date === newest).length));
+  }
   if (!list.length) return [];
   const votes = await env.CATALOG_DB.prepare('SELECT motion_id, member, vote FROM motion_votes WHERE motion_id IN (SELECT value FROM json_each(?))')
     .bind(JSON.stringify(list.map((r) => r.id)))
