@@ -43,7 +43,7 @@ class PeopleTests(unittest.TestCase):
         by = {p["slug"]: p for p in people_out}
         self.assertEqual(by["zack-stratton"]["kind"], "elected")
         self.assertEqual(by["zack-stratton"]["term"], "2026 through December 31, 2029")
-        self.assertEqual(by["david-kyle-herring"]["photoUrl"], "https://www.vineyardutah.gov/bus-directory/David Kyle.jpg?t=1")
+        self.assertEqual(by["david-kyle-herring"]["photoUrl"], "https://www.vineyardutah.gov/bus-directory/David%20Kyle.jpg?t=1")
         self.assertEqual(by["david-kyle-herring"]["role"], "Deputy Mayor")
         lead = recs["people:leadership"][1]
         self.assertIn("Deputy Mayor: David Kyle Herring", lead)
@@ -52,3 +52,14 @@ class PeopleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PhotoUrlTests(__import__("unittest").TestCase):
+    def test_parentheses_in_photo_name(self):
+        from bs4 import BeautifulSoup
+
+        from ingest.people import _cards
+
+        html = """<div class="rz-business-block"><div style="background: url('bus-directory/Christopher Chip Price (1).png?t=2') center center / cover no-repeat;"></div><h2>Council Member Chip Price</h2><a class="rz-bus-readmore" href="x.php">Read More</a></div>"""
+        cards = _cards(BeautifulSoup(html, "html.parser"))
+        self.assertEqual(cards[0]["photo"], "https://www.vineyardutah.gov/bus-directory/Christopher%20Chip%20Price%20(1).png?t=2")

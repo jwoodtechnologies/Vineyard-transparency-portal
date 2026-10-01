@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin
 
 from .api import PortalApi
 from .chunk import chunk_pages
@@ -72,9 +72,11 @@ def _cards(soup) -> list[dict]:
         tel = next((_clean(a.get_text()) or a["href"][4:] for a in card.select('a[href^="tel:"]')), None)
         photo = None
         for el in card.select("[style]"):
-            m = re.search(r"url\(\s*['\"]?([^'\")]+)", el.get("style") or "")
+            # Quoted URLs may hold parentheses ("Chip Price (1).png"), so read to the closing quote.
+            style = el.get("style") or ""
+            m = re.search(r"url\(\s*(['\"])(.+?)\1\s*\)", style) or re.search(r"url\(\s*([^'\"\s)]+)\s*\)", style)
             if m:
-                photo = urljoin(BASE, m.group(1).strip())
+                photo = quote(urljoin(BASE, m.group(m.lastindex).strip()), safe=":/?=&%#~@!$'()*+,;")
                 break
         if not photo:
             img = card.find("img", src=True)
