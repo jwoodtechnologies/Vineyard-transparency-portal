@@ -402,9 +402,11 @@ export default function ConsolePage() {
                       <span>Recorded votes</span>
                       <Link to={`/votes?${new URLSearchParams({ ...(t.answer.votes.member ? { member: t.answer.votes.member } : {}), ...(t.answer.votes.q ? { q: t.answer.votes.q } : {}) })}`}>See all</Link>
                     </div>
-                    {t.answer.votes.items.slice(0, 3).map((m) => (
-                      <MotionCard key={m.id} m={m} member={t.answer?.votes?.member ?? null} />
-                    ))}
+                    <ol className="vc-mos">
+                      {t.answer.votes.items.slice(0, 3).map((m) => (
+                        <MotionCard key={m.id} m={m} member={t.answer?.votes?.member ?? null} />
+                      ))}
+                    </ol>
                   </section>
                 )}
                 {contactCard(t, people)}

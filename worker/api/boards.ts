@@ -42,6 +42,16 @@ export async function listBoards(env: Env): Promise<Response> {
     env.CATALOG_DB.prepare("SELECT slug, name, kind, role, department, term, photo_url FROM people WHERE current = 1 AND kind IN ('board', 'elected')").all<{ slug: string; name: string; kind: string; role: string; department: string | null; term: string | null; photo_url: string | null }>(),
   ]);
   type Member = { slug: string; name: string; role: string; term: string | null; photo: string | null };
+  const year = Number(today.slice(0, 4));
+  // Who actually voted with each body this year, from the minutes (to keep members serving past a
+  // listed term end, and to drop names the city page still shows after a term ended).
+  const sat = await env.CATALOG_DB.prepare('SELECT DISTINCT body_id, member FROM motion_votes WHERE meeting_date >= ?')
+    .bind(`${year}-01-01`)
+    .all<{ body_id: string; member: string }>()
+    .catch(() => ({ results: [] as Array<{ body_id: string; member: string }> }));
+  const satWith = (id: string, name: string) => (sat.results ?? []).some((r) => r.body_id === id && (r.member.toLowerCase() === name.toLowerCase() || r.member.toLowerCase() === (name.split(' ').pop() ?? '').toLowerCase()));
+  const hidden = new Map<string, number>();
+  const websiteBoards = new Map<string, string>();
   const members = new Map<string, Member[]>();
   const listedOnly = new Map<string, string>();
   const push = (id: string, m: Member) => (members.get(id) ?? members.set(id, []).get(id)!).push(m);
@@ -54,16 +64,26 @@ export async function listBoards(env: Env): Promise<Response> {
     }
     for (const b of (p.department ?? '').split(';').map((x) => x.trim()).filter(Boolean)) {
       const id = ALIAS[b.toLowerCase()] ?? slug(b);
+      websiteBoards.set(id, b);
       if (!ALIAS[b.toLowerCase()]) listedOnly.set(id, b);
+      // A listed term that ended before this year: shown only if the minutes show them still serving.
+      const end = (p.term ?? '').match(/((?:19|20)\d{2})\s*$/);
+      if (end && Number(end[1]) < year && !satWith(id, p.name)) {
+        hidden.set(id, (hidden.get(id) ?? 0) + 1);
+        continue;
+      }
       push(id, { slug: p.slug, name: p.name, role: p.role, term: p.term, photo });
     }
   }
   const rank = (r: string) => (/^mayor$|^chair/i.test(r) ? 0 : /vice/i.test(r) ? 1 : /council member|board member|commissioner|member/i.test(r) ? 3 : 2);
+  // The boards the city website lists today, plus the City Council and the Redevelopment Agency.
   const out = (bodies.results ?? [])
-    .filter((b) => !SKIP.has(b.id))
+    .filter((b) => !SKIP.has(b.id) && (b.id === 'city-council' || b.id === 'redevelopment-agency' || websiteBoards.has(b.id)))
     .map((b) => ({
       id: b.id,
-      name: b.name,
+      name: websiteBoards.get(b.id) ?? b.name,
+      meetingName: b.name,
+      hiddenExpired: hidden.get(b.id) ?? 0,
       kind: STAFF_COMMITTEES.has(b.id) ? 'staff committee' : b.id === 'city-council' ? 'council' : 'board',
       meetings: Number(b.meetings ?? 0),
       firstMeeting: b.first,
@@ -73,7 +93,7 @@ export async function listBoards(env: Env): Promise<Response> {
       members: (members.get(b.id) ?? []).sort((x, y) => rank(x.role) - rank(y.role) || x.name.localeCompare(y.name)),
     }));
   // Boards the city lists members for that have no meetings on file yet.
-  for (const [id, name] of listedOnly) if (!out.some((b) => b.id === id)) out.push({ id, name, kind: 'board', meetings: 0, firstMeeting: null, lastMeeting: null, nextMeeting: null, active: true, members: members.get(id) ?? [] });
+  for (const [id, name] of listedOnly) if (!out.some((b) => b.id === id)) out.push({ id, name, meetingName: name, hiddenExpired: hidden.get(id) ?? 0, kind: 'board', meetings: 0, firstMeeting: null, lastMeeting: null, nextMeeting: null, active: true, members: members.get(id) ?? [] });
   const order = (b: (typeof out)[number]) => (b.id === 'city-council' ? 0 : b.id === 'redevelopment-agency' ? 1 : b.kind === 'staff committee' ? 4 : b.active ? 2 : 3);
   out.sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return json({ boards: out, asOf: today }, { cache: 'public, max-age=600' });

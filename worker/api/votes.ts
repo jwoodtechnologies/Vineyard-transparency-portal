@@ -237,7 +237,7 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
     sql += " AND (lower(m.motion) LIKE ? OR lower(coalesce(m.item, '')) LIKE ? OR lower(coalesce(m.refs, '')) LIKE ?)";
     params.push(`%${w}%`, `%${w}%`, `%${w}%`);
   }
-  const pageSize = Math.min(100, Math.max(1, f.pageSize ?? 30));
+  const pageSize = Math.min(400, Math.max(1, f.pageSize ?? 30));
   const page = Math.max(1, f.page ?? 1);
   const [rows, count] = await Promise.all([
     env.CATALOG_DB.prepare(`SELECT m.* FROM motions m WHERE ${sql} ORDER BY m.meeting_date DESC, m.seq ASC LIMIT ? OFFSET ?`)
@@ -349,6 +349,24 @@ export async function handleVotes(env: Env, url: URL, sub: string | undefined): 
   const year = Number(p.get('year')) || null;
   const body = p.get('body') && /^[a-z0-9-]{2,60}$/.test(p.get('body')!) ? p.get('body') : null;
   if (sub === 'members') return json({ members: await voteMembers(env, { year, body }) }, { cache: 'public, max-age=300' });
+  if (sub === 'years') {
+    await ensureVotesTables(env);
+    const m = p.get('member') && /^[A-Za-z'’. -]{2,60}$/.test(p.get('member')!) ? p.get('member') : null;
+    const cond = ['meeting_date IS NOT NULL'];
+    const args: unknown[] = [];
+    if (body) {
+      cond.push('body_id = ?');
+      args.push(body);
+    }
+    if (m) {
+      cond.push('(mover = ? OR seconder = ? OR EXISTS (SELECT 1 FROM motion_votes v WHERE v.motion_id = motions.id AND v.member = ?))');
+      args.push(m, m, m);
+    }
+    const r = await env.CATALOG_DB.prepare(`SELECT substr(meeting_date, 1, 4) AS year, count(*) AS motions, count(DISTINCT meeting_date) AS meetings FROM motions WHERE ${cond.join(' AND ')} GROUP BY 1 ORDER BY 1 DESC`)
+      .bind(...args)
+      .all<{ year: string; motions: number; meetings: number }>();
+    return json({ years: (r.results ?? []).map((x) => ({ year: Number(x.year), motions: Number(x.motions), meetings: Number(x.meetings) })) }, { cache: 'public, max-age=300' });
+  }
   const member = p.get('member') && /^[A-Za-z'’. -]{2,60}$/.test(p.get('member')!) ? p.get('member') : null;
   const result = ['carried', 'failed', 'unknown'].includes(p.get('result') ?? '') ? p.get('result') : null;
   const vote = ['yes', 'no', 'abstain', 'recused', 'absent'].includes(p.get('vote') ?? '') ? p.get('vote') : null;

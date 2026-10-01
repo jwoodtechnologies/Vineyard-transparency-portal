@@ -15,6 +15,8 @@ import type { Person } from './people';
 interface Board {
   id: string;
   name: string;
+  meetingName: string;
+  hiddenExpired: number;
   kind: 'council' | 'board' | 'staff committee';
   meetings: number;
   firstMeeting: string | null;
@@ -62,8 +64,14 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
               ))}
             </ul>
           ) : (
-            <p className="vc-board-none">The city website does not list members for this {b.kind === 'staff committee' ? 'committee' : 'body'}.</p>
+            <p className="vc-board-none">The city website does not list current members for this {b.kind === 'staff committee' ? 'committee' : 'body'}.</p>
           )}
+          {b.hiddenExpired > 0 && (
+            <p className="vc-board-none">
+              {b.hiddenExpired === 1 ? 'One person' : `${b.hiddenExpired} people`} the city website still lists here {b.hiddenExpired === 1 ? 'has a term' : 'have terms'} that ended before this year and {b.hiddenExpired === 1 ? 'does' : 'do'} not appear in this year&apos;s minutes, so {b.hiddenExpired === 1 ? 'is' : 'are'} not shown.
+            </p>
+          )}
+          {b.meetingName !== b.name && <p className="vc-board-none">Its meetings are posted as {b.meetingName}.</p>}
           <div className="vc-board-links">
             {b.meetings > 0 && (
               <Link to={`/meetings?type=meetings&body=${encodeURIComponent(b.id)}`} className="vc-chip">
@@ -94,7 +102,7 @@ export default function BoardsPage() {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Boards and commissions</h1>
-        <p className="vc-page-sub">Every Vineyard body that meets, its members as the city website lists them today, and its meetings.</p>
+        <p className="vc-page-sub">The City Council, the Redevelopment Agency and every board and commission the city website lists, with current members and their meetings.</p>
       </header>
       <label className="vc-vote-search" style={{ marginBottom: 14 }}>
         <Search size={15} />
