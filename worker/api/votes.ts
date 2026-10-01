@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 3;
+export const VOTES_PARSER = 4;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -187,6 +187,28 @@ export async function resolveBareNames(env: Env): Promise<number> {
 
 // ------------------------------------------------------------------------------------------ read API
 
+/**
+ * What the portal shows: the current City Council (mayor and council members as the city website
+ * lists them today), from the start of this council's term (January 2026) on, at City Council
+ * meetings and at the Redevelopment Agency, where the same council sits as the board.
+ */
+export const SCOPE_FROM = '2026-01-01';
+export const SCOPE_BODIES = ['city-council', 'redevelopment-agency'];
+let councilCache: { at: number; names: string[] } | null = null;
+export async function currentCouncil(env: Env): Promise<string[]> {
+  if (!councilCache || Date.now() - councilCache.at > 10 * 60_000) {
+    const r = await env.CATALOG_DB.prepare("SELECT name FROM people WHERE current = 1 AND kind = 'elected'").all<{ name: string }>().catch(() => ({ results: [] as Array<{ name: string }> }));
+    councilCache = { at: Date.now(), names: (r.results ?? []).map((x) => x.name) };
+  }
+  return councilCache.names;
+}
+/** The current official a recorded name refers to ("Holdaway" or "Jacob Holdaway"), or null. */
+export function councilName(member: string, council: string[]): string | null {
+  const m = member.toLowerCase();
+  return council.find((n) => n.toLowerCase() === m) ?? (!member.includes(' ') ? (council.find((n) => (n.split(' ').pop() ?? '').toLowerCase() === m) ?? null) : null);
+}
+const SCOPE_SQL = `m.body_id IN ('city-council', 'redevelopment-agency') AND m.meeting_date >= '${SCOPE_FROM}'`;
+
 const BODY_NAMES: Record<string, string> = { 'city-council': 'City Council', 'redevelopment-agency': 'Redevelopment Agency', 'planning-commission': 'Planning Commission' };
 const bodyName = (id: string | null) => (id ? (BODY_NAMES[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())) : null);
 
@@ -213,14 +235,15 @@ export interface MotionOut {
 /** Motions, newest first, filtered by member, body, year, result and words in the motion. */
 export async function queryMotions(env: Env, f: { member?: string | null; body?: string | null; year?: number | null; q?: string | null; result?: string | null; vote?: string | null; page?: number; pageSize?: number }): Promise<{ items: MotionOut[]; total: number }> {
   await ensureVotesTables(env);
-  let sql = '1=1';
+  let sql = SCOPE_SQL;
   const params: unknown[] = [];
+  const last = f.member ? (f.member.split(' ').pop() ?? f.member) : null;
   if (f.member && f.vote) {
-    sql += ' AND EXISTS (SELECT 1 FROM motion_votes v WHERE v.motion_id = m.id AND v.member = ? AND v.vote = ?)';
-    params.push(f.member, f.vote);
+    sql += ' AND EXISTS (SELECT 1 FROM motion_votes v WHERE v.motion_id = m.id AND v.member IN (?, ?) AND v.vote = ?)';
+    params.push(f.member, last, f.vote);
   } else if (f.member) {
-    sql += ' AND (m.mover = ? OR m.seconder = ? OR EXISTS (SELECT 1 FROM motion_votes v WHERE v.motion_id = m.id AND v.member = ?))';
-    params.push(f.member, f.member, f.member);
+    sql += ' AND (m.mover IN (?, ?) OR m.seconder IN (?, ?) OR EXISTS (SELECT 1 FROM motion_votes v WHERE v.motion_id = m.id AND v.member IN (?, ?)))';
+    params.push(f.member, last, f.member, last, f.member, last);
   }
   if (f.body) {
     sql += ' AND m.body_id = ?';
@@ -257,6 +280,8 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
   const byMotion = new Map<string, Array<{ member: string; vote: string }>>();
   for (const v of votes.results ?? []) (byMotion.get(v.motion_id) ?? byMotion.set(v.motion_id, []).get(v.motion_id)!).push({ member: v.member, vote: v.vote });
   const order = { yes: 0, no: 1, abstain: 2, recused: 3, absent: 4 } as Record<string, number>;
+  const council = await currentCouncil(env);
+  const named = (n: string | null) => (n ? (councilName(n, council) ?? n) : null);
   return {
     total: Number(count?.n ?? 0),
     items: list.map((r) => ({
@@ -266,8 +291,6 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
       bodyName: bodyName((r.body_id as string | null) ?? null),
       item: (r.item as string | null) ?? null,
       motion: String(r.motion ?? ''),
-      mover: (r.mover as string | null) ?? null,
-      seconder: (r.seconder as string | null) ?? null,
       result: String(r.result ?? 'unknown'),
       tally: (r.tally as string | null) ?? null,
       tieBreak: Number(r.tie_break) === 1,
@@ -276,7 +299,12 @@ export async function queryMotions(env: Env, f: { member?: string | null; body?:
       refs: r.refs ? (JSON.parse(String(r.refs)) as string[]) : [],
       documentId: String(r.document_id),
       page: r.page == null ? null : Number(r.page),
-      votes: (byMotion.get(String(r.id)) ?? []).sort((a, b) => (order[a.vote] ?? 9) - (order[b.vote] ?? 9) || a.member.localeCompare(b.member)),
+      mover: named((r.mover as string | null) ?? null),
+      seconder: named((r.seconder as string | null) ?? null),
+      votes: (byMotion.get(String(r.id)) ?? [])
+        .map((v) => ({ member: councilName(v.member, council) ?? '', vote: v.vote }))
+        .filter((v) => v.member)
+        .sort((a, b) => (order[a.vote] ?? 9) - (order[b.vote] ?? 9) || a.member.localeCompare(b.member)),
     })),
   };
 }
@@ -297,10 +325,10 @@ export interface VoteMember {
   bodies: string[];
 }
 
-/** Everyone who has voted, with their totals (optionally for one year or body). */
+/** The current council's totals in scope (optionally for one year or body), by full name. */
 export async function voteMembers(env: Env, f: { year?: number | null; body?: string | null } = {}): Promise<VoteMember[]> {
   await ensureVotesTables(env);
-  const cond: string[] = [];
+  const cond: string[] = [`body_id IN ('city-council', 'redevelopment-agency')`, `meeting_date >= '${SCOPE_FROM}'`];
   const p: unknown[] = [];
   if (f.year) {
     cond.push('substr(meeting_date, 1, 4) = ?');
@@ -310,39 +338,36 @@ export async function voteMembers(env: Env, f: { year?: number | null; body?: st
     cond.push('body_id = ?');
     p.push(f.body);
   }
-  const w = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
-  const [tot, moved, info] = await Promise.all([
-    env.CATALOG_DB.prepare(`SELECT member, vote, count(*) AS n, group_concat(DISTINCT body_id) AS bodies FROM motion_votes ${w} GROUP BY member, vote`)
+  const w = `WHERE ${cond.join(' AND ')}`;
+  const [tot, moved, council] = await Promise.all([
+    env.CATALOG_DB.prepare(`SELECT member, vote, count(*) AS n, group_concat(DISTINCT body_id) AS bodies, min(meeting_date) AS first, max(meeting_date) AS last FROM motion_votes ${w} GROUP BY member, vote`)
       .bind(...p)
-      .all<{ member: string; vote: string; n: number; bodies: string }>(),
-    env.CATALOG_DB.prepare(`SELECT who, kind, count(*) AS n FROM (SELECT mover AS who, 'moved' AS kind, meeting_date, body_id FROM motions UNION ALL SELECT seconder, 'seconded', meeting_date, body_id FROM motions) ${w.replace(/meeting_date|body_id/g, (c) => c)} GROUP BY who, kind`)
+      .all<{ member: string; vote: string; n: number; bodies: string; first: string; last: string }>(),
+    env.CATALOG_DB.prepare(`SELECT who, kind, count(*) AS n FROM (SELECT mover AS who, 'moved' AS kind, meeting_date, body_id FROM motions UNION ALL SELECT seconder, 'seconded', meeting_date, body_id FROM motions) ${w} GROUP BY who, kind`)
       .bind(...p)
       .all<{ who: string | null; kind: string; n: number }>(),
-    env.CATALOG_DB.prepare('SELECT member, full_name, first_date, last_date FROM vote_members').all<{ member: string; full_name: string | null; first_date: string | null; last_date: string | null }>(),
+    currentCouncil(env),
   ]);
   const map = new Map<string, VoteMember>();
-  const get = (m: string) => {
-    let x = map.get(m);
-    if (!x) {
-      x = { member: m, fullName: null, firstDate: null, lastDate: null, motions: 0, yes: 0, no: 0, abstain: 0, recused: 0, absent: 0, moved: 0, seconded: 0, bodies: [] };
-      map.set(m, x);
-    }
-    return x;
-  };
+  for (const name of council) map.set(name, { member: name, fullName: name, firstDate: null, lastDate: null, motions: 0, yes: 0, no: 0, abstain: 0, recused: 0, absent: 0, moved: 0, seconded: 0, bodies: [] });
   for (const r of tot.results ?? []) {
-    const x = get(r.member);
+    const name = councilName(r.member, council);
+    const x = name ? map.get(name) : undefined;
+    if (!x) continue;
     const k = r.vote as 'yes' | 'no' | 'abstain' | 'recused' | 'absent';
     if (k in x) x[k] += Number(r.n);
     x.motions += Number(r.n);
     x.bodies = [...new Set([...x.bodies, ...String(r.bodies ?? '').split(',').filter(Boolean)])];
+    if (!x.firstDate || r.first < x.firstDate) x.firstDate = r.first;
+    if (!x.lastDate || r.last > x.lastDate) x.lastDate = r.last;
   }
-  for (const r of moved.results ?? []) if (r.who && map.has(r.who)) get(r.who)[r.kind === 'moved' ? 'moved' : 'seconded'] += Number(r.n);
-  for (const r of info.results ?? []) {
-    const x = map.get(r.member);
-    if (x) Object.assign(x, { fullName: r.full_name, firstDate: r.first_date, lastDate: r.last_date });
+  for (const r of moved.results ?? []) {
+    const name = r.who ? councilName(r.who, council) : null;
+    const x = name ? map.get(name) : undefined;
+    if (x) x[r.kind === 'moved' ? 'moved' : 'seconded'] += Number(r.n);
   }
-  // Names that appear only a handful of times are usually staff or applicants, not voting members.
-  return [...map.values()].filter((x) => x.motions >= 3).sort((a, b) => String(b.lastDate ?? '').localeCompare(String(a.lastDate ?? '')) || b.motions - a.motions);
+  // The mayor first, then the council members by name.
+  return [...map.values()].sort((a, b) => Number(/stratton/i.test(b.member)) - Number(/stratton/i.test(a.member)) || a.member.localeCompare(b.member));
 }
 
 export async function handleVotes(env: Env, url: URL, sub: string | undefined): Promise<Response> {
@@ -353,15 +378,16 @@ export async function handleVotes(env: Env, url: URL, sub: string | undefined): 
   if (sub === 'years') {
     await ensureVotesTables(env);
     const m = p.get('member') && /^[A-Za-z'’. -]{2,60}$/.test(p.get('member')!) ? p.get('member') : null;
-    const cond = ['meeting_date IS NOT NULL'];
+    const cond = ['meeting_date IS NOT NULL', `body_id IN ('city-council', 'redevelopment-agency')`, `meeting_date >= '${SCOPE_FROM}'`];
     const args: unknown[] = [];
     if (body) {
       cond.push('body_id = ?');
       args.push(body);
     }
     if (m) {
-      cond.push('(mover = ? OR seconder = ? OR EXISTS (SELECT 1 FROM motion_votes v WHERE v.motion_id = motions.id AND v.member = ?))');
-      args.push(m, m, m);
+      const l = m.split(' ').pop() ?? m;
+      cond.push('(mover IN (?, ?) OR seconder IN (?, ?) OR EXISTS (SELECT 1 FROM motion_votes v WHERE v.motion_id = motions.id AND v.member IN (?, ?)))');
+      args.push(m, l, m, l, m, l);
     }
     const r = await env.CATALOG_DB.prepare(`SELECT substr(meeting_date, 1, 4) AS year, count(*) AS motions, count(DISTINCT meeting_date) AS meetings FROM motions WHERE ${cond.join(' AND ')} GROUP BY 1 ORDER BY 1 DESC`)
       .bind(...args)
@@ -382,9 +408,8 @@ const NOT_TERMS = new Set('how did does do what when where which who whom whose 
 export async function votesFor(env: Env, question: string, people: Array<{ name: string }>): Promise<{ member: string | null; q: string; items: MotionOut[] } | null> {
   if (!VOTE_Q.test(question)) return null;
   await ensureVotesTables(env);
-  const known = await env.CATALOG_DB.prepare('SELECT member FROM vote_members ORDER BY last_date DESC').all<{ member: string }>();
   const lower = ` ${question.toLowerCase().replace(/[^a-z0-9' -]+/g, ' ')} `;
-  const members = (known.results ?? []).map((r) => r.member);
+  const members = await currentCouncil(env);
   const lastOf = (m: string) => (m.split(' ').pop() ?? m).toLowerCase();
   const said = (m: string) => lower.includes(` ${m.toLowerCase()} `) || lower.includes(` ${lastOf(m)} `) || lower.includes(` ${lastOf(m)}'`);
   // A current official named in the question first, then the most recent member with that name.
@@ -420,7 +445,7 @@ export async function motionEvidence(env: Env, question: string, from: string, t
   const like = terms.map(() => "(lower(m.motion) LIKE ? OR lower(coalesce(m.item, '')) LIKE ?)").join(' OR ');
   const rows = await env.CATALOG_DB.prepare(
     `SELECT m.*, d.title AS doc_title FROM motions m JOIN documents d ON d.id = m.document_id
-     WHERE m.meeting_date BETWEEN ? AND ? AND (${like}) ORDER BY m.meeting_date DESC, m.seq LIMIT ?`,
+     WHERE ${SCOPE_SQL} AND m.meeting_date BETWEEN ? AND ? AND (${like}) ORDER BY m.meeting_date DESC, m.seq LIMIT ?`,
   )
     .bind(from, to, ...terms.flatMap((t) => [`%${t}%`, `%${t}%`]), limit)
     .all<Record<string, unknown>>();

@@ -95,3 +95,13 @@ MOTION: Board Member McCumber motion to approve the minutes as presented. Board 
     expect(v(p.motions[0])).toEqual({ Holdaway: 'yes', Lauret: 'yes', McCumber: 'yes', Wood: 'yes' });
   });
 });
+
+describe('agenda item labels', () => {
+  it('keeps the heading when it runs into a sentence', () => {
+    const p = parseMinutes(`REDEVELOPMENT AGENCY
+September 8, 2026
+3.  CLOSED SESSION The Chair and Board, pursuant to Utah Code 52-4-205, may vote to go into a closed session.
+MOTION: Board Member McCumber motion to go into a closed session. Board Member Lauret seconded the motion. Yes: Board Members Holdaway, Lauret, McCumber, and Wood. No: None. Motion carried 4-0.`, '2026-09-08');
+    expect(p.motions[0].item).toBe('3 CLOSED SESSION');
+  });
+});

@@ -103,8 +103,14 @@ function lastItem(before: string): string | null {
   // The agenda item heading closest before the motion: "5.4 Ordinance 2026-12 Plat Signatures".
   const lines = before.slice(-6000).split(/\n/);
   for (let i = lines.length - 1; i >= 0; i--) {
-    const m = lines[i].trim().match(/^(\d{1,2}(?:\.\d{1,2}){0,2})\.?\s+([A-Z][^\n]{3,160})$/);
-    if (m && !/^\d+$/.test(m[2])) return `${m[1]} ${m[2].replace(/\s+/g, ' ').trim()}`.slice(0, 180);
+    const m = lines[i].trim().match(/^(\d{1,2}(?:\.\d{1,2}){0,2})\.?\s+([A-Z][^\n]{3,600})$/);
+    if (m && !/^\d+$/.test(m[2])) {
+      // A heading run into its first sentence ("3. CLOSED SESSION The Chair and Board ...") keeps the heading.
+      const head = m[2].replace(/\s+/g, ' ').trim();
+      const caps = head.match(/^([A-Z0-9][A-Z0-9 &,'()/-]{3,}?)(?=\s+[A-Z][a-z])/);
+      const label = caps ? caps[1] : head.split(/(?<=[a-z)])\.\s/)[0];
+      return `${m[1]} ${label}`.slice(0, 160);
+    }
   }
   return null;
 }

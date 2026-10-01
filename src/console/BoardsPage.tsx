@@ -26,7 +26,7 @@ interface Board {
   members: Array<{ slug: string; name: string; role: string; term: string | null; photo: string | null }>;
 }
 
-const VOTING = new Set(['city-council', 'redevelopment-agency', 'planning-commission']);
+const VOTING = new Set(['city-council', 'redevelopment-agency']);
 
 function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: () => void }) {
   return (

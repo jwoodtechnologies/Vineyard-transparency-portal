@@ -12,10 +12,9 @@ import { useJson } from './api';
 import { useMemberNames, type MotionRow, type VoteMember } from './votes';
 
 const BODIES: Array<[string, string]> = [
-  ['', 'All bodies'],
-  ['city-council', 'City Council'],
-  ['redevelopment-agency', 'Redevelopment Agency'],
-  ['planning-commission', 'Planning Commission'],
+  ['', 'Council and RDA'],
+  ['city-council', 'City Council meetings'],
+  ['redevelopment-agency', 'RDA board meetings'],
 ];
 const VOTE_LABEL: Record<string, string> = { yes: 'Yes', no: 'No', abstain: 'Abstained', recused: 'Recused', absent: 'Absent' };
 const ORDER: Record<string, number> = { yes: 0, no: 1, abstain: 2, recused: 3, absent: 4 };
@@ -135,7 +134,7 @@ export default function VotesPage() {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Voting records</h1>
-        <p className="vc-page-sub">Every motion in the minutes of the City Council, Redevelopment Agency and Planning Commission, by year and meeting, with each member&apos;s vote.</p>
+        <p className="vc-page-sub">How the current mayor and City Council have voted since their term began in January 2026: every motion in the minutes, by meeting, with each member&apos;s vote. The council also sits as the Redevelopment Agency (RDA) board.</p>
       </header>
 
       <div className="vc-vfilters">
@@ -144,7 +143,7 @@ export default function VotesPage() {
           <input type="search" placeholder="Search motions" defaultValue={q} onKeyDown={(e) => e.key === 'Enter' && set('q', (e.target as HTMLInputElement).value.trim())} onBlur={(e) => e.target.value.trim() !== q && set('q', e.target.value.trim())} />
         </label>
         <select value={member} onChange={(e) => set('member', e.target.value)} aria-label="Member">
-          <option value="">Every member</option>
+          <option value="">Whole council</option>
           {memberList.map((m) => (
             <option key={m.member} value={m.member}>
               {nameOf(m.member, m.fullName).name}
