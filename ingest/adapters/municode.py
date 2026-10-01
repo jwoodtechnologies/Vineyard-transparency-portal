@@ -68,10 +68,21 @@ def body_for(path: list[str]) -> dict | None:
     return None
 
 
+NUM_DATE_RE = re.compile(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})\b")
+
+
 def meeting_date(name: str) -> str | None:
     m = DATE_RE.search(name)
     if not m:
-        return None
+        n = NUM_DATE_RE.search(name)
+        if not n:
+            return None
+        y = int(n.group(3))
+        y = y + 2000 if y < 100 else y
+        try:
+            return datetime(y, int(n.group(1)), int(n.group(2))).date().isoformat()
+        except ValueError:
+            return None
     try:
         return datetime.strptime(f"{m.group(1)[:3].title()} {int(m.group(2))} {m.group(3)}", "%b %d %Y").date().isoformat()
     except ValueError:

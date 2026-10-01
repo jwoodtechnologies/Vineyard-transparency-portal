@@ -327,6 +327,10 @@ def process_mco(api: PortalApi, client: PoliteClient, item: dict, run_id: str, c
     data = r.json()
     text, files = _mco_text(str(data.get("Text") or ""))
     kind = meta.get("entryKind")
+    if kind == "minutes" and not meta.get("documentDate"):
+        from .adapters.municode import meeting_date
+
+        meta["documentDate"] = meeting_date(str(meta.get("entryName") or ""))
     base = {k: v for k, v in meta.items() if k not in ("kind", "path")}
 
     if files and kind in ("minutes", "resolution", "ordinance"):
@@ -345,8 +349,10 @@ def process_mco(api: PortalApi, client: PoliteClient, item: dict, run_id: str, c
         api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": f"listing: {len(queued)} record file(s) queued", "runId": run_id}]})
         return
 
-    if len(text) < 40:
-        api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": "entry has no readable content", "runId": run_id}]})
+    # An entry that is only its own title (no minutes text, no file) is not a record.
+    body_text = text.replace(str(meta.get("entryName") or ""), "", 1).strip()
+    if len(body_text) < (150 if kind in ("minutes", "resolution", "ordinance") else 40):
+        api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": "entry has no content beyond its title", "runId": run_id}]})
         return
     sha = hashlib.sha256(text.encode()).hexdigest()
     extraction = Extraction(pages=[Page(number=None, text=text, section=meta.get("entryName"))], page_count=None)

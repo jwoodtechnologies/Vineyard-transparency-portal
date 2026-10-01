@@ -79,6 +79,73 @@ function secondsToUtcMidnight(): number {
 
 // ---------------------------------------------------------------------------------------------
 
+const MONTHS: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+
+/** A meeting date in a title: "May 11, 1989", "Sept. 4, 2003", "12/10/2025", "6.23.26". */
+export function dateInTitle(title: string): string | null {
+  const iso = (y: number, m: number, d: number) => (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null);
+  const w = title.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})\b/i);
+  if (w) return iso(Number(w[3]), MONTHS[w[1].slice(0, 3).toLowerCase()], Number(w[2]));
+  const n = title.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})\b/);
+  if (n) return iso(n[3].length === 2 ? 2000 + Number(n[3]) : Number(n[3]), Number(n[1]), Number(n[2]));
+  return null;
+}
+
+/**
+ * One record per meeting: fills missing meeting dates from titles, then folds any second copy of
+ * the same minutes or agenda (same body, date and special/regular) into the first, keeping the
+ * CivicClerk copy when there is one. Sources move to the kept record; the copy's search text goes.
+ */
+async function mergeDuplicateMeetings(env: Env): Promise<{ dated: number; merged: number }> {
+  const db = env.CATALOG_DB;
+  const repo = new SearchRepository(env);
+  let dated = 0;
+  const undated = await db.prepare("SELECT id, title, search_shard FROM documents WHERE document_type IN ('minutes','agenda','agenda_packet') AND document_date IS NULL LIMIT 5000").all<{ id: string; title: string; search_shard: number | null }>();
+  for (const d of undated.results ?? []) {
+    const date = dateInTitle(d.title);
+    if (!date) continue;
+    await db.prepare('UPDATE documents SET document_date = ?, year = ? WHERE id = ?').bind(date, Number(date.slice(0, 4)), d.id).run();
+    if (d.search_shard != null && repo.activeShards.includes(d.search_shard)) await repo.shard(d.search_shard).prepare('UPDATE shard_documents SET document_date = ?, year = ? WHERE document_id = ?').bind(date, Number(date.slice(0, 4)), d.id).run().catch(() => undefined);
+    dated++;
+  }
+  const groups = await db
+    .prepare(
+      `SELECT document_type AS t, document_date AS dt, government_body_id AS b, (CASE WHEN lower(title) LIKE '%special%' THEN 1 ELSE 0 END) AS sp,
+              json_group_array(json_object('id', id, 'src', source_id, 'seen', first_seen_at, 'shard', search_shard)) AS docs
+       FROM documents WHERE document_type IN ('minutes','agenda','agenda_packet') AND document_date IS NOT NULL AND government_body_id IS NOT NULL
+       GROUP BY t, dt, b, sp HAVING count(*) > 1 LIMIT 2000`,
+    )
+    .all<{ docs: string }>();
+  let merged = 0;
+  // Code site entries that were only a title (no minutes text, no file) are not records.
+  const empties = await db
+    .prepare("SELECT id, search_shard FROM documents WHERE source_id = 'vineyard-municipal-code' AND mime_type LIKE 'text/html%' AND document_type IN ('minutes','resolution','ordinance') AND coalesce(file_size, 0) < 200 LIMIT 2000")
+    .all<{ id: string; search_shard: number | null }>();
+  for (const e of empties.results ?? []) {
+    await db.batch([db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id)]);
+    if (e.search_shard != null && repo.activeShards.includes(e.search_shard)) await repo.removeDocument(e.search_shard, e.id).catch(() => 0);
+    merged++;
+  }
+  for (const g of groups.results ?? []) {
+    const docs = (JSON.parse(g.docs) as Array<{ id: string; src: string; seen: string; shard: number | null }>).sort(
+      (a, b) => (a.src === 'vineyard-civicclerk-meetings' ? 0 : 1) - (b.src === 'vineyard-civicclerk-meetings' ? 0 : 1) || String(a.seen).localeCompare(String(b.seen)),
+    );
+    const keep = docs[0];
+    for (const dup of docs.slice(1)) {
+      await db.batch([
+        db.prepare('UPDATE OR IGNORE document_sources SET document_id = ? WHERE document_id = ?').bind(keep.id, dup.id),
+        db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(dup.id),
+        db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(dup.id),
+        db.prepare('DELETE FROM document_relationships WHERE from_document_id = ? OR to_id = ?').bind(dup.id, dup.id),
+        db.prepare('DELETE FROM documents WHERE id = ?').bind(dup.id),
+      ]);
+      if (dup.shard != null && repo.activeShards.includes(dup.shard)) await repo.removeDocument(dup.shard, dup.id).catch(() => 0);
+      merged++;
+    }
+  }
+  return { dated, merged };
+}
+
 async function migrate(env: Env): Promise<Response> {
   const catalog = splitSql(catalogSql);
   const search = splitSql(searchSql);
@@ -91,10 +158,11 @@ async function migrate(env: Env): Promise<Response> {
     await db.prepare("UPDATE shard_documents SET document_date = NULL, year = NULL WHERE source_id = 'vineyard-gis' AND document_date IS NOT NULL").run().catch(() => undefined);
   }
   await env.CATALOG_DB.prepare("UPDATE documents SET document_date = NULL, year = NULL, currency = 'current' WHERE source_id = 'vineyard-gis' AND document_date IS NOT NULL").run();
+  const meetings = await mergeDuplicateMeetings(env).catch((e) => ({ error: String(e).slice(0, 200) }));
   await ensureActivityTables(env);
   // While no panel owner exists, each migrate run prints a fresh one-time setup code (24 hours).
   const panelSetupCode = await newSetupCode(env);
-  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, ...(panelSetupCode ? { panelSetupCode } : {}) });
+  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, meetings, ...(panelSetupCode ? { panelSetupCode } : {}) });
 }
 
 async function quota(env: Env): Promise<Response> {

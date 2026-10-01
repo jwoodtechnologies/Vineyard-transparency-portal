@@ -219,6 +219,17 @@ export class SearchRepository {
    * Replaces a document's chunks in its shard inside one D1 batch (one transaction), so the FTS5
    * index is written as a single segment. Returns D1's own rows_written accounting.
    */
+  /** Removes a document's chunks, search entries and filter row from its shard. */
+  async removeDocument(shard: number, documentId: string): Promise<number> {
+    const db = this.shard(shard);
+    const r = await db.batch([
+      db.prepare("INSERT INTO chunks_fts(chunks_fts, rowid, doc_title, section_title, text) SELECT 'delete', rowid, doc_title, section_title, text FROM chunks WHERE document_id = ?").bind(documentId),
+      db.prepare('DELETE FROM chunks WHERE document_id = ?').bind(documentId),
+      db.prepare('DELETE FROM shard_documents WHERE document_id = ?').bind(documentId),
+    ]);
+    return r.reduce((t, x) => t + Number(x.meta?.rows_written ?? 0), 0);
+  }
+
   async replaceDocument(shard: number, doc: ShardDocumentInput, chunks: ChunkInput[], append = false): Promise<number> {
     const db = this.shard(shard);
     const now = new Date().toISOString();

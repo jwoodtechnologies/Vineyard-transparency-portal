@@ -42,6 +42,8 @@ class MunicodeTests(unittest.TestCase):
 
     def test_helpers(self):
         self.assertEqual(meeting_date("Special Meeting - Sept. 4, 2003"), "2003-09-04")
+        self.assertEqual(meeting_date("12/10/2025"), "2025-12-10")
+        self.assertEqual(meeting_date("6.23.26 Budget"), "2026-06-23")
         self.assertIn("name=May_11%2C_1989", content_url("minutes", "May_11,_1989"))
 
 
