@@ -160,25 +160,95 @@ interface HeldMeeting {
   minutesDocumentId: string | null;
 }
 
+/** A meeting whose own minutes the portal has read: how many motions, and how many on policy items. */
+interface MinutesRead {
+  date: string;
+  bodyId: string;
+  documentId: string;
+  total: number;
+  substantive: number;
+}
+
+const BODY_LABEL: Record<string, string> = { 'city-council': 'City Council', 'redevelopment-agency': 'Redevelopment Agency Board', 'planning-commission': 'Planning Commission' };
+
+/** This year's held meetings (one per body and day) and which of them have their own minutes read. */
+function useMeetingStatus(bodies: string[], year: number, on: boolean) {
+  const m1 = useJson<{ items: HeldMeeting[] }>(on ? `/api/meetings?body=${bodies[0]}&year=${year}&pageSize=100` : null);
+  const m2 = useJson<{ items: HeldMeeting[] }>(on && bodies[1] ? `/api/meetings?body=${bodies[1]}&year=${year}&pageSize=100` : null);
+  const rd = useJson<{ meetings: MinutesRead[] }>(on ? `/api/votes/meetings?year=${year}${bodies.length === 1 ? `&body=${bodies[0]}` : ''}` : null);
+  const [today] = useState(() => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
+  return useMemo(() => {
+    const ready = m1.status === 'done' && (!bodies[1] || m2.status === 'done') && rd.status === 'done';
+    const read = new Map((rd.status === 'done' ? rd.data.meetings : []).map((r) => [`${r.bodyId}|${r.date}`, r]));
+    const held = new Map<string, { key: string; bodyId: string; date: string; meeting: HeldMeeting }>();
+    const add = (items: HeldMeeting[], bodyId: string) => {
+      for (const m of items) {
+        const date = (m.date ?? '').slice(0, 10);
+        if (!date || date > today || /cancel/i.test(`${m.title} ${m.status ?? ''}`)) continue;
+        const key = `${bodyId}|${date}`;
+        const prev = held.get(key);
+        // One card per body and day: the meeting itself wins over a hearing notice filed on the same day.
+        if (!prev || (/notice/i.test(prev.meeting.title) && !/notice/i.test(m.title))) held.set(key, { key, bodyId, date, meeting: m });
+      }
+    };
+    if (m1.status === 'done') add(m1.data.items, bodies[0]);
+    if (m2.status === 'done' && bodies[1]) add(m2.data.items, bodies[1]);
+    return { ready, read, held: [...held.values()] };
+  }, [m1, m2, rd, bodies, today]);
+}
+
+function StatusCard({ to, date, title, note }: { to: string; date: string; title: string; note: string }) {
+  return (
+    <Link to={to} className="vc-mcard vc-mcard-head vc-mcard-wait">
+      <span className="vc-mcard-date">
+        <span>{fmt(date, { month: 'short' })}</span>
+        <b>{fmt(date, { day: 'numeric' })}</b>
+      </span>
+      <span className="vc-mcard-title">
+        <span className="vc-mcard-body">{title}</span>
+        <span className="vc-mcard-sub">{note}</span>
+      </span>
+      <ChevronRight size={18} className="vc-mcard-go" />
+    </Link>
+  );
+}
+
 function YearSection({ year, query, open, onToggle, member, attendance, bodies, plain }: { year: number; query: string; open: boolean; onToggle: () => void; member: string | null; attendance: Attendance | null; bodies: string[]; plain: boolean }) {
   const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?scope=current&${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
-  const m1 = useJson<{ items: HeldMeeting[] }>(open && plain ? `/api/meetings?body=${bodies[0]}&year=${year}&pageSize=100` : null);
-  const m2 = useJson<{ items: HeldMeeting[] }>(open && plain && bodies[1] ? `/api/meetings?body=${bodies[1]}&year=${year}&pageSize=100` : null);
-  const [today] = useState(() => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
-  // Meetings already held whose minutes the city has not posted: shown so the newest meeting is never missing.
-  const waiting = useMemo(() => {
-    const all = [...(m1.status === 'done' ? m1.data.items : []), ...(m2.status === 'done' ? m2.data.items : [])];
-    return all.filter((m) => m.date && m.date.slice(0, 10) <= today && !m.minutesDocumentId && !/cancel/i.test(`${m.title} ${m.status ?? ''}`) && !/work (meeting|session)/i.test(m.title));
-  }, [m1, m2, today]);
+  const status = useMeetingStatus(bodies, year, open && plain);
   const groups = useMemo(() => {
     if (list.status !== 'done') return [];
     const by = new Map<string, MotionRow[]>();
     for (const m of list.data.items) {
-      const k = `${m.date ?? ''}|${m.bodyId ?? ''}`;
+      const k = `${m.bodyId ?? ''}|${m.date ?? ''}`;
       (by.get(k) ?? by.set(k, []).get(k)!).push(m);
     }
     return [...by.entries()];
   }, [list]);
+  // Every other meeting held this year gets a card too, saying why it has no policy votes listed.
+  const others = useMemo(() => {
+    if (!plain || !status.ready) return [];
+    const shown = new Set(groups.map(([k]) => k));
+    const out: Array<{ k: string; date: string; to: string; title: string; note: string }> = [];
+    const seen = new Set<string>();
+    for (const h of status.held) {
+      if (shown.has(h.key)) continue;
+      seen.add(h.key);
+      const r = status.read.get(h.key);
+      const title = h.meeting.title || BODY_LABEL[h.bodyId] || 'Meeting';
+      const to = `/meetings/${encodeURIComponent(h.meeting.id)}`;
+      if (!r) out.push({ k: h.key, date: h.date, to, title, note: 'Minutes not posted yet. Votes appear once the city posts them.' });
+      else if (r.total > 0) out.push({ k: h.key, date: h.date, to, title, note: `Routine votes only (approving minutes, the agenda, a closed session or adjourning). No policy items were voted on.` });
+      else out.push({ k: h.key, date: h.date, to, title, note: 'No votes were taken at this meeting.' });
+    }
+    // Minutes read for a meeting the calendar does not list (rare): still shown, linked to the minutes.
+    for (const r of status.read.values()) {
+      const k = `${r.bodyId}|${r.date}`;
+      if (shown.has(k) || seen.has(k) || r.substantive > 0) continue;
+      out.push({ k, date: r.date, to: `/documents/${encodeURIComponent(r.documentId)}`, title: BODY_LABEL[r.bodyId] ?? 'Meeting', note: r.total > 0 ? 'Routine votes only. No policy items were voted on.' : 'No votes were taken at this meeting.' });
+    }
+    return out;
+  }, [plain, status, groups]);
   return (
     <section className="vc-year">
       <button type="button" className="vc-year-head" onClick={onToggle} aria-expanded={open}>
@@ -192,24 +262,14 @@ function YearSection({ year, query, open, onToggle, member, attendance, bodies, 
         </div>
       )}
       {open && list.status === 'error' && <p className="vc-mo-note">This year could not load just now.</p>}
-      {open && list.status === 'done' && !groups.length && !waiting.length && <p className="vc-mo-note">No votes match.</p>}
+      {open && list.status === 'done' && !groups.length && !others.length && <p className="vc-mo-note">No votes match.</p>}
       {open && (
         <div className="vc-mcards">
-          {[...groups.map(([k, items]) => ({ k, date: items[0].date ?? '', items, wait: null as HeldMeeting | null })), ...waiting.map((w) => ({ k: w.id, date: (w.date ?? '').slice(0, 10), items: [] as MotionRow[], wait: w }))]
+          {[...groups.map(([k, items]) => ({ k, date: items[0].date ?? '', items, other: null as (typeof others)[number] | null })), ...others.map((o) => ({ k: o.k, date: o.date, items: [] as MotionRow[], other: o }))]
             .sort((a, b) => b.date.localeCompare(a.date))
             .map((g) =>
-              g.wait ? (
-                <Link key={g.k} to={`/meetings/${encodeURIComponent(g.wait.id)}`} className="vc-mcard vc-mcard-head vc-mcard-wait">
-                  <span className="vc-mcard-date">
-                    <span>{fmt(g.date, { month: 'short' })}</span>
-                    <b>{fmt(g.date, { day: 'numeric' })}</b>
-                  </span>
-                  <span className="vc-mcard-title">
-                    <span className="vc-mcard-body">{g.wait.title.replace(/^Special /, 'Special ')}</span>
-                    <span className="vc-mcard-sub">Minutes not posted yet. Votes appear once the city posts them.</span>
-                  </span>
-                  <ChevronRight size={18} className="vc-mcard-go" />
-                </Link>
+              g.other ? (
+                <StatusCard key={g.k} to={g.other.to} date={g.date} title={g.other.title} note={g.other.note} />
               ) : (
                 <MeetingCard key={g.k} items={g.items} member={member} att={attendance?.meetings.find((x) => x.date === g.items[0].date) ?? null} />
               ),
@@ -220,18 +280,15 @@ function YearSection({ year, query, open, onToggle, member, attendance, bodies, 
   );
 }
 
-/** How many of this year's meetings have minutes posted (votes come only from posted minutes). */
+/** How many of this year's meetings have their own minutes posted (votes come only from posted minutes). */
 function Coverage({ bodies }: { bodies: string[] }) {
-  const [today] = useState(() => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
-  const y = Number(today.slice(0, 4));
-  const a = useJson<{ items: Array<{ date: string | null; title: string; status?: string; minutesDocumentId: string | null }> }>(`/api/meetings?body=${bodies[0]}&year=${y}&pageSize=100`);
-  const b = useJson<{ items: Array<{ date: string | null; title: string; status?: string; minutesDocumentId: string | null }> }>(bodies[1] ? `/api/meetings?body=${bodies[1]}&year=${y}&pageSize=100` : null);
-  if (a.status !== 'done' || (bodies[1] && b.status !== 'done')) return null;
-  const all = [...a.data.items, ...(b.status === 'done' ? b.data.items : [])].filter((m) => m.date && m.date.slice(0, 10) <= today && !/cancel/i.test(`${m.title} ${m.status ?? ''}`));
-  const posted = all.filter((m) => m.minutesDocumentId).length;
+  const [y] = useState(() => new Date(Date.now() - 6 * 3600_000).getUTCFullYear());
+  const s = useMeetingStatus(bodies, y, true);
+  if (!s.ready) return null;
+  const posted = s.held.filter((h) => s.read.has(h.key)).length;
   return (
     <p className="vc-coverage">
-      {all.length} {all.length === 1 ? 'meeting' : 'meetings'} held so far in {y}; the city has posted minutes for {posted}. Votes appear here once a meeting&apos;s minutes are posted.
+      {s.held.length} {s.held.length === 1 ? 'meeting' : 'meetings'} held so far in {y}; the city has posted minutes for {posted}. Every meeting is listed below; votes appear once its minutes are posted.
     </p>
   );
 }

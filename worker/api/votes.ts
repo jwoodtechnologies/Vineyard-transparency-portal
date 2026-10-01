@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 7;
+export const VOTES_PARSER = 8;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -109,7 +109,8 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
     .prepare('SELECT document_id, rank, motions FROM vote_docs WHERE meeting_key = ? AND document_id != ? AND motions > 0 ORDER BY rank DESC, motions DESC LIMIT 1')
     .bind(key, d.id)
     .first<{ document_id: string; rank: number; motions: number }>();
-  if (other && (other.rank > rank || (other.rank === rank && other.motions >= motions.length))) {
+  // A copy with no readable motions (a scan before OCR, say) never displaces one that has them.
+  if (other && (!motions.length || other.rank > rank || (other.rank === rank && other.motions >= motions.length))) {
     await db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)').bind(d.id, key, body, date, rank, VOTES_PARSER, now).run();
     return { motions: 0, votes: 0, superseded: true };
   }
@@ -505,6 +506,7 @@ export async function handleVotes(env: Env, url: URL, sub: string | undefined): 
   const year = Number(p.get('year')) || null;
   const body = p.get('body') && /^[a-z0-9-]{2,60}$/.test(p.get('body')!) ? p.get('body') : null;
   if (sub === 'attendance') return json(await commissionAttendance(env), { cache: 'public, max-age=300' });
+  if (sub === 'meetings') return json({ meetings: await meetingMinutes(env, body, year) }, { cache: 'public, max-age=300' });
   if (sub === 'members') return json({ members: await voteMembers(env, { year, body }) }, { cache: 'public, max-age=300' });
   if (sub === 'years') {
     await ensureVotesTables(env);
@@ -623,4 +625,41 @@ export async function motionEvidence(env: Env, question: string, from: string, t
       categoriesJson: '[]',
     };
   });
+}
+
+export interface MeetingMinutes {
+  date: string;
+  bodyId: string;
+  documentId: string;
+  /** Every motion in the meeting's own minutes, routine ones included. */
+  total: number;
+  /** Motions on policy items (what the voting record lists). */
+  substantive: number;
+}
+
+/**
+ * Each meeting since SCOPE_FROM whose own minutes have been read, keyed by the date printed in them
+ * (a file titled for one meeting that holds an earlier meeting's minutes counts for the earlier one).
+ */
+export async function meetingMinutes(env: Env, body: string | null, year: number | null): Promise<MeetingMinutes[]> {
+  await ensureVotesTables(env);
+  const bodies = body === PC ? [PC] : body && SCOPE_BODIES.includes(body) ? [body] : SCOPE_BODIES;
+  const rows =
+    (
+      await env.CATALOG_DB.prepare(
+        `SELECT body_id, meeting_date, document_id, motions, rank FROM vote_docs WHERE body_id IN (${bodies.map(() => '?').join(', ')}) AND meeting_date >= ?${year ? ' AND substr(meeting_date, 1, 4) = ?' : ''} ORDER BY motions DESC, rank DESC`,
+      )
+        .bind(...bodies, SCOPE_FROM, ...(year ? [String(year)] : []))
+        .all<{ body_id: string; meeting_date: string; document_id: string; motions: number; rank: number }>()
+    ).results ?? [];
+  const sub = await queryMotions(env, { body: body === PC ? PC : bodies.length === 1 ? bodies[0] : null, year, pageSize: 400 });
+  const count = new Map<string, number>();
+  for (const m of sub.items) count.set(`${m.bodyId}|${m.date}`, (count.get(`${m.bodyId}|${m.date}`) ?? 0) + 1);
+  const out = new Map<string, MeetingMinutes>();
+  for (const r of rows) {
+    const k = `${r.body_id}|${r.meeting_date}`;
+    if (!r.meeting_date || out.has(k)) continue;
+    out.set(k, { date: r.meeting_date, bodyId: r.body_id, documentId: r.document_id, total: Number(r.motions), substantive: count.get(k) ?? 0 });
+  }
+  return [...out.values()].sort((a, b) => b.date.localeCompare(a.date));
 }
