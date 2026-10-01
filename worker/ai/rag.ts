@@ -224,6 +224,7 @@ async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: s
 const CURRENT = /\b(who is|who's|who are|current|currently|now|today|as of|latest|presently|still|this year|right now)\b/i;
 const ROLE = /\b(mayor|deputy mayor|council ?(member|man|woman)s?|city council|city manager|recorder|city attorney|director|department head|staff|employees?|who works|chief|official|commissioners?)\b/i;
 const PRESENT_Q = /\b(now|current|currently|today|this year|latest|recent|recently|right now|going on|happening|doing|working on|plans?|planned|planning|upcoming|status|still|update|progress)\b/i;
+const HOWTO = /\b(how (do|can|should|would) (i|we|you|residents?)|where (do|can) i|how to|sign up|apply for|register for|reserve|reservation|get a (permit|pass|license|meter|card)|request a|schedule an?)\b/i;
 const RULE = /\b(can i|can we|can you|am i allowed|is it (legal|allowed|permitted)|allowed|permitted|prohibited|illegal|rules?|regulations?|required|requirements?|do i need|need a permit|code says|setbacks?|how (many|tall|high|far))\b/i;
 const VOTE = /\b(vote[sd]?|voting|motion|moved|second(ed)?|position|stance|support(ed)?|oppose[sd]?|against|for or against|aye|nay)\b/i;
 
@@ -452,6 +453,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     hits = [...hits.slice(0, 30), ...found, ...hits.slice(30)].filter((h) => (seenT.has(h.chunkId) ? false : (seenT.add(h.chunkId), true)));
   }
   const topicNotes = topics.map((t) => t.note).filter(Boolean).join(' ');
+  // "How do I...": the city website's own page for that service says how, so it is read first.
+  const pageIds = new Set<string>();
+  if (HOWTO.test(body.question)) {
+    const q0 = plan?.queries[0] ?? retrievalText;
+    const pages = await Promise.all([q0, retrievalText].map((q) => retrieve(q, { ...filters, sourceIds: ['vineyard-city-website'], documentTypes: ['other'] }).catch(() => [] as ChunkHit[])));
+    const found = interleave(pages, 4);
+    found.forEach((h) => pageIds.add(h.chunkId));
+    const seenP = new Set<string>();
+    hits = [...hits.slice(0, 20), ...found, ...hits.slice(20)].filter((h) => (seenP.has(h.chunkId) ? false : (seenP.add(h.chunkId), true)));
+  }
   // "The first meeting in May 1989", "the earliest minutes": the actual earliest record of that kind
   // in the window is read directly, so "first" means first by date, not best keyword match.
   const firstIds = new Set<string>();
@@ -515,6 +526,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     }
     lead(govIds, 1);
     lead(topicIds, 3);
+    lead(pageIds, 2);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
     if (person && /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role)) lead(govIds, 2);
