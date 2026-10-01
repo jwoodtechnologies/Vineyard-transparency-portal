@@ -190,7 +190,7 @@ export default function VotesPage() {
           <input type="search" placeholder="Search motions" defaultValue={q} onKeyDown={(e) => e.key === 'Enter' && set('q', (e.target as HTMLInputElement).value.trim())} onBlur={(e) => e.target.value.trim() !== q && set('q', e.target.value.trim())} />
         </label>
         <select value={member} onChange={(e) => set('member', e.target.value)} aria-label="Member">
-          <option value="">Whole council</option>
+          <option value="">{body === 'planning-commission' ? 'Whole commission' : 'Whole council'}</option>
           {memberList.map((m) => (
             <option key={m.member} value={m.member}>
               {nameOf(m.member, m.fullName).name}
