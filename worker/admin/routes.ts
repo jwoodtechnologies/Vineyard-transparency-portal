@@ -209,6 +209,11 @@ async function migrate(env: Env): Promise<Response> {
   const recordDates = await fixRecordDates(env).catch((e) => ({ error: String(e).slice(0, 200) }));
   // Voting records: the next sets of minutes are read (each migrate run continues the backfill).
   const votes = await processVotes(env, 55_000, 1000).catch((e) => ({ error: String(e).slice(0, 200) }));
+  // Scanned files still waiting on text recognition (OCR) go back in the queue, fetched fresh, so
+  // the next run with OCR on reads them (minutes first).
+  await env.CATALOG_DB.prepare(
+    "UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = CASE WHEN document_id IN (SELECT id FROM documents WHERE document_type = 'minutes') THEN 1 ELSE priority END WHERE document_id IN (SELECT id FROM documents WHERE ocr_status = 'pending') AND status IN ('done', 'unchanged', 'error', 'skipped')",
+  ).run().catch(() => undefined);
   // Files skipped only because a robots.txt answered 403 (ArcGIS, Amazon S3) go back in the queue.
   await env.CATALOG_DB.prepare("UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL WHERE status = 'skipped' AND last_error LIKE 'RobotsDisallowed%'").run().catch(() => undefined);
   await ensureActivityTables(env);
@@ -485,7 +490,7 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
       ]);
       const rows = sum(r);
       await budget.record(rows);
-      return json({ status: 'unchanged', documentId: known.id, shard: known.search_shard, needsChunks: Number(known.chunk_count ?? 0) === 0 && known.text_status !== 'empty' && known.text_status !== 'unsupported', needsArchive: known.archive_status !== 'archived', rowsWritten: rows });
+      return json({ status: 'unchanged', documentId: known.id, shard: known.search_shard, needsChunks: (Number(known.chunk_count ?? 0) === 0 && known.text_status !== 'empty' && known.text_status !== 'unsupported') || known.ocr_status === 'pending', needsArchive: known.archive_status !== 'archived', rowsWritten: rows });
     }
     // Same URL, different bytes: a new version. The old version row keeps its hash and archive key.
     const version = Number(known.current_version ?? 1) + 1;
@@ -681,6 +686,8 @@ async function putChunks(env: Env, id: string, body: Json, budget: Budget): Prom
   );
   const total = await repo.chunkCount(Number(doc.search_shard), id);
   const chars = chunks.reduce((t, c) => t + c.text.length, 0);
+  // New text for minutes: the voting records read them again on the next pass.
+  if (!append) await env.CATALOG_DB.prepare('DELETE FROM vote_docs WHERE document_id = ?').bind(id).run().catch(() => undefined);
   const u = await env.CATALOG_DB.prepare(
     `UPDATE documents SET chunk_count = ?, character_count = CASE WHEN ? THEN character_count + ? ELSE ? END, text_status = ?, ocr_status = coalesce(?, ocr_status), updated_at = ? WHERE id = ?`,
   )

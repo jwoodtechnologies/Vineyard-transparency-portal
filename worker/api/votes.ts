@@ -271,7 +271,8 @@ export async function currentRoster(env: Env, body: string, siteNames: string[])
       const termOk = !end || Number(end[1]) >= year;
       if (!termOk || REPLACED.has(p.name.toLowerCase())) continue;
       const have = out.get(lastOf(p.name));
-      const siteRole = /alternate/i.test(p.role) ? 'Alternate' : /vice/i.test(p.role) ? 'Vice Chair' : /chair/i.test(p.role) ? 'Chair' : /^member$/i.test(p.role) ? 'Commissioner' : p.role;
+      // Only a body's own chair is "Chair" ("Library Board Chair"); "VYC Beautification Chair" keeps its title.
+      const siteRole = /alternate/i.test(p.role) ? 'Alternate' : /^(?:[a-z]+ (?:board|commission) )?vice[- ]chair(?:person)?$/i.test(p.role) ? 'Vice Chair' : /^(?:[a-z]+ (?:board|commission) )?chair(?:person)?$/i.test(p.role) ? 'Chair' : /^member$/i.test(p.role) ? 'Commissioner' : p.role;
       out.set(lastOf(p.name), { name: have?.name ?? p.name, role: have && have.role !== 'Commissioner' ? have.role : siteRole, term: p.term, slug: p.slug, photo: p.photo_url ? `/api/people/${p.slug}/photo` : null });
     }
   }
