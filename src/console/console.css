@@ -253,7 +253,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem clamp(1rem, 3vw, 1.75rem);
-  background: color-mix(in srgb, var(--vc-bg) 78%, transparent);
+  background: var(--vc-bg);
   backdrop-filter: saturate(1.4) blur(18px);
   -webkit-backdrop-filter: saturate(1.4) blur(18px);
   border-bottom: 1px solid transparent;
@@ -2433,7 +2433,7 @@ button.vc-cal-event {
     -webkit-backdrop-filter: none;
   }
   .vc-topbar {
-    background: color-mix(in srgb, var(--vc-bg) 94%, transparent);
+    background: var(--vc-bg);
   }
   .vc-legal,
   .vc-corners {

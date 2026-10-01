@@ -8,7 +8,7 @@ import type { ServiceLink } from './services';
 
 export interface DirectoryEntry extends ServiceLink {
   id: string;
-  group: 'Records and government' | 'Permits and development' | 'Utilities and public works' | 'Money and reports' | 'Parks, library and community' | 'Safety and emergencies' | 'Jobs and volunteering';
+  group: 'Records and government' | 'Permits and development' | 'Utilities and public works' | 'Financial reports' | 'Parks, library and community' | 'Safety and emergencies' | 'Jobs and volunteering';
   match: RegExp;
 }
 
@@ -59,14 +59,14 @@ export const DIRECTORY: DirectoryEntry[] = [
   { id: 'dump', group: 'Utilities and public works', label: 'City dump passes', href: `${G}/community_/city_dump_passes.php`, kind: 'form', match: /\b(dump pass|landfill|transfer station|bulk waste|green waste)\b/i },
   { id: 'eco-pass', group: 'Utilities and public works', label: 'UTA ECO Pass', href: `${G}/services/uta_eco_pass.php`, kind: 'page', match: /\b(eco ?pass|uta|frontrunner|bus pass|transit pass)\b/i },
 
-  // Money and reports
-  { id: 'fees', group: 'Money and reports', label: 'Fee schedule', href: `${G}/government/fee_schedule.php`, kind: 'page', match: /\b(fee schedule|fees?|how much does (a|it) cost|impact fees?)\b/i },
-  { id: 'budget', group: 'Money and reports', label: 'City budget', href: `${G}/government/budget.php`, kind: 'page', match: /\b(budget|appropriation|fiscal year)\b/i },
-  { id: 'acfr', group: 'Money and reports', label: 'Annual financial report', hint: 'Audited financial statements', href: `${G}/government/annual_financial_report.php`, kind: 'page', match: /\b(annual financial report|acfr|cafr|audit(ed)?|financial statements?)\b/i },
-  { id: 'finance', group: 'Money and reports', label: 'Finance department', href: `${G}/government/finance.php`, kind: 'page', match: /\b(finance department|city finances?|debt|bonds?)\b/i },
-  { id: 'transparent-utah', group: 'Money and reports', label: 'Transparent Utah', hint: 'Every city payment and salary', href: 'https://transparent.utah.gov/', kind: 'page', match: /\b(salar(y|ies)|wages?|spending|checks?|payments? to|vendors?|transparent utah|how much (do|does) .* (make|earn|paid))\b/i },
-  { id: 'rfp', group: 'Money and reports', label: 'Requests for proposals', hint: 'Open bids', href: `${G}/government/request_for_proposals_(rfp).php`, kind: 'page', match: /\b(rfps?|requests? for proposals?|bids?|bidding|procurement|contract opportunit)\b/i },
-  { id: 'reimburse', group: 'Money and reports', label: 'Library and rec center reimbursement', href: `${G}/community_/library_reimbursement.php`, kind: 'form', match: /\b(reimburse|rec center|recreation center|library card fee)\b/i },
+  // Financial reports
+  { id: 'fees', group: 'Financial reports', label: 'Fee schedule', href: `${G}/government/fee_schedule.php`, kind: 'page', match: /\b(fee schedule|fees?|how much does (a|it) cost|impact fees?)\b/i },
+  { id: 'budget', group: 'Financial reports', label: 'City budget', href: `${G}/government/budget.php`, kind: 'page', match: /\b(budget|appropriation|fiscal year)\b/i },
+  { id: 'acfr', group: 'Financial reports', label: 'Annual financial report', hint: 'Audited financial statements', href: `${G}/government/annual_financial_report.php`, kind: 'page', match: /\b(annual financial report|acfr|cafr|audit(ed)?|financial statements?)\b/i },
+  { id: 'finance', group: 'Financial reports', label: 'Finance department', href: `${G}/government/finance.php`, kind: 'page', match: /\b(finance department|city finances?|debt|bonds?)\b/i },
+  { id: 'transparent-utah', group: 'Financial reports', label: 'Transparent Utah', hint: 'Every city payment and salary', href: 'https://transparent.utah.gov/', kind: 'page', match: /\b(salar(y|ies)|wages?|spending|checks?|payments? to|vendors?|transparent utah|how much (do|does) .* (make|earn|paid))\b/i },
+  { id: 'rfp', group: 'Financial reports', label: 'Requests for proposals', hint: 'Open bids', href: `${G}/government/request_for_proposals_(rfp).php`, kind: 'page', match: /\b(rfps?|requests? for proposals?|bids?|bidding|procurement|contract opportunit)\b/i },
+  { id: 'reimburse', group: 'Financial reports', label: 'Library and rec center reimbursement', href: `${G}/community_/library_reimbursement.php`, kind: 'form', match: /\b(reimburse|rec center|recreation center|library card fee)\b/i },
 
   // Parks, library and community
   { id: 'parks', group: 'Parks, library and community', label: 'Parks', href: `${G}/government/parks.php`, kind: 'page', match: /\b(parks?|pavilion|reserv(e|ation)|playground)\b/i },
@@ -96,7 +96,7 @@ export const DIRECTORY: DirectoryEntry[] = [
   { id: 'volunteer', group: 'Jobs and volunteering', label: 'Volunteer', href: `${G}/community_/volunteer.php`, kind: 'form', match: /\bvolunteer/i },
 ];
 
-export const DIRECTORY_GROUPS: Array<DirectoryEntry['group']> = ['Records and government', 'Permits and development', 'Utilities and public works', 'Money and reports', 'Parks, library and community', 'Safety and emergencies', 'Jobs and volunteering'];
+export const DIRECTORY_GROUPS: Array<DirectoryEntry['group']> = ['Records and government', 'Permits and development', 'Utilities and public works', 'Financial reports', 'Parks, library and community', 'Safety and emergencies', 'Jobs and volunteering'];
 
 /** The entries a question asks for, strongest first, at most `max`. */
 export function directoryFor(question: string, max = 4): DirectoryEntry[] {
