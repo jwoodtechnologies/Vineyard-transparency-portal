@@ -1,0 +1,75 @@
+name: Backfill archive (parallel)
+
+# Runs several indexing runners at once, each on its own slice of the crawl queue, to load the
+# whole archive (minutes since 1989, resolutions, ordinances, codes, CivicClerk files) quickly.
+# Start it from the Actions tab. Each runner works up to `hours`, politely paced per site.
+on:
+  workflow_dispatch:
+    inputs:
+      runners:
+        description: Parallel runners (1 to 8)
+        default: "4"
+      hours:
+        description: Wall-clock budget per runner in hours
+        default: "5.5"
+      ocr:
+        description: OCR image-only PDF pages with Tesseract
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: backfill
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.m.outputs.shards }}
+    steps:
+      - id: m
+        env:
+          N: ${{ inputs.runners || '4' }}
+        run: |
+          [[ "$N" =~ ^[1-8]$ ]] || { echo "runners must be 1 to 8"; exit 2; }
+          echo "shards=$(python3 -c "import json,os; print(json.dumps(list(range(int(os.environ['N'])))))")" >> "$GITHUB_OUTPUT"
+
+  ingest:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    env:
+      VTP_API_BASE: ${{ vars.VTP_API_BASE || 'https://vineyardportal.org,https://vineyard-transparency-portal.citizenjwood.workers.dev' }}
+      VTP_OIDC_AUDIENCE: vineyardportal.org
+      VTP_TRIGGER: backfill
+      VTP_SHARD: ${{ matrix.shard }}
+      # Several runners share each site: slower per runner, so the sites see the usual polite rate.
+      VTP_MIN_INTERVAL_SECONDS: "2"
+      IN_RUNNERS: ${{ inputs.runners || '4' }}
+      IN_HOURS: ${{ inputs.hours || '5.5' }}
+      IN_OCR: ${{ inputs.ocr && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-ingest.txt
+      - name: Install extraction tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > /dev/null
+      - run: pip install -q -r requirements-ingest.txt
+      - name: Index this runner's slice of the queue
+        run: |
+          set -euo pipefail
+          [[ "$IN_HOURS" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "bad hours"; exit 2; }
+          ARGS=(--limit 99999 --hours "$IN_HOURS" --shard "${{ matrix.shard }}" --shards "$IN_RUNNERS")
+          if [[ "$IN_OCR" == "true" ]]; then ARGS+=(--ocr); fi
+          python -m ingest ingest "${ARGS[@]}"
