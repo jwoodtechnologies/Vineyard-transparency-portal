@@ -30,6 +30,17 @@ CHUNK_BATCH = 250
 CHUNK_BATCH_CHARS = 350_000
 
 
+
+# Every section page in the city site's own menus (checked October 1, 2026), so reports, forms and
+# files linked from any of them are found even when the portal does not link the page directly.
+CITY_SECTION_PAGES = tuple(
+    f"government/{p}.php"
+    for p in "mayors_office request_a_meeting_with_the_mayor moving_vineyard_forward city_council2 conflict_of_interest_forms elections recorder records_request annual_meeting_schedule agenda_minutes___public_notice council_vacancy building resource_documents basement_finish water_meter_request public_works streets water___wastewater construction_projects grounds_maintenance engineering engineering_standards parks_and_recreation events splash_pad recreation parks concessions skatepark_fundraiser community_development planning code_enforcement parking short_term_rental business_licensing_ accessory_dwelling_unit_licensing economic_development utah_county_sheriff_s_office rad_systems_of_self-defense_classes vineyard_citizens_academy finance fee_schedule budget annual_financial_report request_for_proposals_(rfp) city_staff board___commission_members water_quality_reports".split()
+) + tuple(
+    f"community_/{p}.php"
+    for p in "events library_options interlibrary_loan library_reimbursement vineyard_community_garden vineyard_youth_council vineyard_youth_council_candidacy_forms_ safewalk_program boards___commissions arch_commission active_transportation_commission planning_commission library_board vineyard_cares_board development_review_commission newsletters neighborhood_map trails report-a-concern communication_resources plant_walk volunteer city_dump_passes bikemonth fireworks school_safety".split()
+) + tuple(f"services/{p}.php" for p in "utility_billing emergency_preparedness utah_county_resources uta_eco_pass".split()) + ("government/redevelopment_agency/index.php", "contact/news.php", "transparency_portal/index.php")
+
 def log(msg: str) -> None:
     print(f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] {msg}", flush=True)
 
@@ -106,7 +117,7 @@ def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | No
 
     if not only or "vineyard-city-website" in only:
         # Whole-site crawl: the portal's links plus the site's top-level sections.
-        seeds = sorted(set(main_content_seeds(manifest)) | {f"https://www.vineyardutah.gov/{p}" for p in ("index.php", "government/index.php", "community_/index.php", "services/index.php")})
+        seeds = sorted(set(main_content_seeds(manifest)) | {f"https://www.vineyardutah.gov/{p}" for p in ("index.php", "government/index.php", "community_/index.php", "services/index.php", *CITY_SECTION_PAGES)})
         web = VineyardWebsiteAdapter(client, seeds=seeds, max_depth=4, max_pages=900)
         enqueue(web.list_documents())
         if web.bodies:

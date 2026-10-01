@@ -73,9 +73,13 @@ class VineyardWebsiteAdapter(SourceAdapter):
                 if href.startswith(("#", "javascript:", "mailto:", "tel:")):
                     continue
                 url = normalize_url(href, base)
-                if host(url) not in CITY_HOSTS:
+                # The city's files also live on its CMS host (cms3.revize.com/revize/vineyard/...).
+                on_cms = host(url) == "cms3.revize.com" and "/revize/vineyard/" in url.lower()
+                if host(url) not in CITY_HOSTS and not on_cms:
                     continue
                 cat = categorize(url)
+                if on_cms and cat["category"] != "document":
+                    continue
                 if cat["category"] == "document":
                     key = url_key(url)
                     if key in seen_docs:
