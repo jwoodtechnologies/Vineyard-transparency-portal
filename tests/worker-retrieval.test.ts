@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { interleave, parsePlan, relevant } from '../worker/ai/retrieval';
+import { interleave, parsePlan, recencyWeighted, relevant } from '../worker/ai/retrieval';
 import type { ChunkHit } from '../worker/search/types';
 
 const hit = (id: string): ChunkHit => ({ shard: 0, chunkId: id, documentId: id.split(':')[0], pageStart: 1, pageEnd: 1, sectionTitle: null, score: 1, excerpt: '', highlights: [], title: id, documentType: 'minutes', documentNumber: null, documentDate: null, year: null, governmentBodyId: null, sourceId: 's', categoriesJson: '[]' });
@@ -35,5 +35,27 @@ describe('relevant', () => {
     const r = [0.9, 0.5, 0.2, 0.05, 0.01, 0.001].map((rel, i) => ({ rel, i }));
     expect(relevant(r).map((x) => x.i)).toEqual([0, 1, 2, 3]);
     expect(relevant([{ rel: 0.9 }, { rel: 0.001 }], 4).length).toBe(2);
+  });
+});
+
+describe('recencyWeighted', () => {
+  const h = (id: string, date: string | null, rel: number, documentType = 'minutes') => ({ ...hit(id), documentDate: date, rel, documentType });
+  it('puts this year first for present-tense questions', () => {
+    const r = recencyWeighted([h('old:1', '2022-03-01', 0.9), h('new:1', '2026-08-01', 0.7)], 'What is the city doing about parking?', 2026);
+    expect(r.map((x) => x.chunkId)).toEqual(['new:1', 'old:1']);
+  });
+  it('leaves history questions alone', () => {
+    const r = recencyWeighted([h('old:1', '2022-03-01', 0.9), h('new:1', '2026-08-01', 0.7)], 'What did the council decide about parking in 2022?', 2026);
+    expect(r.map((x) => x.chunkId)).toEqual(['old:1', 'new:1']);
+  });
+});
+
+describe('isScheduleQuestion', () => {
+  it('spots when-is-the-next-meeting questions only', async () => {
+    const { isScheduleQuestion } = await import('../worker/ai/scheduleIntent');
+    expect(isScheduleQuestion('When is our next city council meeting?')).toBe(true);
+    expect(isScheduleQuestion('when is the next planning commission meeting')).toBe(true);
+    expect(isScheduleQuestion("What's on the agenda for the next council meeting?")).toBe(false);
+    expect(isScheduleQuestion('What happened at the last council meeting?')).toBe(false);
   });
 });

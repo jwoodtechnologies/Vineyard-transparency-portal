@@ -1,12 +1,13 @@
 /**
- * The one piece of chrome every screen shares: the wordmark, Latest, Calendar and Map links and a settings menu.
- * No hamburger, no footer, no explainer pages.
+ * The one piece of chrome every screen shares: the side menu, the wordmark, and on desktop the Calendar, People and Map links and a settings menu.
+ * The side menu holds every record category; no footer, no explainer pages.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { CalendarDays, History, Map as MapIcon, Moon, Newspaper, Settings2, Sun, Trash2, Users } from 'lucide-react';
+import { CalendarDays, History, Map as MapIcon, Moon, Settings2, Sun, Trash2, Users } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
+import { SiteMenu } from './SiteMenu';
 import { clearChats, setHistoryEnabled, useChats, useHistoryEnabled } from './history';
 
 function useScrolled() {
@@ -55,7 +56,7 @@ export function SettingsMenu() {
   const box = useDismiss(open, close);
 
   return (
-    <div className="vc-settings" ref={box}>
+    <div className="vc-settings vc-hide-mobile" ref={box}>
       <button type="button" className="vc-ghost" data-icon-only="true" aria-label="Settings" aria-haspopup="dialog" aria-expanded={open} onClick={() => (open ? close() : setOpen(true))}>
         <Settings2 size={17} strokeWidth={1.8} />
       </button>
@@ -108,8 +109,9 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
   return (
     <header className="vc-topbar" data-scrolled={scrolled}>
       <div className="vc-topbar-start">
+        <SiteMenu onHistory={onHistory} />
         {onHistory && (
-          <button type="button" className="vc-ghost" data-icon-only="true" onClick={onHistory} aria-label="Chat history" title="Chat history">
+          <button type="button" className="vc-ghost vc-hide-mobile" data-icon-only="true" onClick={onHistory} aria-label="Chat history" title="Chat history">
             <History size={17} strokeWidth={1.8} />
           </button>
         )}
@@ -125,19 +127,15 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
       </div>
       <nav className="vc-topbar-actions" aria-label="Main">
         {children}
-        <NavLink to="/latest" className="vc-ghost vc-nav" aria-label="Latest" title="Latest">
-          <Newspaper size={16} strokeWidth={1.8} />
-          <span className="vc-nav-text">Latest</span>
-        </NavLink>
-        <NavLink to="/meetings" className="vc-ghost vc-nav" aria-label="Calendar" title="Calendar">
+        <NavLink to="/meetings" className="vc-ghost vc-nav vc-hide-mobile" aria-label="Calendar" title="Calendar">
           <CalendarDays size={16} strokeWidth={1.8} />
           <span className="vc-nav-text">Calendar</span>
         </NavLink>
-        <NavLink to="/people" className="vc-ghost vc-nav" aria-label="People" title="People">
+        <NavLink to="/people" className="vc-ghost vc-nav vc-hide-mobile" aria-label="People" title="People">
           <Users size={16} strokeWidth={1.8} />
           <span className="vc-nav-text">People</span>
         </NavLink>
-        <NavLink to="/map" className="vc-ghost vc-nav" aria-label="Map" title="Map">
+        <NavLink to="/map" className="vc-ghost vc-nav vc-hide-mobile" aria-label="Map" title="Map">
           <MapIcon size={16} strokeWidth={1.8} />
           <span className="vc-nav-text">Map</span>
         </NavLink>

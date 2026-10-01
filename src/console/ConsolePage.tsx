@@ -11,7 +11,7 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CalendarDays, ChevronDown, FileText, History, Landmark, Map as MapIcon, Newspaper, Plus, RotateCcw, Scale } from 'lucide-react';
+import { CalendarDays, ChevronDown, History, Plus, RotateCcw } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { SearchService } from '@/services';
 import { askStream, draftText } from './askStream';
@@ -27,7 +27,7 @@ import { SettingsMenu, TopBar } from './Chrome';
 import { HistoryPanel } from './HistoryPanel';
 import { getChat, newChatId, saveChat, type SavedChat } from './history';
 import type { ConsoleAnswer, Preview, Turn } from './types';
-import { RECORD_CATEGORIES } from './categories';
+import { SiteMenu } from './SiteMenu';
 
 const PAGE = 8;
 const STEPS = ['Searching the archive', 'Reading the records', 'Checking every source'];
@@ -310,15 +310,14 @@ export default function ConsolePage() {
         <div className="vc-atmosphere" aria-hidden="true" />
         <div className="vc-grain" aria-hidden="true" />
         <div className="vc-corners">
-          <button type="button" className="vc-ghost" data-icon-only="true" onClick={() => setHistoryOpen(true)} aria-label="Chat history" title="Chat history">
-            <History size={17} strokeWidth={1.8} />
-          </button>
+          <div className="vc-topbar-start">
+            <SiteMenu onHistory={() => setHistoryOpen(true)} />
+            <button type="button" className="vc-ghost vc-hide-mobile" data-icon-only="true" onClick={() => setHistoryOpen(true)} aria-label="Chat history" title="Chat history">
+              <History size={17} strokeWidth={1.8} />
+            </button>
+          </div>
           <div className="vc-topbar-actions">
-            <Link to="/latest" className="vc-ghost vc-nav" aria-label="Latest" title="Latest">
-              <Newspaper size={16} strokeWidth={1.8} />
-              <span className="vc-nav-text">Latest</span>
-            </Link>
-            <Link to="/meetings" className="vc-ghost vc-nav" aria-label="Calendar" title="Calendar">
+            <Link to="/meetings" className="vc-ghost vc-nav vc-hide-mobile" aria-label="Calendar" title="Calendar">
               <CalendarDays size={16} strokeWidth={1.8} />
               <span className="vc-nav-text">Calendar</span>
             </Link>
@@ -333,33 +332,6 @@ export default function ConsolePage() {
             <p className="vc-hero-rule">Public records of Vineyard, Utah</p>
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
-          <nav className="vc-cats" aria-label="Browse records">
-            {RECORD_CATEGORIES.slice(0, 3).map((c, i) => {
-              const Icon = [FileText, Landmark, Scale][i];
-              return (
-                <Link key={c.id} to={`/records?c=${c.id}`} className="vc-cat">
-                  <span className="vc-cat-icon">
-                    <Icon size={15} strokeWidth={1.9} />
-                  </span>
-                  <span className="vc-cat-text">
-                    <span className="vc-cat-long">{c.label}</span>
-                    <span className="vc-cat-short">{c.short}</span>
-                    <span className="vc-cat-hint">{c.hint}</span>
-                  </span>
-                </Link>
-              );
-            })}
-            <Link to="/map" className="vc-cat">
-              <span className="vc-cat-icon">
-                <MapIcon size={15} strokeWidth={1.9} />
-              </span>
-              <span className="vc-cat-text">
-                <span className="vc-cat-long">City map</span>
-                <span className="vc-cat-short">City map</span>
-                <span className="vc-cat-hint">Roads, projects</span>
-              </span>
-            </Link>
-          </nav>
         </main>
         <p className="vc-legal">Independent project, not an official Vineyard City website.</p>
         {historyPanel}

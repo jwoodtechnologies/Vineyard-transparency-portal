@@ -15,7 +15,7 @@ export const CITY_CALENDAR_URL =
 
 let memo: { at: number; events: CityEvent[] } | null = null;
 
-async function loadCity(): Promise<CityEvent[]> {
+export async function loadCity(): Promise<CityEvent[]> {
   if (memo && Date.now() - memo.at < 10 * 60_000) return memo.events;
   const res = await fetch(CITY_CALENDAR_URL, {
     headers: { accept: 'application/json', 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)' },

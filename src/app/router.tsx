@@ -6,7 +6,6 @@ import ConsolePage from '@/console/ConsolePage';
 const MeetingsPage = lazy(() => import('@/console/MeetingsPage'));
 const MeetingPage = lazy(() => import('@/console/MeetingPage'));
 const DocumentView = lazy(() => import('@/console/DocumentView'));
-const LatestPage = lazy(() => import('@/console/LatestPage'));
 const MapPage = lazy(() => import('@/console/MapPage'));
 const RecordsPage = lazy(() => import('@/console/RecordsPage'));
 const PeoplePage = lazy(() => import('@/console/PeoplePage'));
@@ -18,7 +17,6 @@ if (typeof window !== 'undefined') {
     void import('@/console/MeetingsPage');
     void import('@/console/MeetingPage');
     void import('@/console/DocumentView');
-    void import('@/console/LatestPage');
   };
   const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
   if (idle) idle(warm);
@@ -49,7 +47,7 @@ function SearchRedirect() {
   return <Navigate to={q ? `/?q=${encodeURIComponent(q)}` : '/'} replace />;
 }
 
-// The portal is a few quiet screens: ask, latest, the calendar, the map, one meeting, one record.
+// The portal is a few quiet screens: ask, records, the calendar, the map, one meeting, one record.
 // Everything else from the first version (browse, topics, sources, about, status...) folds into these.
 export const router = createBrowserRouter([
   { errorElement: <RouteError />, children: [
@@ -58,8 +56,9 @@ export const router = createBrowserRouter([
   { path: '/calendar', element: quiet(<MeetingsPage />) },
   { path: '/meetings/:meetingId', element: quiet(<MeetingPage />) },
   { path: '/documents/:documentId', element: quiet(<DocumentView />) },
-  { path: '/latest', element: quiet(<LatestPage />) },
-  { path: '/news', element: <Navigate to="/latest" replace /> },
+  // Latest was folded into Records (newest first) and the calendar.
+  { path: '/latest', element: <Navigate to="/records" replace /> },
+  { path: '/news', element: <Navigate to="/records" replace /> },
   { path: '/map', element: quiet(<MapPage />) },
   { path: '/records', element: quiet(<RecordsPage />) },
   { path: '/people', element: quiet(<PeoplePage />) },

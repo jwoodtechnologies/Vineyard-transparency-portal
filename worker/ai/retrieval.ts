@@ -156,3 +156,27 @@ export function relevant<T extends { rel: number }>(ranked: T[], min = 4): T[] {
   const keep = ranked.filter((h) => h.rel >= floor);
   return keep.length >= min ? keep : ranked.slice(0, Math.max(min, keep.length));
 }
+
+const HISTORICAL = /\b(19[89]\d|20[0-2]\d|history|historically|first|earliest|oldest|originally|original|in the past|over the years|back in|used to|ever|since|timeline)\b/i;
+const PRESENT = /\b(now|current|currently|today|this year|latest|recent|recently|right now|going on|happening|doing|working on|plans?|planned|planning|upcoming|status|still|new|update)\b/i;
+
+/**
+ * Newer records count for more unless the question is about the past: "what are they doing about
+ * X" is answered from this year's minutes, not 2022's. Code sections and records marked current
+ * are today's law and lists, so they never age.
+ */
+export function recencyWeighted<T extends ChunkHit & { rel: number }>(ranked: T[], question: string, todayYear: number, currentIds: Set<string> = new Set()): T[] {
+  if (HISTORICAL.test(question) || !ranked.every((h) => h.rel >= 0 && h.rel <= 1)) return ranked;
+  const strength = PRESENT.test(question) ? 0.6 : 0.25;
+  const weight = (h: T) => {
+    if (h.documentType === 'municipal_code' || currentIds.has(h.chunkId)) return 1;
+    const y = h.documentDate ? Number(h.documentDate.slice(0, 4)) : h.year;
+    if (!y) return 0.8;
+    const age = Math.max(0, todayYear - y);
+    return 1 / (1 + strength * age);
+  };
+  return ranked
+    .map((h, i) => ({ h, i, s: h.rel * weight(h) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.h);
+}

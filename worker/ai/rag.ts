@@ -20,7 +20,8 @@ import type { ChunkHit } from '../search/types';
 import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
 import { readAiStream } from './sse';
-import { interleave, planSearch, relevant, rerank, type SearchPlan } from './retrieval';
+import { interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
+import { isScheduleQuestion, scheduleAnswer } from './schedule';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -280,7 +281,30 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const kind = smallTalkKind(body.question);
   if (kind) {
     const text = SMALL_TALK_REPLIES[kind];
+    // A short, natural pause so a greeting does not snap back before the question is even read.
+    await new Promise((r) => setTimeout(r, 650));
     return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'assistant', mode: 'conversation' } as AskResponse };
+  }
+
+  // "When is the next council meeting?": the official calendar answers, never old minutes.
+  if (isScheduleQuestion(body.question)) {
+    const s = await scheduleAnswer(env, body.question).catch(() => null);
+    if (s) {
+      return {
+        kind: 'final',
+        response: {
+          ...base,
+          retrievalStatus: 'grounded',
+          answer: s.text,
+          paragraphs: [{ segments: [{ text: s.text, citations: [] }] }],
+          citations: [],
+          suggestedFollowUps: ["What's on the agenda for the next City Council meeting?"],
+          notice: null,
+          engine: 'schedule',
+          mode: 'conversation',
+        } as AskResponse,
+      };
+    }
   }
 
   if (!repo.available) throw new HttpError(503, 'search_unavailable', 'The full-text index is not available right now.');
@@ -351,6 +375,15 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seenR = new Set<string>();
     hits = [...hits.slice(0, 30), ...code.slice(0, 8), ...hits.slice(30)].filter((h) => (seenR.has(h.chunkId) ? false : (seenR.add(h.chunkId), true)));
   }
+  // Questions about the mayor, voting or the form of government also read the records that set
+  // Vineyard's form of government (six-member council since January 1, 2026: the mayor does not vote).
+  const govIds = new Set<string>();
+  if (/\b(mayor|vot(e|es|ed|ing)|form of government|six-member|five-member|tie|council members?|who decides|city manager)\b/i.test(body.question)) {
+    const gov = await retrieve('"six-member council" mayor vote tie', { ...filters, dateFrom: '2024-01-01' }).catch(() => [] as ChunkHit[]);
+    gov.slice(0, 4).forEach((h) => govIds.add(h.chunkId));
+    const seenG = new Set<string>();
+    hits = [...hits.slice(0, 30), ...gov.slice(0, 4), ...hits.slice(30)].filter((h) => (seenG.has(h.chunkId) ? false : (seenG.add(h.chunkId), true)));
+  }
   const currentIds = new Set<string>();
   if (CURRENT.test(body.question) || ROLE.test(body.question)) {
     const current = await retrieve(retrievalText, { ...filters, currency: ['current'] }).catch(() => [] as ChunkHit[]);
@@ -375,7 +408,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // the passages that answer it. A record marked current stays first for "who is / now" questions.
   const ranked = await rerank(env, retrievalText, hits.slice(0, 90));
   if (ranked) {
-    let best = relevant(ranked);
+    let best = recencyWeighted(relevant(ranked), retrievalText, Number(new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 4)), currentIds);
     // Records that must lead for some questions, in the reranker's own order: the current
     // directory for "who is", the person's recorded votes for "how did X vote", the code for rules.
     const lead = (ids: Set<string>, n: number) => {
@@ -383,6 +416,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       const first = ranked.filter((h) => ids.has(h.chunkId)).slice(0, n);
       best = [...first, ...best.filter((h) => !first.includes(h))];
     };
+    lead(govIds, 1);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
     lead(currentIds, 2);
