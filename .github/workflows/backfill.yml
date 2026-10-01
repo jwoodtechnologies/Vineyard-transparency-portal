@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       runners:
-        description: Parallel runners (1 to 8)
-        default: "4"
+        description: Parallel runners (1 to 16)
+        default: "12"
       hours:
         description: Wall-clock budget per runner in hours
         default: "5.5"
@@ -35,7 +35,7 @@ jobs:
         env:
           N: ${{ inputs.runners || '4' }}
         run: |
-          [[ "$N" =~ ^[1-8]$ ]] || { echo "runners must be 1 to 8"; exit 2; }
+          [[ "$N" =~ ^([1-9]|1[0-6])$ ]] || { echo "runners must be 1 to 16"; exit 2; }
           echo "shards=$(python3 -c "import json,os; print(json.dumps(list(range(int(os.environ['N'])))))")" >> "$GITHUB_OUTPUT"
 
   ingest:
@@ -52,7 +52,7 @@ jobs:
       VTP_TRIGGER: backfill
       VTP_SHARD: ${{ matrix.shard }}
       # Several runners share each site: slower per runner, so the sites see the usual polite rate.
-      VTP_MIN_INTERVAL_SECONDS: "2"
+      VTP_MIN_INTERVAL_SECONDS: "3"
       IN_RUNNERS: ${{ inputs.runners || '4' }}
       IN_HOURS: ${{ inputs.hours || '5.5' }}
       IN_OCR: ${{ inputs.ocr && 'true' || 'false' }}
