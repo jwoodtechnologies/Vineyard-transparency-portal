@@ -408,7 +408,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     // Every figure must be in the source it cites; unsupported sentences are removed.
     const grounded = groundParagraphs(first.paragraphs, evidence);
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
-    if (!seg.used.size) return fallback('search_only', null);
+    if (!seg.used.size) {
+      // Nothing the model wrote could be tied to a source: show the records, never an unchecked answer.
+      const r = await fallback('search_only', null);
+      return { ...r, engine: `search-fallback (no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 220)})` };
+    }
 
     // Renumber cited sources 1..k in order of first use.
     const order = [...seg.used].sort((a, b) => a - b);
