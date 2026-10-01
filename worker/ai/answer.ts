@@ -153,7 +153,12 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
         const k = Number(n.trim());
         if (Number.isInteger(k) && k >= 1 && k <= maxIndex) cites.add(k);
       }
-      const plain = sentence.replace(/\s*\[(\d+(?:\s*,\s*\d+)*)\]/g, '').replace(/\s+([.,;:!?])/g, '$1').trim();
+      const plain = sentence
+        .replace(/\s*\[(\d+(?:\s*,\s*\d+)*)\]/g, '')
+        .replace(/\s+([.,;:!?])/g, '$1')
+        .trim()
+        .replace(/^[,;:]+\s*(and|but|so|or)?\s*/i, '')
+        .replace(/^[a-z]/, (c) => c.toUpperCase());
       if (!plain || plain.replace(/[^A-Za-z]+/g, ' ').trim().split(' ').length < 2) continue;
       if (cites.size) {
         cites.forEach((c) => used.add(c));
