@@ -243,6 +243,7 @@ export async function upsertQueue(env: Env, body: Json, budget: Budget): Promise
               json_extract(value,'$.parent'), json_extract(value,'$.m'), json_extract(value,'$.run'), ?, ?
        FROM json_each(?) WHERE true
        ON CONFLICT(url_key) DO UPDATE SET url = excluded.url, metadata_json = excluded.metadata_json, updated_at = excluded.updated_at,
+         priority = CASE WHEN crawl_queue.run_id = 'hourly' THEN min(crawl_queue.priority, excluded.priority) ELSE excluded.priority END,
          status = CASE WHEN (crawl_queue.url IS NOT excluded.url
                               OR json_extract(crawl_queue.metadata_json, '$.refreshToken') IS NOT json_extract(excluded.metadata_json, '$.refreshToken'))
                              AND crawl_queue.status IN ('done','unchanged','skipped') THEN 'pending' ELSE crawl_queue.status END

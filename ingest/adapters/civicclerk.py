@@ -137,7 +137,8 @@ class CivicClerkAdapter(SourceAdapter):
                     url=file_url(fid),
                     key=key_for(f"civicclerk:{TENANT}:file:{int(fid)}"),
                     parent_url=f"{PORTAL}/event/{int(ev['id'])}/files",
-                    priority=50 if role else 80,
+                    # Minutes and agendas first; agenda packets (often hundreds of pages) after the rest.
+                    priority={"minutes": 35, "agenda": 40, "packet": 70}.get(role or "", 80),
                     metadata={
                         "title": (f.get("name") or f"{title} {f.get('type') or 'file'}").strip(),
                         "fileType": f.get("type"),

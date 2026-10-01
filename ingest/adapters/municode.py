@@ -162,13 +162,14 @@ class MunicipalCodeAdapter(SourceAdapter):
                         continue
                     self.counts[book] = self.counts.get(book, 0) + 1
                     meta = entry_metadata(book, path, name)
-                    # Older records first is not needed; recent city records come from CivicClerk.
+                    # Minutes, resolutions and ordinances are small and are the whole history: they go
+                    # ahead of everything else. Code sections next; giant agenda packets go last.
                     yield QueueItem(
                         source_id=self.source_id,
                         url=content_url(book, nid),
                         key=key_for(f"mco:vineyard:{book}:{nid}"),
                         parent_url=f"{HOST}/book?type={quote(book)}",
                         kind="document",
-                        priority=90,
+                        priority=30 if BOOKS[book][1] in ("minutes", "resolution", "ordinance") else 60,
                         metadata=meta,
                     )
