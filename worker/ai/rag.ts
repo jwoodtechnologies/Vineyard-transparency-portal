@@ -302,6 +302,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
           notice: null,
           engine: 'schedule',
           mode: 'conversation',
+          event: s.event,
         } as AskResponse,
       };
     }
@@ -363,7 +364,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     votes.slice(0, 12).forEach((h) => pinnedVotes.add(h.chunkId));
     const seenV = new Set<string>();
     hits = [...votes.slice(0, 12), ...hits].filter((h) => (seenV.has(h.chunkId) ? false : (seenV.add(h.chunkId), true)));
-    question = `${question}\n(${person.name} is ${person.role}. Minutes record votes by last name, for example "motion carried 4-0 (Holdaway, Lauret, McCumber, Wood)" or "${person.last} voted nay". Report how ${person.name} voted or moved only where a source shows it, with the meeting date.)`;
+    const mayorNote = /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role) ? ` Since January 1, 2026 (six-member council form) the mayor is not a voting member of the council and votes only to break a tie or on the city manager appointment: say that first, citing the source on the form of government, then give any vote a source shows.` : '';
+    question = `${question}\n(${person.name} is ${person.role}. Minutes record votes by last name, for example "motion carried 4-0 (Holdaway, Lauret, McCumber, Wood)" or "${person.last} voted nay". Report how ${person.name} voted or moved only where a source shows it, with the meeting date.${mayorNote})`;
   }
   // "Who is ...", "current", "now": today's records (the staff directory, the mayor and council
   // list, current map data) lead, then the newest dated records, so the answer reflects today.
@@ -419,6 +421,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     lead(govIds, 1);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
+    if (person && /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role)) lead(govIds, 1);
     lead(currentIds, 2);
     // "The first meeting", "the earliest ordinance": among the passages that answer, oldest first.
     if (/\b(first|earliest|oldest|original)\b(?!\s+responders?)/i.test(body.question)) {

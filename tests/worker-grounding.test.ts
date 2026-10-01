@@ -109,3 +109,10 @@ describe('names must be in the source', () => {
     expect(segmentAnswer(raw, 1).paragraphs[0].segments[0].text).toBe('It was presented by Mayor J. Rulon Gammon.');
   });
 });
+
+describe('dates in words', () => {
+  it('rewrites ISO dates', async () => {
+    const { segmentAnswer } = await import('../worker/ai/answer');
+    expect(segmentAnswer('The list is current as of 2026-10-01 [1].', 1).paragraphs[0].segments[0].text).toBe('The list is current as of October 1, 2026.');
+  });
+});

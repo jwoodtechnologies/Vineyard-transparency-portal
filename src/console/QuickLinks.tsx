@@ -69,6 +69,9 @@ function loadNames(): Promise<Names> {
 
 const MAPPY = /\b(map|where|located|location|project|construction|road|street|widen|intersection|park|trail|rda|redevelopment|zon(e|ing)|parcel|subdivision|capital)\b/i;
 
+/** Questions that are not about a place, even when they name one. */
+const NOT_MAP = /\b(vote[sd]?|voting|meeting|minutes|agenda|budget|tax|salary|who|when|ordinance|resolution|code says|allowed|mayor|council ?members?|appoint|fee|rate|cost|paid|pay)\b/i;
+
 const AREA_LAYERS: Array<[RegExp, string, string]> = [
   [/\b(rda|redevelopment)\b/i, 'rda', 'RDA areas'],
   [/\bura\b|urban renewal/i, 'ura', 'Urban renewal areas'],
@@ -96,12 +99,14 @@ function mapBubbles(question: string, answerText: string, names: Names): Bubble[
     out.push({ key: `map:${focus}`, label, hint, href: `/map?focus=${encodeURIComponent(focus)}`, kind: 'map', internal: true });
   };
   const hay = norm(`${question} ${answerText}`);
+  const roadish = /\b(road|roads|street|streets|traffic|intersection|widen|widening|lane|lanes|parking|striping|construction|route|where)\b/i.test(question);
+
   const q = norm(question);
 
   // Projects named in the question first, then in the answer; longest names first so
   // "Center Street Widening Phase 2" wins over "Center Street".
   const projects = [...names.projects].sort((a, b) => b.length - a.length);
-  for (const pass of [q, hay]) for (const p of projects) if (pass.includes(norm(p))) add(`project:${p}`, p, 'Show on map');
+  for (const pass of roadish || /\bprojects?\b|construction|built|building/i.test(question) ? [q, hay] : [q]) for (const p of projects) if (pass.includes(norm(p))) add(`project:${p}`, p, 'Show on map');
   // "the Geneva Road widening project" names a project by a few of its words.
   const asked = q.split(' ').filter((w) => w.length > 2 && !GENERIC.has(w));
   if (asked.length >= 2) {
@@ -112,7 +117,7 @@ function mapBubbles(question: string, answerText: string, names: Names): Bubble[
   }
   for (const p of names.parks) if (hay.includes(norm(p))) add(`park:${p}`, p, 'Show on map');
 
-  for (const text of [question, answerText]) {
+  for (const text of roadish ? [question, answerText] : [question]) {
     for (const m of text.matchAll(NUM_ROAD)) add(`road:${m[1]} ${m[2][0].toUpperCase()}`, `${m[1]} ${titleCase(m[2])}`, 'Show road on map');
     for (const m of text.matchAll(NAMED_ROAD)) {
       if (NOT_ROAD.test(m[1])) continue;
@@ -176,7 +181,9 @@ export function QuickLinks({ answer }: { answer: ConsoleAnswer }) {
   const question = answer.question ?? '';
   const text = answerText(answer);
   const services = serviceBubbles(question);
-  const wantsMap = MAPPY.test(question) || MAPPY.test(text.slice(0, 600)) || new RegExp(NUM_ROAD.source, 'i').test(question);
+  // Map bubbles only when the question is about a place: a road, project, park, area or "where".
+  // Questions about votes, meetings, people, money or law get none, whatever the answer mentions.
+  const wantsMap = answer.mode !== 'conversation' && (/\bmap\b|\bwhere\b|\blocated\b/i.test(question) || (MAPPY.test(question) && !NOT_MAP.test(question)) || new RegExp(NUM_ROAD.source, 'i').test(question));
   const [names, setNames] = useState<Names | null>(null);
   useEffect(() => {
     if (!wantsMap) return;

@@ -56,7 +56,7 @@ export function SettingsMenu() {
   const box = useDismiss(open, close);
 
   return (
-    <div className="vc-settings vc-hide-mobile" ref={box}>
+    <div className="vc-settings" ref={box}>
       <button type="button" className="vc-ghost" data-icon-only="true" aria-label="Settings" aria-haspopup="dialog" aria-expanded={open} onClick={() => (open ? close() : setOpen(true))}>
         <Settings2 size={17} strokeWidth={1.8} />
       </button>
@@ -109,9 +109,8 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
   return (
     <header className="vc-topbar" data-scrolled={scrolled}>
       <div className="vc-topbar-start">
-        <SiteMenu onHistory={onHistory} />
         {onHistory && (
-          <button type="button" className="vc-ghost vc-hide-mobile" data-icon-only="true" onClick={onHistory} aria-label="Chat history" title="Chat history">
+          <button type="button" className="vc-ghost" data-icon-only="true" onClick={onHistory} aria-label="Chat history" title="Chat history">
             <History size={17} strokeWidth={1.8} />
           </button>
         )}
@@ -140,6 +139,7 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
           <span className="vc-nav-text">Map</span>
         </NavLink>
         <SettingsMenu />
+        <SiteMenu />
       </nav>
     </header>
   );

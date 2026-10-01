@@ -151,6 +151,12 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
     .replace(/\b([A-Z])\.(?=\s+[A-Z][a-z])/g, '$1\u2024')
     .replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, '$1-$2')
     .replace(/\s*[\u2013\u2014]\s*/g, ', ')
+    // "2026-10-01" reads as "October 1, 2026".
+    .replace(/\b((?:19|20)\d{2})-(\d{2})-(\d{2})\b/g, (m, y: string, mo: string, d: string) => {
+      const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const i = Number(mo) - 1;
+      return i >= 0 && i < 12 && Number(d) >= 1 && Number(d) <= 31 ? `${names[i]} ${Number(d)}, ${y}` : m;
+    })
     .replace(/^#+[ \t]*/gm, '')
     .replace(/\*\*|__|`/g, '')
     .replace(/^[ \t]*[-*•][ \t]+/gm, '')

@@ -20,6 +20,7 @@ import { AnswerBody, Sources } from './Answer';
 import { Records } from './Records';
 import { AnswerActions } from './AnswerActions';
 import { QuickLinks } from './QuickLinks';
+import { EventCard } from './EventCard';
 import { PersonCard } from './PersonCard';
 import { peopleIn, usePeople } from './people';
 import { Drawer } from './Drawer';
@@ -310,18 +311,16 @@ export default function ConsolePage() {
         <div className="vc-atmosphere" aria-hidden="true" />
         <div className="vc-grain" aria-hidden="true" />
         <div className="vc-corners">
-          <div className="vc-topbar-start">
-            <SiteMenu onHistory={() => setHistoryOpen(true)} />
-            <button type="button" className="vc-ghost vc-hide-mobile" data-icon-only="true" onClick={() => setHistoryOpen(true)} aria-label="Chat history" title="Chat history">
-              <History size={17} strokeWidth={1.8} />
-            </button>
-          </div>
+          <button type="button" className="vc-ghost" data-icon-only="true" onClick={() => setHistoryOpen(true)} aria-label="Chat history" title="Chat history">
+            <History size={17} strokeWidth={1.8} />
+          </button>
           <div className="vc-topbar-actions">
             <Link to="/meetings" className="vc-ghost vc-nav vc-hide-mobile" aria-label="Calendar" title="Calendar">
               <CalendarDays size={16} strokeWidth={1.8} />
               <span className="vc-nav-text">Calendar</span>
             </Link>
             <SettingsMenu />
+            <SiteMenu />
           </div>
         </div>
         <main className="vc-landing">
@@ -381,6 +380,7 @@ export default function ConsolePage() {
               <>
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
                 {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
+                {t.answer.event && <EventCard event={t.answer.event} />}
                 {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} onCite={cite(t)} />}
                 <QuickLinks answer={t.answer} />
                 <div className="vc-answer-foot">

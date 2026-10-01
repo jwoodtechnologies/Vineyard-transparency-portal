@@ -1,6 +1,8 @@
 import type { AskResponse, Citation, SearchFilters, SearchResponse, SearchResult, SearchSort } from '@/types/models';
 
-export type ConsoleAnswer = AskResponse & { mode?: 'conversation' };
+import type { AnswerEvent } from './EventCard';
+
+export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent };
 
 export interface Turn {
   id: string;

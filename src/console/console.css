@@ -3517,12 +3517,12 @@ html.vc-locked .vc-landing {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
+  right: 0;
   width: min(330px, 88vw);
   overflow-y: auto;
   padding: 0.75rem 0.7rem calc(1rem + env(safe-area-inset-bottom));
   background: var(--vc-bg);
-  border-right: 1px solid var(--vc-line-2);
+  border-left: 1px solid var(--vc-line-2);
   box-shadow: var(--vc-shadow);
   animation: vc-slide-in 0.22s var(--vc-ease) both;
 }
@@ -3556,7 +3556,7 @@ html.vc-locked .vc-landing {
 }
 @keyframes vc-slide-in {
   from {
-    transform: translateX(-100%);
+    transform: translateX(100%);
   }
   to {
     transform: none;
@@ -3573,4 +3573,100 @@ html.vc-locked .vc-landing {
   .vc-hide-mobile {
     display: none !important;
   }
+}
+
+.vc-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 2.25rem;
+  padding: 0 0.8rem 0 0.7rem;
+  border: 1px solid var(--vc-line-2);
+  border-radius: 999px;
+  background: var(--vc-surface);
+  color: var(--vc-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 560;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.vc-menu-btn:hover {
+  background: var(--vc-surface-2);
+}
+.vc-menu-btn:active {
+  transform: scale(0.97);
+}
+.vc-menu-btn[aria-expanded='true'] {
+  border-color: var(--vc-ink);
+}
+@media (max-width: 420px) {
+  .vc-menu-btn {
+    padding: 0 0.6rem;
+  }
+}
+
+/* Meeting card under schedule answers */
+.vc-event {
+  display: flex;
+  gap: 0.9rem;
+  margin: 0.9rem 0 0.4rem;
+  padding: 0.9rem;
+  border: 1px solid var(--vc-line-2);
+  border-radius: 16px;
+  background: var(--vc-surface);
+}
+.vc-event-date {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 3.6rem;
+  height: 3.8rem;
+  border-radius: 12px;
+  background: var(--vc-ink);
+  color: var(--vc-bg);
+}
+.vc-event-month {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  opacity: 0.8;
+}
+.vc-event-day {
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.vc-event-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.vc-event-title {
+  font-weight: 650;
+  color: var(--vc-ink);
+}
+.vc-event-when {
+  font-size: 0.86rem;
+  color: var(--vc-ink-2);
+}
+.vc-event-where {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--vc-muted);
+  text-decoration: none;
+}
+.vc-event-where:hover {
+  text-decoration: underline;
+}
+.vc-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
 }

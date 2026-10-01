@@ -2,16 +2,25 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { BookOpen, CalendarDays, FileText, History, Landmark, Layers, Map as MapIcon, Menu, MessageSquare, Moon, Scale, ScrollText, Sun, Users, X } from 'lucide-react';
-import { useTheme } from '@/hooks/useTheme';
+import { BookOpen, CalendarDays, FileText, Landmark, Layers, Map as MapIcon, MessageSquare, Scale, ScrollText, Users, X } from 'lucide-react';
 import { RECORD_CATEGORIES } from './categories';
 
 const ICONS: Record<string, typeof FileText> = { meetings: FileText, finance: Landmark, laws: Scale, code: BookOpen, plans: Layers };
 
-/** On phones this one menu holds everything; on desktop the top bar also shows the main links. */
-export function SiteMenu({ onHistory }: { onHistory?: () => void }) {
+/** Two offset strokes and a dot: the menu mark (not the usual three lines). */
+function MenuMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path d="M3 6h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M7 12h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="3.6" cy="12" r="1.25" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** The side menu: every record category plus Meetings, People and the Map. On phones it holds the main links. */
+export function SiteMenu() {
   const [open, setOpen] = useState(false);
-  const { resolved, setPreference } = useTheme();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
@@ -67,22 +76,6 @@ export function SiteMenu({ onHistory }: { onHistory?: () => void }) {
             <Link to="/map" className="vc-panel-row">
               <MapIcon size={16} strokeWidth={1.8} /> City map
             </Link>
-            <p className="vc-panel-label">This device</p>
-            {onHistory && (
-              <button
-                type="button"
-                className="vc-panel-row"
-                onClick={() => {
-                  setOpen(false);
-                  onHistory();
-                }}
-              >
-                <History size={16} strokeWidth={1.8} /> Chat history
-              </button>
-            )}
-            <button type="button" className="vc-panel-row" onClick={() => setPreference(resolved === 'dark' ? 'light' : 'dark')}>
-              {resolved === 'dark' ? <Sun size={16} strokeWidth={1.8} /> : <Moon size={16} strokeWidth={1.8} />} {resolved === 'dark' ? 'Light mode' : 'Dark mode'}
-            </button>
             <p className="vc-panel-note">Independent project, not an official Vineyard City website.</p>
           </nav>
         </div>,
@@ -93,8 +86,9 @@ export function SiteMenu({ onHistory }: { onHistory?: () => void }) {
 
   return (
     <>
-      <button type="button" className="vc-ghost" data-icon-only="true" aria-label="Menu" aria-haspopup="dialog" aria-expanded={open} title="Menu" onClick={() => setOpen(true)}>
-        <Menu size={18} strokeWidth={1.8} />
+      <button type="button" className="vc-menu-btn" aria-label="Menu" aria-haspopup="dialog" aria-expanded={open} title="Menu" onClick={() => setOpen(true)}>
+        <MenuMark />
+        <span className="vc-menu-btn-text">Menu</span>
       </button>
       {sheet}
     </>

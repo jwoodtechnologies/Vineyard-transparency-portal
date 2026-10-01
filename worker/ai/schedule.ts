@@ -30,9 +30,21 @@ function when(local: string, allDay = false): string {
   return `${day} at ${time}`;
 }
 
+/** What the answer card shows: the meeting, when and where, with links. */
+export interface ScheduleEvent {
+  title: string;
+  start: string; // Vineyard local time, YYYY-MM-DDTHH:MM or YYYY-MM-DD
+  allDay: boolean;
+  location: string | null;
+  meetingId: string | null;
+  source: 'city-calendar' | 'meeting-portal';
+  url: string;
+}
+
 export interface ScheduleAnswer {
   text: string;
   meetingId: string | null;
+  event: ScheduleEvent;
 }
 
 export async function scheduleAnswer(env: Env, question: string): Promise<ScheduleAnswer | null> {
@@ -61,19 +73,25 @@ export async function scheduleAnswer(env: Env, question: string): Promise<Schedu
     .sort((a, b) => a.start.localeCompare(b.start))[0];
 
   const evDate = ev?.start.slice(0, 10) ?? null;
-  const mDate = meeting?.meeting_date ?? null;
+  const mDate = meeting?.meeting_date ? meeting.meeting_date.slice(0, 10) : null;
   // The earlier of the two; the city calendar wins a tie (it carries the time and place).
   if (ev && (!mDate || evDate! <= mDate)) {
-    const place = ev.location ? ` at ${ev.location.replace(/\s+/g, ' ').trim()}` : '';
+    const loc = ev.location ? ev.location.replace(/\s+/g, ' ').trim() : null;
+    const meetingId = meeting && mDate === evDate ? meeting.id : null;
     return {
-      text: `The next ${body.label} meeting is ${when(ev.start, ev.allDay)}${place}, according to the city's official calendar.`,
-      meetingId: meeting && mDate === evDate ? meeting.id : null,
+      text: `The next ${body.label} meeting is ${when(ev.start, ev.allDay)}${loc ? ` at ${loc}` : ''}, according to the city's official calendar.`,
+      meetingId,
+      event: { title: `${body.label} meeting`, start: ev.start.slice(0, 16), allDay: ev.allDay, location: loc, meetingId, source: 'city-calendar', url: ev.url || 'https://www.vineyardutah.gov/calendar.php' },
     };
   }
   if (meeting && mDate) {
     const time = meeting.start_time && /^\d{1,2}:\d{2}/.test(meeting.start_time) ? `${mDate}T${meeting.start_time.slice(0, 5)}` : mDate;
-    const place = meeting.location ? ` at ${meeting.location.replace(/\s+/g, ' ').trim()}` : '';
-    return { text: `The next ${body.label} meeting is ${when(time)}${place}, according to the city's meeting portal.`, meetingId: meeting.id };
+    const loc = meeting.location ? meeting.location.replace(/\s+/g, ' ').trim() : null;
+    return {
+      text: `The next ${body.label} meeting is ${when(time)}${loc ? ` at ${loc}` : ''}, according to the city's meeting portal.`,
+      meetingId: meeting.id,
+      event: { title: `${body.label} meeting`, start: time, allDay: !time.includes('T'), location: loc, meetingId: meeting.id, source: 'meeting-portal', url: 'https://vineyardut.portal.civicclerk.com/' },
+    };
   }
   return null;
 }
