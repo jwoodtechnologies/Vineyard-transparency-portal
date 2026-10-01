@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 2;
+export const VOTES_PARSER = 3;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -89,7 +89,8 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   const guessDate = titleDate(d.title) ?? d.document_date;
   const parsed = parseMinutes(text, guessDate);
   const date = parsed.date ?? guessDate;
-  const body = parsed.body ?? d.government_body_id ?? 'unknown';
+  // The record's own body wins; the heading only fills in when the record has none.
+  const body = (d.government_body_id && d.government_body_id !== 'general' ? d.government_body_id : null) ?? parsed.body ?? 'unknown';
   const key = `${body}|${date ?? d.id}`;
   const rank = rankOf(d.title);
   // Members by full name where the minutes print it ("Jacob Holdaway", not "Holdaway"), so people

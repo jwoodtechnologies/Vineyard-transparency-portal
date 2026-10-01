@@ -48,7 +48,7 @@ export interface ParsedMinutes {
 
 const TITLE = String.raw`(?:mayor pro tem(?:pore)?|deputy mayor|mayor|council ?members?|councilm[ae]n|councilwoman|councilors?|commissioners?|vice[- ]chair(?:man|woman|person)?|chair(?:man|woman|person)?|board ?members?|members?|director|mr\.?|mrs\.?|ms\.?|dr\.?)`;
 const NAME = String.raw`([A-Z][A-Za-z'’-]+(?:\s+[A-Z][A-Za-z'’-]+)?)`;
-const STOP = new Set(['the', 'and', 'none', 'all', 'motion', 'council', 'city', 'members', 'member', 'mayor', 'vote', 'yes', 'no', 'aye', 'nay', 'absent', 'abstain', 'present', 'roll', 'call', 'item', 'items', 'a', 'an', 'to', 'of', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'approved', 'seconded', 'carried', 'passed', 'failed', 'staff', 'public', 'hearing']);
+const STOP = new Set(['the', 'and', 'none', 'all', 'motion', 'council', 'city', 'members', 'member', 'mayor', 'vote', 'yes', 'no', 'aye', 'nay', 'absent', 'abstain', 'present', 'roll', 'call', 'item', 'items', 'a', 'an', 'to', 'of', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'approved', 'seconded', 'carried', 'passed', 'failed', 'staff', 'public', 'hearing', 'commission', 'committee', 'agency', 'board', 'chair', 'vice', 'secretary', 'clerk', 'recorder', 'planning', 'development']);
 
 const titleCase = (w: string) => w.toLowerCase().replace(/(^|[\s'’-])([a-z])/g, (_, p: string, c: string) => p + c.toUpperCase()).replace(/^Mc([a-z])/, (_, c: string) => `Mc${c.toUpperCase()}`);
 
