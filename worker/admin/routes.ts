@@ -211,9 +211,15 @@ async function migrate(env: Env): Promise<Response> {
   const votes = await processVotes(env, 55_000, 1000).catch((e) => ({ error: String(e).slice(0, 200) }));
   // Scanned files still waiting on text recognition (OCR) go back in the queue, fetched fresh, so
   // the next run with OCR on reads them (minutes first).
-  await env.CATALOG_DB.prepare(
-    "UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = CASE WHEN document_id IN (SELECT id FROM documents WHERE document_type = 'minutes') THEN 1 ELSE priority END WHERE document_id IN (SELECT id FROM documents WHERE ocr_status = 'pending') AND status IN ('done', 'unchanged', 'error', 'skipped')",
-  ).run().catch(() => undefined);
+  const ocrDocs = "SELECT id FROM documents WHERE ocr_status = 'pending'";
+  await env.CATALOG_DB.batch([
+    env.CATALOG_DB.prepare(
+      `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL,
+         priority = CASE WHEN url_key IN (SELECT ds.canonical_key FROM document_sources ds JOIN documents d ON d.id = ds.document_id WHERE d.document_type = 'minutes') THEN 1 ELSE priority END
+       WHERE url_key IN (SELECT canonical_key FROM document_sources WHERE document_id IN (${ocrDocs})) AND status IN ('done', 'unchanged', 'error', 'skipped')`,
+    ),
+    env.CATALOG_DB.prepare(`UPDATE document_sources SET etag = NULL, last_modified = NULL WHERE document_id IN (${ocrDocs})`),
+  ]).catch(() => undefined);
   // Files skipped only because a robots.txt answered 403 (ArcGIS, Amazon S3) go back in the queue.
   await env.CATALOG_DB.prepare("UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL WHERE status = 'skipped' AND last_error LIKE 'RobotsDisallowed%'").run().catch(() => undefined);
   await ensureActivityTables(env);
