@@ -19,7 +19,8 @@
   "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
   "d1_databases": [
     { "binding": "CATALOG_DB", "database_name": "vtp-catalog", "database_id": "8ae24e53-356b-4eda-8ca5-b232c563dc89", "migrations_dir": "migrations/catalog" },
-    { "binding": "SEARCH_DB_0", "database_name": "vtp-search-0", "database_id": "004f3149-ccba-46e3-b041-fbb2925ac00b", "migrations_dir": "migrations/search" }
+    { "binding": "SEARCH_DB_0", "database_name": "vtp-search-0", "database_id": "004f3149-ccba-46e3-b041-fbb2925ac00b", "migrations_dir": "migrations/search" },
+    { "binding": "SEARCH_DB_1", "database_name": "vtp-search-1", "database_id": "b914c1ff-2d33-4973-a475-09dd4188bc75", "migrations_dir": "migrations/search" }
     // Add SEARCH_DB_1..7 here when shard 0 approaches ~400 MB (docs/SEARCH.md), then list them in SEARCH_SHARDS.
   ],
   // Standard storage class bucket. Uploads stop at ARCHIVE_STORAGE_HARD_STOP_BYTES.
@@ -27,8 +28,8 @@
   // Workers AI on the Free plan (10,000 neurons/day). Over the allowance requests fail; they are never billed on Free.
   "ai": { "binding": "AI" },
   "vars": {
-    "SEARCH_SHARDS": "0",
-    "SEARCH_WRITE_SHARDS": "0",
+    "SEARCH_SHARDS": "0,1",
+    "SEARCH_WRITE_SHARDS": "0,1",
     "AI_ENABLED": "true",
     "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fp8",
     "AI_MAX_REQUESTS_PER_DAY": "120",

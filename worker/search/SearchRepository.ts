@@ -41,6 +41,12 @@ export class SearchRepository {
     this.writeShards = parseShardList(env.SEARCH_WRITE_SHARDS, [...this.shards.keys()]).filter((n) => this.shards.has(n));
   }
 
+  /** Every bound shard database, active or not (migrations prepare a new shard before it is used). */
+  static boundShards(env: Env): Array<[number, D1Database]> {
+    const bindings: Array<D1Database | undefined> = [env.SEARCH_DB_0, env.SEARCH_DB_1, env.SEARCH_DB_2, env.SEARCH_DB_3, env.SEARCH_DB_4, env.SEARCH_DB_5, env.SEARCH_DB_6, env.SEARCH_DB_7];
+    return bindings.flatMap((db, n) => (db ? [[n, db] as [number, D1Database]] : []));
+  }
+
   get activeShards(): number[] {
     return [...this.shards.keys()];
   }
@@ -112,9 +118,14 @@ export class SearchRepository {
         `WHERE chunks_fts MATCH ?${where} ORDER BY rank LIMIT ?`
       : `WITH top AS (SELECT rowid AS rid, ${BM25} AS rank FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY rank LIMIT ?) ` +
         `SELECT ${cols}, top.rank AS rank, '' AS snip FROM top JOIN chunks c ON c.rowid = top.rid JOIN shard_documents d ON d.document_id = c.document_id ORDER BY top.rank`;
+    // A shard that errors (for example one just added and not yet migrated) is skipped, never fatal.
     const perShard = await Promise.all(
       [...this.shards.entries()].map(async ([n, db]) => {
-        const res = await db.prepare(sql).bind(fts, ...params, limit).all<Record<string, unknown>>();
+        const res = await db
+          .prepare(sql)
+          .bind(fts, ...params, limit)
+          .all<Record<string, unknown>>()
+          .catch(() => ({ results: [] as Record<string, unknown>[] }));
         return (res.results ?? []).map((r): ChunkHit => {
           const snip = parseSnippet(String(r.snip ?? ''));
           return {

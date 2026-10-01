@@ -80,13 +80,11 @@ function secondsToUtcMidnight(): number {
 // ---------------------------------------------------------------------------------------------
 
 async function migrate(env: Env): Promise<Response> {
-  const repo = new SearchRepository(env);
   const catalog = splitSql(catalogSql);
   const search = splitSql(searchSql);
   const r1 = await env.CATALOG_DB.batch(catalog.map((q) => env.CATALOG_DB.prepare(q)));
   const shards: Record<string, number> = {};
-  for (const shard of repo.activeShards) {
-    const db = repo.shard(shard);
+  for (const [shard, db] of SearchRepository.boundShards(env)) {
     const r = await db.batch(search.map((q) => db.prepare(q)));
     shards[shard] = sum(r);
   }
