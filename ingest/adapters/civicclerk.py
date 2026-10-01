@@ -47,11 +47,22 @@ def file_url(file_id: int) -> str:
     return f"{API}/Meetings/GetMeetingFileStream(fileId={int(file_id)},plainText=false)"
 
 
+def walk_attachments(items: list) -> Iterator[tuple[dict, dict]]:
+    """(agenda item, attachment) pairs for every published, non-confidential attachment, depth first."""
+    for it in items or []:
+        if not it.get("hasConfidentialAttachment"):
+            for att in it.get("attachmentsList") or []:
+                if att.get("isPublished") and not att.get("isDeleted") and not att.get("isLink") and (att.get("pdfVersionFullPath") or att.get("mediaFullPath")):
+                    yield it, att
+        yield from walk_attachments(it.get("childItems") or it.get("items") or [])
+
+
 class CivicClerkAdapter(SourceAdapter):
     source_id = "vineyard-civicclerk-meetings"
 
-    def __init__(self, client, lookahead_days: int = 60, page_size: int = 100, max_pages: int = 1000, since: str | None = None):
+    def __init__(self, client, lookahead_days: int = 60, page_size: int = 100, max_pages: int = 1000, since: str | None = None, attachments: bool = True):
         super().__init__(client)
+        self.attachments = attachments
         self.lookahead_days = lookahead_days
         self.page_size = page_size
         self.max_pages = max_pages
@@ -122,6 +133,9 @@ class CivicClerkAdapter(SourceAdapter):
                     "media": media,
                 }
             )
+            agenda_id = ev.get("agendaId")
+            if agenda_id and self.attachments and (not dt_utc or dt_utc < now + timedelta(days=30)):
+                yield from self.attachment_items(int(agenda_id), ev, title, date_str, meeting_id, body)
             for f in ev.get("publishedFiles") or []:
                 fid = f.get("fileId")
                 if not fid:
@@ -157,3 +171,49 @@ class CivicClerkAdapter(SourceAdapter):
                         "fileNameHint": (f.get("url") or "").rsplit("/", 1)[-1],
                     },
                 )
+
+
+    def attachment_items(self, agenda_id: int, ev: dict, title: str, date_str: str | None, meeting_id: str, body: dict | None) -> Iterator[QueueItem]:
+        """Every staff report, exhibit, contract and plan attached to an agenda item, as its own record."""
+        from ..classify import classify_type
+
+        try:
+            r = self.client.request("GET", f"{API}/Meetings/{agenda_id}", timeout=60)
+            if r.status_code >= 400:
+                return
+            data = r.json()
+        except Exception:  # noqa: BLE001 - one meeting's detail failing never stops the crawl
+            return
+        for item, att in walk_attachments(data.get("items") or []):
+            att_id = int(att.get("id") or 0)
+            if not att_id:
+                continue
+            name = (att.get("fileName") or att.get("mediaFileName") or "Attachment").strip()
+            item_name = (item.get("agendaObjectItemName") or "").strip()
+            outline = (item.get("agendaObjectItemOutlineNumber") or "").strip()
+            when = f", {date_str}" if date_str else ""
+            yield QueueItem(
+                source_id=self.source_id,
+                url=f"{API}/Meetings/{agenda_id}#attachment={att_id}",
+                key=key_for(f"civicclerk:{TENANT}:attachment:{att_id}"),
+                parent_url=f"{PORTAL}/event/{int(ev['id'])}/files",
+                priority=85,
+                metadata={
+                    "kind": "cc_attachment",
+                    "agendaId": agenda_id,
+                    "attachmentId": att_id,
+                    "title": f"{name} ({title}{when}{f', item {outline}' if outline else ''})"[:300],
+                    "linkText": item_name[:300] or None,
+                    "sectionHeading": item_name[:300] or None,
+                    "documentType": classify_type(name, item_name),
+                    "documentDate": date_str,
+                    "meetingId": meeting_id,
+                    "meetingTitle": title,
+                    "relationship": "ATTACHED_TO",
+                    "governmentBodyId": body["id"] if body else None,
+                    "governmentBodyName": body["name"] if body else None,
+                    "sourceUrl": f"{PORTAL}/event/{int(ev['id'])}/files",
+                    "externalId": f"civicclerk:attachment:{att_id}",
+                    "fileNameHint": att.get("pdfVersionFileName") or att.get("mediaFileName") or "",
+                },
+            )

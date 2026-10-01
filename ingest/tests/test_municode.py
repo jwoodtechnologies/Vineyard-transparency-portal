@@ -67,3 +67,16 @@ def test_adoption_date_history_note():
     from ingest.adapters.municode import adoption_date
 
     assert adoption_date("HISTORY\n\nAdopted by Res.\n\n1989-02\n on 5/18/1989\n\nRESOLUTION", 1989) == "1989-05-18"
+
+
+class CivicClerkAttachmentTests(__import__("unittest").TestCase):
+    def test_walk_attachments_skips_confidential_and_links(self):
+        from ingest.adapters.civicclerk import walk_attachments
+
+        items = [
+            {"agendaObjectItemName": "Business", "attachmentsList": [], "childItems": [
+                {"agendaObjectItemName": "Staff report", "attachmentsList": [{"id": 1, "isPublished": True, "pdfVersionFullPath": "https://x/a.pdf"}, {"id": 2, "isPublished": True, "isLink": True, "pdfVersionFullPath": "https://x/b.pdf"}]},
+                {"agendaObjectItemName": "Closed", "hasConfidentialAttachment": True, "attachmentsList": [{"id": 3, "isPublished": True, "pdfVersionFullPath": "https://x/c.pdf"}]},
+            ]},
+        ]
+        self.assertEqual([a["id"] for _i, a in walk_attachments(items)], [1])

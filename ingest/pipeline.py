@@ -174,6 +174,17 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
     if meta.get("kind") == "mco_content":
         process_mco(api, client, item, run_id, counts, meta)
         return
+    source_url = url
+    if meta.get("kind") == "cc_attachment":
+        # Agenda item attachments download through short-lived signed links, so the queue keeps a
+        # stable address (the meeting plus the attachment id) and the fresh link is read right now.
+        fresh = _cc_attachment_url(client, meta)
+        if not fresh:
+            api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": "attachment no longer published", "runId": run_id}]})
+            return
+        url = fresh
+        source_url = meta.get("sourceUrl") or item["url"].split("#")[0]
+        ext = "pdf" if ".pdf" in fresh.split("?")[0].lower() else (extension(fresh.split("?")[0]) or ext)
 
     if ext in MEDIA_EXTENSIONS:
         api.post("/queue/status", {"updates": [{"urlKey": key, "status": "skipped", "error": "media files are linked, not archived", "runId": run_id}]})
@@ -253,7 +264,7 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
             "/documents",
             {
                 "document": document,
-                "source": {"canonicalKey": key, "sourceId": item["source_id"], "url": url, "parentUrl": item.get("parent_url"), "linkText": meta.get("linkText"), "retrievedAt": datetime.now(timezone.utc).isoformat(), "etag": dl.etag, "lastModified": dl.last_modified, "httpStatus": dl.status},
+                "source": {"canonicalKey": key, "sourceId": item["source_id"], "url": source_url, "parentUrl": item.get("parent_url"), "linkText": meta.get("linkText"), "retrievedAt": datetime.now(timezone.utc).isoformat(), "etag": dl.etag, "lastModified": dl.last_modified, "httpStatus": dl.status},
                 "relationships": relationships,
                 "meetingRole": meta.get("meetingRole"),
             },
@@ -326,6 +337,34 @@ def _record_date(meta: dict, text: str) -> tuple[str | None, int | None]:
         return meta.get("documentDate"), None
     year = meta.get("year") or (int(str(meta["documentDate"])[:4]) if meta.get("documentDate") else None)
     return adoption_date(text, year), year
+
+
+_CC_MEETINGS: dict[int, dict] = {}
+
+
+def _cc_attachment_url(client: PoliteClient, meta: dict) -> str | None:
+    """The current signed download link for one CivicClerk agenda item attachment (PDF when there is one)."""
+    agenda_id = int(meta.get("agendaId") or 0)
+    att_id = int(meta.get("attachmentId") or 0)
+    if not agenda_id or not att_id:
+        return None
+    data = _CC_MEETINGS.get(agenda_id)
+    if data is None:
+        from .adapters.civicclerk import API as CC_API
+
+        r = client.request("GET", f"{CC_API}/Meetings/{agenda_id}", timeout=60)
+        if r.status_code >= 400:
+            raise HttpFailure(r.status_code, f"GET meeting {agenda_id} -> {r.status_code}")
+        data = r.json()
+        if len(_CC_MEETINGS) > 50:
+            _CC_MEETINGS.clear()
+        _CC_MEETINGS[agenda_id] = data
+    from .adapters.civicclerk import walk_attachments
+
+    for _item, att in walk_attachments(data.get("items") or []):
+        if int(att.get("id") or 0) == att_id:
+            return att.get("pdfVersionFullPath") or (f"https://civicclerk.blob.core.windows.net/{att['mediaFullPath']}" if att.get("mediaFullPath") else None)
+    return None
 
 
 def process_mco(api: PortalApi, client: PoliteClient, item: dict, run_id: str, counts: RunCounts, meta: dict) -> None:
