@@ -70,7 +70,7 @@ const PLACE_AFTER = /^(road|rd|street|st|drive|dr|lane|ln|avenue|ave|way|blvd|bo
 export function peopleIn(question: string, people: Person[]): Person[] {
   const raw = ` ${question.toLowerCase().replace(/[^a-z0-9' -]+/g, ' ')} `;
   // Names used as places are taken out before people are looked for.
-  const q = raw.replace(/ ([a-z']+) (?=(\S+))/g, (m, w: string, next: string) => (PLACE_AFTER.test(next) && people.some((p) => p.name.toLowerCase().split(/\s+/).includes(w)) ? ` __place__ ` : m));
+  const q = raw.replace(/ ([a-z']+)(?= (\S+))/g, (m, w: string, next: string) => (PLACE_AFTER.test(next) && people.some((p) => p.name.toLowerCase().split(/\s+/).includes(w)) ? ' __place__' : m));
   const found: Person[] = [];
   const add = (p: Person) => !found.includes(p) && found.push(p);
   const current = people.filter((p) => p.current);
