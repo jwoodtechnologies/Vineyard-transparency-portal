@@ -29,8 +29,16 @@ const SERIES: Array<{ match: RegExp; label: string; like: string[]; types?: stri
   { match: /\b(fee schedule|consolidated fee)\b/i, label: 'Fee schedules and amendments', like: ['%fee schedule%'] },
 ];
 
-const rank = (title: string) =>
-  /notice|slides?|presentation|\bpp\b|power ?point|hearing|agenda|minutes/i.test(title) ? 0 : /final|adopted|budget book/i.test(title) ? 4 : /amend/i.test(title) ? 1 : /tentative/i.test(title) ? 3 : /draft/i.test(title) ? 2 : 1;
+const rank = (title: string) => {
+  if (/notice|slides?|presentation|\bpp\b|power ?point|hearing|agenda|minutes|summary/i.test(title)) return 0;
+  const amend = /amend/i.test(title);
+  if (!amend && /(final|adopted)\b.{0,12}\bbudget\b|budget book|adopt(ing)?\b.{0,12}\bfinal\b|\bfinal\b.{0,12}budget/i.test(title)) return 6;
+  if (!amend && /tentative/i.test(title)) return 5;
+  if (amend && /final/i.test(title)) return 4;
+  if (!amend && /\bbudget\b/i.test(title) && !/draft/i.test(title)) return 3;
+  if (amend) return 2;
+  return 1;
+};
 
 /** Budgets: one entry per fiscal year, the final (adopted) budget where the archive has it. */
 async function budgetSeries(env: Env): Promise<ReportSeries | null> {

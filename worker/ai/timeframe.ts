@@ -101,6 +101,9 @@ export function fiscalYearOf(title: string, date: string | null): number | null 
   if (span) return 2000 + Number(span[3]);
   const fy = t.match(/\bFY\s*'?(\d{2}|20\d{2})\b/i) ?? t.match(/\bfiscal year\s*(20\d{2})\b/i);
   if (fy) return fy[1].length === 2 ? 2000 + Number(fy[1]) : Number(fy[1]);
+  // "2016-2017 FY Budget": two full consecutive years name the fiscal year that ends in the second.
+  const pair = t.match(/\b((?:19|20)\d{2})\s*[-/]\s*((?:19|20)\d{2})\b/);
+  if (pair && Number(pair[2]) === Number(pair[1]) + 1) return Number(pair[2]);
   // A budget adopted in spring or summer is for the fiscal year that ends the next June.
   if (date && /budget/i.test(t)) {
     const y = Number(date.slice(0, 4));

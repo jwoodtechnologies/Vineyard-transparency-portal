@@ -9,6 +9,8 @@ describe('budget fiscal years', () => {
     expect(fiscalYearOf('Final Budget for FY 2026-2027', null)).toBe(2027);
     expect(fiscalYearOf('Tentative Budget Presentation FY2026 05-28-2025', null)).toBe(2026);
     expect(fiscalYearOf('Final Budget', '2019-06-25')).toBe(2020);
+    expect(fiscalYearOf('Resolution 2017-05 Amend 2016-2017 FY Budget', '2017-03-01')).toBe(2017);
+    expect(fiscalYearOf('Resolution 2023-29 Final Amended FY24 Budget', '2023-06-01')).toBe(2024);
   });
   it('"this year\'s budget" in October 2026 is fiscal year 2027', () => {
     const f = resolveTime("What was this year's budget?", '2026-10-01');
