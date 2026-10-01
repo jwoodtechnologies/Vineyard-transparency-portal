@@ -13,7 +13,6 @@ from __future__ import annotations
 import hashlib
 import re
 from urllib.parse import urljoin
-from datetime import date
 
 from .api import PortalApi
 from .chunk import chunk_pages
@@ -30,6 +29,14 @@ PAGES = {
     "boards": BASE + "government/board___commission_members.php",
 }
 
+
+
+def utah_today() -> str:
+    """Today's date in Vineyard (America/Denver), so an evening run is not dated tomorrow."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    return datetime.now(ZoneInfo("America/Denver")).date().isoformat()
 
 def log(msg: str) -> None:
     print(f"[people] {msg}", flush=True)
@@ -99,7 +106,7 @@ def council(client: PoliteClient) -> list[dict]:
 
 def build(client: PoliteClient, today: str | None = None, people_out: list | None = None) -> list[tuple[str, str, str, str]]:
     """(key, title, url, text) for each record; structured profiles go into people_out."""
-    today = today or date.today().isoformat()
+    today = today or utah_today()
     records = []
     people_out = people_out if people_out is not None else []
 
@@ -163,7 +170,7 @@ def build(client: PoliteClient, today: str | None = None, people_out: list | Non
 
 
 def run(api: PortalApi, client: PoliteClient) -> dict:
-    today = date.today().isoformat()
+    today = utah_today()
     people: list[dict] = []
     records = build(client, today, people)
     counts = {"records": len(records), "new_or_changed": 0, "unchanged": 0, "profiles": 0}

@@ -75,3 +75,23 @@ describe('citation repair', () => {
     expect(attributeCitations('Approved [1].', [])).toBe('Approved [1].');
   });
 });
+
+describe('meta talk about sources', () => {
+  it('drops sentences about the sources themselves', async () => {
+    const { groundParagraphs } = await import('../worker/ai/answer');
+    const ev = [{ title: 'Resolution 2020-20 Appoint City Attorney', documentDate: null, text: 'Jayme Blakesley is appointed city attorney.' }];
+    const out = groundParagraphs(
+      [{ segments: [{ text: 'The city appointed Jayme Blakesley as city attorney.', citations: [1] }, { text: 'The current status is not explicitly stated in the provided sources.', citations: [1] }] }],
+      ev,
+    );
+    expect(out.paragraphs[0].segments.map((s) => s.text)).toEqual(['The city appointed Jayme Blakesley as city attorney.']);
+  });
+});
+
+describe('decimals', () => {
+  it('keeps a tax rate in one sentence', async () => {
+    const { segmentAnswer } = await import('../worker/ai/answer');
+    const out = segmentAnswer('The certified tax rate for fiscal year 2026 is 0.001234 [1]. It was adopted in June [1].', 1);
+    expect(out.paragraphs[0].segments.map((s) => s.text)).toEqual(['The certified tax rate for fiscal year 2026 is 0.001234.', 'It was adopted in June.']);
+  });
+});

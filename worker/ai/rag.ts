@@ -216,6 +216,7 @@ async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: s
 
 const CURRENT = /\b(who is|who's|who are|current|currently|now|today|as of|latest|presently|still|this year|right now)\b/i;
 const ROLE = /\b(mayor|deputy mayor|council ?(member|man|woman)s?|city council|city manager|recorder|city attorney|director|department head|staff|employees?|who works|chief|official|commissioners?)\b/i;
+const RULE = /\b(can i|can we|can you|am i allowed|is it (legal|allowed|permitted)|allowed|permitted|prohibited|illegal|rules?|regulations?|required|requirements?|do i need|need a permit|code says|setbacks?|how (many|tall|high|far))\b/i;
 const VOTE = /\b(vote[sd]?|voting|motion|moved|second(ed)?|position|stance|support(ed)?|oppose[sd]?|against|for or against|aye|nay)\b/i;
 
 let peopleCache: { at: number; list: Array<{ name: string; last: string; role: string }> } | null = null;
@@ -330,16 +331,26 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   }
   // A question about a named official's votes or positions reads the minutes for their recorded
   // motions and votes (minutes list votes by last name).
+  const pinnedVotes = new Set<string>();
   const person = await personIn(env, body.question).catch(() => null);
   if (person && VOTE.test(body.question)) {
     const rest = body.question.replace(new RegExp(person.name.split(' ').join('\\s+'), 'ig'), ' ').replace(new RegExp(VOTE.source, 'gi'), ' ');
     const votes = await retrieve(`${person.last} ${rest} motion`, { ...filters, documentTypes: ['minutes'] }).catch(() => [] as ChunkHit[]);
+    votes.slice(0, 12).forEach((h) => pinnedVotes.add(h.chunkId));
     const seenV = new Set<string>();
     hits = [...votes.slice(0, 12), ...hits].filter((h) => (seenV.has(h.chunkId) ? false : (seenV.add(h.chunkId), true)));
     question = `${question}\n(${person.name} is ${person.role}. Minutes record votes by last name, for example "motion carried 4-0 (Holdaway, Lauret, McCumber, Wood)" or "${person.last} voted nay". Report how ${person.name} voted or moved only where a source shows it, with the meeting date.)`;
   }
   // "Who is ...", "current", "now": today's records (the staff directory, the mayor and council
   // list, current map data) lead, then the newest dated records, so the answer reflects today.
+  // "Can I keep chickens?": the municipal code (current law) is searched on its own as well.
+  const codeIds = new Set<string>();
+  if (RULE.test(body.question) && !focus) {
+    const code = await retrieve(plan?.queries[0] ?? retrievalText, { ...filters, documentTypes: ['municipal_code'] }).catch(() => [] as ChunkHit[]);
+    code.slice(0, 8).forEach((h) => codeIds.add(h.chunkId));
+    const seenR = new Set<string>();
+    hits = [...hits.slice(0, 30), ...code.slice(0, 8), ...hits.slice(30)].filter((h) => (seenR.has(h.chunkId) ? false : (seenR.add(h.chunkId), true)));
+  }
   const currentIds = new Set<string>();
   if (CURRENT.test(body.question) || ROLE.test(body.question)) {
     const current = await retrieve(retrievalText, { ...filters, currency: ['current'] }).catch(() => [] as ChunkHit[]);
@@ -364,10 +375,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const ranked = await rerank(env, retrievalText, hits.slice(0, 90));
   if (ranked) {
     let best = relevant(ranked);
-    if (currentIds.size) {
-      const cur = best.filter((h) => currentIds.has(h.chunkId)).slice(0, 2);
-      best = [...cur, ...best.filter((h) => !cur.includes(h))];
-    }
+    // Records that must lead for some questions, in the reranker's own order: the current
+    // directory for "who is", the person's recorded votes for "how did X vote", the code for rules.
+    const lead = (ids: Set<string>, n: number) => {
+      if (!ids.size) return;
+      const first = ranked.filter((h) => ids.has(h.chunkId)).slice(0, n);
+      best = [...first, ...best.filter((h) => !first.includes(h))];
+    };
+    lead(codeIds, 2);
+    lead(pinnedVotes, 4);
+    lead(currentIds, 2);
     hits = best;
   }
   const evidence = selectEvidence(hits);

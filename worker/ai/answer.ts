@@ -40,6 +40,11 @@ export const RAG_SYSTEM_PROMPT = [
   'Say whether something was proposed, recommended, discussed, approved, adopted or denied, exactly as the source states it. Never describe a proposal or a staff recommendation as a decision.',
   'When sources differ, rely on the most recent one and name its date, for example "In the June 23, 2026 budget ...".',
   'Only state facts about what the sources say. Never claim that something is not listed, not mentioned, not included or missing.',
+  'When the question asks for the first, earliest, last or latest of something, use the source with that date and name the date.',
+  'When you give a figure, say which record it comes from and what it measures (for example "the general fund in Budget Amendment No. 2, February 27, 2025"), and never call an amendment or a proposal the final budget.',
+  'For what is allowed, required or prohibited today, rely on the Municipal Code sections first: the code is the current law. Meeting discussions and proposed amendments are not law; describe them only as proposals, with their date.',
+  'Never state a general rule about how the city works (who may vote, what a role can do) unless a source says it in those words.',
+  'Write dates as words, for example "October 1, 2026", never "2026-10-01".',
   'Use only the sources that are about what the question asks. Ignore sources about other topics, places, people or years, even when they share some words with the question.',
   'Answer the exact question in your first sentence. For a yes or no question ("Is X the deputy mayor?"), begin with yes or no as the sources show, then the specifics.',
   'For who holds a position now, rely on the record marked current (the city staff directory or the mayor and city council list) and say the date it is current as of.',
@@ -140,6 +145,8 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
     .replace(/[\u2010\u2011\u2012]/g, '-')
     .replace(/\b([ap])\.m\./gi, (_, x: string) => `${x.toLowerCase()}m`)
     .replace(/\b(No|Nos|St|Ave|Blvd|Dr|Mr|Mrs|Ms|Inc|Co|approx|vs|e\.g|i\.e)\.(?=\s+[\w$])/g, '$1')
+    // A middle initial ("Mayor J. Rulon Gammon") does not end a sentence.
+    .replace(/\b([A-Z])\.(?=\s+[A-Z][a-z])/g, '$1\u2024')
     .replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, '$1-$2')
     .replace(/\s*[\u2013\u2014]\s*/g, ', ')
     .replace(/^#+[ \t]*/gm, '')
@@ -149,7 +156,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
   for (const block of cleaned.split(/\n\s*\n/)) {
     const text = block.replace(/\s*\n\s*/g, ' ').trim();
     if (!text) continue;
-    const sentences = text.match(/[^.!?]+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [text];
+    const sentences = text.match(/(?:[^.!?]|\.(?=\d))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [text];
     const segments: AnswerSegment[] = [];
     for (const s of sentences) {
       const sentence = s.trim();
@@ -164,7 +171,8 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
         .replace(/\s+([.,;:!?])/g, '$1')
         .trim()
         .replace(/^[,;:]+\s*(and|but|so|or)?\s*/i, '')
-        .replace(/^[a-z]/, (c) => c.toUpperCase());
+        .replace(/^[a-z]/, (c) => c.toUpperCase())
+        .replace(/\u2024/g, '.');
       if (!plain || plain.replace(/[^A-Za-z]+/g, ' ').trim().split(' ').length < 2) continue;
       if (cites.size) {
         cites.forEach((c) => used.add(c));
@@ -186,7 +194,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
 /** Hard limit on answer length, whatever the model does. */
 export const MAX_ANSWER_SENTENCES = 9;
 
-const SENTENCE = /[^.!?]+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g;
+const SENTENCE = /(?:[^.!?]|\.(?=\d))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g;
 
 /** Number of finished sentences in streamed text so far. */
 export function finishedSentences(text: string): number {
@@ -225,6 +233,9 @@ export function briefAnswer(raw: string, max = MAX_ANSWER_SENTENCES): string {
  * the citation is corrected; otherwise the sentence is removed. Sentences that claim something
  * is absent from the records are removed too, since a handful of excerpts cannot prove that.
  * ------------------------------------------------------------------------------------------ */
+
+/** Talk about the sources themselves ("the provided sources do not say"), never an answer. */
+const META = /\b(provided|given|available|retrieved) (sources|documents|records|excerpts|information)\b|\bnot (explicitly |specifically |directly |clearly )?(stated|mentioned|specified|addressed|indicated|detailed)\b|\bmost recent information available\b/i;
 
 const ABSENCE = /\b(is|are|was|were|isn't|aren't|wasn't|weren't) not (listed|mentioned|included|specified|identified|found|provided|available|stated|disclosed)\b|\b(isn't|aren't|wasn't|weren't) (listed|mentioned|included|specified)\b|\b(does|do|did|doesn't|don't|didn't)( not)? (list|mention|include|specify|identify|provide|state|say|disclose)\b|\bno (mention|record|records|information|details?|data) (of|about|on|regarding)\b|\bnot (clear|known|specified) (from|in)\b/i;
 
@@ -297,7 +308,7 @@ export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: Ground
         segments.push(seg);
         continue;
       }
-      if (ABSENCE.test(seg.text)) {
+      if (ABSENCE.test(seg.text) || META.test(seg.text)) {
         removed++;
         continue;
       }
@@ -370,7 +381,7 @@ export function attributeCitations(raw: string, evidence: Array<{ text?: string;
   return raw
     .split(/\n\s*\n/)
     .map((block) => {
-      const sentences = block.match(/[^.!?]+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [block];
+      const sentences = block.match(/(?:[^.!?]|\.(?=\d))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [block];
       return sentences
         .map((sentence, k) => {
           if (/\[\d+(?:\s*,\s*\d+)*\]/.test(sentence)) return sentence;
