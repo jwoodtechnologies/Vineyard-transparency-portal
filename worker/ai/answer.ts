@@ -156,7 +156,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
   for (const block of cleaned.split(/\n\s*\n/)) {
     const text = block.replace(/\s*\n\s*/g, ' ').trim();
     if (!text) continue;
-    const sentences = text.match(/(?:[^.!?]|\.(?=\d))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [text];
+    const sentences = text.match(/(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z][a-z]))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [text];
     const segments: AnswerSegment[] = [];
     for (const s of sentences) {
       const sentence = s.trim();
@@ -194,7 +194,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
 /** Hard limit on answer length, whatever the model does. */
 export const MAX_ANSWER_SENTENCES = 9;
 
-const SENTENCE = /(?:[^.!?]|\.(?=\d))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g;
+const SENTENCE = /(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z][a-z]))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g;
 
 /** Number of finished sentences in streamed text so far. */
 export function finishedSentences(text: string): number {
@@ -235,7 +235,7 @@ export function briefAnswer(raw: string, max = MAX_ANSWER_SENTENCES): string {
  * ------------------------------------------------------------------------------------------ */
 
 /** Talk about the sources themselves ("the provided sources do not say"), never an answer. */
-const META = /\b(provided|given|available|retrieved) (sources|documents|records|excerpts|information)\b|\bnot (explicitly |specifically |directly |clearly )?(stated|mentioned|specified|addressed|indicated|detailed)\b|\bmost recent information available\b/i;
+const META = /\b(provided|given|available|retrieved) (sources|documents|records|excerpts|information)\b|\b(sources|documents|records|excerpts) (provided|given|available|retrieved)\b|\b(do|does|did) not (indicate|show|reflect|record|specify)\b|\bnot (explicitly |specifically |directly |clearly )?(stated|mentioned|specified|addressed|indicated|detailed)\b|\bmost recent information available\b/i;
 
 const ABSENCE = /\b(is|are|was|were|isn't|aren't|wasn't|weren't) not (listed|mentioned|included|specified|identified|found|provided|available|stated|disclosed)\b|\b(isn't|aren't|wasn't|weren't) (listed|mentioned|included|specified)\b|\b(does|do|did|doesn't|don't|didn't)( not)? (list|mention|include|specify|identify|provide|state|say|disclose)\b|\bno (mention|record|records|information|details?|data) (of|about|on|regarding)\b|\bnot (clear|known|specified) (from|in)\b/i;
 
@@ -290,6 +290,24 @@ function has(text: string, forms: string[]): boolean {
   });
 }
 
+/** Capitalized words that are not ordinary civic vocabulary: names that must be in the source. */
+const COMMON_CAPS = new Set(
+  'the a an and or but in on at for of to by with from as this that these those it its he she they his her their yes no if when while after before during since about also however additionally vineyard utah city town county council mayor deputy member members commission commissioner planning redevelopment agency rda fiscal year fy resolution resolutions ordinance ordinances code municipal zoning general plan budget fund funds department director manager recorder attorney treasurer clerk chapter section title state street road north south east west avenue boulevard lane drive lake center park the january february march april may june july august september october november december monday tuesday wednesday thursday friday saturday sunday final amendment approved minutes agenda packet meeting meetings public hearing staff report office special regular work session phase project'.split(
+    ' ',
+  ),
+);
+
+export function sentenceNames(sentence: string): string[] {
+  const out = new Set<string>();
+  const tokens = sentence.replace(/\[[\d,\s]+\]/g, '').split(/\s+/);
+  tokens.forEach((t, i) => {
+    const w = t.replace(/^[^A-Za-z]+|[^A-Za-z']+$/g, '').replace(/'s$/, '');
+    if (i === 0 || w.length < 3 || !/^[A-Z][a-z]+$/.test(w) || COMMON_CAPS.has(w.toLowerCase())) return;
+    out.add(w);
+  });
+  return [...out];
+}
+
 export interface GroundSource {
   text?: string;
   title: string;
@@ -322,8 +340,9 @@ export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: Ground
         removed++;
       }
       const nums = sentenceNumbers(seg.text);
-      const ok = (i: number) => nums.every((forms) => has(texts[i - 1] ?? '', forms));
-      if (!nums.length || seg.citations.every(ok)) {
+      const names = sentenceNames(seg.text);
+      const ok = (i: number) => nums.every((forms) => has(texts[i - 1] ?? '', forms)) && names.every((n) => new RegExp(`\\b${n}\\b`, 'i').test(texts[i - 1] ?? ''));
+      if ((!nums.length && !names.length) || seg.citations.every(ok)) {
         segments.push(seg);
         continue;
       }
@@ -381,7 +400,7 @@ export function attributeCitations(raw: string, evidence: Array<{ text?: string;
   return raw
     .split(/\n\s*\n/)
     .map((block) => {
-      const sentences = block.match(/(?:[^.!?]|\.(?=\d))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [block];
+      const sentences = block.match(/(?:[^.!?]|\.(?=\d)|(?<=\b[A-Z])\.(?=\s+[A-Z][a-z]))+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [block];
       return sentences
         .map((sentence, k) => {
           if (/\[\d+(?:\s*,\s*\d+)*\]/.test(sentence)) return sentence;

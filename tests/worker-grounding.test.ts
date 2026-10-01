@@ -6,7 +6,7 @@ const para = (...segs: Array<[string, number[]]>) => [{ segments: segs.map(([tex
 
 describe('answer grounding', () => {
   it('keeps sentences whose figures are in the cited source', () => {
-    const r = groundParagraphs(para(['The council approved $350,000 for the Geneva Road widening.', [1]]), [src('Total budget $350,000 Impact Fees')]);
+    const r = groundParagraphs(para(['The council approved $350,000 for the Geneva Road widening.', [1]]), [src('Geneva Road widening. Total budget $350,000 Impact Fees')]);
     expect(r.removed).toBe(0);
     expect(r.paragraphs[0].segments[0].citations).toEqual([1]);
   });
@@ -93,5 +93,19 @@ describe('decimals', () => {
     const { segmentAnswer } = await import('../worker/ai/answer');
     const out = segmentAnswer('The certified tax rate for fiscal year 2026 is 0.001234 [1]. It was adopted in June [1].', 1);
     expect(out.paragraphs[0].segments.map((s) => s.text)).toEqual(['The certified tax rate for fiscal year 2026 is 0.001234.', 'It was adopted in June.']);
+  });
+});
+
+describe('names must be in the source', () => {
+  it('removes a sentence naming someone the source does not mention', async () => {
+    const { groundParagraphs } = await import('../worker/ai/answer');
+    const ev = [{ title: 'City leadership and department heads (current)', documentDate: '2026-09-30', text: 'City Manager: Brian Voeks.' }, { title: 'Municipal Code: 2.08.020 Powers', documentDate: null, text: 'The city manager shall supervise departments.' }];
+    const out = groundParagraphs([{ segments: [{ text: 'The current city manager of Vineyard is Eric Ellis.', citations: [2] }, { text: 'The city manager is Brian Voeks.', citations: [2] }] }], ev);
+    expect(out.paragraphs[0].segments).toEqual([{ text: 'The city manager is Brian Voeks.', citations: [1] }]);
+  });
+  it('keeps initials inside a sentence', async () => {
+    const { segmentAnswer, attributeCitations } = await import('../worker/ai/answer');
+    const raw = attributeCitations('It was presented by Mayor J. Rulon Gammon [1]. Passed [1].', [{ title: 't', text: 'x' }]);
+    expect(segmentAnswer(raw, 1).paragraphs[0].segments[0].text).toBe('It was presented by Mayor J. Rulon Gammon.');
   });
 });

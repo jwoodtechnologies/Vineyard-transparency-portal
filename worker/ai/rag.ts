@@ -354,7 +354,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const currentIds = new Set<string>();
   if (CURRENT.test(body.question) || ROLE.test(body.question)) {
     const current = await retrieve(retrievalText, { ...filters, currency: ['current'] }).catch(() => [] as ChunkHit[]);
-    current.slice(0, 6).forEach((h) => currentIds.add(h.chunkId));
+    // Today's directory and lists, not code sections (also marked current): they say who holds a role.
+    current.filter((h) => !['municipal_code', 'plan'].includes(h.documentType)).slice(0, 6).forEach((h) => currentIds.add(h.chunkId));
     const top = hits.slice(0, 30).sort((a, b) => String(b.documentDate ?? '').localeCompare(String(a.documentDate ?? '')));
     const seenC = new Set<string>();
     hits = [...current.slice(0, 6), ...top, ...hits.slice(30)].filter((h) => (seenC.has(h.chunkId) ? false : (seenC.add(h.chunkId), true)));
@@ -385,6 +386,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
     lead(currentIds, 2);
+    // "The first meeting", "the earliest ordinance": among the passages that answer, oldest first.
+    if (/\b(first|earliest|oldest|original)\b(?!\s+responders?)/i.test(body.question)) {
+      const top = best.slice(0, 8).sort((a, b) => String(a.documentDate ?? `${a.year ?? 9999}-12-31`).localeCompare(String(b.documentDate ?? `${b.year ?? 9999}-12-31`)));
+      best = [...top, ...best.slice(8)];
+    }
     hits = best;
   }
   const evidence = selectEvidence(hits);
