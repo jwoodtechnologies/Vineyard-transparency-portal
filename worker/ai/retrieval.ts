@@ -170,7 +170,8 @@ export function recencyWeighted<T extends ChunkHit & { rel: number }>(ranked: T[
   // Code sections lead only when the question is about rules; otherwise they never crowd out records.
   const codeWeight = rules ? 1 : 0.6;
   if (HISTORICAL.test(question)) return ranked.map((h, i) => ({ h, i, s: h.documentType === 'municipal_code' ? h.rel * codeWeight : h.rel })).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.h);
-  const strength = PRESENT.test(question) ? 0.6 : 0.25;
+  // Present tense (what is happening, current, plans): a record two years old counts a third as much.
+  const strength = PRESENT.test(question) ? 1.0 : 0.3;
   const weight = (h: T) => {
     if (h.documentType === 'municipal_code') return codeWeight;
     if (currentIds.has(h.chunkId)) return 1;

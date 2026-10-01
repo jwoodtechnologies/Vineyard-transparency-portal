@@ -1,5 +1,7 @@
 /** A person's card: photo, role, term and contact as the city lists them, linking to their profile. */
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getJson } from './api';
 import { ChevronRight, Mail, Phone, UserRound } from 'lucide-react';
 import { roleLine, type Person } from './people';
 
@@ -13,7 +15,30 @@ export function PersonPhoto({ person, size = 56 }: { person: Person; size?: numb
   );
 }
 
-export function PersonCard({ person }: { person: Person }) {
+/** The first year city records name this person (cached per page view). */
+const sinceCache = new Map<string, Promise<number | null>>();
+function useSince(slug: string, known?: number | null): number | null {
+  const [since, setSince] = useState<number | null>(known ?? null);
+  useEffect(() => {
+    if (known != null) return;
+    let live = true;
+    let p = sinceCache.get(slug);
+    if (!p) {
+      p = getJson<{ person: { since?: number | null } }>(`/api/people/${encodeURIComponent(slug)}`)
+        .then((r) => r.person.since ?? null)
+        .catch(() => null);
+      sinceCache.set(slug, p);
+    }
+    void p.then((v) => live && setSince(v));
+    return () => {
+      live = false;
+    };
+  }, [slug, known]);
+  return since;
+}
+
+export function PersonCard({ person }: { person: Person & { since?: number | null } }) {
+  const since = useSince(person.slug, person.since);
   return (
     <div className="vc-person-card">
       <PersonPhoto person={person} />
@@ -24,6 +49,7 @@ export function PersonCard({ person }: { person: Person }) {
         </Link>
         <span className="vc-person-role">{roleLine(person)}</span>
         {person.term && <span className="vc-person-term">Term {person.term}</span>}
+        {since && <span className="vc-person-term">In city records since {since}</span>}
         <span className="vc-person-contact">
           {person.email && (
             <a href={`mailto:${person.email}`}>

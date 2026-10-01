@@ -222,6 +222,7 @@ async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: s
 
 const CURRENT = /\b(who is|who's|who are|current|currently|now|today|as of|latest|presently|still|this year|right now)\b/i;
 const ROLE = /\b(mayor|deputy mayor|council ?(member|man|woman)s?|city council|city manager|recorder|city attorney|director|department head|staff|employees?|who works|chief|official|commissioners?)\b/i;
+const PRESENT_Q = /\b(now|current|currently|today|this year|latest|recent|recently|right now|going on|happening|doing|working on|plans?|planned|planning|upcoming|status|still|update|progress)\b/i;
 const RULE = /\b(can i|can we|can you|am i allowed|is it (legal|allowed|permitted)|allowed|permitted|prohibited|illegal|rules?|regulations?|required|requirements?|do i need|need a permit|code says|setbacks?|how (many|tall|high|far))\b/i;
 const VOTE = /\b(vote[sd]?|voting|motion|moved|second(ed)?|position|stance|support(ed)?|oppose[sd]?|against|for or against|aye|nay)\b/i;
 
@@ -382,6 +383,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
         // The time the question is about ("last year", "this month", "since 2020"), searched on its own.
         frame && !frame.future ? retrieve(q0, { ...filters, dateFrom: frame.from, dateTo: frame.to }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
         frame && !frame.future ? retrieve(retrievalText, { ...filters, dateFrom: frame.from, dateTo: frame.to }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
+        // "What is happening with X", "current", "plans": this year's records searched on their own,
+        // so the latest minutes and packets are always in the pool.
+        !frame && PRESENT_Q.test(body.question) ? retrieve(q0, { ...filters, dateFrom: new Date(Date.now() - 400 * 86_400_000).toISOString().slice(0, 10) }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
       ]);
       hits = interleave([...planned, direct], 90);
     } else if (frame && !frame.future) {

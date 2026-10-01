@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { ArrowUp, Mic, Search, Square } from 'lucide-react';
+import { micCue } from './sounds';
 
 // Browser speech recognition (Chrome, Edge, Safari on Mac and iPhone). Free, no account; the words
 // are written into the box live as you speak. Hidden where the browser does not support it.
@@ -57,6 +58,7 @@ export function Composer({ variant, busy, onSubmit, onStop, autoFocus }: Props) 
   useEffect(() => () => rec.current?.abort(), []);
 
   const stopListening = () => {
+    if (rec.current) micCue('stop');
     rec.current?.stop();
     rec.current = null;
     setListening(false);
@@ -92,6 +94,7 @@ export function Composer({ variant, busy, onSubmit, onStop, autoFocus }: Props) 
     };
     try {
       r.start();
+      micCue('start');
       rec.current = r;
       setMicNote(null);
       setListening(true);

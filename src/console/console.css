@@ -3703,3 +3703,92 @@ html.vc-locked .vc-landing {
   margin-top: 0.3rem;
   font-size: 0.8rem;
 }
+
+/* Services: grouped, collapsible lists */
+.vc-svc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+.vc-svc-group {
+  border: 1px solid var(--vc-line-2);
+  border-radius: 16px;
+  background: var(--vc-surface);
+  overflow: hidden;
+}
+.vc-svc-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.vc-svc-head::-webkit-details-marker {
+  display: none;
+}
+.vc-svc-name {
+  font-weight: 620;
+  color: var(--vc-ink);
+}
+.vc-svc-count {
+  font-size: 0.74rem;
+  color: var(--vc-faint);
+  font-variant-numeric: tabular-nums;
+}
+.vc-svc-chev {
+  margin-left: auto;
+  color: var(--vc-muted);
+  transition: transform 0.2s var(--vc-ease);
+}
+.vc-svc-group[open] .vc-svc-chev {
+  transform: rotate(180deg);
+}
+.vc-svc-list {
+  margin: 0;
+  padding: 0 0.4rem 0.45rem;
+  list-style: none;
+  border-top: 1px solid var(--vc-line-2);
+}
+.vc-svc-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.6rem;
+  border-radius: 11px;
+  color: var(--vc-ink);
+  text-decoration: none;
+}
+.vc-svc-row:hover {
+  background: var(--vc-surface-2);
+}
+.vc-svc-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 9px;
+  background: var(--vc-bg-2);
+  color: var(--vc-muted);
+}
+.vc-svc-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.vc-svc-label {
+  font-size: 0.9rem;
+  font-weight: 540;
+}
+.vc-svc-hint {
+  font-size: 0.76rem;
+  color: var(--vc-faint);
+}
+.vc-svc-go {
+  flex: none;
+  margin-left: auto;
+  color: var(--vc-faint);
+}

@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, CalendarDays, ClipboardList, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Users } from 'lucide-react';
+import { BookOpen, Building2, CalendarDays, ClipboardList, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Users } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { RECORD_CATEGORIES } from './categories';
@@ -53,7 +53,10 @@ function MenuMark() {
   );
 }
 
-const CATEGORY_ICONS: Record<string, typeof FileText> = { meetings: FileText, finance: Landmark, laws: Scale, code: BookOpen, plans: Layers };
+/** The menu keeps the main record groups; the Records page has every category. */
+const MENU_CATEGORIES = ['meetings', 'finance', 'laws', 'rda'];
+
+const CATEGORY_ICONS: Record<string, typeof FileText> = { meetings: FileText, finance: Landmark, laws: Scale, code: BookOpen, plans: Layers, rda: Building2 };
 
 /**
  * The one menu, on desktop and phones: the calendar, people, map and every record category, then
@@ -115,7 +118,7 @@ export function SettingsMenu() {
             <ScrollText size={15} strokeWidth={1.8} />
             <span>All records</span>
           </Link>
-          {RECORD_CATEGORIES.map((c) => {
+          {RECORD_CATEGORIES.filter((c) => MENU_CATEGORIES.includes(c.id)).map((c) => {
             const Icon = CATEGORY_ICONS[c.id] ?? FileText;
             return (
               <Link key={c.id} to={`/records?c=${c.id}`} className="vc-panel-row">

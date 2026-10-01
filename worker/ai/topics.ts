@@ -53,6 +53,13 @@ TOPICS.push({
   note: 'Water quality reports (Consumer Confidence Reports) cover the previous calendar year and are released the following spring, so "this year\'s report" is the one released this year (for example the 2025 report, presented in May 2026). Give the newest report and its date first; every year\'s report is listed for the reader under your answer.',
 });
 
+TOPICS.push({
+  id: 'noise',
+  match: /\b(noise|noisy|loud|music|party|parties|barking|bark|decibels?|quiet hours|nuisance|neighbou?r'?s?\b.*\b(complain|report)|complain(t|ts)? about (my )?neighbou?r)\b/i,
+  queries: [{ q: '"Nuisances Generally" noise decibels' }, { q: 'noise level decibels daytime nighttime nuisance' }],
+  note: 'Noise and nuisance complaints: Vineyard Municipal Code 8.08.010 (Nuisances Generally) makes it a nuisance for activities to exceed 55 decibels (dBA) between 7:00 a.m. and 10:30 p.m. and 50 decibels between 10:30 p.m. and 7:00 a.m.; quote the limits exactly as the code section states them and cite it. To report: file the city\'s Report a Concern form (it goes to Code Enforcement), and for noise happening right now, especially at night, call the Utah County Sheriff\'s non-emergency line at 801-798-5600 (Vineyard\'s police service); call 911 only for emergencies. Give the rule first, then these steps.',
+});
+
 export function topicsFor(question: string, today = new Date().toISOString().slice(0, 10)): CivicTopic[] {
   const y = Number(today.slice(0, 4));
   const m = Number(today.slice(5, 7));

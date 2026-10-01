@@ -125,7 +125,10 @@ export async function getPerson(env: Env, slug: string): Promise<Response> {
           : Promise.resolve([] as ChunkHit[]),
       ])
     : [[], []];
-  return json({ person, records: byDocument(mentions, 15), votes: byDocument(votes, 15) }, { cache: CACHE.list });
+  // The earliest record that names them: shown as "In city records since 2019" (not a hire date).
+  const dates = mentions.map((h) => h.documentDate).filter((d): d is string => Boolean(d)).sort();
+  const since = dates.length ? Number(dates[0].slice(0, 4)) : null;
+  return json({ person: { ...person, since }, records: byDocument(mentions, 15), votes: byDocument(votes, 15) }, { cache: CACHE.list });
 }
 
 export async function getPersonPhoto(env: Env, slug: string): Promise<Response> {

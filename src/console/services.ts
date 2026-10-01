@@ -50,6 +50,7 @@ export const STAFF: StaffContact[] = [
   { name: 'Cris Johnson', title: 'Chief Building Official', match: /\bbuilding official\b|\bbuilding department\b|\bbuilding inspect/i, phone: '801-226-1929' },
   { name: 'Brian Vawdrey', title: 'Parks and Recreation Director', match: /\bparks (and|&) rec|\brecreation director\b/i },
   { name: 'Brailee Tyler', title: 'Communications and Media Specialist', match: /\bcommunications?\b|\bmedia\b|\bpress\b/i, email: 'braileet@vineyardutah.gov' },
+  { name: 'Ed Kennedy', title: 'Code Enforcement Officer', match: /\b(code enforcement|noise|noisy|loud|nuisance|barking|weeds?|junk|complain(t|ts)? about)\b/i, phone: '801-226-1929' },
   { name: 'Kelly Kloepfer', title: 'Business Licensing', match: /\bbusiness licen/i, phone: '801-226-1929' },
   { name: 'Janice Green', title: 'Utility Billing Clerk', match: /\butility billing\b/i, phone: '801-226-1929' },
 ];

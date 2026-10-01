@@ -75,8 +75,8 @@ export function setHistoryEnabled(on: boolean) {
   } catch {
     /* ignore */
   }
-  if (!on) write([]);
-  else emit();
+  // Turning saving off only stops new chats from being saved; chats already saved stay.
+  emit();
 }
 
 export function saveChat(chat: SavedChat) {

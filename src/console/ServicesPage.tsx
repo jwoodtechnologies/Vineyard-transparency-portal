@@ -3,7 +3,7 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, ClipboardList, CreditCard, Map as MapIcon, Phone, Search } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ClipboardList, CreditCard, Map as MapIcon, Phone, Search } from 'lucide-react';
 import { Frame } from './Chrome';
 import { DIRECTORY, DIRECTORY_GROUPS } from './directory';
 
@@ -22,37 +22,46 @@ export default function ServicesPage() {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">City services</h1>
-        <p className="vc-page-sub">Every form, portal and report the city links from its Transparency Portal. Each button opens the official city page or form.</p>
+        <p className="vc-page-sub">Forms, portals and reports from the city, grouped. Each opens the official city page or form.</p>
       </header>
       <form className="vc-rec-search" role="search" onSubmit={(e) => e.preventDefault()}>
         <Search size={16} strokeWidth={1.9} />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Records request, permits, jobs, fee schedule..." aria-label="Search city services" />
       </form>
-      {DIRECTORY_GROUPS.map((g) => {
-        const list = shown.filter((e) => e.group === g);
-        if (!list.length) return null;
-        return (
-          <section key={g} className="vc-rec-group">
-            <h2 className="vc-rec-month">{g}</h2>
-            <div className="vc-quick vc-services">
-              {list.map((e) => {
-                const Icon = ICON[e.kind];
-                return (
-                  <a key={e.id} href={e.href} className="vc-quick-item" target="_blank" rel="noopener noreferrer">
-                    <span className="vc-quick-icon" data-kind={e.kind}>
-                      <Icon size={14} strokeWidth={2} />
-                    </span>
-                    <span className="vc-quick-text">
-                      <span className="vc-quick-label">{e.label}</span>
-                      {e.hint && <span className="vc-quick-hint">{e.hint}</span>}
-                    </span>
-                  </a>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+      <div className="vc-svc">
+        {DIRECTORY_GROUPS.map((g) => {
+          const list = shown.filter((e) => e.group === g);
+          if (!list.length) return null;
+          return (
+            <details key={`${g}:${q ? 'q' : ''}`} className="vc-svc-group" open={Boolean(q)}>
+              <summary className="vc-svc-head">
+                <span className="vc-svc-name">{g}</span>
+                <span className="vc-svc-count">{list.length}</span>
+                <ChevronDown size={16} strokeWidth={1.9} className="vc-svc-chev" />
+              </summary>
+              <ul className="vc-svc-list">
+                {list.map((e) => {
+                  const Icon = ICON[e.kind];
+                  return (
+                    <li key={e.id}>
+                      <a href={e.href} className="vc-svc-row" target="_blank" rel="noopener noreferrer">
+                        <span className="vc-svc-icon" data-kind={e.kind}>
+                          <Icon size={14} strokeWidth={2} />
+                        </span>
+                        <span className="vc-svc-text">
+                          <span className="vc-svc-label">{e.label}</span>
+                          {e.hint && <span className="vc-svc-hint">{e.hint}</span>}
+                        </span>
+                        <ArrowUpRight size={15} strokeWidth={1.8} className="vc-svc-go" />
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          );
+        })}
+      </div>
     </Frame>
   );
 }
