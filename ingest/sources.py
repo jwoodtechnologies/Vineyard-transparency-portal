@@ -79,11 +79,11 @@ SOURCES = [
         "baseUrl": "https://vineyard.municipalcodeonline.com/",
         "sourceType": "municipal_code",
         "authority": "Vineyard City",
-        "crawlEnabled": False,
-        "archiveEnabled": False,
-        "documentDiscoveryEnabled": False,
-        "description": "Codified municipal code, zoning code, resolutions and ordinance index.",
-        "notes": "Linked for reference. The code site only serves its content to its own pages (server-side same-site filter), so it is not crawled; its ordinances, resolutions and minutes are indexed where the city publishes them (CivicClerk packets and vineyardutah.gov).",
+        "crawlEnabled": True,
+        "archiveEnabled": True,
+        "documentDiscoveryEnabled": True,
+        "description": "Agenda & Minutes since incorporation (May 11, 1989), every resolution and ordinance since 1989, and the Municipal, Zoning and Subdivision codes, special districts, tree manual and General Plan.",
+        "notes": "Read through the same public table-of-contents and content endpoints the site's pages use. A meeting, resolution or ordinance with a PDF is one record (the PDF, with the site's summary added); minutes already indexed from CivicClerk are not duplicated.",
     },
 ]
 

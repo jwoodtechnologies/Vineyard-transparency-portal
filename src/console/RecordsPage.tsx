@@ -134,7 +134,7 @@ export default function RecordsPage() {
   const query = useMemo(() => {
     const u = new URLSearchParams();
     if (types.length) types.forEach((t) => u.append('type', t));
-    else (cat?.api ?? []).forEach((c) => u.append('category', c));
+    else (cat?.types ?? []).forEach((t) => u.append('type', t.id));
     if (year) u.set('year', year);
     if (body) u.set('body', body);
     u.set('sort', sort);

@@ -151,6 +151,8 @@ class CivicClerkAdapter(SourceAdapter):
                         "governmentBodyName": body["name"] if body else None,
                         "publishedAt": f.get("publishOn"),
                         "externalId": f"civicclerk:file:{int(fid)}",
+                        # One record per meeting: the same minutes on the municipal code site attach here.
+                        "dedupeMeeting": doc_type in ("minutes", "agenda", "agenda_packet"),
                         "fileNameHint": (f.get("url") or "").rsplit("/", 1)[-1],
                     },
                 )

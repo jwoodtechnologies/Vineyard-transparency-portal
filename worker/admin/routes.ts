@@ -383,6 +383,28 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
     return json({ status: 'new_version', documentId: known.id, version, shard: known.search_shard, needsChunks: true, needsArchive: true, rowsWritten: rows });
   }
 
+  // One record per meeting: the same minutes or agenda from a second source (CivicClerk and the
+  // municipal code site both carry them) attach to the record already indexed for that meeting.
+  const meetingDate = s(d.documentDate, 10);
+  const meetingBody = s(d.governmentBodyId, 128);
+  if (d.dedupeMeeting === true && ['minutes', 'agenda', 'agenda_packet'].includes(docType) && meetingDate && meetingBody) {
+    const special = /\bspecial\b/i.test(title) ? 1 : 0;
+    const same = await db
+      .prepare(
+        `SELECT * FROM documents WHERE document_type = ? AND document_date = ? AND government_body_id = ?
+           AND (CASE WHEN lower(title) LIKE '%special%' THEN 1 ELSE 0 END) = ? ORDER BY first_seen_at LIMIT 1`,
+      )
+      .bind(docType, meetingDate, meetingBody, special)
+      .first<Json>();
+    if (same) {
+      docIdCache.id = String(same.id);
+      const r = await db.batch([sourceRow(), db.prepare('UPDATE documents SET last_seen_at = ?, meeting_id = coalesce(meeting_id, ?) WHERE id = ?').bind(now, s(d.meetingId, 128), same.id)]);
+      const rows = sum(r);
+      await budget.record(rows);
+      return json({ status: 'duplicate', documentId: same.id, shard: same.search_shard, needsChunks: false, needsArchive: false, rowsWritten: rows });
+    }
+  }
+
   if (sha) {
     const dup = await db.prepare('SELECT * FROM documents WHERE sha256 = ? LIMIT 1').bind(sha).first<Json>();
     if (dup) {
