@@ -1,6 +1,8 @@
 """Polite HTTP client: identification, robots.txt, per-domain pacing, retries with backoff."""
 from __future__ import annotations
 
+import re
+
 import hashlib
 import os
 import random
@@ -20,6 +22,11 @@ USER_AGENT = os.environ.get(
 )
 MIN_INTERVAL = float(os.environ.get("VTP_MIN_INTERVAL_SECONDS", "1.0"))  # ~1 request/second/domain
 MAX_RETRIES = 4
+
+
+# Public ArcGIS REST APIs (the city's GIS layers) publish no robots.txt and answer 403 for it.
+# RFC 9309 section 2.3.1.3: a 4xx robots.txt response means no crawl restrictions.
+API_HOST = re.compile(r"(^|\.)services\d*\.arcgis\.com$", re.I)
 
 
 class RobotsDisallowed(Exception):
@@ -72,7 +79,8 @@ class PoliteClient:
                 self._pace(parts.netloc)
                 r = self.session.get(f"{origin}/robots.txt", timeout=20)
                 self.requests_made += 1
-                if r.status_code in (401, 403):
+                if r.status_code in (401, 403) and not API_HOST.search(parts.netloc):
+                    # Conservative for websites: a locked robots.txt is read as "keep out".
                     rp.parse(["User-agent: *", "Disallow: /"])
                 elif r.status_code >= 400:
                     rp.parse([])  # no robots.txt → everything allowed
