@@ -433,8 +433,15 @@ function askFor(p: { layer: string; name: string; props: Record<string, unknown>
       return `What is Vineyard's evacuation plan for ${name}?`;
     case 'pdoverlay':
       return `What planned development overlay applies to ${name} in Vineyard, and what did the City Council approve?`;
+    case 'wayfinding':
+      // Wayfinding points carry sign directions ("Continue East on Center Street..."), not names.
+      return `What has Vineyard planned or installed for wayfinding signs${v('Type') ? ` (${v('Type')})` : ''}, and where do they go?`;
+    case 'businesses':
+      return `What has the City of Vineyard approved or discussed about ${name}?`;
+    case 'amenities':
+      return `What plans, improvements and City Council decisions involve ${name} in Vineyard?`;
     default:
-      return `What do Vineyard's records say about ${name}${p.layer ? ` (${p.layer})` : ''}?`;
+      return `What do Vineyard's records say about ${name}?`;
   }
 }
 

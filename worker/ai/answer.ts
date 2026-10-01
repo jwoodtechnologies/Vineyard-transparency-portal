@@ -48,6 +48,7 @@ export const RAG_SYSTEM_PROMPT = [
   'Never state a general rule about how the city works (who may vote, what a role can do) unless a source says it in those words.',
   'Write dates as words, for example "October 1, 2026", never "2026-10-01".',
   'Use only the sources that are about what the question asks. Ignore sources about other topics, places, people or years, even when they share some words with the question.',
+  'Your first sentence states what the records show about the question. Never open with what is missing, with "However", "Additionally" or another connecting word, or with a pronoun.',
   'Answer the exact question in your first sentence. For a yes or no question ("Is X the deputy mayor?"), begin with yes or no as the sources show, then the specifics.',
   'For who holds a position now, rely on the record marked current (the city staff directory or the mayor and city council list) and say the date it is current as of.',
   'Keep the timeline right: when a newer source changes an older one (an amended or repealed ordinance or resolution, a person replaced in a role, a revised budget), give the current state first and mention the earlier one with its date.',
@@ -434,4 +435,21 @@ export function attributeCitations(raw: string, evidence: Array<{ text?: string;
         .join(' ');
     })
     .join('\n\n');
+}
+
+/** Openers that only make sense after a sentence that is no longer there. */
+const CONNECTIVE = /^(however|additionally|also|furthermore|moreover|in addition|but|instead|that said|still|meanwhile|nevertheless|nonetheless|similarly|likewise|as a result|therefore|thus|overall|in summary),?\s+/i;
+
+/**
+ * After sentences are removed, a paragraph can open with "However, ..." or "Additionally, ...".
+ * The connective goes and the sentence reads on its own.
+ */
+export function tidyOpeners(paragraphs: AnswerParagraph[]): AnswerParagraph[] {
+  return paragraphs.map((p, pi) => ({
+    segments: p.segments.map((s, si) => {
+      if (si !== 0 && !(pi === 0 && si === 0)) return s;
+      const text = s.text.replace(CONNECTIVE, '');
+      return text === s.text ? s : { ...s, text: text.charAt(0).toUpperCase() + text.slice(1) };
+    }),
+  }));
 }

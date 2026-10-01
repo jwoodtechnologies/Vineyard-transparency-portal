@@ -116,3 +116,12 @@ describe('dates in words', () => {
     expect(segmentAnswer('The list is current as of 2026-10-01 [1].', 1).paragraphs[0].segments[0].text).toBe('The list is current as of October 1, 2026.');
   });
 });
+
+describe('tidyOpeners', () => {
+  it('drops a dangling connective at the start of a paragraph', async () => {
+    const { tidyOpeners } = await import('../worker/ai/answer');
+    const out = tidyOpeners([{ segments: [{ text: 'However, there are references to traffic at Center Street and Mill Road.', citations: [1] }, { text: 'However, it continues.', citations: [1] }] }]);
+    expect(out[0].segments[0].text).toBe('There are references to traffic at Center Street and Mill Road.');
+    expect(out[0].segments[1].text).toBe('However, it continues.');
+  });
+});
