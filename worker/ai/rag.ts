@@ -188,22 +188,24 @@ const MEETINGISH = /\b(meetings?|council|commission|agenda|minutes|session|heari
 const FILLER = /\b(most recent|latest|last|recent|previous|past|upcoming|next|this week'?s|tonight'?s|today'?s|what|whats|what's|happened|happen|happening|at|the|in|on|was|were|did|do|does|will|be|discussed|discuss|meetings?|city|council|commission|planning|agenda|minutes|session|vineyard|of|about|is|are|for|tell|me|summarize|summary|a|an)\b/gi;
 
 /** The meeting a "last / next meeting" question is about, with the search terms left over. */
-async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: string; date: string | null; terms: string } | null> {
+async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: string; date: string | null; terms: string; minutesOnly: boolean } | null> {
   if (!RECENT.test(q) || !MEETINGISH.test(q)) return null;
   const next = /\b(upcoming|next|tonight|today|this week)\b/i.test(q);
+  // What happened / was decided comes from minutes; packets reprint the previous meeting's minutes.
+  const outcome = !next && /\b(happen|happened|decide|decided|decision|vote|voted|votes|approve|approved|adopt|adopted|pass|passed|deny|denied|action|actions|outcome|result)\w*\b/i.test(q);
   const body = /planning commission/i.test(q) ? '%Planning%' : /\bRDA\b|redevelopment/i.test(q) ? '%Redevelopment%' : /\barch|architect/i.test(q) ? '%ARCH%' : '%Council%';
   const today = new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10); // Utah
   const row = await env.CATALOG_DB.prepare(
     `SELECT m.id, m.title, m.meeting_date FROM meetings m
      WHERE coalesce(m.government_body_name, m.title) LIKE ? AND m.meeting_date ${next ? '>=' : '<='} ?
-       AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = m.id)
+       AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = m.id${outcome ? " AND d.document_type = 'minutes'" : ''})
      ORDER BY m.meeting_date ${next ? 'ASC' : 'DESC'} LIMIT 1`,
   )
     .bind(body, today)
     .first<{ id: string; title: string; meeting_date: string | null }>();
   if (!row) return null;
   const rest = q.replace(/[?.!,]/g, ' ').replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
-  return { id: row.id, title: row.title, date: row.meeting_date, terms: rest.length >= 3 ? rest : 'approve approved motion ordinance resolution item public hearing presentation' };
+  return { id: row.id, title: row.title, date: row.meeting_date, minutesOnly: outcome, terms: rest.length >= 3 ? rest : 'approve approved motion ordinance resolution item public hearing presentation' };
 }
 
 type Prepared =
@@ -263,8 +265,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   let hits: ChunkHit[] = [];
   let question = body.question;
   if (focus) {
-    hits = await retrieve(focus.terms, { ...filters, meetingId: focus.id });
-    if (hits.length) question = `${body.question}\n(This refers to the ${focus.title}${focus.date ? ` held ${focus.date}` : ''}. Every source below is from that meeting.)`;
+    hits = await retrieve(focus.terms, { ...filters, meetingId: focus.id, ...(focus.minutesOnly ? { documentTypes: ['minutes'] } : {}) });
+    const when = `${focus.title}${focus.date ? ` held ${focus.date}` : ''}`;
+    if (hits.length)
+      question = focus.minutesOnly
+        ? `${body.question}\n(Answer from the minutes of the ${when}, the most recent meeting with minutes in the archive. Start by naming that meeting and its date.)`
+        : `${body.question}\n(This refers to the ${when}. Every source below is from that meeting's agenda or packet, so describe items as scheduled or recommended, not as decided. Minutes reprinted inside a packet are from an earlier meeting; do not present those actions as happening at this meeting.)`;
   }
   if (!hits.length) hits = await retrieve(retrievalText, filters);
   const loose = parseQuery(retrievalText, { match: 'any' });

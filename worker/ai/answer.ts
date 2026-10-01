@@ -132,6 +132,8 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
   const cleaned = raw
     .replace(/\r/g, '')
     .replace(/[\u2010\u2011\u2012]/g, '-')
+    .replace(/\b([ap])\.m\./gi, (_, x: string) => `${x.toLowerCase()}m`)
+    .replace(/\b(No|Nos|St|Ave|Blvd|Dr|Mr|Mrs|Ms|Inc|Co|approx|vs|e\.g|i\.e)\.(?=\s+[\w$])/g, '$1')
     .replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, '$1-$2')
     .replace(/\s*[\u2013\u2014]\s*/g, ', ')
     .replace(/^#+[ \t]*/gm, '')
@@ -152,7 +154,7 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
         if (Number.isInteger(k) && k >= 1 && k <= maxIndex) cites.add(k);
       }
       const plain = sentence.replace(/\s*\[(\d+(?:\s*,\s*\d+)*)\]/g, '').replace(/\s+([.,;:!?])/g, '$1').trim();
-      if (!plain) continue;
+      if (!plain || plain.replace(/[^A-Za-z]+/g, ' ').trim().split(' ').length < 2) continue;
       if (cites.size) {
         cites.forEach((c) => used.add(c));
         segments.push({ text: plain, citations: [...cites].sort((a, b) => a - b) });
