@@ -46,6 +46,13 @@ TOPICS.push({
   note: 'Records requests (GRAMA, Utah Code 63G-2): a request goes in writing to the City Recorder and must include your name, address, phone number, email and a specific description of the records. Submit it by email to the City Recorder (robinr@vineyardutah.gov), by U.S. mail or in person at City Hall (125 S Main Street), using the city\'s Record Request Form, or through the Utah Open Records Portal. Police reports are requested from the Utah County Sheriff\'s Office. The city responds as soon as reasonably possible and no later than 10 business days. Give these steps plainly, citing the Records Request page.',
 });
 
+TOPICS.push({
+  id: 'water-quality',
+  match: /\b(water quality|consumer confidence|ccr|drinking water (quality )?report|water report)\b/i,
+  queries: [{ q: 'Annual Drinking Water Quality Report', from: '2024-01-01' }, { q: '"water quality report" Vineyard', from: '2023-01-01' }],
+  note: 'Water quality reports (Consumer Confidence Reports) cover the previous calendar year and are released the following spring, so "this year\'s report" is the one released this year (for example the 2025 report, presented in May 2026). Give the newest report and its date first; every year\'s report is listed for the reader under your answer.',
+});
+
 export function topicsFor(question: string, today = new Date().toISOString().slice(0, 10)): CivicTopic[] {
   const y = Number(today.slice(0, 4));
   const m = Number(today.slice(5, 7));

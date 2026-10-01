@@ -44,6 +44,10 @@ export async function seriesFor(env: Env, question: string): Promise<ReportSerie
       seen.add(k);
       return true;
     })
-    .map((r) => ({ id: r.id, title: r.title, date: r.document_date, year: r.year ?? (r.document_date ? Number(r.document_date.slice(0, 4)) : null) }));
+    .map((r) => {
+      const named = r.title.match(/\b(19[89]\d|20[0-4]\d)\b/);
+      return { id: r.id, title: r.title, date: r.document_date, year: r.year ?? (r.document_date ? Number(r.document_date.slice(0, 4)) : named ? Number(named[1]) : null) };
+    })
+    .sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
   return items.length ? { label: s.label, items: items.slice(0, 40) } : null;
 }

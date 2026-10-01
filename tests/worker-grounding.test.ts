@@ -147,3 +147,11 @@ describe('emails and web addresses', () => {
     expect(segmentAnswer('Email info@vineyardutah.gov for help [1].', 1).paragraphs[0].segments[0].text).toBe('Email info@vineyardutah.gov for help.');
   });
 });
+
+describe('U.S. mail', () => {
+  it('stays in one sentence when written without spaces', async () => {
+    const { segmentAnswer, attributeCitations } = await import('../worker/ai/answer');
+    const raw = attributeCitations('Send it by email, U.S. mail or in person [1]. It is free [1].', [{ title: 't', text: 'x' }]);
+    expect(segmentAnswer(raw, 1).paragraphs[0].segments.map((s) => s.text)).toEqual(['Send it by email, U.S. mail or in person.', 'It is free.']);
+  });
+});
