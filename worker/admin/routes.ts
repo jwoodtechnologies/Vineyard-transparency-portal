@@ -211,7 +211,7 @@ async function migrate(env: Env): Promise<Response> {
   const votes = await processVotes(env, 55_000, 1000).catch((e) => ({ error: String(e).slice(0, 200) }));
   // Scanned files still waiting on text recognition (OCR) go back in the queue, fetched fresh, so
   // the next run with OCR on reads them (minutes first).
-  const ocrDocs = "SELECT id FROM documents WHERE ocr_status = 'pending'";
+  const ocrDocs = "SELECT id FROM documents WHERE ocr_status = 'needed'";
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare(
       `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL,
@@ -496,7 +496,7 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
       ]);
       const rows = sum(r);
       await budget.record(rows);
-      return json({ status: 'unchanged', documentId: known.id, shard: known.search_shard, needsChunks: (Number(known.chunk_count ?? 0) === 0 && known.text_status !== 'empty' && known.text_status !== 'unsupported') || known.ocr_status === 'pending', needsArchive: known.archive_status !== 'archived', rowsWritten: rows });
+      return json({ status: 'unchanged', documentId: known.id, shard: known.search_shard, needsChunks: (Number(known.chunk_count ?? 0) === 0 && known.text_status !== 'empty' && known.text_status !== 'unsupported') || known.ocr_status === 'needed', needsArchive: known.archive_status !== 'archived', rowsWritten: rows });
     }
     // Same URL, different bytes: a new version. The old version row keeps its hash and archive key.
     const version = Number(known.current_version ?? 1) + 1;
