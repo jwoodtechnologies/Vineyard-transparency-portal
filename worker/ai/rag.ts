@@ -353,9 +353,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const fail = async (e: unknown): Promise<AskResponse> => {
     const msg = e instanceof Error ? e.message : String(e);
     // Quota / capacity / auth errors open the breaker so we stop spending requests for a while.
-    breakerUntil = Date.now() + (/4006|quota|limit|429|capacity|403|neuron/i.test(msg) ? 30 * 60_000 : 5 * 60_000);
+    // Only a spent daily allowance pauses AI answers (until it resets); any other error affects
+    // just this one answer, and both models were already tried.
+    if (/4006|daily free allocation|neuron|quota/i.test(msg)) breakerUntil = Date.now() + 30 * 60_000;
     await bumpQuota(env, 'ai_failures').catch(() => undefined);
-    return fallback('search_only', SEARCH_ONLY_NOTICE);
+    const r = await fallback('search_only', SEARCH_ONLY_NOTICE);
+    return { ...r, engine: `search-fallback (${msg.replace(/\s+/g, ' ').slice(0, 160)})` };
   };
 
   const finish = async (raw: string, engine?: string): Promise<AskResponse> => {

@@ -85,6 +85,17 @@ def main(argv: list[str] | None = None) -> int:
             status, message = "completed", None
             total = {}
             try:
+                if cmd in ("ingest", "ingest:resume") and not a.source:
+                    # Who holds which office, refreshed first while the day's write allowance is fresh
+                    # (a few rows; unchanged lists only re-verify).
+                    try:
+                        from . import people
+
+                        people.run(api, client)
+                    except BudgetReached:
+                        raise
+                    except Exception as e:  # noqa: BLE001 - never stops the queue
+                        log(f"Staff and officials refresh failed: {e}")
                 if cmd in ("crawl", "run"):
                     c = crawl(api, client, run_id, set(a.source) if a.source else None, a.manifest, a.since)
                     total.update(c.api())
