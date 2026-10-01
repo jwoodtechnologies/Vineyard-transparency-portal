@@ -11,7 +11,7 @@ import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, SearchFilters } from '../../src/types/models';
 import { ensurePeopleTable } from '../api/people';
-import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, QWEN_MODEL, aiText, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, aiText, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -20,6 +20,7 @@ import type { ChunkHit } from '../search/types';
 import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
 import { readAiStream } from './sse';
+import { interleave, planSearch, relevant, rerank, type SearchPlan } from './retrieval';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -69,7 +70,7 @@ function validate(body: unknown): AskRequest {
         .map((t) => ({ role: t.role, content: t.content.slice(0, 2000) }))
     : [];
   const filters = b.filters && typeof b.filters === 'object' ? (b.filters as SearchFilters) : undefined;
-  return { question, conversation, ...(filters ? { filters: sanitizeFilters(filters) } : {}) };
+  return { question, conversation, ...(filters ? { filters: sanitizeFilters(filters) } : {}), ...(b.debug === true ? { debug: true } : {}) } as AskRequest;
 }
 
 function sanitizeFilters(f: SearchFilters): SearchFilters {
@@ -243,35 +244,6 @@ export function isFollowUp(q: string): boolean {
   return PRONOUN.test(q) || /^(and|also|what about|how about)\b/i.test(q.trim());
 }
 
-const TERMS_PROMPT = [
-  'You turn a resident\'s question about Vineyard, Utah city government into a keyword search over city records:',
-  'agendas, minutes, ordinances, resolutions, budgets, the city staff directory, elected officials, capital projects, roads and zoning.',
-  'Output one line of 3 to 10 search words. Keep every person name, job title, place, project, road, ordinance or resolution number and year exactly as written.',
-  'You may add up to two words the records would use (for example a question about the deputy mayor can add "staff directory").',
-  'No punctuation except hyphens. No explanation, no quotes, no sentence.',
-].join(' ');
-
-/** Search words for a question, from the small model (about 3 Neurons). Null on any problem. */
-async function searchTerms(env: Env, q: string, previous: string | null): Promise<string | null> {
-  try {
-    const run = (env.AI as unknown as AiRunner).run(QWEN_MODEL, {
-      messages: [
-        { role: 'system', content: `${TERMS_PROMPT}\n/no_think` },
-        { role: 'user', content: previous ? `Earlier question: ${previous}\nQuestion: ${q}` : `Question: ${q}` },
-      ],
-      max_tokens: 120,
-      temperature: 0,
-    });
-    const out = aiText(await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), 4000))]));
-    const line = out.replace(/<think>[\s\S]*?<\/think>/g, '').split('\n').map((l) => l.trim()).find(Boolean) ?? '';
-    const clean = line.replace(/^(search|keywords?|query)\s*:\s*/i, '').replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim();
-    const words = clean.split(' ').filter(Boolean);
-    return words.length >= 2 && words.length <= 14 ? clean : null;
-  } catch {
-    return null;
-  }
-}
-
 type Prepared =
   | { kind: 'final'; response: AskResponse }
   | { kind: 'model'; messages: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
@@ -338,13 +310,23 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
         ? `${body.question}\n(Answer from the minutes of the ${when}, the most recent meeting with minutes in the archive. Start by naming that meeting and its date.)`
         : `${body.question}\n(This refers to the ${when}. Every source below is from that meeting's agenda or packet, so describe items as scheduled or recommended, not as decided. Minutes reprinted inside a packet are from an earlier meeting; do not present those actions as happening at this meeting.)`;
   }
+  let plan: SearchPlan | null = null;
   if (!hits.length) {
-    // The question as asked, plus a clean keyword version from the small model (names, titles,
-    // places, numbers), so phrasing never decides whether the right record is found.
-    const [terms, direct] = await Promise.all([aiReady ? searchTerms(env, body.question, retrievalText !== body.question ? history[history.length - 1] : null) : Promise.resolve(null), retrieve(retrievalText, filters)]);
-    const rewritten = terms ? await retrieve(terms, filters) : [];
-    const seenChunks = new Set<string>();
-    hits = [...rewritten.slice(0, 25), ...direct, ...rewritten.slice(25)].filter((h) => (seenChunks.has(h.chunkId) ? false : (seenChunks.add(h.chunkId), true)));
+    // The question as asked, plus the model's search plan: several phrasings in the records' own
+    // words, the likely record types and any year the question names. Each is searched, and the
+    // best of every list goes into one candidate pool, so phrasing never decides what is found.
+    const [p, direct] = await Promise.all([aiReady ? planSearch(env, body.question, retrievalText !== body.question ? history[history.length - 1] : null) : Promise.resolve(null), retrieve(retrievalText, filters)]);
+    plan = p;
+    if (plan) {
+      const q0 = plan.queries[0];
+      const planned = await Promise.all([
+        ...plan.queries.map((q) => retrieve(q, filters).catch(() => [] as ChunkHit[])),
+        plan.types.length ? retrieve(q0, { ...filters, documentTypes: plan.types }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
+        plan.types.length ? retrieve(retrievalText, { ...filters, documentTypes: plan.types }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
+        plan.dateFrom ? retrieve(q0, { ...filters, dateFrom: plan.dateFrom, dateTo: plan.dateTo }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
+      ]);
+      hits = interleave([...planned, direct], 90);
+    } else hits = direct;
   }
   // A question about a named official's votes or positions reads the minutes for their recorded
   // motions and votes (minutes list votes by last name).
@@ -358,8 +340,10 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   }
   // "Who is ...", "current", "now": today's records (the staff directory, the mayor and council
   // list, current map data) lead, then the newest dated records, so the answer reflects today.
+  const currentIds = new Set<string>();
   if (CURRENT.test(body.question) || ROLE.test(body.question)) {
     const current = await retrieve(retrievalText, { ...filters, currency: ['current'] }).catch(() => [] as ChunkHit[]);
+    current.slice(0, 6).forEach((h) => currentIds.add(h.chunkId));
     const top = hits.slice(0, 30).sort((a, b) => String(b.documentDate ?? '').localeCompare(String(a.documentDate ?? '')));
     const seenC = new Set<string>();
     hits = [...current.slice(0, 6), ...top, ...hits.slice(30)].filter((h) => (seenC.has(h.chunkId) ? false : (seenC.add(h.chunkId), true)));
@@ -375,6 +359,17 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     return { kind: 'final', response: { ...r, engine: `search-fallback (${why})` } };
   }
 
+  // Every candidate passage is read against the question by a reranker; the answer is written from
+  // the passages that answer it. A record marked current stays first for "who is / now" questions.
+  const ranked = await rerank(env, retrievalText, hits.slice(0, 90));
+  if (ranked) {
+    let best = relevant(ranked);
+    if (currentIds.size) {
+      const cur = best.filter((h) => currentIds.has(h.chunkId)).slice(0, 2);
+      best = [...cur, ...best.filter((h) => !cur.includes(h))];
+    }
+    hits = best;
+  }
   const evidence = selectEvidence(hits);
   // Start the catalog reads the final answer needs now, so they finish while the model writes.
   const docsP = summariesByIds(env, [...new Set(hits.map((h) => h.documentId))].slice(0, 30));
@@ -459,7 +454,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       citations,
       relatedDocuments,
       notice: null,
-      engine: engine ?? env.AI_MODEL ?? DEFAULT_AI_MODEL,
+      engine: `${engine ?? env.AI_MODEL ?? DEFAULT_AI_MODEL}${ranked ? ' + rerank' : ''}${plan ? ' + plan' : ''}`,
+      ...((body as { debug?: boolean }).debug ? { draft: raw, plan, evidence: evidence.map((h, i) => `[${i + 1}] ${h.title} | ${h.documentDate ?? h.year ?? ''} | p${h.pageStart ?? ''}`) } : {}),
     };
   };
 

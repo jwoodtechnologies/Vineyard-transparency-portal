@@ -40,6 +40,7 @@ export const RAG_SYSTEM_PROMPT = [
   'Say whether something was proposed, recommended, discussed, approved, adopted or denied, exactly as the source states it. Never describe a proposal or a staff recommendation as a decision.',
   'When sources differ, rely on the most recent one and name its date, for example "In the June 23, 2026 budget ...".',
   'Only state facts about what the sources say. Never claim that something is not listed, not mentioned, not included or missing.',
+  'Use only the sources that are about what the question asks. Ignore sources about other topics, places, people or years, even when they share some words with the question.',
   'Answer the exact question in your first sentence. For a yes or no question ("Is X the deputy mayor?"), begin with yes or no as the sources show, then the specifics.',
   'For who holds a position now, rely on the record marked current (the city staff directory or the mayor and city council list) and say the date it is current as of.',
   'Keep the timeline right: when a newer source changes an older one (an amended or repealed ordinance or resolution, a person replaced in a role, a revised budget), give the current state first and mention the earlier one with its date.',
@@ -259,6 +260,8 @@ export function sentenceNumbers(sentence: string): string[][] {
     const digits = raw.replace(/\.0+$/, '');
     if (!digits || (/^\d$/.test(digits) && !m[1])) continue; // "Phase 1", "3 members"
     const forms = [digits];
+    // Tax rates are often written without the leading zero (".001234").
+    if (/^0\.\d+$/.test(digits)) forms.push(digits.slice(1));
     const unit = (m[1] ?? '').toLowerCase();
     const scale = unit === 'billion' ? 1e9 : unit === 'million' || unit === 'm' ? 1e6 : unit === 'thousand' || unit === 'k' ? 1e3 : 0;
     if (scale) forms.push(String(Math.round(Number(digits) * scale)));
@@ -361,28 +364,35 @@ const STOP = new Set('the and for with that this from were was are has have had 
 const words = (t: string) => (t.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => (w.length > 3 || /\d/.test(w)) && !STOP.has(w));
 
 export function attributeCitations(raw: string, evidence: Array<{ text?: string; title: string }>): string {
-  if (/\[\d+(?:\s*,\s*\d+)*\]/.test(raw)) return raw;
   const bags = evidence.map((e) => new Set(words(`${e.title} ${e.text ?? ''}`)));
+  const overlap = (w: string[], i: number) => (bags[i] ? w.filter((x) => bags[i].has(x)).length / w.length : 0);
+  const citesOf = (s: string) => [...s.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\]/g)].flatMap((m) => m[1].split(',').map((n) => Number(n.trim()) - 1));
   return raw
     .split(/\n\s*\n/)
-    .map((block) =>
-      (block.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [block])
-        .map((sentence) => {
+    .map((block) => {
+      const sentences = block.match(/[^.!?]+(?:[.!?]+(?:\s*\[[\d,\s]+\])*|$)/g) ?? [block];
+      return sentences
+        .map((sentence, k) => {
+          if (/\[\d+(?:\s*,\s*\d+)*\]/.test(sentence)) return sentence;
           const w = [...new Set(words(sentence))];
           if (w.length < 3) return sentence;
           let best = -1;
           let bestScore = 0;
-          bags.forEach((bag, i) => {
-            const score = w.filter((x) => bag.has(x)).length / w.length;
+          bags.forEach((_, i) => {
+            const score = overlap(w, i);
             if (score > bestScore) {
               best = i;
               bestScore = score;
             }
           });
-          if (best < 0 || bestScore < 0.6) return sentence;
-          return sentence.replace(/([.!?]*)\s*$/, ` [${best + 1}]$1`);
+          // The answer's lead sentence often states what the next sentence cites: it shares that
+          // source when most of its words are in it.
+          const near = [...citesOf(sentences[k + 1] ?? ''), ...citesOf(sentences[k - 1] ?? '')].find((i) => overlap(w, i) >= 0.45);
+          const pick = bestScore >= 0.6 ? best : near ?? -1;
+          if (pick < 0) return sentence;
+          return sentence.replace(/([.!?]*)\s*$/, ` [${pick + 1}]$1`);
         })
-        .join(' '),
-    )
+        .join(' ');
+    })
     .join('\n\n');
 }
