@@ -28,7 +28,7 @@ import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
-import { votesFor } from '../api/votes';
+import { motionEvidence, votesFor } from '../api/votes';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 
@@ -477,6 +477,17 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       roadNote = `Road construction: answer from the newest records about ${roads.slice(0, 2).join(' and ')} (council packets and minutes, resolutions, construction notices, city email updates): say what work is under way or approved, any closure, and any completion or reopening date they give, each with its date. The capital project list shows planning phases and can lag behind, so never say a road is not under construction only because that list does not show it. If no record gives a finish date, say so and point to the city's road signs and Public Works.`;
   }
   if (roadNote) topicNotes = `${topicNotes} ${roadNote}`.trim();
+  // Where things stand now: this year's recorded motions on the topic (from the minutes), so a
+  // present-tense question is answered from what the council actually did this year.
+  const voteIds = new Set<string>();
+  if ((PRESENT_Q.test(retrievalText) || VOTE.test(retrievalText) || (frame && !frame.future && frame.to >= `${todayUT.slice(0, 4)}-01-01`)) && !isScheduleQuestion(retrievalText)) {
+    const from = frame && !frame.future ? frame.from : `${Number(todayUT.slice(0, 4)) - (VOTE.test(retrievalText) ? 3 : 0)}-01-01`;
+    const to = frame && !frame.future ? frame.to : todayUT;
+    const mh = await motionEvidence(env, retrievalText, from, to).catch(() => [] as ChunkHit[]);
+    mh.forEach((h) => voteIds.add(h.chunkId));
+    const seenV = new Set<string>();
+    hits = [...hits.slice(0, 15), ...mh, ...hits.slice(15)].filter((h) => (seenV.has(h.chunkId) ? false : (seenV.add(h.chunkId), true)));
+  }
   // "How do I...": the city website's own page for that service says how, so it is read first.
   const pageIds = new Set<string>();
   if (HOWTO.test(body.question)) {
@@ -551,6 +562,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     lead(govIds, 1);
     lead(topicIds, 3);
     lead(roadIds, 4);
+    lead(voteIds, 3);
     lead(pageIds, 2);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);

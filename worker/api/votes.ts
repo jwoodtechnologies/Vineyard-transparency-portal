@@ -345,3 +345,63 @@ export async function votesFor(env: Env, question: string, people: Array<{ name:
   }
   return null;
 }
+
+const STOP_TERMS = new Set('what when where which while with that this these those there their they them have has had been being from into about after before over under than then also just only very more most much many some such each every other city council vineyard meeting meetings year years month today current currently now recent recently lately going happening happen status update plans planned plan does will would could should doing done right still latest this year'.split(' '));
+
+/**
+ * What the council has actually done on a topic this year, as evidence the answer can cite: each
+ * recorded motion (with its result and vote) becomes a passage from the minutes it came from.
+ */
+export async function motionEvidence(env: Env, question: string, from: string, to: string, limit = 8): Promise<import('../search/types').ChunkHit[]> {
+  await ensureVotesTables(env);
+  const terms = [...new Set(question.toLowerCase().replace(/[^a-z0-9' -]+/g, ' ').split(/\s+/).filter((w) => w.length >= 4 && !STOP_TERMS.has(w)))].slice(0, 6);
+  if (!terms.length) return [];
+  const like = terms.map(() => "(lower(m.motion) LIKE ? OR lower(coalesce(m.item, '')) LIKE ?)").join(' OR ');
+  const rows = await env.CATALOG_DB.prepare(
+    `SELECT m.*, d.title AS doc_title FROM motions m JOIN documents d ON d.id = m.document_id
+     WHERE m.meeting_date BETWEEN ? AND ? AND (${like}) ORDER BY m.meeting_date DESC, m.seq LIMIT ?`,
+  )
+    .bind(from, to, ...terms.flatMap((t) => [`%${t}%`, `%${t}%`]), limit)
+    .all<Record<string, unknown>>();
+  const list = rows.results ?? [];
+  if (!list.length) return [];
+  const votes = await env.CATALOG_DB.prepare('SELECT motion_id, member, vote FROM motion_votes WHERE motion_id IN (SELECT value FROM json_each(?))')
+    .bind(JSON.stringify(list.map((r) => r.id)))
+    .all<{ motion_id: string; member: string; vote: string }>();
+  return list.map((r) => {
+    const vs = (votes.results ?? []).filter((v) => v.motion_id === r.id);
+    const by = (k: string) => vs.filter((v) => v.vote === k).map((v) => v.member).join(', ');
+    const result = r.result === 'carried' ? 'The motion passed' : r.result === 'failed' ? 'The motion failed' : 'The result was not recorded';
+    const text = [
+      `${bodyName(r.body_id as string | null) ?? 'Meeting'} meeting of ${r.meeting_date}.`,
+      r.item ? `Agenda item: ${r.item}.` : '',
+      `Motion${r.mover ? ` by ${r.mover}` : ''}${r.seconder ? `, seconded by ${r.seconder}` : ''}: to ${String(r.motion ?? '').replace(/^to\s+/i, '')}.`,
+      `${result}${r.tally ? ` ${r.tally}` : ''}.`,
+      by('yes') ? `Yes: ${by('yes')}.` : '',
+      by('no') ? `No: ${by('no')}.` : '',
+      by('abstain') || by('recused') ? `Abstained or recused: ${[by('abstain'), by('recused')].filter(Boolean).join(', ')}.` : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    return {
+      shard: 0,
+      chunkId: `vote:${r.id}`,
+      documentId: String(r.document_id),
+      pageStart: r.page == null ? null : Number(r.page),
+      pageEnd: r.page == null ? null : Number(r.page),
+      sectionTitle: (r.item as string | null) ?? null,
+      score: 10,
+      excerpt: text.slice(0, 300),
+      highlights: [],
+      text,
+      title: `${String(r.doc_title ?? 'Minutes')} (recorded vote)`,
+      documentType: 'minutes',
+      documentNumber: null,
+      documentDate: (r.meeting_date as string | null) ?? null,
+      year: r.meeting_date ? Number(String(r.meeting_date).slice(0, 4)) : null,
+      governmentBodyId: (r.body_id as string | null) ?? null,
+      sourceId: 'vineyard-civicclerk-meetings',
+      categoriesJson: '[]',
+    };
+  });
+}

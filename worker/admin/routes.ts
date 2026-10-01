@@ -204,7 +204,7 @@ async function migrate(env: Env): Promise<Response> {
   const meetings = await mergeDuplicateMeetings(env).catch((e) => ({ error: String(e).slice(0, 200) }));
   const recordDates = await fixRecordDates(env).catch((e) => ({ error: String(e).slice(0, 200) }));
   // Voting records: the next sets of minutes are read (each migrate run continues the backfill).
-  const votes = await processVotes(env, 18_000).catch((e) => ({ error: String(e).slice(0, 200) }));
+  const votes = await processVotes(env, 55_000, 1000).catch((e) => ({ error: String(e).slice(0, 200) }));
   // Files skipped only because a robots.txt answered 403 (ArcGIS, Amazon S3) go back in the queue.
   await env.CATALOG_DB.prepare("UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL WHERE status = 'skipped' AND last_error LIKE 'RobotsDisallowed%'").run().catch(() => undefined);
   await ensureActivityTables(env);
