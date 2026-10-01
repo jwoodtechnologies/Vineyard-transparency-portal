@@ -3841,3 +3841,18 @@ html.vc-locked .vc-landing {
 :root[data-theme='dark'] .vc-vote-chip { color: #8ce99a; }
 :root[data-theme='dark'] .vc-vote-chip[data-vote='no'] { color: #ffa8a8; }
 :root[data-theme='dark'] .vc-vote-chip[data-vote='abstain'], :root[data-theme='dark'] .vc-vote-chip[data-vote='recused'] { color: #ffd43b; }
+
+/* Boards and commissions */
+.vc-boards { display: flex; flex-direction: column; gap: 10px; }
+.vc-board { border: 1px solid var(--vc-line-2); border-radius: 16px; background: var(--vc-surface); box-shadow: var(--vc-shadow-sm); }
+.vc-board[data-active='false'] { opacity: 0.72; }
+.vc-board-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: none; border: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.vc-board-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vc-board-name { font-family: var(--vc-serif); font-size: 1.08rem; font-weight: 600; color: var(--vc-ink); }
+.vc-board-sub { font-size: 0.78rem; color: var(--vc-muted); }
+.vc-board-chev { flex: none; color: var(--vc-muted); transition: transform 0.2s; }
+.vc-board-chev[data-open='true'] { transform: rotate(180deg); }
+.vc-board-body { padding: 0 16px 14px; }
+.vc-board-none { font-size: 0.84rem; color: var(--vc-muted); margin: 0 0 10px; }
+.vc-board-links { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.vc-board-since { font-size: 0.76rem; color: var(--vc-muted); }

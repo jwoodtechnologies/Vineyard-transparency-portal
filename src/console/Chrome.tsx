@@ -122,6 +122,10 @@ export function SettingsMenu() {
             <Vote size={15} strokeWidth={1.8} />
             <span>Voting records</span>
           </Link>
+          <Link to="/boards" className="vc-panel-row">
+            <Landmark size={15} strokeWidth={1.8} />
+            <span>Boards and commissions</span>
+          </Link>
           {RECORD_CATEGORIES.filter((c) => MENU_CATEGORIES.includes(c.id)).map((c) => {
             const Icon = CATEGORY_ICONS[c.id] ?? FileText;
             return (

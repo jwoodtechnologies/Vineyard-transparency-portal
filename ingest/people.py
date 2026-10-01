@@ -106,6 +106,34 @@ def council(client: PoliteClient) -> list[dict]:
     return people
 
 
+def board_members(soup) -> list[dict]:
+    """Members as the Board & Commission Members page lists them: each card names the board(s), the
+    member, and a role or term ("Term: 2023-2026", "VYC Recorder"). Cards in document order."""
+    out: list[dict] = []
+    boards: list[str] = []
+    for el in soup.find_all(["ul", "h2"]):
+        if el.name == "ul" and "category-list" in (el.get("class") or []):
+            boards = [re.sub(r"\s+", " ", li.get_text(" ", strip=True)) for li in el.find_all("li")]
+            continue
+        if el.name != "h2" or not boards:
+            continue
+        name = re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip()
+        if not name or len(name) > 60:
+            continue
+        if name.isupper():
+            name = name.title()
+        desc_el = el.find_next("span", class_="rz-business-desc")
+        desc = re.sub(r"\s+", " ", desc_el.get_text(" ", strip=True)) if desc_el else ""
+        if re.search(r"find out more|helpful links", desc, re.I):
+            desc = ""
+        term_m = re.search(r"\bterm:?\s*(.+)$", desc, re.I)
+        term = term_m.group(1).replace("\u2013", "-").strip() if term_m else None
+        role = re.sub(r"\bterm:?\s*.+$", "", desc, flags=re.I).strip(" ,;-") or "Member"
+        out.append({"name": name, "boards": boards, "role": role[:80], "term": term})
+        boards = []
+    return out
+
+
 def build(client: PoliteClient, today: str | None = None, people_out: list | None = None) -> list[tuple[str, str, str, str]]:
     """(key, title, url, text) for each record; structured profiles go into people_out."""
     today = today or utah_today()
@@ -162,6 +190,13 @@ def build(client: PoliteClient, today: str | None = None, people_out: list | Non
 
     soup = _soup(client, PAGES["boards"])
     if soup:
+        taken = {p["slug"] for p in people_out}
+        for m in board_members(soup):
+            slug = "board-" + slugify(m["name"])
+            if slug in taken:
+                continue
+            taken.add(slug)
+            people_out.append({"slug": slug, "name": m["name"], "kind": "board", "role": m["role"], "title": m["role"], "department": "; ".join(m["boards"]), "term": m["term"], "email": None, "phone": None, "photoUrl": None, "sourceUrl": PAGES["boards"]})
         main = soup.select_one("#post") or soup
         for el in main.select("script, style, nav"):
             el.decompose()

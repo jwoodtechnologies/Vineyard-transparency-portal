@@ -11,6 +11,7 @@ const MapPage = lazy(() => import('@/console/MapPage'));
 const RecordsPage = lazy(() => import('@/console/RecordsPage'));
 const PeoplePage = lazy(() => import('@/console/PeoplePage'));
 const VotesPage = lazy(() => import('@/console/VotesPage'));
+const BoardsPage = lazy(() => import('@/console/BoardsPage'));
 
 // Warm the other screens in the background once the first one is up, so tapping Meetings or a
 // record opens instantly.
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
   { path: '/map', element: quiet(<MapPage />) },
   { path: '/records', element: quiet(<RecordsPage />) },
   { path: '/votes', element: quiet(<VotesPage />) },
+  { path: '/boards', element: quiet(<BoardsPage />) },
   { path: '/people', element: quiet(<PeoplePage />) },
   { path: '/people/:slug', element: quiet(<PeoplePage />) },
   { path: '/search', element: <SearchRedirect /> },
