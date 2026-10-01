@@ -10,6 +10,7 @@ import type { ConsoleAnswer } from './types';
 import type { MapLayerInfo } from './api';
 import { getJson } from './api';
 import { LINKS, STAFF, type ServiceLink } from './services';
+import { directoryFor } from './directory';
 
 /** Keep in step with DATA_VERSION in MapPage so both read the same cached layer data. */
 const MAP_DATA_VERSION = 5;
@@ -160,6 +161,9 @@ function serviceBubbles(question: string): Bubble[] {
     const topic = q.replace(/[^\w\s'-]/g, ' ').replace(/\b(what|whats|is|are|the|a|an|about|with|on|in|of|for|how|why|who|does|do|did|happening|going|vineyard|utah|city)\b/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
     out.push({ key: 'news', label: 'News coverage', hint: 'Search news about this', href: `https://news.google.com/search?q=${encodeURIComponent(`Vineyard Utah ${topic}`.trim())}`, kind: 'page' });
   }
+
+  // Every form, portal and report the city links from its Transparency Portal, when asked for.
+  for (const e of directoryFor(q)) if (!out.some((b) => b.href === e.href)) out.push({ key: `dir:${e.id}`, label: e.label, hint: e.hint, href: e.href, kind: e.kind });
 
   const contactish = /\b(contact|phone|call|email|reach|who (do|should) i|who is|who's|staff|city hall|office hours|hours|address)\b/i.test(q);
   const people = STAFF.filter((s) => s.match.test(q));

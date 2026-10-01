@@ -3610,7 +3610,7 @@ html.vc-locked .vc-landing {
 }
 .vc-menu-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.4rem;
   margin-bottom: 0.2rem;
 }
@@ -3640,4 +3640,11 @@ html.vc-locked .vc-landing {
 .vc-history-foot {
   border-top: 1px solid var(--vc-line-2);
   padding: 0.5rem 0.6rem calc(0.6rem + env(safe-area-inset-bottom));
+}
+
+.vc-services {
+  margin-top: 0.4rem;
+}
+.vc-menu-tile span {
+  font-size: 0.74rem;
 }

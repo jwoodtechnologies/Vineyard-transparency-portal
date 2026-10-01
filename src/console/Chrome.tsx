@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, CalendarDays, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, ClipboardList, FileText, History, Landmark, Layers, Map as MapIcon, Moon, Scale, ScrollText, Sun, Users } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { RECORD_CATEGORIES } from './categories';
@@ -103,6 +103,10 @@ export function SettingsMenu() {
             <Link to="/map" className="vc-menu-tile">
               <MapIcon size={17} strokeWidth={1.8} />
               <span>Map</span>
+            </Link>
+            <Link to="/services" className="vc-menu-tile">
+              <ClipboardList size={17} strokeWidth={1.8} />
+              <span>Services</span>
             </Link>
           </div>
 

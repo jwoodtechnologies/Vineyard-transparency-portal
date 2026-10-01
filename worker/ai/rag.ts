@@ -24,6 +24,7 @@ import { interleave, planSearch, recencyWeighted, relevant, rerank, type SearchP
 import { countAnswer, countKind, isMeetingCountQuestion, isScheduleQuestion, meetingsInFrame, scheduleAnswer } from './schedule';
 import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
+import { isJobsQuestion, jobsText, openJobs } from './jobs';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -296,6 +297,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     }) as Prepared;
   const todayUT = utahToday();
   const frame = resolveTime(body.question, todayUT);
+  // "Is the city hiring?": the official job site, live.
+  if (isJobsQuestion(body.question)) {
+    const jobs = await openJobs().catch(() => null);
+    if (jobs) return quick(jobsText(jobs), undefined, ['How do I apply for a city job?']);
+  }
   if (isMeetingCountQuestion(body.question)) {
     const r = await meetingsInFrame(env, body.question, frame).catch(() => null);
     if (r) return quick(r.text, r.event ?? undefined, ["When is the next City Council meeting?"]);
