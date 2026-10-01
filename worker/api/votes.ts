@@ -420,12 +420,14 @@ export async function votesFor(env: Env, question: string, people: Array<{ name:
     .map((w) => w.replace(/'s$/, ''))
     .filter((w) => w.length >= 3 && !NOT_TERMS.has(w) && !(member && member.toLowerCase().split(' ').includes(w)) && !people.some((p) => p.name.toLowerCase().split(/\s+/).includes(w)));
   if (!member && !words.length) return null;
-  for (const q of [words.slice(0, 3).join(' '), words.slice(0, 1).join(' ')]) {
-    if (!q && !member) continue;
+  // The topic asked about: all its words, then its most specific single words. A question about a
+  // topic with no recorded motion gets no card (never someone's unrelated latest votes).
+  const tries = [...new Set([words.slice(0, 3).join(' '), ...[...words].sort((x, y) => y.length - x.length).slice(0, 3)])].filter(Boolean);
+  for (const q of tries) {
     const r = await queryMotions(env, { member, q, pageSize: 5 });
     if (r.items.length) return { member, q, items: r.items };
   }
-  if (member) {
+  if (member && !words.length) {
     const r = await queryMotions(env, { member, pageSize: 5 });
     if (r.items.length) return { member, q: '', items: r.items };
   }
