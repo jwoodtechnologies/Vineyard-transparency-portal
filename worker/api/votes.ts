@@ -647,7 +647,10 @@ export async function meetingMinutes(env: Env, body: string | null, year: number
   const rows =
     (
       await env.CATALOG_DB.prepare(
-        `SELECT body_id, meeting_date, document_id, motions, rank FROM vote_docs WHERE body_id IN (${bodies.map(() => '?').join(', ')}) AND meeting_date >= ?${year ? ' AND substr(meeting_date, 1, 4) = ?' : ''} ORDER BY motions DESC, rank DESC`,
+        `SELECT v.body_id, v.meeting_date, v.document_id, v.motions, v.rank FROM vote_docs v JOIN documents d ON d.id = v.document_id
+           WHERE v.body_id IN (${bodies.map(() => '?').join(', ')}) AND v.meeting_date >= ?${year ? ' AND substr(v.meeting_date, 1, 4) = ?' : ''}
+             AND (v.motions > 0 OR lower(d.title) LIKE '%minute%')
+           ORDER BY v.motions DESC, v.rank DESC`,
       )
         .bind(...bodies, SCOPE_FROM, ...(year ? [String(year)] : []))
         .all<{ body_id: string; meeting_date: string; document_id: string; motions: number; rank: number }>()
