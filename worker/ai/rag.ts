@@ -21,7 +21,8 @@ import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
 import { readAiStream } from './sse';
 import { interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
-import { countAnswer, countQuestion, isRemainingQuestion, isScheduleQuestion, remainingAnswer, scheduleAnswer } from './schedule';
+import { countAnswer, countKind, isMeetingCountQuestion, isScheduleQuestion, meetingsInFrame, scheduleAnswer } from './schedule';
+import { resolveTime, timeNote, utahToday } from './timeframe';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -292,13 +293,15 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       kind: 'final',
       response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: followUps, notice: null, engine: 'catalog', mode: 'conversation', ...(event ? { event } : {}) } as AskResponse,
     }) as Prepared;
-  if (isRemainingQuestion(body.question)) {
-    const r = await remainingAnswer(body.question).catch(() => null);
-    if (r) return quick(r.text, r.event, ["What's on the agenda for the next City Council meeting?"]);
+  const todayUT = utahToday();
+  const frame = resolveTime(body.question, todayUT);
+  if (isMeetingCountQuestion(body.question)) {
+    const r = await meetingsInFrame(env, body.question, frame).catch(() => null);
+    if (r) return quick(r.text, r.event ?? undefined, ["When is the next City Council meeting?"]);
   }
-  const count = countQuestion(body.question);
-  if (count) {
-    const t = await countAnswer(env, count, body.question).catch(() => null);
+  const kindToCount = countKind(body.question);
+  if (kindToCount && frame && !frame.future) {
+    const t = await countAnswer(env, kindToCount, frame).catch(() => null);
     if (t) return quick(t);
   }
   // "When is the next council meeting?": the official calendar answers, never old minutes.
@@ -365,8 +368,14 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
         plan.types.length ? retrieve(q0, { ...filters, documentTypes: plan.types }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
         plan.types.length ? retrieve(retrievalText, { ...filters, documentTypes: plan.types }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
         plan.dateFrom ? retrieve(q0, { ...filters, dateFrom: plan.dateFrom, dateTo: plan.dateTo }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
+        // The time the question is about ("last year", "this month", "since 2020"), searched on its own.
+        frame && !frame.future ? retrieve(q0, { ...filters, dateFrom: frame.from, dateTo: frame.to }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
+        frame && !frame.future ? retrieve(retrievalText, { ...filters, dateFrom: frame.from, dateTo: frame.to }).catch(() => [] as ChunkHit[]) : Promise.resolve([] as ChunkHit[]),
       ]);
       hits = interleave([...planned, direct], 90);
+    } else if (frame && !frame.future) {
+      const inFrame = await retrieve(retrievalText, { ...filters, dateFrom: frame.from, dateTo: frame.to }).catch(() => [] as ChunkHit[]);
+      hits = interleave([inFrame, direct], 90);
     } else hits = direct;
   }
   // A question about a named official's votes or positions reads the minutes for their recorded
@@ -414,8 +423,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seenC = new Set<string>();
     hits = [...current.slice(0, 6), ...top, ...hits.slice(30)].filter((h) => (seenC.has(h.chunkId) ? false : (seenC.add(h.chunkId), true)));
   }
-  const today = new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10);
-  question = `${question}\n(Today is ${today}.${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
+  question = `${question}\n(${timeNote(todayUT, frame)}${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
   if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
@@ -429,7 +437,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // the passages that answer it. A record marked current stays first for "who is / now" questions.
   const ranked = await rerank(env, retrievalText, hits.slice(0, 90));
   if (ranked) {
-    let best = recencyWeighted(relevant(ranked), retrievalText, Number(new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 4)), currentIds, RULE.test(body.question));
+    let best = frame ? relevant(ranked) : recencyWeighted(relevant(ranked), retrievalText, Number(new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 4)), currentIds, RULE.test(body.question));
     // Records that must lead for some questions, in the reranker's own order: the current
     // directory for "who is", the person's recorded votes for "how did X vote", the code for rules.
     const lead = (ids: Set<string>, n: number) => {
@@ -437,6 +445,15 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       const first = ranked.filter((h) => ids.has(h.chunkId)).slice(0, n);
       best = [...first, ...best.filter((h) => !first.includes(h))];
     };
+    // A question about a time ("last year", "in March", "since 2020") is answered from records of
+    // that time first; code sections and current lists keep their place.
+    if (frame && !frame.future) {
+      const y0 = Number(frame.from.slice(0, 4));
+      const y1 = Number(frame.to.slice(0, 4));
+      const inside = (h: ChunkHit) => (h.documentDate ? h.documentDate >= frame.from && h.documentDate <= frame.to : h.year != null && h.year >= y0 && h.year <= y1);
+      const ins = best.filter(inside);
+      if (ins.length) best = [...ins, ...best.filter((h) => !inside(h))];
+    }
     lead(govIds, 1);
     lead(codeIds, 2);
     lead(pinnedVotes, 4);
@@ -478,7 +495,13 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   const finish = async (raw: string, engine?: string): Promise<AskResponse> => {
     await quotaP;
-    const first = segmentAnswer(briefAnswer(attributeCitations(raw, evidence)), evidence.length);
+    // The model found nothing that answers the question: say so plainly, with the closest records below.
+    if (/^\s*NO_RECORD\b/.test(raw) || /^\s*NO_RECORD\s*$/m.test(raw.slice(0, 40))) {
+      const r = await fallback('no_results', null);
+      const text = frame ? `I couldn't find a record that answers that for ${frame.label}. The closest records are below.` : "I couldn't find a record that answers that. The closest records are below.";
+      return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `${engine ?? DEFAULT_AI_MODEL} (no record)` } as AskResponse;
+    }
+    const first = segmentAnswer(briefAnswer(attributeCitations(raw.replace(/\bNO_RECORD\b/g, ''), evidence)), evidence.length);
     // Every figure must be in the source it cites; unsupported sentences are removed.
     const grounded = groundParagraphs(first.paragraphs, evidence);
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
@@ -576,7 +599,7 @@ function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract
         const r = await callModel(env, prep.messages, { useBig: true });
         raw = r.text;
         engine = r.engine;
-        await send('delta', { t: raw });
+        if (!/NO_RECORD/.test(raw)) await send('delta', { t: raw });
       } else {
         raw = await streamSmall(env, prep.messages, (t) => send('delta', { t }));
       }

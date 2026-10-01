@@ -60,12 +60,10 @@ describe('isScheduleQuestion', () => {
   });
 });
 
-describe('knowledge-base intents', () => {
-  it('spots remaining-meeting and count questions', async () => {
-    const { isRemainingQuestion, countQuestion } = await import('../worker/ai/scheduleIntent');
-    expect(isRemainingQuestion('How many city council meetings do we have left this year?')).toBe(true);
-    expect(isRemainingQuestion('What happened at the last meeting?')).toBe(false);
-    expect(countQuestion('How many resolutions did the council pass in 2025?')).toEqual({ type: 'resolution', year: 2025 });
-    expect(countQuestion('How many ordinances in 1999?')).toEqual({ type: 'ordinance', year: 1999 });
+describe('meeting count intent', () => {
+  it('spots meeting count questions', async () => {
+    const { isMeetingCountQuestion, countKind } = await import('../worker/ai/scheduleIntent');
+    expect(isMeetingCountQuestion('How many meetings are next year?')).toBe(true);
+    expect(countKind('How many ordinances passed last year?')).toBe('ordinance');
   });
 });

@@ -32,7 +32,7 @@ const PLAN_PROMPT = [
   'Return only JSON, no other text: {"queries": ["..."], "types": ["..."], "from": null, "to": null}',
   'queries: 2 to 4 different keyword searches of 2 to 8 words that would find the exact passage that answers the question. Use the words the records themselves would use, for example "certified tax rate" for a property tax question, "appoint" for who was hired or named to a position, "short term rental" for Airbnb, "motion carried" for how someone voted. Keep every name, place, road, project, number and year exactly as written. Make the queries differ from each other.',
   `types: up to 3 record types most likely to hold the answer, from: ${PLAN_TYPES.join(', ')}. Use [] when unsure.`,
-  'from and to: four-digit years, only when the question itself names a year or a range of years; otherwise null.',
+  'from and to: four-digit years, only when the question itself names a year or a range of years; otherwise null. Put the year in the queries when the question says this year, next year or last year (using today\'s date).',
 ].join('\n');
 
 const clean = (s: string) => s.replace(/[^\p{L}\p{N}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -77,7 +77,7 @@ export async function planSearch(env: Env, question: string, previous: string | 
     const run = (env.AI as unknown as AiRunner).run(PLAN_MODEL, {
       messages: [
         { role: 'system', content: `${PLAN_PROMPT}\n/no_think` },
-        { role: 'user', content: previous ? `Earlier question (context only): ${previous}\nQuestion: ${question}` : `Question: ${question}` },
+        { role: 'user', content: `Today is ${new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10)} (this year ${new Date(Date.now() - 6 * 3600_000).getUTCFullYear()}).\n${previous ? `Earlier question (context only): ${previous}\n` : ''}Question: ${question}` },
       ],
       max_tokens: 220,
       temperature: 0,
