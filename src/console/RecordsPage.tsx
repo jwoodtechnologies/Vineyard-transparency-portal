@@ -94,6 +94,79 @@ function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boo
   );
 }
 
+interface HeldMeeting {
+  id: string;
+  title: string;
+  meetingDate: string | null;
+  governmentBodyName: string | null;
+  docTypes?: string[];
+}
+const DOC_LABEL: Record<string, string> = { agenda: 'Agenda', agenda_packet: 'Packet', minutes: 'Minutes' };
+
+/** Agendas & minutes as meetings: one row per meeting held, newest first, opening the meeting. */
+function HeldMeetings({ year, body, oldest }: { year: string; body: string; oldest: boolean }) {
+  const [pg, setPg] = useState<{ key: string; page: number }>({ key: '', page: 1 });
+  const [rows, setRows] = useState<{ key: string; items: HeldMeeting[]; total: number }>({ key: '', items: [], total: 0 });
+  const key = `${year}|${body}|${oldest}`;
+  const page = pg.key === key ? pg.page : 1;
+  useEffect(() => {
+    let live = true;
+    const u = new URLSearchParams({ held: '1', pageSize: '50', page: String(page), sort: oldest ? 'date_asc' : 'date_desc' });
+    if (year) u.set('year', year);
+    if (body) u.set('body', body);
+    void fetch(`/api/meetings?${u}`)
+      .then((r) => r.json() as Promise<{ items: HeldMeeting[]; total: number }>)
+      .then((d) => live && setRows((prev) => ({ key, items: prev.key === key && page > 1 ? [...prev.items, ...d.items] : d.items, total: d.total })))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [key, page, year, body, oldest]);
+  const items = rows.key === key ? rows.items : [];
+  const groups: Array<{ label: string; items: HeldMeeting[] }> = [];
+  for (const m of items) {
+    const label = monthOf(m.meetingDate, null);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(m);
+    else groups.push({ label, items: [m] });
+  }
+  return (
+    <>
+      <p className="vc-mdocs-count">{rows.key === key ? `${rows.total.toLocaleString()} meetings with records` : ' '}</p>
+      {groups.map((g, i) => (
+        <section key={`${g.label}-${i}`} className="vc-rec-group">
+          <h2 className="vc-rec-month">{g.label}</h2>
+          <ul className="vc-mdocs">
+            {g.items.map((m) => (
+              <li key={m.id}>
+                <Link to={`/meetings/${encodeURIComponent(m.id)}`} className="vc-mdoc">
+                  <span className="vc-mdoc-icon" data-kind="minutes">
+                    <FileText size={15} strokeWidth={1.8} />
+                  </span>
+                  <span className="vc-mdoc-main">
+                    <span className="vc-mdoc-title">{m.title}</span>
+                    <span className="vc-mdoc-meta">
+                      {[formatDate(m.meetingDate), m.governmentBodyName, (m.docTypes ?? []).map((t) => DOC_LABEL[t]).filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  <ChevronRight size={16} className="vc-mdoc-go" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+      {rows.key === key && items.length < rows.total && (
+        <div className="vc-rec-more">
+          <button type="button" className="vc-secondary" onClick={() => setPg({ key, page: page + 1 })}>
+            Older meetings
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
 /** Meeting packets and other records that discuss the category's subject. */
 function TopicRecords({ topics, exclude }: { topics: string; exclude: Set<string> }) {
   const [state, setState] = useState<{ key: string; rows: Row[] }>({ key: '', rows: [] });
@@ -130,6 +203,8 @@ export default function RecordsPage() {
   const year = params.get('y') ?? '';
   const body = params.get('b') ?? '';
   const sort = params.get('s') === 'old' ? 'date_asc' : params.get('s') === 'az' ? 'title' : 'date_desc';
+  // Agendas & minutes with no type chosen and no search: the list is meetings, newest first.
+  const meetingMode = cat?.id === 'meetings' && !types.length && !q;
   const [draft, setDraft] = useState(q);
   const [pages, setPages] = useState(1);
   const facets = useJson<Facets>('/api/browse/facets');
@@ -314,6 +389,10 @@ export default function RecordsPage() {
         </div>
       </div>
 
+      {meetingMode ? (
+        <HeldMeetings year={year} body={body} oldest={sort === 'date_asc'} />
+      ) : (
+        <>
       {!loading && state.status === 'done' && (
         <p className="vc-mdocs-count">
           {state.total.toLocaleString()} {state.total === 1 ? 'record' : 'records'}
@@ -334,8 +413,10 @@ export default function RecordsPage() {
       ) : (
         <RecordList rows={state.rows} q={q} grouped={sort !== 'title'} />
       )}
+        </>
+      )}
 
-      {more && (
+      {more && !meetingMode && (
         <div ref={sentinel} className="vc-rec-more">
           <button type="button" className="vc-secondary" onClick={() => setPages((p) => p + 1)}>
             Show more ({(state.total - state.rows.length).toLocaleString()} left)

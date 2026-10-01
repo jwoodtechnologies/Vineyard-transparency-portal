@@ -132,15 +132,21 @@ export async function listMeetings(env: Env, url: URL): Promise<Response> {
     clauses.push("substr(m.meeting_date, 1, 4) = ?");
     params.push(year);
   }
+  // ?held=1: meetings already held that have records (the Records page's meeting list).
+  if (p.get('held') === '1') {
+    clauses.push('substr(m.meeting_date, 1, 10) <= ?');
+    params.push(new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
+    clauses.push('EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = m.id)');
+  }
   const where = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
   const order = p.get('sort') === 'date_asc' ? 'm.meeting_date ASC' : 'm.meeting_date DESC';
   const [rows, count] = await Promise.all([
-    env.CATALOG_DB.prepare(`SELECT m.*, (SELECT count(*) FROM agenda_items a WHERE a.meeting_id = m.id) AS agenda_item_count FROM meetings m${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
+    env.CATALOG_DB.prepare(`SELECT m.*, (SELECT count(*) FROM agenda_items a WHERE a.meeting_id = m.id) AS agenda_item_count, (SELECT group_concat(DISTINCT d.document_type) FROM documents d WHERE d.meeting_id = m.id) AS doc_types FROM meetings m${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
       .bind(...params, pageSize, (page - 1) * pageSize)
       .all<Row>(),
     env.CATALOG_DB.prepare(`SELECT count(*) AS n FROM meetings m${where}`).bind(...params).first<{ n: number }>(),
   ]);
-  const out: Paginated<MeetingSummary> = { items: (rows.results ?? []).map(toMeetingSummary), page, pageSize, total: Number(count?.n ?? 0) };
+  const out: Paginated<MeetingSummary> = { items: (rows.results ?? []).map((r) => ({ ...toMeetingSummary(r), docTypes: String(r.doc_types ?? '').split(',').filter(Boolean) }) as MeetingSummary), page, pageSize, total: Number(count?.n ?? 0) };
   return json(out, { cache: CACHE.list });
 }
 

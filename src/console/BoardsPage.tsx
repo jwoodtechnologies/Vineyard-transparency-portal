@@ -92,7 +92,7 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
               </Link>
             )}
             {VOTING.has(b.id) && (
-              <Link to={`/votes?body=${encodeURIComponent(b.id)}`} className="vc-chip">
+              <Link to={b.id === 'planning-commission' ? '/planning' : `/votes?body=${encodeURIComponent(b.id)}`} className="vc-chip">
                 <Vote size={13} /> {b.id === 'planning-commission' ? 'Votes and attendance' : 'Voting records'}
               </Link>
             )}

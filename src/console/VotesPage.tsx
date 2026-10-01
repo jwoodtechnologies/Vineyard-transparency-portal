@@ -15,7 +15,6 @@ const BODIES: Array<[string, string]> = [
   ['', 'Council and RDA'],
   ['city-council', 'City Council meetings'],
   ['redevelopment-agency', 'RDA board meetings'],
-  ['planning-commission', 'Planning Commission'],
 ];
 
 interface Attendance {
@@ -148,10 +147,12 @@ function YearSection({ year, meetings, query, open, onToggle, member, attendance
   );
 }
 
-export default function VotesPage() {
+/** The council's voting record, or (commission) the Planning Commission's own page. */
+export function VotesView({ commission = false }: { commission?: boolean }) {
   const [params, setParams] = useSearchParams();
   const member = params.get('member') ?? '';
-  const body = params.get('body') ?? '';
+  const asked = params.get('body') ?? '';
+  const body = commission ? 'planning-commission' : ['city-council', 'redevelopment-agency'].includes(asked) ? asked : '';
   const q = params.get('q') ?? '';
   const result = params.get('result') ?? '';
   const vote = params.get('vote') ?? '';
@@ -180,8 +181,12 @@ export default function VotesPage() {
   return (
     <Frame>
       <header className="vc-page-head">
-        <h1 className="vc-page-title">Voting records</h1>
-        <p className="vc-page-sub">How the current mayor and City Council have voted since January 2026: every motion in the minutes, by meeting, with each member&apos;s vote. The council also sits as the Redevelopment Agency (RDA) board. Choose Planning Commission for the commissioners&apos; votes and attendance.</p>
+        <h1 className="vc-page-title">{commission ? 'Planning Commission' : 'Voting records'}</h1>
+        <p className="vc-page-sub">
+          {commission
+            ? 'The current commissioners, their attendance and every motion they have voted on since January 2026, from the commission’s minutes.'
+            : 'How the current mayor and City Council have voted since January 2026: every motion in the minutes, by meeting, with each member’s vote. The council also sits as the Redevelopment Agency (RDA) board.'}
+        </p>
       </header>
 
       <div className="vc-vfilters">
@@ -197,13 +202,15 @@ export default function VotesPage() {
             </option>
           ))}
         </select>
-        <select value={body} onChange={(e) => set('body', e.target.value)} aria-label="Body">
-          {BODIES.map(([v, l]) => (
-            <option key={v} value={v}>
-              {l}
-            </option>
-          ))}
-        </select>
+        {!commission && (
+          <select value={body} onChange={(e) => set('body', e.target.value)} aria-label="Body">
+            {BODIES.map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        )}
         {member ? (
           <select value={vote} onChange={(e) => set('vote', e.target.value)} aria-label="Their vote">
             <option value="">Any vote</option>
@@ -235,4 +242,8 @@ export default function VotesPage() {
       <p className="vc-person-asof">Read from each meeting&apos;s approved minutes (a draft only until the approved minutes are posted). Every motion links to the page of the minutes it comes from.</p>
     </Frame>
   );
+}
+
+export default function VotesPage() {
+  return <VotesView />;
 }

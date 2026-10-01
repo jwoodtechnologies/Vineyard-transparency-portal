@@ -122,6 +122,10 @@ export function SettingsMenu() {
             <Vote size={15} strokeWidth={1.8} />
             <span>Voting records</span>
           </Link>
+          <Link to="/planning" className="vc-panel-row">
+            <Building2 size={15} strokeWidth={1.8} />
+            <span>Planning Commission</span>
+          </Link>
           <Link to="/boards" className="vc-panel-row">
             <Landmark size={15} strokeWidth={1.8} />
             <span>Boards and commissions</span>
