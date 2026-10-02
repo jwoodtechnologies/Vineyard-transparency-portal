@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 12;
+export const VOTES_PARSER = 13;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -462,7 +462,8 @@ export async function queryMotions(env: Env, f: { all?: boolean; member?: string
       page: r.page == null ? null : Number(r.page),
       mover: named((r.mover as string | null) ?? null),
       seconder: named((r.seconder as string | null) ?? null),
-      votes: (byMotion.get(String(r.id)) ?? [])
+      // "Unanimous" with no names in the minutes is not a roll call: no member is shown as voting.
+      votes: (Number(r.inferred) === 1 ? [] : byMotion.get(String(r.id)) ?? [])
         .map((v) => ({ member: voter(v.member), vote: v.vote }))
         .filter((v) => v.member)
         .sort((a, b) => (order[a.vote] ?? 9) - (order[b.vote] ?? 9) || a.member.localeCompare(b.member)),

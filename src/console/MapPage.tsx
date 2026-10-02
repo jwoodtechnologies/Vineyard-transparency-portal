@@ -767,7 +767,7 @@ export default function MapPage() {
   return (
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
-      <div className="vc-map-wrap">
+      <div className="vc-map-wrap" data-panel={panel}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" />
 
         <div className="vc-map-top">

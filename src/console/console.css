@@ -314,6 +314,12 @@
   color: var(--vc-faint);
   animation: vc-fade 1.4s 0.4s both;
 }
+/* The keyboard lifts fixed text on phones: hide the line while the question box is in use. */
+.vc-legal[data-hide='true'] {
+  opacity: 0;
+  visibility: hidden;
+  animation: none;
+}
 .vc-dock-hint {
   margin: 0.55rem 0 0;
   text-align: center;
@@ -3143,7 +3149,17 @@ html.vc-locked .vc-landing {
 }
 @media (max-width: 820px) {
   .vc-map-panel {
-    max-height: 50%;
+    z-index: 20;
+    max-height: calc(100% - 5.4rem);
+    padding-bottom: 1rem;
+  }
+  .vc-map-panel .vc-map-layer {
+    padding: 0.62rem 0;
+    font-size: 0.95rem;
+  }
+  .vc-map-wrap[data-panel='true'] .vc-map .maplibregl-ctrl-bottom-right,
+  .vc-map-wrap[data-panel='true'] .vc-map .maplibregl-ctrl-bottom-left {
+    display: none;
   }
   .vc-map-close {
     height: 2.3rem;
@@ -3686,7 +3702,8 @@ html.vc-locked .vc-landing {
 }
 .vc-series-year {
   flex: none;
-  width: 2.6rem;
+  min-width: 3.9rem;
+  white-space: nowrap;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }

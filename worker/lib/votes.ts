@@ -86,8 +86,8 @@ function plainNames(s: string): string[] {
 
 export function attendance(head: string): { present: string[]; absent: string[]; full: Record<string, string> } {
   const t = head.replace(/\s+/g, ' ');
-  const p = t.match(/\b(?:present|in attendance|attending)\b:?\s*(.{0,700}?)(?=\b(?:absent|excused|staff present|staff|also present|others present|others|city staff|public present|guests|call to order|1\.\s|opening)\b|$)/i);
-  const a = t.match(/\b(?:absent|excused)\b:?\s*(.{0,200}?)(?=\b(?:staff|also present|others|city staff|guests|call to order|1\.\s|opening)\b|$)/i);
+  const p = t.match(/(?<!\bstaff\s)(?<!\balso\s)\b(?:present|in attendance|attending)\b:?\s*(.{0,700}?)(?=\b(?:absent|excused|staff present|staff|also present|also attending|others present|others|city staff|public present|guests|call to order|1\.\s|opening)\b|$)/i);
+  const a = t.match(/\b(?:absent|excused)\b:?\s*(.{0,200}?)(?=\b(?:staff|also present|also attending|others|city staff|guests|call to order|1\.\s|opening)\b|$)/i);
   const officials = (s: string) => {
     const out: string[] = [];
     for (const m of s.matchAll(new RegExp(`\\b(mayor pro tem|deputy mayor|mayor|council ?member|councilm[ae]n|councilwoman|commissioner|chair(?:man|woman|person)?|vice[- ]chair|board ?member)\\s+${NAME}`, 'gi'))) {
@@ -277,12 +277,16 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     const seen = new Set<string>();
     m.votes = m.votes.map((v) => ({ ...v, member: canon(v.member) as string })).filter((v) => (seen.has(v.member) ? false : (seen.add(v.member), true)));
   }
+  // A name printed with a title ("RDA Board Member Parker McCumber") wins over a name from a plain list
+  // (the public who signed in), so a visitor who shares a member's last name is never taken for the member.
   const fullNames: Record<string, string> = {};
-  for (const [last, n] of Object.entries(listedFull)) fullNames[canon(last) as string] = n;
+  const titled: Record<string, string> = {};
   for (const m of head.replace(/\s+/g, ' ').matchAll(new RegExp(`\\b(?:[Mm]ayor|MAYOR|[Cc]ouncil ?[Mm]ember|COUNCIL ?MEMBER|[Cc]ouncilm[ae]n|[Cc]ouncilwoman|[Cc]ommissioner|COMMISSIONER|[Cc]hair(?:man|woman|person)?|[Vv]ice[- ][Cc]hair|[Bb]oard ?[Mm]ember)\\s+([A-Z][A-Za-z'-]+)\\s+(?:[A-Z]\\.\\s+)?([A-Z][A-Za-z'-]+)\\b`, 'g'))) {
     const last = canon(titleCase(m[2])) as string;
-    if (!STOP.has(m[1].toLowerCase()) && !fullNames[last]) fullNames[last] = `${titleCase(m[1])} ${last}`;
+    if (!STOP.has(m[1].toLowerCase()) && !titled[last]) titled[last] = `${titleCase(m[1])} ${last}`;
   }
+  for (const [last, n] of Object.entries(listedFull)) if (!titled[canon(last) as string]) fullNames[canon(last) as string] = n;
+  Object.assign(fullNames, titled);
   const headFlat = head.replace(/\s+/g, ' ');
   const dm = headFlat.slice(0, 600).match(new RegExp(`\\b(${MONTH_NAMES})\\s+(\\d{1,2}),?\\s+((?:19|20)\\d{2})\\b`, 'i'));
   // Drafts with numbered lines carry the date only in the page footer ("Page 1 of 5; May 12, 2026, City Council ...").

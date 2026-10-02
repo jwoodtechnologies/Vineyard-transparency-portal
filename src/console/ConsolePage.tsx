@@ -170,6 +170,16 @@ export default function ConsolePage() {
   const searched = useRef(new Map<string, string>());
   const controllers = useRef(new Map<string, AbortController>());
   const lastTurnEl = useRef<HTMLElement | null>(null);
+  const [keys, setKeys] = useState(false);
+
+  // A phone keyboard lifts fixed text over the question box: note when one is open.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const check = () => setKeys(window.innerHeight - vv.height > 150);
+    vv.addEventListener('resize', check);
+    return () => vv.removeEventListener('resize', check);
+  }, []);
 
   const patch = useCallback((id: string, p: Partial<Turn> | ((t: Turn) => Partial<Turn>)) => {
     setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...(typeof p === 'function' ? p(t) : p) } : t)));
@@ -348,7 +358,7 @@ export default function ConsolePage() {
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
         </main>
-        <p className="vc-legal">Independent project, not an official Vineyard City website.</p>
+        <p className="vc-legal" data-hide={keys}>Independent project, not an official Vineyard City website.</p>
         {historyPanel}
       </div>
     );

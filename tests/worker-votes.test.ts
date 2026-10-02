@@ -146,3 +146,19 @@ describe('consent items', () => {
     expect(consentItems(before, 'approve the consent items as presented with the removal of item 5.2')).toEqual(['5.1 Approval of the July 14, 2026 City Council Minutes', '5.3 Appoint Steffani Winder to the Library Board']);
   });
 });
+
+describe('public sign-in list', () => {
+  const minutes = `NOTICE OF A REDEVELOPMENT\n\nAGENCY BOARD MEETING\n\nMay 12, 2026, at 6:00 PM\n\nAGENDA\n\nMayor Zack Stratton\n\nRDA Board Member Jacob Holdaway\n\nRDA Board Member David Lauret\n\nRDA Board Member Parker McCumber\n\nRDA Board Member Ezra Nair\n\nRDA Board Member Jacob Wood\n\nStaff Present: Administrative Director David Herring; City Recorder Robin Bond; RDA Director Josh Daniels.\n\nAlso Attending: Daria Evans, Karen Cornelius, Emmeline McCumber, Trinity Ewing, and\nothers who did not sign in.\n\n1. CALL TO ORDER\n\nMotion: Board Member Lauret motioned to continue Resolution 2026-03 for two weeks. Second: Board Member Holdaway. Yes: Board\n\nMembers, Holdaway, Lauret, McCumber, Nair, and Wood. Motion Passed 5-0.\n`;
+
+  it('does not count staff or visitors as present', () => {
+    const r = parseMinutes(minutes, '2026-05-12');
+    expect(r.present).toEqual([]);
+  });
+
+  it('keeps the titled member when a visitor shares the last name', () => {
+    const r = parseMinutes(minutes, '2026-05-12');
+    expect(r.fullNames.McCumber).toBe('Parker McCumber');
+    expect(r.motions[0].votes.map((v) => v.member).sort()).toEqual(['Holdaway', 'Lauret', 'McCumber', 'Nair', 'Wood']);
+    expect(r.motions[0].tally).toBe('5-0');
+  });
+});

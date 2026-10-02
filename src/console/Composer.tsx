@@ -68,12 +68,15 @@ export function Composer({ variant, busy, onSubmit, onStop, autoFocus }: Props) 
     const Ctor = speechCtor();
     if (!Ctor || busy) return;
     const r = new Ctor();
-    r.continuous = true;
+    // iPhones end a continuous session at once, so they listen for one phrase at a time.
+    r.continuous = !/iPhone|iPad|iPod/i.test(navigator.userAgent);
     r.interimResults = true;
     r.lang = navigator.language || 'en-US';
     const base = value.trim();
     let finals = '';
+    let heard = false;
     r.onresult = (e) => {
+      heard = true;
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const piece = e.results[i][0].transcript;
@@ -87,10 +90,14 @@ export function Composer({ variant, busy, onSubmit, onStop, autoFocus }: Props) 
     r.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') setMicNote('Microphone access is blocked. Allow it in your browser settings.');
       else if (e.error === 'no-speech') setMicNote('No speech heard. Tap the mic and try again.');
+      else if (e.error === 'audio-capture') setMicNote('No microphone found.');
+      else if (e.error === 'network') setMicNote('Voice needs a connection. Try again.');
+      else if (e.error !== 'aborted') setMicNote('Voice did not start. Tap the mic to try again.');
     };
     r.onend = () => {
       if (rec.current === r) rec.current = null;
       setListening(false);
+      if (!heard) setMicNote((n) => n ?? 'No speech heard. Tap the mic and try again.');
     };
     try {
       r.start();
@@ -175,12 +182,17 @@ export function Composer({ variant, busy, onSubmit, onStop, autoFocus }: Props) 
           }}
           onKeyDown={onKeyDown}
         />
-        {canSpeak && !(busy && onStop) && (
+        {!(busy && onStop) && (
           <button
             type="button"
             className="vc-mic"
             data-on={listening}
-            onClick={() => (listening ? stopListening() : startListening())}
+            onClick={() => {
+              if (canSpeak) return listening ? stopListening() : startListening();
+              // No voice support in this browser: point to the keyboard's own microphone.
+              ref.current?.focus();
+              setMicNote('Tap the microphone on your keyboard to speak.');
+            }}
             aria-label={listening ? 'Stop dictation' : 'Speak your question'}
             aria-pressed={listening}
             title={listening ? 'Stop dictation' : 'Speak your question'}
