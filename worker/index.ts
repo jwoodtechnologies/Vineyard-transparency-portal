@@ -9,7 +9,7 @@
  * (see worker/panel). An hourly Cron Trigger (worker/cron.ts) keeps meetings and news current.
  */
 import type { Env } from './env';
-import { HttpError, errorResponse, json, notFound } from './lib/http';
+import { API_SECURITY_HEADERS, HttpError, errorResponse, json, notFound } from './lib/http';
 import { isSafeId } from './lib/util';
 import { getDocumentDetail, getDocumentFile, getDocumentText, getRelated, listDocuments } from './api/documents';
 import { filtersFromUrl, handleSearch } from './api/search';
@@ -150,6 +150,8 @@ async function cached(request: Request, url: URL, ctx: ExecutionContext, compute
     headers.set('cache-control', 'public, max-age=60');
     headers.delete('cf-cache-status');
     headers.delete('expires');
+    // The edge cache drops Strict-Transport-Security from stored copies: put the standing headers back.
+    for (const [k, v] of Object.entries(API_SECURITY_HEADERS)) if (!headers.has(k)) headers.set(k, v);
     const etag = headers.get('etag');
     if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
     return new Response(hit.body, { status: hit.status, headers });

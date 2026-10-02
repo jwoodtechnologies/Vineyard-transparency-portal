@@ -153,6 +153,7 @@ function serviceBubbles(question: string, hasCard = false): Bubble[] {
   if (/\b(fire (department|station)|ems|ambulance)\b/i.test(q)) add(LINKS.fire, 'fire');
   if (/\b(power outage|electric(ity)?|rocky mountain power)\b/i.test(q)) add(LINKS.power, 'power');
   if (/\b(gas (leak|service)|natural gas|dominion|enbridge)\b/i.test(q)) add(LINKS.gas, 'gas');
+  if (/\b(budget|general fund|capital projects?|city spend\w*|tax revenue|property tax|sales tax|fiscal (year )?(20)?27|fy ?27)\b/i.test(q)) out.push({ key: 'budget', label: 'See the budget', hint: 'Fiscal year 2027, in pictures', href: '/budget', kind: 'page', internal: true });
 
   // Every form, portal and report the city links from its Transparency Portal, when asked for.
   for (const e of directoryFor(q)) if (!out.some((b) => b.href === e.href)) out.push({ key: `dir:${e.id}`, label: e.label, hint: e.hint, href: e.href, kind: e.kind });

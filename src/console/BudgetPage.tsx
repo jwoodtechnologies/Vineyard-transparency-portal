@@ -236,7 +236,7 @@ function ProjectsTab({ b }: { b: Budget }) {
   const narrow = useNarrow();
   const [fund, setFund] = useState<string | null>(null);
   const W = 100;
-  const H = narrow ? 100 : 62;
+  const H = narrow ? 100 : 46;
   const totals = useMemo(() => {
     const m = new Map<string, { total: number; count: number }>();
     for (const p of b.projects) {
