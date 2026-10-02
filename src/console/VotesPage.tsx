@@ -80,8 +80,6 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   const roll = [...m.votes].filter((v) => v.vote !== 'absent').sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
   const surname = (id: string) => cap(last(nameOf(id).name));
   const titled = (id: string) => `${/^mayor$/i.test(nameOf(id).person?.role ?? '') ? 'Mayor' : seat(m.bodyId)} ${surname(id)}`;
-  const allYes = roll.length > 0 && roll.every((v) => v.vote === 'yes');
-  const showRoll = roll.length > 0 && (!allYes || Boolean(member));
   return (
     <li className="vc-vt">
       <div className="vc-vt-top">
@@ -102,31 +100,18 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
           ))}
         </ol>
       )}
-      {showRoll && (
-        <div className="vc-vt-roll" aria-label="How each member voted">
-          {(['yes', 'no', 'abstain', 'recused'] as const)
-            .map((k) => ({ k, who: roll.filter((v) => v.vote === k) }))
-            .filter((g) => g.who.length > 0)
-            .map((g) => (
-              <p key={g.k} data-vote={g.k}>
-                <b>{VOTE_LABEL[g.k]}</b>{' '}
-                {seat(m.bodyId)}
-                {g.who.length > 1 ? 's' : ''}{' '}
-                {g.who.map((v, i) => (
-                  <span key={v.member} data-on={member && member === v.member ? 'true' : undefined} title={nameOf(v.member).name}>
-                    {surname(v.member)}
-                    {i < g.who.length - 1 ? ', ' : ''}
-                  </span>
-                ))}
-              </p>
-            ))}
-        </div>
+      {roll.length > 0 && (
+        <ul className="vc-vt-tags" aria-label="How each member voted">
+          {roll.map((v) => (
+            <li key={v.member} data-vote={v.vote} data-on={member && member === v.member ? 'true' : undefined} title={`${titled(v.member)}: ${VOTE_LABEL[v.vote] ?? v.vote}`}>
+              <span>{/^mayor$/i.test(nameOf(v.member).person?.role ?? '') ? `Mayor ${surname(v.member)}` : surname(v.member)}</span>
+              <b>{VOTE_LABEL[v.vote] ?? v.vote}</b>
+            </li>
+          ))}
+        </ul>
       )}
       <div className="vc-vt-foot">
-        <span className="vc-vt-meta">
-          {m.mover ? `${titled(m.mover)} moved${m.seconder ? `, ${titled(m.seconder)} seconded` : ''}` : ''}
-          {m.tieBreak ? `${m.mover ? '. ' : ''}Mayor broke the tie` : ''}
-        </span>
+        {m.tieBreak && <span className="vc-vt-meta">Mayor broke the tie</span>}
         <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
           <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
         </DocLink>
