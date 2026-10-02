@@ -78,8 +78,8 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   const nameOf = useMemberNames();
   const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result recorded';
   const roll = [...m.votes].filter((v) => v.vote !== 'absent').sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
-  // Unanimous: the minutes say so (a vote with no names), or every member who voted voted yes.
-  const unanimous = m.result === 'carried' && (m.inferred ? m.unanimous : roll.length > 0 && roll.every((v) => v.vote === 'yes'));
+  // No names in the minutes ("passed unanimously"): the badge says so in place of the member tags.
+  const unanimous = m.result === 'carried' && m.unanimous && roll.length === 0;
   const surname = (id: string) => cap(last(nameOf(id).name));
   const titled = (id: string) => `${/^mayor$/i.test(nameOf(id).person?.role ?? '') ? 'Mayor' : seat(m.bodyId)} ${surname(id)}`;
   return (
