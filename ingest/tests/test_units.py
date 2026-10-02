@@ -1,7 +1,7 @@
 """Unit tests for the ingestion pipeline: python -m unittest discover -s ingest/tests -p 'test_*.py'"""
 import unittest
 
-from ingest.adapters.civicclerk import body_for, file_url, local_start
+from ingest.adapters.civicclerk import CivicClerkAdapter, body_for, file_url, local_start
 from ingest.chunk import HARD_MAX, chunk_pages
 from ingest.classify import classify_type, clean_title, parse_date, parse_document_number
 from ingest.discover import inventory
@@ -96,3 +96,20 @@ class BaseHref(unittest.TestCase):
         html = '<html><head><base href="https://www.vineyardutah.gov/"></head><body><div id="entry"><a href="September Newsletter 2026.pdf?t=1">Sept</a></div></body></html>'
         inv = inventory(html, "https://www.vineyardutah.gov/community_/newsletters.php")
         self.assertEqual(inv[0]["resolvedUrl"], "https://www.vineyardutah.gov/September%20Newsletter%202026.pdf?t=1")
+
+
+class CivicClerkMeetings(unittest.TestCase):
+    def test_a_meeting_with_published_minutes_is_listed(self):
+        class Client:
+            def get_json(self, url):
+                return {"value": [{"id": 1451, "eventName": "City Council Meeting", "startDateTime": "2026-06-23T18:00:00Z", "categoryName": "City Council",
+                                   "publishedFiles": [{"fileId": 3290, "type": "Minutes", "name": "6.23.26 APPROVED Minutes", "url": "stream/x.pdf"}]}]}
+
+            def request(self, *a, **k):
+                raise RuntimeError("no attachments in this test")
+
+        cc = CivicClerkAdapter(Client(), attachments=False)
+        items = list(cc.list_documents())
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].metadata["documentType"], "minutes")
+        self.assertEqual(cc.meetings[0]["sourceUrl"], "https://vineyardut.portal.civicclerk.com/event/1451/files")

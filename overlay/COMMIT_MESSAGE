@@ -1,1 +1,0 @@
-Fix CivicClerk crawl crash (undefined att_id in the meeting record) so new minutes are picked up again
