@@ -10,7 +10,7 @@ import type { ConsoleAnswer } from './types';
 import type { MapLayerInfo } from './api';
 import { getJson } from './api';
 import { LINKS, STAFF, type ServiceLink } from './services';
-import { directoryFor } from './directory';
+import { DIRECTORY, directoryFor } from './directory';
 
 /** Keep in step with DATA_VERSION in MapPage so both read the same cached layer data. */
 const MAP_DATA_VERSION = 5;
@@ -154,13 +154,6 @@ function serviceBubbles(question: string, hasCard = false): Bubble[] {
   if (/\b(power outage|electric(ity)?|rocky mountain power)\b/i.test(q)) add(LINKS.power, 'power');
   if (/\b(gas (leak|service)|natural gas|dominion|enbridge)\b/i.test(q)) add(LINKS.gas, 'gas');
 
-  // Politics, elections and current issues: a one-tap search of news coverage (opens the news site
-  // itself; the portal does not copy news articles).
-  if (/\b(elections?|candidates?|ballot|referendum|petition|campaign|controvers|news|issue|issues|debate|politic|recall|lawsuit|protest|opposition|residents? (say|think|want))\b/i.test(q)) {
-    const topic = q.replace(/[^\w\s'-]/g, ' ').replace(/\b(what|whats|is|are|the|a|an|about|with|on|in|of|for|how|why|who|does|do|did|happening|going|vineyard|utah|city)\b/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
-    out.push({ key: 'news', label: 'News coverage', hint: 'Search news about this', href: `https://news.google.com/search?q=${encodeURIComponent(`Vineyard Utah ${topic}`.trim())}`, kind: 'page' });
-  }
-
   // Every form, portal and report the city links from its Transparency Portal, when asked for.
   for (const e of directoryFor(q)) if (!out.some((b) => b.href === e.href)) out.push({ key: `dir:${e.id}`, label: e.label, hint: e.hint, href: e.href, kind: e.kind });
 
@@ -206,8 +199,16 @@ export function QuickLinks({ answer }: { answer: ConsoleAnswer }) {
   }, [wantsMap]);
 
   const maps = wantsMap ? mapBubbles(question, text, names ?? { projects: [], parks: [] }) : [];
-  const all = [...services, ...maps].slice(0, 7);
-  if (!all.length) return null;
+  // Cards open here in the portal wherever the portal has the page: a service opens its own page
+  // (with the official form one tap further), the staff directory opens People.
+  const all = [...services, ...maps].slice(0, 7).map((b): Bubble => {
+    if (b.internal || !b.href.startsWith('http')) return b;
+    if (b.href === LINKS.staff.href) return { ...b, href: '/people', internal: true };
+    const entry = DIRECTORY.find((e) => e.href === b.href);
+    return entry ? { ...b, href: `/services/${entry.id}`, internal: true } : b;
+  });
+  // A message that just names a part of the portal already has its own card.
+  if (!all.length || answer.section) return null;
 
   return (
     <nav className="vc-quick" aria-label="Related actions">

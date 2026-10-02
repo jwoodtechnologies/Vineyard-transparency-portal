@@ -28,7 +28,8 @@ import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
-import { LATEST_ACTION_Q, motionEvidence, votesFor } from '../api/votes';
+import { LATEST_ACTION_Q, councilName, currentCouncil, motionEvidence, queryMotions, votesFor, type MotionOut } from '../api/votes';
+import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 
@@ -322,6 +323,39 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     // A short, natural pause so a greeting does not snap back before the question is even read.
     await new Promise((r) => setTimeout(r, 650));
     return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'assistant', mode: 'conversation' } as AskResponse };
+  }
+
+  // A message that names a part of the portal ("voting record", "staff directory"): what it holds,
+  // answered from the data, with a card that opens it here.
+  const sec = sectionFor(body.question);
+  if (sec) {
+    const card = { path: sec.section.path, label: sec.section.label, hint: sec.section.hint };
+    const final = (text: string, extra: Record<string, unknown> = {}) =>
+      ({ kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'catalog', section: card, ...extra } as AskResponse }) as Prepared;
+    if (sec.section.id !== 'votes') return final(sec.section.text);
+    const council = await currentCouncil(env).catch(() => [] as string[]);
+    const member = sec.rest ? (councilName(sec.rest.replace(/\b[a-z]/g, (c) => c.toUpperCase()), council) ?? council.find((n) => n.toLowerCase().split(' ').some((w) => w.length >= 4 && sec.rest.split(' ').includes(w))) ?? null) : null;
+    if (!sec.rest || member) {
+      const r = await queryMotions(env, { member, pageSize: 400 }).catch(() => ({ items: [] as MotionOut[], total: 0 }));
+      if (r.items.length) {
+        const nice = (d: string | null) => (d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '');
+        const what = (m: MotionOut) => (m.items.length ? 'the consent items' : (m.item ?? m.motion).replace(/^\d+(?:\.\d+)*\s+/, '').replace(/\s+/g, ' ').slice(0, 110));
+        const newest = r.items.filter((m) => m.date === r.items[0].date);
+        const meetings = new Set(r.items.map((m) => `${m.bodyId}|${m.date}`)).size;
+        const recent = `The most recent ${newest.length === 1 ? 'was' : 'were'} on ${nice(newest[0].date)}: ${newest.slice(0, 4).map(what).join('; ')}.`;
+        let text: string;
+        if (member) {
+          const last = member.split(' ').pop() ?? member;
+          const mine = r.items.map((m) => m.votes.find((v) => v.member === member || v.member === last)?.vote).filter(Boolean) as string[];
+          const n = (k: string) => mine.filter((v) => v === k).length;
+          const other = mine.length - n('yes') - n('no');
+          text = `${member} has ${mine.length} recorded ${mine.length === 1 ? 'vote' : 'votes'} on policy items since January 2026: ${n('yes')} yes and ${n('no')} no${other ? `, plus ${other} abstained, recused or absent` : ''}. ${recent} Open a vote to see the full roll call.`;
+        } else {
+          text = `The City Council and RDA board have ${r.total} recorded policy ${r.total === 1 ? 'vote' : 'votes'} across ${meetings} meetings since January 2026. ${recent} Each card shows how every member voted, and the full record is one tap away.`;
+        }
+        return final(text, { votes: { member, q: '', items: newest.slice(0, 3) }, suggestedFollowUps: member ? [`What did ${member} vote no on?`] : ['What was the latest thing passed?', 'Which votes were not unanimous?'] });
+      }
+    }
   }
 
   // Knowledge-base questions answered straight from the calendar and the catalog: exact and free.

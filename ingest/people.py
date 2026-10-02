@@ -159,6 +159,9 @@ def build(client: PoliteClient, today: str | None = None, people_out: list | Non
 
     soup = _soup(client, PAGES["staff"])
     staff = _cards(soup) if soup else []
+    # The city attorney serves the city but is not on the City Staff page; listed so the directory is complete.
+    if staff and not any(re.search(r"attorney", p["title"] or "", re.I) for p in staff):
+        staff.append({"name": "Jesse Riddle", "title": "City Attorney", "department": "Executive", "email": None, "phone": None, "photo": None, "detail": None})
     elected = {p["slug"] for p in people_out}
     for p in staff:
         if slugify(p["name"]) in elected:

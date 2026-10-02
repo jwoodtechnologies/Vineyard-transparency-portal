@@ -11,7 +11,7 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, History, Plus, RotateCcw } from 'lucide-react';
+import { ChevronDown, ChevronRight, History, Plus, RotateCcw } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { SearchService } from '@/services';
 import { askStream, draftText } from './askStream';
@@ -408,6 +408,15 @@ export default function ConsolePage() {
                       ))}
                     </ol>
                   </section>
+                )}
+                {t.answer.section && (
+                  <Link to={t.answer.section.path} className="vc-section-card">
+                    <span className="vc-section-card-text">
+                      <b>{t.answer.section.label}</b>
+                      <span>{t.answer.section.hint}</span>
+                    </span>
+                    <ChevronRight size={18} />
+                  </Link>
                 )}
                 {contactCard(t, people)}
                 {t.answer.event && <EventCard event={t.answer.event} />}

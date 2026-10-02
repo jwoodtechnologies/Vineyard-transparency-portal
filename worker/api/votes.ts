@@ -632,6 +632,8 @@ export async function motionEvidence(env: Env, question: string, from: string, t
     const newest = list[0]?.meeting_date;
     list = [...list.filter((r) => r.meeting_date === newest), ...list.filter((r) => r.meeting_date !== newest)].slice(0, Math.max(limit, list.filter((r) => r.meeting_date === newest).length));
   }
+  // Adjournments and approving minutes never stand in as the answer to a question about a vote.
+  if (!latest) list = list.filter((r) => !PROCEDURAL.test(String(r.motion ?? '').trim()));
   if (!list.length) return [];
   const votes = await env.CATALOG_DB.prepare('SELECT motion_id, member, vote FROM motion_votes WHERE motion_id IN (SELECT value FROM json_each(?))')
     .bind(JSON.stringify(list.map((r) => r.id)))

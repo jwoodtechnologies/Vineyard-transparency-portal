@@ -3947,3 +3947,9 @@ html.vc-locked .vc-landing {
 .vc-vt-what { min-width: 0; } .vc-vt-label { font-weight: 600; } .vc-vt-detail { margin: 3px 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--vc-ink-2); }
 
 .vc-time-alt { flex-basis: 100%; font-size: 12px; color: var(--vc-ink-3, #777); }
+
+.vc-section-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 4px; padding: 14px 16px; border: 1px solid var(--vc-line, #e6e3e0); border-radius: 16px; background: var(--vc-card, #fff); color: inherit; text-decoration: none; }
+.vc-section-card:hover { border-color: var(--vc-ink, #111); }
+.vc-section-card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vc-section-card-text b { font-weight: 600; }
+.vc-section-card-text span { font-size: 13px; color: var(--vc-ink-3, #777); }
