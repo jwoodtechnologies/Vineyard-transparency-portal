@@ -6,7 +6,7 @@
 import './console.css';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, FileText, MessageSquare, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Search } from 'lucide-react';
 import { DocLink } from './DocLink';
 import { Frame } from './Chrome';
 import { useJson } from './api';
@@ -32,7 +32,7 @@ function AttendanceView({ a }: { a: Attendance }) {
   if (!meetings.length) return <p className="vc-mo-note">No Planning Commission minutes have been posted for this year yet.</p>;
   return (
     <section className="vc-att2">
-      <p className="vc-coverage">From the {meetings.length} meetings this year with posted minutes.</p>
+      <p className="vc-coverage">{meetings.length} meetings with posted minutes this year</p>
       <ul className="vc-att2-list">
         {a.roster.map((c) => {
           const here = meetings.filter((m) => seen(c.name, m.present)).length;
@@ -75,6 +75,8 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   const nameOf = useMemberNames();
   const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result recorded';
   const roll = [...m.votes].filter((v) => v.vote !== 'absent').sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
+  const allYes = roll.length > 0 && roll.every((v) => v.vote === 'yes');
+  const showRoll = roll.length > 0 && (!allYes || Boolean(member));
   return (
     <li className="vc-vt">
       <div className="vc-vt-top">
@@ -95,29 +97,32 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
           ))}
         </ol>
       )}
-      {roll.length > 0 && (
-        <ul className="vc-vt-votes" aria-label="How each member voted">
-          {roll.map((v) => (
-            <li key={v.member} data-vote={v.vote} data-on={member && member === v.member ? 'true' : undefined} title={`${nameOf(v.member).name}: ${VOTE_LABEL[v.vote] ?? v.vote}`}>
-              {last(nameOf(v.member).name)}
-              <b>{v.vote === 'yes' ? 'Yes' : v.vote === 'no' ? 'No' : VOTE_LABEL[v.vote]}</b>
-            </li>
-          ))}
-        </ul>
+      {showRoll && (
+        <div className="vc-vt-roll" aria-label="How each member voted">
+          {(['yes', 'no', 'abstain', 'recused'] as const)
+            .map((k) => ({ k, who: roll.filter((v) => v.vote === k) }))
+            .filter((g) => g.who.length > 0)
+            .map((g) => (
+              <p key={g.k} data-vote={g.k}>
+                <b>{VOTE_LABEL[g.k]}</b>{' '}
+                {g.who.map((v, i) => (
+                  <span key={v.member} data-on={member && member === v.member ? 'true' : undefined} title={nameOf(v.member).name}>
+                    {last(nameOf(v.member).name)}
+                    {i < g.who.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+              </p>
+            ))}
+        </div>
       )}
-      {(m.mover || m.tieBreak) && (
-        <p className="vc-vt-meta">
-          {m.mover ? `Moved by ${last(nameOf(m.mover).name)}${m.seconder ? `, seconded by ${last(nameOf(m.seconder).name)}` : ''}` : ''}
+      <div className="vc-vt-foot">
+        <span className="vc-vt-meta">
+          {m.mover ? `${last(nameOf(m.mover).name)} moved${m.seconder ? `, ${last(nameOf(m.seconder).name)} seconded` : ''}` : ''}
           {m.tieBreak ? `${m.mover ? '. ' : ''}Mayor broke the tie` : ''}
-        </p>
-      )}
-      <div className="vc-vt-actions">
-        <DocLink id={m.documentId} page={m.page}>
-          <FileText size={13} /> Minutes{m.page ? `, page ${m.page}` : ''} (PDF)
+        </span>
+        <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
+          <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
         </DocLink>
-        <Link to={`/?q=${encodeURIComponent(`What did the ${m.bodyId === 'redevelopment-agency' ? 'RDA board' : 'City Council'} approve on ${m.date ?? ''}: ${motionLabel(m) === 'Consent items' ? 'the consent items' : motionLabel(m)}? What does it do?`)}`}>
-          <MessageSquare size={13} /> Ask about this
-        </Link>
       </div>
     </li>
   );
@@ -289,7 +294,7 @@ function Coverage({ bodies }: { bodies: string[] }) {
   const posted = s.held.filter((h) => s.read.has(h.key)).length;
   return (
     <p className="vc-coverage">
-      {s.held.length} {s.held.length === 1 ? 'meeting' : 'meetings'} held so far in {y}; the city has posted minutes for {posted}. Every meeting is listed below; votes appear once its minutes are posted.
+      {s.held.length} {s.held.length === 1 ? 'meeting' : 'meetings'} in {y}, minutes posted for {posted}
     </p>
   );
 }
@@ -398,7 +403,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
       {view !== 'attendance' && yearList.map((y, i) => (
         <YearSection key={y.year} year={y.year} bodies={commission ? ['planning-commission'] : body ? [body] : ['city-council', 'redevelopment-agency']} plain={!q && !member && !result && !vote} query={query} member={member || null} attendance={att} open={isOpen(y.year, i)} onToggle={() => setOpen((o) => ({ ...o, [y.year]: !isOpen(y.year, i) }))} />
       ))}
-      <p className="vc-person-asof">From each meeting&apos;s posted minutes. Routine motions (approving minutes or the agenda, adjourning, closed sessions, opening hearings) are left out. Tap a meeting to open its agenda, minutes and video.</p>
+      <p className="vc-person-asof">From the posted minutes. Routine motions are left out.</p>
     </Frame>
   );
 }

@@ -198,7 +198,7 @@ function RevenueTab({ b }: { b: Budget }) {
           <thead>
             <tr>
               <th>Source</th>
-              <th>FY2027 adopted</th>
+              <th>FY2027</th>
             </tr>
           </thead>
           <tbody>
@@ -347,7 +347,7 @@ export default function BudgetPage() {
     <Frame wide>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Budget</h1>
-        {tab !== 'past' && <p className="vc-page-sub">Fiscal year 2027 · July 1, 2026 to June 30, 2027</p>}
+        {tab !== 'past' && <p className="vc-page-sub">Fiscal year 2026-2027 (FY27) · July 1, 2026 to June 30, 2027</p>}
       </header>
 
       {load.status === 'loading' && (
