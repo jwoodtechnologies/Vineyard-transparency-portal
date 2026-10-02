@@ -4,9 +4,9 @@
  * by name. Filters narrow it to a member, body, vote or words in the motion.
  */
 import './console.css';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, FileText, Search } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, FileText, Search, X } from 'lucide-react';
 import { DocLink } from './DocLink';
 import { Frame } from './Chrome';
 import { useJson } from './api';
@@ -127,6 +127,111 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   );
 }
 
+/** A meeting's votes as a sheet: one row per motion, one column per member, a mark in each cell. */
+function VoteGrid({ items, member }: { items: MotionRow[]; member: string | null }) {
+  const nameOf = useMemberNames();
+  const isMayor = (id: string) => /^mayor$/i.test(nameOf(id).person?.role ?? '');
+  const surname = (id: string) => cap(last(nameOf(id).name));
+  const seen = new Set<string>();
+  for (const m of items) for (const v of m.votes) seen.add(v.member);
+  // The mayor (who votes only to break a tie) first, then the council by surname.
+  const cols = [...seen].sort((a, b) => Number(isMayor(b)) - Number(isMayor(a)) || surname(a).localeCompare(surname(b)));
+  const body = items[0]?.bodyId ?? null;
+  const titled = (id: string) => `${isMayor(id) ? 'Mayor' : seat(body)} ${surname(id)}`;
+  return (
+    <div className="vc-vg" style={{ '--n': cols.length } as CSSProperties}>
+      {cols.length > 0 && (
+        <div className="vc-vg-head" aria-hidden="true">
+          <span className="vc-vg-h-what">Motion</span>
+          <span className="vc-vg-h-res">Result</span>
+          <span className="vc-vg-cells">
+            {cols.map((id) => (
+              <span key={id} data-on={member === id ? 'true' : undefined} title={titled(id)}>
+                {isMayor(id) && <small>Mayor</small>}
+                {surname(id)}
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
+      <ol className="vc-vg-rows">
+        {items.map((m) => {
+          const named = m.votes.filter((v) => v.vote !== 'absent');
+          const unanimous = m.result === 'carried' && m.unanimous && named.length === 0;
+          const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result';
+          const detail = motionDetail(m) ?? (m.refs.length > 0 && !/resolution|ordinance/i.test(motionLabel(m)) ? m.refs.join(', ') : null);
+          return (
+            <li key={m.id} className="vc-vg-row">
+              <div className="vc-vg-what">
+                <p className="vc-vg-label">{motionLabel(m)}</p>
+                {detail && <p className="vc-vt-detail">{detail}</p>}
+                {(m.items?.length ?? 0) > 0 && (
+                  <ol className="vc-vt-items">
+                    {m.items!.map((it) => (
+                      <li key={it}>{it.replace(/^(\d+\.\d+)\s+/, '$1  ')}</li>
+                    ))}
+                  </ol>
+                )}
+                <span className="vc-vg-foot">
+                  {unanimous && cols.length === 0 && <span className="vc-vg-un">Unanimous</span>}
+                  {m.tieBreak && <span className="vc-vt-meta">Mayor broke the tie</span>}
+                  <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
+                    <FileText size={11} /> Minutes{m.page ? ` p. ${m.page}` : ''}
+                  </DocLink>
+                </span>
+              </div>
+              <span className="vc-vt-result vc-vg-res" data-result={m.result}>
+                {outcome}
+                {m.tally ? ` ${m.tally}` : ''}
+              </span>
+              {cols.length > 0 && (
+                <span className="vc-vg-cells">
+                  {unanimous ? (
+                    <span className="vc-vg-un vc-vg-all">Unanimous</span>
+                  ) : m.votes.length > 0 ? (
+                    cols.map((id) => {
+                      const v = m.votes.find((x) => x.member === id)?.vote ?? 'none';
+                      const word = v === 'none' ? 'No vote recorded' : (VOTE_LABEL[v] ?? v);
+                      return (
+                        <span key={id} className="vc-vg-cell" data-vote={v} data-on={member === id ? 'true' : undefined} role="img" aria-label={`${surname(id)}: ${word}`} title={`${titled(id)}: ${word}`}>
+                          {v === 'yes' ? <Check size={16} strokeWidth={2.8} /> : v === 'no' ? <X size={16} strokeWidth={2.8} /> : v === 'abstain' ? 'A' : v === 'recused' ? 'R' : '–'}
+                        </span>
+                      );
+                    })
+                  ) : null}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+/** What the marks in the vote sheet mean. */
+function Key() {
+  return (
+    <p className="vc-vg-key" aria-label="Key to the marks">
+      <span>
+        <i data-vote="yes"><Check size={13} strokeWidth={2.8} /></i> Yes
+      </span>
+      <span>
+        <i data-vote="no"><X size={13} strokeWidth={2.8} /></i> No
+      </span>
+      <span>
+        <i data-vote="abstain">A</i> Abstained
+      </span>
+      <span>
+        <i data-vote="recused">R</i> Recused
+      </span>
+      <span>
+        <i data-vote="absent">–</i> Absent
+      </span>
+    </p>
+  );
+}
+
 /** A meeting as a card: its date, body and every vote taken, opening the meeting itself. */
 function MeetingCard({ items, member, att }: { items: MotionRow[]; member: string | null; att?: { present: string[]; absent: string[] } | null }) {
   const m0 = items[0];
@@ -148,11 +253,7 @@ function MeetingCard({ items, member, att }: { items: MotionRow[]; member: strin
         </span>
         <ChevronRight size={18} className="vc-mcard-go" />
       </Link>
-      <ol className="vc-vts">
-        {items.map((m) => (
-          <MotionCard key={m.id} m={m} member={member} />
-        ))}
-      </ol>
+      <VoteGrid items={items} member={member} />
     </article>
   );
 }
@@ -381,6 +482,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
 
 
       {view !== 'attendance' && <Coverage bodies={commission ? ['planning-commission'] : body ? [body] : ['city-council', 'redevelopment-agency']} />}
+      {view !== 'attendance' && <Key />}
       {commission && (
         <div className="vc-segment vc-tabs" role="tablist" aria-label="View">
           <button type="button" role="tab" aria-selected={view !== 'attendance'} data-on={view !== 'attendance'} onClick={() => set('view', '')}>
