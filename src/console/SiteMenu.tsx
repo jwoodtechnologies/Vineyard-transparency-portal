@@ -77,7 +77,7 @@ export function SiteMenu() {
               <Users size={16} strokeWidth={1.8} /> People
             </Link>
             <Link to="/budget" className="vc-panel-row">
-              <PiggyBank size={16} strokeWidth={1.8} /> Budget
+              <PiggyBank size={16} strokeWidth={1.8} /> Budget and finance
             </Link>
             <Link to="/map" className="vc-panel-row">
               <MapIcon size={16} strokeWidth={1.8} /> City map

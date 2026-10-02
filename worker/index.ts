@@ -167,6 +167,14 @@ async function cached(request: Request, url: URL, ctx: ExecutionContext, compute
   return res;
 }
 
+/** Every API response carries the standing security headers, including streamed ones that are built outside json(). */
+function hardened(res: Response): Response {
+  if (res.headers.has('strict-transport-security')) return res;
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(API_SECURITY_HEADERS)) if (!out.headers.has(k)) out.headers.set(k, v);
+  return out;
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -181,7 +189,7 @@ export default {
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
     try {
-      return await cached(request, url, ctx, () => route(request, env, url, ctx));
+      return hardened(await cached(request, url, ctx, () => route(request, env, url, ctx)));
     } catch (e) {
       if (e instanceof HttpError) return errorResponse(e);
       console.error(JSON.stringify({ event: 'api_error', path: url.pathname, message: e instanceof Error ? e.message : String(e) }));

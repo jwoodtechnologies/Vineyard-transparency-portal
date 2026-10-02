@@ -65,10 +65,9 @@ export default function BudgetArchive() {
     const words = needle.split(/\s+/).filter(Boolean);
     const by = new Map<number, DocumentSummary[]>();
     for (const d of load.data.items) {
-      const fy = fiscalYearOf(d);
-      if (fy == null) continue;
+      const fy = fiscalYearOf(d) ?? 0; // 0: the record states no year
       if (decade && Math.floor(fy / 10) * 10 !== Number(decade)) continue;
-      const hay = `${d.title} ${TYPE_LABEL[d.documentType] ?? ''} ${fy} ${d.year ?? ''} ${d.date ?? ''}`.toLowerCase();
+      const hay = `${d.title} ${TYPE_LABEL[d.documentType] ?? ''} ${fy || ''} ${d.year ?? ''} ${d.date ?? ''}`.toLowerCase();
       if (words.length && !words.every((w) => hay.includes(w) || (/^fy\d{2}$/.test(w) && fy % 100 === Number(w.slice(2))))) continue;
       const list = by.get(fy) ?? [];
       list.push(d);
@@ -79,7 +78,7 @@ export default function BudgetArchive() {
 
   const searching = q.trim().length > 0;
   const shown = groups.reduce((n, g) => n + g.docs.length, 0);
-  const newest = groups[0]?.fy;
+  const newest = groups.find((g) => g.fy > 0)?.fy ?? groups[0]?.fy;
   const isOpen = (g: Group) => searching || decade != null || (open ? open.has(g.fy) : g.fy === newest);
   const toggle = (g: Group) =>
     setOpen((cur) => {
@@ -125,7 +124,7 @@ export default function BudgetArchive() {
           <p className="vc-bud-total">
             {shown === 0 ? 'Nothing matches.' : (
               <>
-                <b>{shown}</b> {shown === 1 ? 'document' : 'documents'} across <b>{groups.length}</b> fiscal {groups.length === 1 ? 'year' : 'years'}
+                <b>{shown}</b> {shown === 1 ? 'document' : 'documents'} across <b>{groups.filter((g) => g.fy > 0).length}</b> fiscal {groups.filter((g) => g.fy > 0).length === 1 ? 'year' : 'years'}
               </>
             )}
           </p>
@@ -135,7 +134,7 @@ export default function BudgetArchive() {
               return (
                 <li key={g.fy} data-open={on}>
                   <button type="button" className="vc-bud-row vc-bud-fy" aria-expanded={on} onClick={() => toggle(g)}>
-                    <span className="vc-bud-row-name">Fiscal year {g.fy}</span>
+                    <span className="vc-bud-row-name">{g.fy ? `Fiscal year ${g.fy}` : 'Year not stated'}</span>
                     <span className="vc-bud-row-amt">
                       {g.docs.length} {g.docs.length === 1 ? 'file' : 'files'}
                     </span>
