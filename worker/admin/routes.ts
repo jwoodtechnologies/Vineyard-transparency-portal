@@ -220,6 +220,18 @@ async function migrate(env: Env): Promise<Response> {
     ),
     env.CATALOG_DB.prepare(`UPDATE document_sources SET etag = NULL, last_modified = NULL WHERE document_id IN (${ocrDocs})`),
   ]).catch(() => undefined);
+  // A meeting's own minutes or agenda that was once filed under an agenda-item attachment dated the same day
+  // (see upsertDocument) is unlinked from it and read again as its own record.
+  const strayDocs = "SELECT id FROM documents WHERE title LIKE '%, 20__-__-__)' OR title LIKE '%, 20__-__-__, item %)'";
+  const strayKeys = `SELECT ds.canonical_key FROM document_sources ds JOIN crawl_queue q ON q.url_key = ds.canonical_key
+    WHERE ds.document_id IN (${strayDocs}) AND q.source_id = 'vineyard-civicclerk-meetings' AND json_extract(q.metadata_json, '$.dedupeMeeting') = 1`;
+  await env.CATALOG_DB.batch([
+    env.CATALOG_DB.prepare(
+      `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = 1
+       WHERE url_key IN (${strayKeys}) AND status IN ('done', 'unchanged', 'error', 'skipped')`,
+    ),
+    env.CATALOG_DB.prepare(`DELETE FROM document_sources WHERE canonical_key IN (${strayKeys}) AND document_id IN (${strayDocs})`),
+  ]).catch(() => undefined);
   // Files skipped only because a robots.txt answered 403 (ArcGIS, Amazon S3) go back in the queue.
   await env.CATALOG_DB.prepare("UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL WHERE status = 'skipped' AND last_error LIKE 'RobotsDisallowed%'").run().catch(() => undefined);
   await ensureActivityTables(env);
@@ -523,6 +535,8 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
 
   // One record per meeting: the same minutes or agenda from a second source (CivicClerk and the
   // municipal code site both carry them) attach to the record already indexed for that meeting.
+  // A file attached to an agenda item ("..., 2026-06-23, item 1)") is not the meeting's own record: the
+  // June 9 draft minutes attached to the June 23 agenda must not swallow the June 23 minutes.
   const meetingDate = s(d.documentDate, 10);
   const meetingBody = s(d.governmentBodyId, 128);
   if (d.dedupeMeeting === true && ['minutes', 'agenda', 'agenda_packet'].includes(docType) && meetingDate && meetingBody) {
@@ -530,7 +544,8 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
     const same = await db
       .prepare(
         `SELECT * FROM documents WHERE document_type = ? AND document_date = ? AND government_body_id = ?
-           AND (CASE WHEN lower(title) LIKE '%special%' THEN 1 ELSE 0 END) = ? ORDER BY first_seen_at LIMIT 1`,
+           AND (CASE WHEN lower(title) LIKE '%special%' THEN 1 ELSE 0 END) = ?
+           AND title NOT LIKE '%, 20__-__-__)' AND title NOT LIKE '%, 20__-__-__, item %)' ORDER BY first_seen_at LIMIT 1`,
       )
       .bind(docType, meetingDate, meetingBody, special)
       .first<Json>();
