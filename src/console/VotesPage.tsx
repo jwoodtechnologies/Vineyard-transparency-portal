@@ -78,6 +78,8 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   const nameOf = useMemberNames();
   const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result recorded';
   const roll = [...m.votes].filter((v) => v.vote !== 'absent').sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
+  // Unanimous: the minutes say so (a vote with no names), or every member who voted voted yes.
+  const unanimous = m.result === 'carried' && (m.inferred ? m.unanimous : roll.length > 0 && roll.every((v) => v.vote === 'yes'));
   const surname = (id: string) => cap(last(nameOf(id).name));
   const titled = (id: string) => `${/^mayor$/i.test(nameOf(id).person?.role ?? '') ? 'Mayor' : seat(m.bodyId)} ${surname(id)}`;
   return (
@@ -100,8 +102,13 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
           ))}
         </ol>
       )}
-      {roll.length > 0 && (
+      {(roll.length > 0 || unanimous) && (
         <ul className="vc-vt-tags" aria-label="How each member voted">
+          {unanimous && (
+            <li data-badge="unanimous">
+              <b>Unanimous</b>
+            </li>
+          )}
           {roll.map((v) => (
             <li key={v.member} data-vote={v.vote} data-on={member && member === v.member ? 'true' : undefined} title={`${titled(v.member)}: ${VOTE_LABEL[v.vote] ?? v.vote}`}>
               <span>{/^mayor$/i.test(nameOf(v.member).person?.role ?? '') ? `Mayor ${surname(v.member)}` : surname(v.member)}</span>
@@ -112,7 +119,6 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
       )}
       <div className="vc-vt-foot">
         {m.tieBreak && <span className="vc-vt-meta">Mayor broke the tie</span>}
-        {m.inferred && m.result === 'carried' && <span className="vc-vt-meta">Unanimous</span>}
         <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
           <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
         </DocLink>

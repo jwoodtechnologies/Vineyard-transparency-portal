@@ -3900,6 +3900,8 @@ html.vc-locked .vc-landing {
 .vc-vt-tags li { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 11px; border: 1px solid var(--vc-line-2); border-radius: 999px; background: var(--vc-surface); font-size: 0.8rem; line-height: 1.3; color: var(--vc-ink-2); }
 .vc-vt-tags li b { font-weight: 700; color: var(--vc-ink); }
 .vc-vt-tags li[data-on='true'] { border-color: var(--vc-accent); }
+.vc-vt-tags li[data-badge] { border-color: var(--vc-accent); background: var(--vc-accent-soft); }
+.vc-vt-tags li[data-badge] b { color: var(--vc-accent); }
 :root[data-theme='dark'] .vc-vt-result { color: #8ce99a; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .vc-vt-result { color: #8ce99a; }
