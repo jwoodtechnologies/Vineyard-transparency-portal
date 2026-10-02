@@ -56,7 +56,7 @@ function MenuMark() {
 /** The records menu, shortest to longest so it reads as one clean column. */
 const MENU_ROWS: Array<{ to: string; label: string; Icon: typeof FileText }> = [
   { to: '/votes', label: 'Voting records', Icon: Vote },
-  { to: '/records?c=finance', label: 'Budget & finance', Icon: Landmark },
+  { to: '/budget', label: 'Budget and finance', Icon: Landmark },
   { to: '/records?c=meetings', label: 'Agendas & minutes', Icon: FileText },
   { to: '/boards', label: 'Boards and commissions', Icon: Users },
   { to: '/records?c=laws', label: 'Ordinances & resolutions', Icon: Scale },

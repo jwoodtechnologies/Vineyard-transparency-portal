@@ -297,6 +297,11 @@ export default function RecordsPage() {
       <header className="vc-page-head">
         <h1 className="vc-page-title">{cat?.label ?? 'All records'}</h1>
         <p className="vc-page-sub">{cat?.blurb ?? 'Every record in the archive. Pick a category or narrow by type, year and meeting body.'}</p>
+        {cat?.id === 'finance' && (
+          <p className="vc-page-sub">
+            <Link to="/budget">See the FY2027 budget page</Link> for the summary, or <Link to="/budget?view=past">browse past budgets by year</Link>.
+          </p>
+        )}
       </header>
 
       <form

@@ -11,7 +11,7 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, History, Plus, RotateCcw } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronRight, History, Map as MapIcon, Newspaper, PiggyBank, Plus, RotateCcw, Users } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { SearchService } from '@/services';
 import { askStream, draftText } from './askStream';
@@ -347,6 +347,23 @@ export default function ConsolePage() {
             <p className="vc-hero-rule">Public records of Vineyard, Utah</p>
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
+          <nav className="vc-home-links" aria-label="Explore the portal">
+            <Link to="/budget">
+              <PiggyBank size={15} strokeWidth={1.8} /> Budget
+            </Link>
+            <Link to="/latest">
+              <Newspaper size={15} strokeWidth={1.8} /> Latest
+            </Link>
+            <Link to="/meetings">
+              <CalendarDays size={15} strokeWidth={1.8} /> Meetings
+            </Link>
+            <Link to="/people">
+              <Users size={15} strokeWidth={1.8} /> People
+            </Link>
+            <Link to="/map">
+              <MapIcon size={15} strokeWidth={1.8} /> Map
+            </Link>
+          </nav>
         </main>
         <p className="vc-legal">Independent project, not an official Vineyard City website.</p>
         {historyPanel}

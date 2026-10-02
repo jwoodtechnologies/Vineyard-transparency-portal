@@ -4134,3 +4134,13 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 @media (max-width: 640px) {
   .vc-meeting-docs .vc-tag { height: 1.85rem; padding: 0 0.75rem; font-size: 0.76rem; }
 }
+
+/* ---------------------------------------------------------------- home shortcuts (under the question box) */
+.vc-home-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: min(720px, 100%); margin: calc(-1 * clamp(.9rem, 2.4vh, 1.4rem)) auto 0; animation: vc-rise 0.9s 0.22s var(--vc-ease) both; }
+.vc-home-links a { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--vc-line-2); background: var(--vc-surface); color: var(--vc-muted, inherit); font-size: 13.5px; font-weight: 550; text-decoration: none; transition: border-color .15s, background .15s, color .15s; }
+.vc-home-links a:hover { border-color: var(--vc-accent); color: inherit; }
+.vc-home-links a svg { color: var(--vc-accent); }
+@media (max-width: 640px) {
+  .vc-home-links { gap: 7px; padding: 0 .25rem; }
+  .vc-home-links a { padding: 9px 13px; font-size: 14px; }
+}
