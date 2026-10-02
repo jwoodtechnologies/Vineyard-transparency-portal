@@ -115,7 +115,6 @@ export default function BoardsPage() {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Boards and commissions</h1>
-        <p className="vc-page-sub">The City Council, the Redevelopment Agency and every board and commission the city website lists, with current members and their meetings.</p>
       </header>
       <form className="vc-rec-search" role="search" onSubmit={(e) => e.preventDefault()}>
         <Search size={16} strokeWidth={1.9} />

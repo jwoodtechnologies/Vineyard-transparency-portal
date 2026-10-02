@@ -187,7 +187,6 @@ export default function PeoplePage() {
       {!slug && (
         <header className="vc-page-head">
           <h1 className="vc-page-title">People</h1>
-          <p className="vc-page-sub">The mayor, City Council and city staff as the city lists them today.</p>
         </header>
       )}
       {slug ? <Profile slug={slug} /> : <Directory />}

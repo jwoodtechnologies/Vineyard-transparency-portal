@@ -90,13 +90,9 @@ export default function BudgetArchive() {
 
   return (
     <div className="vc-bud-arch">
-      <p className="vc-bud-lede">
-        Adopted budgets, budget resolutions, audits and financial reports, by fiscal year. A fiscal year runs July 1 to June 30 and is named for the year it ends, so fiscal 2027 ends June 30, 2027. Each one opens the original PDF.
-      </p>
-
       <form className="vc-rec-search" role="search" onSubmit={(e) => e.preventDefault()}>
         <Search size={16} strokeWidth={1.9} />
-        <input type="search" placeholder="Search by year or word: 2018, audit, tax rate" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search past budgets" />
+        <input type="search" placeholder="Search past budgets" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search past budgets" />
       </form>
 
       <div className="vc-bud-chips" role="group" aria-label="Filter by decade">

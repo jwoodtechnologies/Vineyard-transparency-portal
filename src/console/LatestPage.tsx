@@ -106,7 +106,6 @@ export default function LatestPage() {
     <Frame>
       <header className="vc-page-head vc-latest-head">
         <h1 className="vc-page-title">Latest</h1>
-        <p className="vc-page-sub">The newest from Vineyard City: the last council meeting, recent board meetings and the city&apos;s own posts.</p>
       </header>
 
       <Section

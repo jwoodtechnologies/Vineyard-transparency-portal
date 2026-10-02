@@ -63,7 +63,7 @@ function Squares({ slices, noun, caption }: { slices: Slice[]; noun: string; cap
   return (
     <div className="vc-bud-split">
       <div className="vc-bud-squares-wrap">
-        <h3 className="vc-bud-q">Of every $100 the General Fund {noun}</h3>
+        <h3 className="vc-bud-q">Every $100 of {noun}</h3>
         <div
           className="vc-bud-squares"
           aria-hidden="true"
@@ -147,7 +147,6 @@ function SpendTab({ b }: { b: Budget }) {
       }),
     [b, all, view],
   );
-  const total = b.general[view].total;
   return (
     <>
       <div className="vc-bud-tools">
@@ -159,11 +158,8 @@ function SpendTab({ b }: { b: Budget }) {
             Adopted June 23
           </button>
         </div>
-        <p className="vc-bud-total">
-          General Fund spending, including money sent to other funds: <b>{money(total)}</b>
-        </p>
       </div>
-      <Squares slices={slices} noun="spends" caption="Tap a color or a row to see which departments are inside." />
+      <Squares slices={slices} noun="spending" caption="Tap a color to see what is inside." />
       <Numbers summary="See every department as a table">
         <table>
           <thead>
@@ -204,10 +200,10 @@ function RevenueTab({ b }: { b: Budget }) {
     <>
       <div className="vc-bud-tools">
         <p className="vc-bud-total">
-          Taxes pay for about <b>{share} of every $100</b> ({short(taxes)}). The rest is permits and fees, fines, state road money, grants, and money moved in from other city funds.
+          Taxes are <b>{share} of every $100</b> ({short(taxes)})
         </p>
       </div>
-      <Squares slices={slices} noun="takes in" caption="Tap a color or a row to see the individual sources." />
+      <Squares slices={slices} noun="revenue" caption="Tap a color to see what is inside." />
       <Numbers summary="See every revenue line as a table">
         <table>
           <thead>
@@ -261,10 +257,6 @@ function ProjectsTab({ b }: { b: Budget }) {
 
   return (
     <>
-      <p className="vc-bud-lede">
-        The {b.projects.length} projects the council listed when it adopted the budget, grouped by the fund paying for each. Only <b>{short(general)}</b> of the {short(allTotal)} ({pct(general, allTotal, 0)}) comes from the General Fund. The rest is paid from
-        other funds: the Redevelopment Agency, water and wastewater funds, impact fees, the RAP tax and grants, and road money.
-      </p>
       {!narrow && (
       <div className="vc-bud-tree" style={{ aspectRatio: `${W} / ${H}` }} role="group" aria-label="Capital project money by fund">
         {tiles.map((t) => {
@@ -311,7 +303,7 @@ function ProjectsTab({ b }: { b: Budget }) {
 
       <p className="vc-bud-total">
         {shown.length} {shown.length === 1 ? 'project' : 'projects'}, <b>{money(shownTotal)}</b>
-        {fund ? ` from ${nameOf(fund)}` : ' in all'}
+        {fund ? ` from ${nameOf(fund)}` : ` in all. General Fund share: ${money(general)} (${pct(general, allTotal, 0)})`}
       </p>
       <ul className="vc-bud-projects">
         {(showAll || fund ? shown : shown.slice(0, FIRST)).map((p) => (
@@ -339,8 +331,7 @@ function ProjectsTab({ b }: { b: Budget }) {
         </button>
       )}
       <p className="vc-bud-fine">
-        Amounts are the figures printed on the council&apos;s budget slides. Some projects are paid in part by grants, and a few carry over from earlier years.{' '}
-        <Link to="/map">See the ones with a location on the map.</Link>
+        From the council&apos;s budget slides. <Link to="/map">See them on the map.</Link>
       </p>
     </>
   );
@@ -359,16 +350,12 @@ export default function BudgetPage() {
   }, []);
 
   const b = load.status === 'done' ? load.data : null;
-  const cuts = useMemo(
-    () => (b ? [...b.departments].map((d) => ({ name: d.name, cut: d.adopted - d.amended })).filter((d) => d.cut > 0).sort((a, c) => c.cut - a.cut).slice(0, 2) : []),
-    [b],
-  );
 
   return (
     <Frame wide>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Budget</h1>
-        <p className="vc-page-sub">{b && tab !== 'past' ? `${b.label}. Adopted by the City Council on June 23, 2026 and amended on August 25.` : tab === 'past' ? 'Every budget in the archive, by year.' : 'Fiscal year 2027, July 1, 2026 to June 30, 2027.'}</p>
+        {tab !== 'past' && <p className="vc-page-sub">Fiscal year 2027 · July 1, 2026 to June 30, 2027</p>}
       </header>
 
       {load.status === 'loading' && (
@@ -385,39 +372,31 @@ export default function BudgetPage() {
           {tab !== 'past' && (
             <>
               <div className="vc-bud-hero">
-                <div>
-                  <b>{short(b.general.amended.total)}</b>
-                  <span>General Fund: police, fire, streets, parks and the library</span>
+                <div data-k="rev">
+                  <span>Revenue</span>
+                  <b>{short(b.general.revenueTotal)}</b>
                 </div>
-                <div>
+                <div data-k="spend">
+                  <span>Spending</span>
+                  <b>{short(b.general.amended.total)}</b>
+                </div>
+                <div data-k="left">
+                  <span>Surplus</span>
                   <b>{short(b.general.amended.surplus)}</b>
-                  <span>planned to come in above what is spent</span>
                 </div>
               </div>
-              <p className="vc-bud-lede">
-                The General Fund is the city&apos;s everyday budget, mostly paid for by taxes. Water, sewer, the Redevelopment Agency, impact fees and grants are separate funds with their own money and are not counted here.
-              </p>
-
-              <details className="vc-bud-note">
-                <summary>Amended August 25: General Fund spending trimmed by {money(b.general.cutByAmendment)}</summary>
-                <p>
-                  {cuts.length > 0 && <>The biggest changes: {cuts.map((c) => `${c.name} (-${money(c.cut)})`).join(' and ')}. </>}
-                  Revenue above spending grew from {money(b.general.adopted.surplus)} to {money(b.general.amended.surplus)}.{' '}
-                  <a href={pdfHref(b.docs.amendment)} {...NEW_TAB}>
-                    Read the amendment (PDF) <ArrowUpRight size={11} />
+              <div className="vc-bud-flow" role="img" aria-label={`Of ${money(b.general.revenueTotal)} in revenue, ${money(b.general.amended.total)} is spent and ${money(b.general.amended.surplus)} is left over`}>
+                <i data-k="spend" style={{ flexGrow: b.general.amended.total }} />
+                <i data-k="left" style={{ flexGrow: Math.max(b.general.amended.surplus, b.general.revenueTotal * 0.015) }} />
+              </div>
+              <p className="vc-bud-cap">General Fund only, after the August 25 amendment. Revenue minus spending is the surplus.</p>
+              {b.newer.length > 0 && (
+                <p className="vc-bud-cap">
+                  Newer paper posted, not included yet:{' '}
+                  <a href={pdfHref(b.newer[0].id)} {...NEW_TAB}>
+                    {b.newer[0].title} (PDF)
                   </a>
                 </p>
-              </details>
-              {b.newer.length > 0 && (
-                <aside className="vc-bud-note vc-bud-newer">
-                  <p>
-                    <b>Newer budget paper posted.</b> {b.newer[0].title}
-                    {b.newer[0].date ? ` (${b.newer[0].date})` : ''} was added after the figures here were entered, so it is not reflected yet.{' '}
-                    <a href={pdfHref(b.newer[0].id)} {...NEW_TAB}>
-                      Open it (PDF) <ArrowUpRight size={11} />
-                    </a>
-                  </p>
-                </aside>
               )}
             </>
           )}
@@ -437,28 +416,28 @@ export default function BudgetPage() {
 
           {tab !== 'past' && (
             <footer className="vc-bud-sources">
-              <h2>Where these numbers come from</h2>
+              <h2>Sources</h2>
               <ul>
                 <li>
                   <a href={pdfHref(b.docs.book)} {...NEW_TAB}>
-                    <FileText size={13} /> FY 27 Final Budget, adopted June 23, 2026 (PDF)
+                    <FileText size={13} /> FY 27 Final Budget (PDF)
                   </a>
                 </li>
                 <li>
                   <a href={pdfHref(b.docs.slides)} {...NEW_TAB}>
-                    <FileText size={13} /> FY 27 Final Budget slides, with the capital project lists (PDF)
+                    <FileText size={13} /> FY 27 Budget slides (PDF)
                   </a>
                 </li>
                 <li>
                   <a href={pdfHref(b.docs.amendment)} {...NEW_TAB}>
-                    <FileText size={13} /> FY 27 First Budget Amendment, August 25, 2026 (PDF)
+                    <FileText size={13} /> FY 27 First Budget Amendment, Aug 25 (PDF)
                   </a>
                 </li>
                 <li>
-                  <Link to="/budget?view=past">Looking for an earlier year? See every past budget.</Link>
+                  <Link to="/budget?view=past">Earlier years: past budgets</Link>
                 </li>
               </ul>
-              <p>Where the budget slides and the budget book differ, this page uses the budget book. Totals can differ from the book by a few dollars because the book rounds each line.</p>
+              <p>Where the slides and the book differ, the book is used.</p>
             </footer>
           )}
         </div>

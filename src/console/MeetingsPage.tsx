@@ -420,7 +420,6 @@ export default function MeetingsPage() {
     <Frame wide>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Calendar</h1>
-        <p className="vc-page-sub">Public meetings, community events, recreation, library programs and trash days in Vineyard.</p>
       </header>
 
       <div className="vc-sched-controls">

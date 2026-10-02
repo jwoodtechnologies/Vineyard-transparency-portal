@@ -334,11 +334,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">{commission ? 'Planning Commission' : 'Voting records'}</h1>
-        <p className="vc-page-sub">
-          {commission
-            ? 'The current commissioners, their attendance and every motion they have voted on since January 2026, from the commission’s minutes.'
-            : 'How the current City Council has voted since January 2026, meeting by meeting, newest first. Includes the council’s votes as the Redevelopment Agency (RDA) board.'}
-        </p>
+        <p className="vc-page-sub">{commission ? 'Attendance and motions since January 2026' : 'Council votes since January 2026, newest first'}</p>
       </header>
 
       <div className="vc-vfilters" hidden={view === 'attendance'}>

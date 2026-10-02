@@ -23,7 +23,6 @@ export default function ServicesPage() {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">City services</h1>
-        <p className="vc-page-sub">Forms, portals and reports from the city, grouped. Each opens the official city page or form.</p>
       </header>
       <form className="vc-rec-search" role="search" onSubmit={(e) => e.preventDefault()}>
         <Search size={16} strokeWidth={1.9} />
