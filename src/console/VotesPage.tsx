@@ -69,12 +69,17 @@ const ORDER: Record<string, number> = { yes: 0, no: 1, abstain: 2, recused: 3, a
 const DAY = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00Z`) : null);
 const fmt = (iso: string | null, o: Intl.DateTimeFormatOptions) => (DAY(iso) ? DAY(iso)!.toLocaleDateString('en-US', { ...o, timeZone: 'UTC' }) : '');
 const last = (n: string) => n.split(' ').pop() ?? n;
+const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
+/** What the body calls the people who vote in it. */
+const seat = (bodyId: string | null) => (bodyId === 'planning-commission' ? 'Commissioner' : bodyId === 'redevelopment-agency' ? 'Board Member' : 'Council Member');
 
 /** One vote: what it was on, how it ended, and each member's vote. */
 export function MotionCard({ m, member }: { m: MotionRow; member?: string | null }) {
   const nameOf = useMemberNames();
   const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result recorded';
   const roll = [...m.votes].filter((v) => v.vote !== 'absent').sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
+  const surname = (id: string) => cap(last(nameOf(id).name));
+  const titled = (id: string) => `${/^mayor$/i.test(nameOf(id).person?.role ?? '') ? 'Mayor' : seat(m.bodyId)} ${surname(id)}`;
   const allYes = roll.length > 0 && roll.every((v) => v.vote === 'yes');
   const showRoll = roll.length > 0 && (!allYes || Boolean(member));
   return (
@@ -105,9 +110,11 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
             .map((g) => (
               <p key={g.k} data-vote={g.k}>
                 <b>{VOTE_LABEL[g.k]}</b>{' '}
+                {seat(m.bodyId)}
+                {g.who.length > 1 ? 's' : ''}{' '}
                 {g.who.map((v, i) => (
                   <span key={v.member} data-on={member && member === v.member ? 'true' : undefined} title={nameOf(v.member).name}>
-                    {last(nameOf(v.member).name)}
+                    {surname(v.member)}
                     {i < g.who.length - 1 ? ', ' : ''}
                   </span>
                 ))}
@@ -117,7 +124,7 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
       )}
       <div className="vc-vt-foot">
         <span className="vc-vt-meta">
-          {m.mover ? `${last(nameOf(m.mover).name)} moved${m.seconder ? `, ${last(nameOf(m.seconder).name)} seconded` : ''}` : ''}
+          {m.mover ? `${titled(m.mover)} moved${m.seconder ? `, ${titled(m.seconder)} seconded` : ''}` : ''}
           {m.tieBreak ? `${m.mover ? '. ' : ''}Mayor broke the tie` : ''}
         </span>
         <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
