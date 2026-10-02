@@ -509,6 +509,23 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
     ]);
     known = null;
   }
+  if (known && isAttachment && !ATTACHMENT_TITLE.test(String(known.title)) && sha && known.sha256 !== sha) {
+    // An attachment must not overwrite a meeting's own record it was once filed under: it gets a record of its own.
+    await db.prepare('DELETE FROM document_sources WHERE canonical_key = ? AND document_id = ?').bind(canonicalKey, known.id).run();
+    known = null;
+  }
+  const id = `doc_${(await sha256Hex(`vtp:${canonicalKey}`)).slice(0, 16)}`;
+  if (!known) {
+    // A record already filed under this file's own id (its source link having been lost) is that same record, not a new one;
+    // whatever else was filed under it is read again, so the record holds this file's content alone.
+    known = await db.prepare('SELECT * FROM documents WHERE id = ?').bind(id).first<Json>();
+    if (known) {
+      await db
+        .prepare(`UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL WHERE url_key IN (SELECT canonical_key FROM document_sources WHERE document_id = ? AND canonical_key <> ?) AND status IN ('done', 'unchanged', 'error', 'skipped')`)
+        .bind(known.id, canonicalKey)
+        .run();
+    }
+  }
 
   if (known) {
     docIdCache.id = String(known.id);
@@ -592,10 +609,11 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
     }
   }
 
-  const id = `doc_${(await sha256Hex(`vtp:${canonicalKey}`)).slice(0, 16)}`;
   docIdCache.id = id;
   const shard = repo.available ? repo.assignShard(id) : null;
-  const slug = `${slugify(title)}-${id.slice(4, 10)}`;
+  // The web address of a record: its title plus a short mark of its id, lengthened if another record already holds it.
+  let slug = `${slugify(title)}-${id.slice(4, 10)}`;
+  if (await db.prepare('SELECT 1 FROM documents WHERE slug = ? LIMIT 1').bind(slug).first()) slug = `${slugify(title)}-${id.slice(4)}`;
   const stmts: D1PreparedStatement[] = [
     db
       .prepare(
