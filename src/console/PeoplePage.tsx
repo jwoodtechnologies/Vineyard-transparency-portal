@@ -9,6 +9,7 @@ import { Frame } from './Chrome';
 import { useJson } from './api';
 import { TYPE_LABEL, formatDate } from './format';
 import { PersonCard, PersonPhoto } from './PersonCard';
+import { DocLink } from './DocLink';
 import { usePeople, type Person, type PersonDetail, type PersonRecord } from './people';
 
 function RecordRows({ rows }: { rows: PersonRecord[] }) {
@@ -16,7 +17,7 @@ function RecordRows({ rows }: { rows: PersonRecord[] }) {
     <ul className="vc-mdocs">
       {rows.map((r) => (
         <li key={r.documentId}>
-          <Link to={`/documents/${encodeURIComponent(r.documentId)}${r.page ? `?page=${r.page}` : ''}`} className="vc-mdoc">
+          <DocLink id={r.documentId} page={r.page} className="vc-mdoc">
             <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(r.type) ? r.type : 'other'}>
               <FileText size={15} strokeWidth={1.8} />
             </span>
@@ -26,7 +27,7 @@ function RecordRows({ rows }: { rows: PersonRecord[] }) {
               {r.excerpt && <span className="vc-rec-snippet">{r.excerpt.replace(/\s+/g, ' ').slice(0, 240)}</span>}
             </span>
             <ArrowUpRight size={15} className="vc-mdoc-go" />
-          </Link>
+          </DocLink>
         </li>
       ))}
     </ul>

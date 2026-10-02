@@ -1,4 +1,5 @@
-/** Budget page helpers: types for GET /api/budget, money formatting, the "per $100" split and the treemap layout. */
+/** Budget page helpers: types for GET /api/budget, money formatting, the "per $100" split, the treemap layout and fiscal-year labels for past budgets. */
+import type { DocumentSummary } from '@/types/models';
 
 export interface BudgetFund {
   key: string;
@@ -167,4 +168,35 @@ export function treemap(items: Array<{ key: string; value: number }>, W: number,
   }
   if (row.length) place(row);
   return out;
+}
+
+/** A record title without the trailing "(City Council, 2026-05-12, item 4)" meeting tag. */
+export function cleanTitle(title: string): string {
+  return title.replace(/\s*\([^()]*\d{4}-\d{2}-\d{2}[^()]*\)\s*$/, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+/**
+ * The fiscal year (named for the year it ends, July 1 to June 30) a budget paper belongs to. The title
+ * says so when it can ("2017-2018", "FY 27"); otherwise the date does. Audits and financial reports
+ * belong to the year they report on.
+ */
+export function fiscalYearOf(d: Pick<DocumentSummary, 'title' | 'date' | 'year' | 'documentType'>): number | null {
+  const ok = (n: number) => (n >= 1989 && n <= 2035 ? n : null);
+  const t = d.title;
+  for (const m of t.matchAll(/\b(\d{4})\s*[-\u2013/]\s*(\d{4})\b/g)) if (+m[2] === +m[1] + 1) return ok(+m[2]);
+  const fy = t.match(/\bFY\s?(\d{4}|\d{2})\b/i);
+  if (fy) return ok(fy[1].length === 4 ? +fy[1] : 2000 + +fy[1]);
+  for (const m of t.matchAll(/\b(\d{4})\s*[-\u2013/]\s*(\d{2})\b/g)) {
+    const a = +m[1];
+    if (Math.floor(a / 100) * 100 + +m[2] === a + 1) return ok(a + 1);
+  }
+  const iso = d.date ?? (d.year ? `${d.year}-06-30` : null);
+  if (!iso) return null;
+  const y = Number(iso.slice(0, 4));
+  const month = Number(iso.slice(5, 7)) || 6;
+  if (d.documentType === 'audit' || d.documentType === 'financial_report') {
+    const named = t.match(/\b(?:19|20)\d{2}\b/);
+    return ok(named ? Number(named[0]) : month >= 7 ? y : y - 1);
+  }
+  return ok(month >= 5 ? y + 1 : y);
 }

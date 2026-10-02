@@ -7,6 +7,7 @@ import './console.css';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronDown, ChevronRight, FileText, MessageSquare, Search } from 'lucide-react';
+import { DocLink } from './DocLink';
 import { Frame } from './Chrome';
 import { useJson } from './api';
 import { motionDetail, motionLabel, useMemberNames, type MotionRow, type VoteMember } from './votes';
@@ -45,10 +46,10 @@ function AttendanceView({ a }: { a: Attendance }) {
                 {meetings.map((m) => {
                   const p = seen(c.name, m.present);
                   return (
-                    <Link key={m.date} to={`/documents/${encodeURIComponent(m.documentId)}`} className="vc-att2-mark" data-here={p} title={`${short(m.date)}: ${p ? 'present' : 'not present'}`}>
+                    <DocLink key={m.date} id={m.documentId} className="vc-att2-mark" data-here={p} title={`${short(m.date)}: ${p ? 'present' : 'not present'}. Opens the minutes (PDF)`}>
                       <i aria-hidden="true">{p ? '✓' : '–'}</i>
                       {short(m.date)}
-                    </Link>
+                    </DocLink>
                   );
                 })}
               </span>
@@ -111,9 +112,9 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
         </p>
       )}
       <div className="vc-vt-actions">
-        <Link to={`/documents/${encodeURIComponent(m.documentId)}${m.page ? `?page=${m.page}` : ''}`}>
-          <FileText size={13} /> Minutes{m.page ? `, page ${m.page}` : ''}
-        </Link>
+        <DocLink id={m.documentId} page={m.page}>
+          <FileText size={13} /> Minutes{m.page ? `, page ${m.page}` : ''} (PDF)
+        </DocLink>
         <Link to={`/?q=${encodeURIComponent(`What did the ${m.bodyId === 'redevelopment-agency' ? 'RDA board' : 'City Council'} approve on ${m.date ?? ''}: ${motionLabel(m) === 'Consent items' ? 'the consent items' : motionLabel(m)}? What does it do?`)}`}>
           <MessageSquare size={13} /> Ask about this
         </Link>

@@ -8,10 +8,11 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, MapPin, Megaphone, Video } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, MapPin, Megaphone } from 'lucide-react';
 import type { MeetingSummary } from '@/types/models';
 import { Frame } from './Chrome';
 import { CityFacebook } from './FacebookFeed';
+import { MeetingFiles } from './MeetingFiles';
 import {
   CATEGORIES,
   categoryOf,
@@ -67,7 +68,7 @@ function MeetingRow({ m, today, cityTime = null }: { m: MeetingSummary; today: s
   const status = statusLabel(m, today);
   const tag = status === 'Upcoming' ? null : status;
   return (
-    <Link to={meetingHref(m)} className="vc-meeting" data-tone={toneOf(m.governmentBodyId)}>
+    <div className="vc-meeting" data-tone={toneOf(m.governmentBodyId)}>
       <DateBox date={m.date} />
       <div className="vc-meeting-main">
         <div className="vc-meeting-meta">
@@ -86,32 +87,15 @@ function MeetingRow({ m, today, cityTime = null }: { m: MeetingSummary; today: s
             </span>
           )}
         </div>
-        <h3 className="vc-meeting-title">{m.title}</h3>
-        <div className="vc-meeting-docs">
-          {m.agendaDocumentId && (
-            <span className="vc-tag">
-              <FileText size={11} strokeWidth={2} /> Agenda
-            </span>
-          )}
-          {m.packetDocumentId && (
-            <span className="vc-tag">
-              <FileText size={11} strokeWidth={2} /> Packet
-            </span>
-          )}
-          {m.minutesDocumentId && (
-            <span className="vc-tag">
-              <FileText size={11} strokeWidth={2} /> Minutes
-            </span>
-          )}
-          {m.hasVideo && (
-            <span className="vc-tag">
-              <Video size={11} strokeWidth={2} /> Video
-            </span>
-          )}
-        </div>
+        <h3 className="vc-meeting-title">
+          <Link to={meetingHref(m)} className="vc-meeting-link">
+            {m.title}
+          </Link>
+        </h3>
+        <MeetingFiles m={m} />
       </div>
       <ChevronRight className="vc-meeting-go" size={18} strokeWidth={1.6} aria-hidden="true" />
-    </Link>
+    </div>
   );
 }
 

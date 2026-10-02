@@ -303,7 +303,6 @@ export function budgetPayload(): BudgetPayload {
     projectsTotal: PROJECTS.reduce((s, p) => s + p.amount, 0),
     notes: [
       'Project amounts are the figures printed on the council’s budget slides. Some projects are paid in part by grants, and a few carry over from earlier years.',
-      'FY23 to FY25 are actual results, FY26 is the final budget after its amendments, and FY27 is the adopted budget.',
       'Where the slides and the budget book differ, this page uses the budget book.',
     ],
   };

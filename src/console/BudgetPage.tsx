@@ -1,9 +1,9 @@
 /**
  * /budget : the fiscal 2027 budget made readable. Four views:
- *   Where it goes     every $100 of General Fund spending as 100 squares, tap a color to open its departments
- *   Where it comes from  the same for revenue
- *   Capital projects  a treemap of the funds paying for the projects the council listed, then every project
- *   Over time         five years of the biggest lines, and how each department moved from last year
+ *   Spending       every $100 of General Fund spending as 100 squares, tap a color to open its departments
+ *   Revenue        the same for revenue, with taxes shown apart from fees, grants and money moved between funds
+ *   Projects       the funds paying for the capital projects the council listed, then every project
+ *   Past budgets   every budget, audit and budget resolution in the archive, by fiscal year, with search
  * The numbers come from GET /api/budget, which is keyed in from the adopted budget book and slides.
  */
 import '@fontsource-variable/inter';
@@ -12,16 +12,18 @@ import './console.css';
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, ChevronDown, FileText } from 'lucide-react';
+import { NEW_TAB, pdfHref } from './files';
+import BudgetArchive from './BudgetArchive';
 import { Frame } from './Chrome';
 import { useJson } from './api';
-import { allocate100, money, pct, short, signed, treemap, type Budget, type BudgetLine, type Project } from './budget';
+import { allocate100, money, pct, short, treemap, type Budget, type BudgetLine, type Project } from './budget';
 
-type Tab = 'spend' | 'revenue' | 'projects' | 'time';
+type Tab = 'spend' | 'revenue' | 'projects' | 'past';
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'spend', label: 'Spending' },
   { id: 'revenue', label: 'Revenue' },
   { id: 'projects', label: 'Projects' },
-  { id: 'time', label: 'Over time' },
+  { id: 'past', label: 'Past budgets' },
 ];
 
 const swatch = (slot: number): CSSProperties => ({ '--c': `var(--b${(slot % 7) + 1})` }) as CSSProperties;
@@ -44,7 +46,7 @@ interface Slice {
   slot: number;
   name: string;
   amount: number;
-  items: Array<{ name: string; amount: number; change: number | null }>;
+  items: Array<{ name: string; amount: number }>;
 }
 
 function Squares({ slices, noun, caption }: { slices: Slice[]; noun: string; caption: string }) {
@@ -107,7 +109,6 @@ function Squares({ slices, noun, caption }: { slices: Slice[]; noun: string; cap
                       <li key={it.name}>
                         <span>{it.name}</span>
                         <span className="vc-bud-items-amt">{money(it.amount)}</span>
-                        {it.change != null && it.change !== 0 && <span className="vc-bud-items-chg">{signed(it.change)} vs FY26</span>}
                       </li>
                     ))}
                 </ul>
@@ -136,13 +137,12 @@ function SpendTab({ b }: { b: Budget }) {
     () =>
       b.spendGroups.map((g, slot) => {
         const items = all.filter((l) => g.depts?.includes(l.name));
-        const isTransfer = items.every((l) => l.prior === 0);
         return {
           key: g.key,
           slot,
           name: g.name,
           amount: items.reduce((s, l) => s + l[view], 0),
-          items: items.map((l) => ({ name: l.name, amount: l[view], change: isTransfer ? null : l[view] - l.prior })),
+          items: items.map((l) => ({ name: l.name, amount: l[view] })),
         };
       }),
     [b, all, view],
@@ -171,7 +171,6 @@ function SpendTab({ b }: { b: Budget }) {
               <th>Department</th>
               <th>Adopted June 23</th>
               <th>After Aug 25</th>
-              <th>FY26 final</th>
             </tr>
           </thead>
           <tbody>
@@ -180,7 +179,6 @@ function SpendTab({ b }: { b: Budget }) {
                 <td>{l.name}</td>
                 <td>{money(l.adopted)}</td>
                 <td>{money(l.amended)}</td>
-                <td>{l.prior ? money(l.prior) : 'not a department'}</td>
               </tr>
             ))}
           </tbody>
@@ -196,15 +194,17 @@ function RevenueTab({ b }: { b: Budget }) {
     () =>
       b.revenueGroups.map((g, slot) => {
         const items = lines.filter((l) => g.lines?.includes(l.name));
-        return { key: g.key, slot, name: g.name, amount: items.reduce((s, l) => s + l.amount, 0), items: items.map((l) => ({ name: l.name, amount: l.amount, change: null })) };
+        return { key: g.key, slot, name: g.name, amount: items.reduce((s, l) => s + l.amount, 0), items: items.map((l) => ({ name: l.name, amount: l.amount })) };
       }),
     [b, lines],
   );
+  const taxes = slices.filter((s) => s.key === 'property' || s.key === 'sales').reduce((t, s) => t + s.amount, 0);
+  const share = Math.round((taxes / b.general.revenueTotal) * 100);
   return (
     <>
       <div className="vc-bud-tools">
         <p className="vc-bud-total">
-          General Fund money coming in, FY2027: <b>{money(b.general.revenueTotal)}</b>. The August 25 amendment did not change revenue.
+          Taxes pay for about <b>{share} of every $100</b> ({short(taxes)}). The rest is permits and fees, fines, state road money, grants, and money moved in from other city funds.
         </p>
       </div>
       <Squares slices={slices} noun="takes in" caption="Tap a color or a row to see the individual sources." />
@@ -232,9 +232,12 @@ function RevenueTab({ b }: { b: Budget }) {
 
 /* ---------- capital projects ---------- */
 
+const FIRST = 12;
+
 function ProjectsTab({ b }: { b: Budget }) {
   const narrow = useNarrow();
   const [fund, setFund] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const W = 100;
   const H = narrow ? 100 : 46;
   const totals = useMemo(() => {
@@ -253,12 +256,16 @@ function ProjectsTab({ b }: { b: Budget }) {
   const shown: Project[] = useMemo(() => [...b.projects].filter((p) => !fund || p.fund === fund).sort((a, c) => c.amount - a.amount), [b, fund]);
   const max = shown[0]?.amount ?? 1;
   const shownTotal = shown.reduce((s, p) => s + p.amount, 0);
+  const allTotal = b.projects.reduce((t, p) => t + p.amount, 0);
+  const general = totals.get('general')?.total ?? 0;
 
   return (
     <>
       <p className="vc-bud-lede">
-        The projects the council listed when it adopted the budget, grouped by the fund paying for each. Bigger tile, more money. Tap a tile to see just that fund&apos;s projects.
+        The {b.projects.length} projects the council listed when it adopted the budget, grouped by the fund paying for each. Only <b>{short(general)}</b> of the {short(allTotal)} ({pct(general, allTotal, 0)}) comes from the General Fund. The rest is paid from
+        other funds: the Redevelopment Agency, water and wastewater funds, impact fees, the RAP tax and grants, and road money.
       </p>
+      {!narrow && (
       <div className="vc-bud-tree" style={{ aspectRatio: `${W} / ${H}` }} role="group" aria-label="Capital project money by fund">
         {tiles.map((t) => {
           const f = totals.get(t.key)!;
@@ -287,6 +294,7 @@ function ProjectsTab({ b }: { b: Budget }) {
           );
         })}
       </div>
+      )}
 
       <div className="vc-bud-chips" role="group" aria-label="Filter by fund">
         <button type="button" className="vc-chip" data-active={fund == null} onClick={() => setFund(null)}>
@@ -306,7 +314,7 @@ function ProjectsTab({ b }: { b: Budget }) {
         {fund ? ` from ${nameOf(fund)}` : ' in all'}
       </p>
       <ul className="vc-bud-projects">
-        {shown.map((p) => (
+        {(showAll || fund ? shown : shown.slice(0, FIRST)).map((p) => (
           <li key={`${p.fund}-${p.name}`}>
             <div className="vc-bud-proj-top">
               <i className="vc-bud-sw" style={swatch(slot(p.fund))} />
@@ -318,136 +326,22 @@ function ProjectsTab({ b }: { b: Budget }) {
             </div>
             <div className="vc-bud-proj-meta">
               {nameOf(p.fund).startsWith(p.dept) || p.dept.startsWith(nameOf(p.fund)) ? nameOf(p.fund) : `${nameOf(p.fund)}, ${p.dept}`}
-              <Link to={`/documents/${encodeURIComponent(b.docs.slides)}?page=${p.page}`}>
-                Budget slide {p.page} <ArrowUpRight size={11} />
-              </Link>
+              <a href={pdfHref(b.docs.slides, p.page)} {...NEW_TAB}>
+                Budget slide {p.page} (PDF) <ArrowUpRight size={11} />
+              </a>
             </div>
           </li>
         ))}
       </ul>
+      {!showAll && !fund && shown.length > FIRST && (
+        <button type="button" className="vc-chip vc-bud-more" onClick={() => setShowAll(true)}>
+          Show all {shown.length} projects
+        </button>
+      )}
       <p className="vc-bud-fine">
         Amounts are the figures printed on the council&apos;s budget slides. Some projects are paid in part by grants, and a few carry over from earlier years.{' '}
         <Link to="/map">See the ones with a location on the map.</Link>
       </p>
-    </>
-  );
-}
-
-/* ---------- over time ---------- */
-
-function kindOf(i: number): string {
-  return i < 3 ? 'actual' : i === 3 ? 'final budget' : 'adopted budget';
-}
-
-function Multiple({ s, years, slot }: { s: Budget['history'][number]; years: string[]; slot: number }) {
-  const [hov, setHov] = useState<number | null>(null);
-  const i = hov ?? s.values.length - 1;
-  const max = Math.max(...s.values);
-  const first = s.values[0];
-  const last = s.values[s.values.length - 1];
-  return (
-    <figure className="vc-bud-multi" style={swatch(slot)}>
-      <figcaption>
-        <span>{s.name}</span>
-        <small>{s.kind === 'revenue' ? 'money in' : 'money spent'}</small>
-      </figcaption>
-      <div className="vc-bud-cols" onPointerLeave={() => setHov(null)}>
-        {s.values.map((v, k) => (
-          <button
-            key={years[k]}
-            type="button"
-            className="vc-bud-col"
-            data-plan={k >= 3}
-            data-on={i === k}
-            aria-label={`${s.name}, ${years[k]} ${kindOf(k)}: ${money(v)}`}
-            onPointerEnter={() => setHov(k)}
-            onFocus={() => setHov(k)}
-            onBlur={() => setHov(null)}
-            onClick={() => setHov(k)}
-          >
-            <span className="vc-bud-colbar" style={{ height: `${Math.max(2, (v / max) * 100)}%` }} />
-            <small>{years[k].replace('FY', '')}</small>
-          </button>
-        ))}
-      </div>
-      <p className="vc-bud-readout" aria-live="polite">
-        <b>{years[i]}</b> {kindOf(i)}: {money(s.values[i])}
-      </p>
-      <p className="vc-bud-delta">
-        {pct(last - first, first, 0).replace(/^/, last >= first ? '+' : '')} since {years[0]}
-      </p>
-    </figure>
-  );
-}
-
-function TimeTab({ b }: { b: Budget }) {
-  const rows = useMemo(
-    () =>
-      b.departments
-        .map((d) => ({ name: d.name, delta: d.amended - d.prior, prior: d.prior }))
-        .sort((a, c) => c.delta - a.delta),
-    [b],
-  );
-  const span = Math.max(...rows.map((r) => Math.abs(r.delta)));
-  return (
-    <>
-      <p className="vc-bud-lede">
-        Five years of the biggest lines in the General Fund. FY23 to FY25 are what actually happened. The striped bars are budgets: the FY26 final budget and the FY27 adopted budget.
-      </p>
-      <div className="vc-bud-multis">
-        {b.history.map((s, i) => (
-          <Multiple key={s.key} s={s} years={b.historyYears} slot={i} />
-        ))}
-      </div>
-      <Numbers summary="See the five years as a table">
-        <table>
-          <thead>
-            <tr>
-              <th>Line</th>
-              {b.historyYears.map((y, i) => (
-                <th key={y}>
-                  {y} {kindOf(i)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {b.history.map((s) => (
-              <tr key={s.key}>
-                <td>{s.name}</td>
-                {s.values.map((v, i) => (
-                  <td key={i}>{money(v)}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Numbers>
-
-      <h3 className="vc-bud-q vc-bud-q2">How each department moved from last year</h3>
-      <p className="vc-bud-lede">FY27 budget after the August 25 amendment, compared with the FY26 final budget.</p>
-      <div className="vc-bud-legend" aria-hidden="true">
-        <span>
-          <i className="vc-bud-sw" style={swatch(0)} /> Higher than FY26
-        </span>
-        <span>
-          <i className="vc-bud-sw" style={swatch(1)} /> Lower than FY26
-        </span>
-      </div>
-      <ul className="vc-bud-moves">
-        {rows.map((r) => (
-          <li key={r.name}>
-            <span className="vc-bud-move-name">{r.name}</span>
-            <span className="vc-bud-move-track" aria-hidden="true">
-              <i data-dir={r.delta >= 0 ? 'up' : 'down'} style={{ width: `${(Math.abs(r.delta) / span) * 50}%`, ...swatch(r.delta >= 0 ? 0 : 1) }} />
-            </span>
-            <span className="vc-bud-move-n">
-              {signed(r.delta)}
-              <small>{r.prior ? ` ${r.delta >= 0 ? '+' : ''}${pct(r.delta, r.prior, 0)}` : ''}</small>
-            </span>
-          </li>
-        ))}
-      </ul>
     </>
   );
 }
@@ -474,7 +368,7 @@ export default function BudgetPage() {
     <Frame wide>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Budget</h1>
-        <p className="vc-page-sub">{b ? `${b.label}. Adopted by the City Council on June 23, 2026 and amended on August 25.` : 'Fiscal year 2027, July 1, 2026 to June 30, 2027.'}</p>
+        <p className="vc-page-sub">{b && tab !== 'past' ? `${b.label}. Adopted by the City Council on June 23, 2026 and amended on August 25.` : tab === 'past' ? 'Every budget in the archive, by year.' : 'Fiscal year 2027, July 1, 2026 to June 30, 2027.'}</p>
       </header>
 
       {load.status === 'loading' && (
@@ -488,39 +382,45 @@ export default function BudgetPage() {
 
       {b && (
         <div className="vc-bud">
-          <div className="vc-bud-hero">
-            <div>
-              <b>{short(b.allFundsTotal)}</b>
-              <span>across all nine city funds</span>
-            </div>
-            <div>
-              <b>{short(b.general.amended.total)}</b>
-              <span>General Fund: everyday city government</span>
-            </div>
-            <div>
-              <b>{short(b.projectsTotal)}</b>
-              <span>in {b.projects.length} capital projects listed in the budget</span>
-            </div>
-          </div>
-
-          <aside className="vc-bud-note">
-            <p>
-              <b>Amended August 25.</b> The council trimmed General Fund spending by {money(b.general.cutByAmendment)}
-              {cuts.length > 0 && <>. The biggest changes: {cuts.map((c) => `${c.name} (-${money(c.cut)})`).join(' and ')}</>}. Revenue over spending grew from {money(b.general.adopted.surplus)} to {money(b.general.amended.surplus)}.{' '}
-              <Link to={`/documents/${encodeURIComponent(b.docs.amendment)}`}>
-                Read the amendment <ArrowUpRight size={11} />
-              </Link>
-            </p>
-            {b.newer.length > 0 && (
-              <p>
-                <b>Newer budget paper posted.</b> {b.newer[0].title}
-                {b.newer[0].date ? ` (${b.newer[0].date})` : ''} was added after the figures here were entered, so it is not reflected yet.{' '}
-                <Link to={`/documents/${encodeURIComponent(b.newer[0].id)}`}>
-                  Open it <ArrowUpRight size={11} />
-                </Link>
+          {tab !== 'past' && (
+            <>
+              <div className="vc-bud-hero">
+                <div>
+                  <b>{short(b.general.amended.total)}</b>
+                  <span>General Fund: police, fire, streets, parks and the library</span>
+                </div>
+                <div>
+                  <b>{short(b.general.amended.surplus)}</b>
+                  <span>planned to come in above what is spent</span>
+                </div>
+              </div>
+              <p className="vc-bud-lede">
+                The General Fund is the city&apos;s everyday budget, mostly paid for by taxes. Water, sewer, the Redevelopment Agency, impact fees and grants are separate funds with their own money and are not counted here.
               </p>
-            )}
-          </aside>
+
+              <details className="vc-bud-note">
+                <summary>Amended August 25: General Fund spending trimmed by {money(b.general.cutByAmendment)}</summary>
+                <p>
+                  {cuts.length > 0 && <>The biggest changes: {cuts.map((c) => `${c.name} (-${money(c.cut)})`).join(' and ')}. </>}
+                  Revenue above spending grew from {money(b.general.adopted.surplus)} to {money(b.general.amended.surplus)}.{' '}
+                  <a href={pdfHref(b.docs.amendment)} {...NEW_TAB}>
+                    Read the amendment (PDF) <ArrowUpRight size={11} />
+                  </a>
+                </p>
+              </details>
+              {b.newer.length > 0 && (
+                <aside className="vc-bud-note vc-bud-newer">
+                  <p>
+                    <b>Newer budget paper posted.</b> {b.newer[0].title}
+                    {b.newer[0].date ? ` (${b.newer[0].date})` : ''} was added after the figures here were entered, so it is not reflected yet.{' '}
+                    <a href={pdfHref(b.newer[0].id)} {...NEW_TAB}>
+                      Open it (PDF) <ArrowUpRight size={11} />
+                    </a>
+                  </p>
+                </aside>
+              )}
+            </>
+          )}
 
           <div className="vc-segment vc-bud-tabs" role="tablist" aria-label="Budget views">
             {TABS.map((t) => (
@@ -533,31 +433,34 @@ export default function BudgetPage() {
           {tab === 'spend' && <SpendTab b={b} />}
           {tab === 'revenue' && <RevenueTab b={b} />}
           {tab === 'projects' && <ProjectsTab b={b} />}
-          {tab === 'time' && <TimeTab b={b} />}
+          {tab === 'past' && <BudgetArchive />}
 
-          <footer className="vc-bud-sources">
-            <h2>Where these numbers come from</h2>
-            <ul>
-              <li>
-                <Link to={`/documents/${encodeURIComponent(b.docs.book)}`}>
-                  <FileText size={13} /> FY 27 Final Budget (adopted June 23, 2026)
-                </Link>
-              </li>
-              <li>
-                <Link to={`/documents/${encodeURIComponent(b.docs.slides)}`}>
-                  <FileText size={13} /> FY 27 Final Budget slides, with the capital project lists
-                </Link>
-              </li>
-              <li>
-                <Link to={`/documents/${encodeURIComponent(b.docs.amendment)}`}>
-                  <FileText size={13} /> FY 27 First Budget Amendment (August 25, 2026)
-                </Link>
-              </li>
-            </ul>
-            <p>
-              {b.notes.join(' ')} Totals can differ from the budget book by a few dollars because the book rounds each line.
-            </p>
-          </footer>
+          {tab !== 'past' && (
+            <footer className="vc-bud-sources">
+              <h2>Where these numbers come from</h2>
+              <ul>
+                <li>
+                  <a href={pdfHref(b.docs.book)} {...NEW_TAB}>
+                    <FileText size={13} /> FY 27 Final Budget, adopted June 23, 2026 (PDF)
+                  </a>
+                </li>
+                <li>
+                  <a href={pdfHref(b.docs.slides)} {...NEW_TAB}>
+                    <FileText size={13} /> FY 27 Final Budget slides, with the capital project lists (PDF)
+                  </a>
+                </li>
+                <li>
+                  <a href={pdfHref(b.docs.amendment)} {...NEW_TAB}>
+                    <FileText size={13} /> FY 27 First Budget Amendment, August 25, 2026 (PDF)
+                  </a>
+                </li>
+                <li>
+                  <Link to="/budget?view=past">Looking for an earlier year? See every past budget.</Link>
+                </li>
+              </ul>
+              <p>Where the budget slides and the budget book differ, this page uses the budget book. Totals can differ from the book by a few dollars because the book rounds each line.</p>
+            </footer>
+          )}
         </div>
       )}
     </Frame>

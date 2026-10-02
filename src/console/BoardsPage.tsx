@@ -117,10 +117,10 @@ export default function BoardsPage() {
         <h1 className="vc-page-title">Boards and commissions</h1>
         <p className="vc-page-sub">The City Council, the Redevelopment Agency and every board and commission the city website lists, with current members and their meetings.</p>
       </header>
-      <label className="vc-vote-search" style={{ marginBottom: 14 }}>
-        <Search size={15} />
-        <input type="search" placeholder="Find a board or a member" value={q} onChange={(e) => setQ(e.target.value)} />
-      </label>
+      <form className="vc-rec-search" role="search" onSubmit={(e) => e.preventDefault()}>
+        <Search size={16} strokeWidth={1.9} />
+        <input type="search" placeholder="Find a board or a member" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a board or a member" />
+      </form>
       {load.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
           <span style={{ width: '90%' }} />

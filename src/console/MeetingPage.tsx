@@ -9,8 +9,9 @@ import type { Meeting } from '@/types/models';
 import { DocumentService, MeetingService } from '@/services';
 import { BackButton, Frame } from './Chrome';
 import { agendaOutline, formatTime, longDate, statusLabel, todayIso, toneOf, type OutlineItem } from './meetings';
+import { DocLink } from './DocLink';
 import { MeetingDocList } from './MeetingDocs';
-import { useMeetingDocs } from './meetingDocs';
+import { useDraftMinutes, useMeetingDocs } from './meetingDocs';
 
 type Load<T> = { status: 'loading' } | { status: 'error' } | { status: 'done'; data: T };
 
@@ -72,6 +73,7 @@ export default function MeetingPage() {
   const outline = useOutline(meeting);
   const records = useMeetingDocs(meeting?.id ?? null);
   const today = todayIso();
+  const draft = useDraftMinutes(meeting ?? { date: today, governmentBodyName: null, minutesDocumentId: null }, Boolean(meeting && meeting.date < today && /council|redevelopment|planning commission/i.test(meeting.governmentBodyName ?? '')));
 
   useEffect(() => {
     if (meeting) document.title = `${meeting.title}, ${longDate(meeting.date)} | Vineyard Transparency Portal`;
@@ -136,10 +138,15 @@ export default function MeetingPage() {
       <div className="vc-mtg-actions">
         {docs.map((d) =>
           d.id ? (
-            <Link key={d.label} to={`/documents/${encodeURIComponent(d.id)}`} className="vc-secondary">
-              <FileText size={15} strokeWidth={1.8} /> {d.label}
-            </Link>
+            <DocLink key={d.label} id={d.id} className="vc-secondary" title={`Open the ${d.label.toLowerCase()} (PDF)`}>
+              <FileText size={15} strokeWidth={1.8} /> {d.label} <ArrowUpRight size={13} />
+            </DocLink>
           ) : null,
+        )}
+        {!meeting.minutesDocumentId && draft && (
+          <DocLink id={draft.documentId} page={draft.page} className="vc-secondary" title="The council has not approved these yet. The draft is printed in a later agenda packet.">
+            <FileText size={15} strokeWidth={1.8} /> Draft minutes <ArrowUpRight size={13} />
+          </DocLink>
         )}
         {video?.url && (
           <a href={video.url} target="_blank" rel="noopener noreferrer" className="vc-secondary">

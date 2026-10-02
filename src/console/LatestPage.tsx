@@ -4,10 +4,11 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, FileText, Megaphone, Users, Video } from 'lucide-react';
+import { ChevronRight, FileText, Megaphone, Users } from 'lucide-react';
 import type { MeetingSummary } from '@/types/models';
 import { Frame } from './Chrome';
 import { CityFacebook } from './FacebookFeed';
+import { MeetingFiles } from './MeetingFiles';
 import { dayNumber, formatTime, longDate, meetingHref, monthShort, todayIso, toneOf, useMeetings, weekdayShort } from './meetings';
 
 function Section({ title, icon, children, more }: { title: string; icon: ReactNode; children: ReactNode; more?: ReactNode }) {
@@ -35,38 +36,6 @@ function DateBox({ date }: { date: string }) {
   );
 }
 
-/** Links to the posted agenda, packet, minutes and video of one meeting. */
-function Docs({ m }: { m: MeetingSummary }) {
-  return (
-    <div className="vc-meeting-docs">
-      {m.agendaDocumentId && (
-        <Link to={`/documents/${encodeURIComponent(m.agendaDocumentId)}`} className="vc-tag">
-          <FileText size={11} strokeWidth={2} /> Agenda
-        </Link>
-      )}
-      {m.packetDocumentId && (
-        <Link to={`/documents/${encodeURIComponent(m.packetDocumentId)}`} className="vc-tag">
-          <FileText size={11} strokeWidth={2} /> Packet
-        </Link>
-      )}
-      {m.minutesDocumentId ? (
-        <Link to={`/documents/${encodeURIComponent(m.minutesDocumentId)}`} className="vc-tag">
-          <FileText size={11} strokeWidth={2} /> {m.minutesStatus === 'draft' ? 'Draft minutes' : 'Minutes'}
-        </Link>
-      ) : (
-        <span className="vc-tag" data-muted="true">
-          Minutes not posted yet
-        </span>
-      )}
-      {m.hasVideo && (
-        <Link to={meetingHref(m)} className="vc-tag">
-          <Video size={11} strokeWidth={2} /> Video
-        </Link>
-      )}
-    </div>
-  );
-}
-
 function MeetingCard({ m, featured = false }: { m: MeetingSummary; featured?: boolean }) {
   return (
     <div className="vc-meeting vc-latest-meeting" data-tone={toneOf(m.governmentBodyId)} data-featured={featured || undefined}>
@@ -85,7 +54,7 @@ function MeetingCard({ m, featured = false }: { m: MeetingSummary; featured?: bo
         <Link to={meetingHref(m)} className="vc-latest-meeting-title">
           <h3 className="vc-meeting-title">{m.title}</h3>
         </Link>
-        <Docs m={m} />
+        <MeetingFiles m={m} showMissing />
       </div>
       <Link to={meetingHref(m)} className="vc-meeting-go" aria-label={`Open ${m.title}`}>
         <ChevronRight size={18} strokeWidth={1.6} />

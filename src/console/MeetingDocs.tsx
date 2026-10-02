@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, ChevronRight, FileText, Layers, X } from 'lucide-react';
 import type { DocLite } from './api';
+import { DocLink } from './DocLink';
 import { useMeetingDocs } from './meetingDocs';
 import { TYPE_LABEL, formatDate } from './format';
 
@@ -15,7 +16,7 @@ export function MeetingDocList({ docs, currentId, onPick }: { docs: DocLite[]; c
     <ul className="vc-mdocs">
       {docs.map((d) => (
         <li key={d.id}>
-          <Link to={`/documents/${encodeURIComponent(d.id)}`} className="vc-mdoc" data-current={d.id === currentId} aria-current={d.id === currentId ? 'page' : undefined} onClick={onPick}>
+          <DocLink id={d.id} mime={d.mimeType} className="vc-mdoc" data-current={d.id === currentId} aria-current={d.id === currentId ? 'page' : undefined} onClick={onPick}>
             <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.documentType) ? d.documentType : 'other'}>
               <FileText size={15} strokeWidth={1.8} />
             </span>
@@ -28,7 +29,7 @@ export function MeetingDocList({ docs, currentId, onPick }: { docs: DocLite[]; c
               </span>
             </span>
             <ChevronRight size={16} className="vc-mdoc-go" />
-          </Link>
+          </DocLink>
         </li>
       ))}
     </ul>

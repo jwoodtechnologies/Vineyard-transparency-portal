@@ -8,10 +8,11 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronRight, FileText, Search, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, FileText, Search, X } from 'lucide-react';
 import { Frame } from './Chrome';
 import { fresh, getJson, useJson } from './api';
 import { RECORD_CATEGORIES, categoryById } from './categories';
+import { DocLink } from './DocLink';
 import { TYPE_LABEL, formatDate } from './format';
 
 interface Row {
@@ -22,6 +23,7 @@ interface Row {
   /** Records numbered by year whose own text gives no adoption day carry the year alone. */
   year: number | null;
   governmentBodyName: string | null;
+  mimeType: string | null;
   snippet?: string | null;
 }
 
@@ -50,6 +52,7 @@ function rowsOf(r: Resp, searching: boolean): Row[] {
       date: (d.date as string | null) ?? null,
       year: typeof d.year === 'number' ? d.year : null,
       governmentBodyName: (d.governmentBodyName as string | null) ?? null,
+      mimeType: (d.mimeType as string | null) ?? null,
       snippet: ex ? ex.replace(/\s+/g, ' ').slice(0, 200) : null,
     };
   });
@@ -74,7 +77,7 @@ function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boo
           <ul className="vc-mdocs">
             {g.rows.map((d) => (
               <li key={d.id}>
-                <Link to={`/documents/${encodeURIComponent(d.id)}${q ? `?q=${encodeURIComponent(q)}` : ''}`} className="vc-mdoc">
+                <DocLink id={d.id} mime={d.mimeType} query={q || undefined} className="vc-mdoc">
                   <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.documentType) ? d.documentType : 'other'}>
                     <FileText size={15} strokeWidth={1.8} />
                   </span>
@@ -84,7 +87,7 @@ function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boo
                     {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
                   </span>
                   <ChevronRight size={16} className="vc-mdoc-go" />
-                </Link>
+                </DocLink>
               </li>
             ))}
           </ul>
@@ -141,7 +144,7 @@ function HeldMeetings({ year, body, oldest }: { year: string; body: string; olde
               <li key={m.id}>
                 <Link to={`/meetings/${encodeURIComponent(m.id)}`} className="vc-mdoc">
                   <span className="vc-mdoc-icon" data-kind="minutes">
-                    <FileText size={15} strokeWidth={1.8} />
+                    <CalendarDays size={15} strokeWidth={1.8} />
                   </span>
                   <span className="vc-mdoc-main">
                     <span className="vc-mdoc-title">{m.title}</span>
