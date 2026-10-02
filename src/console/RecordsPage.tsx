@@ -77,7 +77,7 @@ function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boo
           <ul className="vc-mdocs">
             {g.rows.map((d) => (
               <li key={d.id}>
-                <DocLink id={d.id} mime={d.mimeType} query={q || undefined} className="vc-mdoc">
+                <DocLink id={d.id} query={q || undefined} className="vc-mdoc">
                   <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.documentType) ? d.documentType : 'other'}>
                     <FileText size={15} strokeWidth={1.8} />
                   </span>

@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, ChevronDown, FileText, Search } from 'lucide-react';
 import type { DocumentSummary } from '@/types/models';
 import { useJson } from './api';
-import { NEW_TAB, isPdf, pdfHref } from './files';
+import { docHref } from './files';
 import { TYPE_LABEL, formatDate } from './format';
 import { cleanTitle, fiscalYearOf } from './budget';
 
@@ -40,13 +40,8 @@ function Row({ d }: { d: DocumentSummary }) {
       <ArrowUpRight size={14} strokeWidth={1.8} className="vc-bud-doc-go" />
     </>
   );
-  // A PDF opens as the PDF itself. Anything that is not a file (a web page, a code section) opens in the portal.
-  return isPdf(d.mimeType) ? (
-    <a className="vc-bud-doc" href={pdfHref(d.id)} {...NEW_TAB}>
-      {body}
-    </a>
-  ) : (
-    <Link className="vc-bud-doc" to={`/documents/${encodeURIComponent(d.id)}`}>
+  return (
+    <Link className="vc-bud-doc" to={docHref(d.id)}>
       {body}
     </Link>
   );

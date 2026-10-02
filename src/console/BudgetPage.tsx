@@ -12,7 +12,7 @@ import './console.css';
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, ChevronDown, FileText } from 'lucide-react';
-import { NEW_TAB, pdfHref } from './files';
+import { docHref } from './files';
 import BudgetArchive from './BudgetArchive';
 import { Frame } from './Chrome';
 import { useJson } from './api';
@@ -307,9 +307,9 @@ function ProjectsTab({ b }: { b: Budget }) {
             </div>
             <div className="vc-bud-proj-meta">
               {nameOf(p.fund).startsWith(p.dept) || p.dept.startsWith(nameOf(p.fund)) ? nameOf(p.fund) : `${nameOf(p.fund)}, ${p.dept}`}
-              <a href={pdfHref(b.docs.slides, p.page)} {...NEW_TAB}>
+              <Link to={docHref(b.docs.slides, p.page)}>
                 Budget slide {p.page} (PDF) <ArrowUpRight size={11} />
-              </a>
+              </Link>
             </div>
           </li>
         ))}
@@ -402,9 +402,9 @@ export default function BudgetPage() {
               {b.newer.length > 0 && (
                 <p className="vc-bud-cap">
                   Newer paper posted, not included yet:{' '}
-                  <a href={pdfHref(b.newer[0].id)} {...NEW_TAB}>
+                  <Link to={docHref(b.newer[0].id)}>
                     {b.newer[0].title} (PDF)
-                  </a>
+                  </Link>
                 </p>
               )}
             </>
@@ -428,24 +428,24 @@ export default function BudgetPage() {
               <h2>Sources</h2>
               <ul>
                 <li>
-                  <a href={pdfHref(b.docs.book)} {...NEW_TAB}>
+                  <Link to={docHref(b.docs.book)}>
                     <FileText size={13} /> FY 27 Final Budget (PDF)
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href={pdfHref(b.docs.slides)} {...NEW_TAB}>
+                  <Link to={docHref(b.docs.slides)}>
                     <FileText size={13} /> FY 27 Budget slides (PDF)
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href={pdfHref(b.docs.tentative)} {...NEW_TAB}>
+                  <Link to={docHref(b.docs.tentative)}>
                     <FileText size={13} /> FY 27 Tentative Budget, May 2026 (PDF)
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href={pdfHref(b.docs.amendment)} {...NEW_TAB}>
+                  <Link to={docHref(b.docs.amendment)}>
                     <FileText size={13} /> FY 27 First Budget Amendment, Aug 25 (PDF)
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <Link to="/budget?view=past">Earlier years: past budgets</Link>

@@ -16,7 +16,7 @@ export function MeetingDocList({ docs, currentId, onPick }: { docs: DocLite[]; c
     <ul className="vc-mdocs">
       {docs.map((d) => (
         <li key={d.id}>
-          <DocLink id={d.id} mime={d.mimeType} className="vc-mdoc" data-current={d.id === currentId} aria-current={d.id === currentId ? 'page' : undefined} onClick={onPick}>
+          <DocLink id={d.id} className="vc-mdoc" data-current={d.id === currentId} aria-current={d.id === currentId ? 'page' : undefined} onClick={onPick}>
             <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.documentType) ? d.documentType : 'other'}>
               <FileText size={15} strokeWidth={1.8} />
             </span>
