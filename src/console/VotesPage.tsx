@@ -128,11 +128,12 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
 }
 
 /** A meeting's votes as a sheet: one row per motion, one column per member, a mark in each cell. */
-function VoteGrid({ items, member }: { items: MotionRow[]; member: string | null }) {
+function VoteGrid({ items, member, roster }: { items: MotionRow[]; member: string | null; roster?: string[] }) {
   const nameOf = useMemberNames();
   const isMayor = (id: string) => /^mayor$/i.test(nameOf(id).person?.role ?? '');
   const surname = (id: string) => cap(last(nameOf(id).name));
-  const seen = new Set<string>();
+  // Every member who voted this year gets a column at every meeting, so a member who was away shows a dash rather than no column.
+  const seen = new Set<string>(roster ?? []);
   for (const m of items) for (const v of m.votes) seen.add(v.member);
   // The mayor (who votes only to break a tie) first, then the council by surname.
   const cols = [...seen].sort((a, b) => Number(isMayor(b)) - Number(isMayor(a)) || surname(a).localeCompare(surname(b)));
@@ -233,7 +234,7 @@ function Key() {
 }
 
 /** A meeting as a card: its date, body and every vote taken, opening the meeting itself. */
-function MeetingCard({ items, member, att }: { items: MotionRow[]; member: string | null; att?: { present: string[]; absent: string[] } | null }) {
+function MeetingCard({ items, member, att, roster }: { items: MotionRow[]; member: string | null; att?: { present: string[]; absent: string[] } | null; roster?: string[] }) {
   const m0 = items[0];
   const body = m0.bodyId === 'redevelopment-agency' ? 'RDA Board' : (m0.bodyName ?? 'Meeting');
   const to = m0.meetingId ? `/meetings/${encodeURIComponent(m0.meetingId)}` : `/documents/${encodeURIComponent(m0.documentId)}`;
@@ -253,7 +254,7 @@ function MeetingCard({ items, member, att }: { items: MotionRow[]; member: strin
         </span>
         <ChevronRight size={18} className="vc-mcard-go" />
       </Link>
-      <VoteGrid items={items} member={member} />
+      <VoteGrid items={items} member={member} roster={roster} />
     </article>
   );
 }
@@ -331,6 +332,12 @@ function YearSection({ year, query, open, onToggle, member, attendance, bodies, 
     }
     return [...by.entries()];
   }, [list]);
+  // Who voted in each body this year, so every meeting card carries the same columns.
+  const rosters = useMemo(() => {
+    const out = new Map<string, Set<string>>();
+    if (list.status === 'done') for (const m of list.data.items) for (const v of m.votes) (out.get(m.bodyId ?? '') ?? out.set(m.bodyId ?? '', new Set()).get(m.bodyId ?? '')!).add(v.member);
+    return out;
+  }, [list]);
   // Every other meeting held this year gets a card too, saying why it has no policy votes listed.
   const others = useMemo(() => {
     if (!plain || !status.ready) return [];
@@ -377,7 +384,7 @@ function YearSection({ year, query, open, onToggle, member, attendance, bodies, 
               g.other ? (
                 <StatusCard key={g.k} to={g.other.to} date={g.date} title={g.other.title} note={g.other.note} />
               ) : (
-                <MeetingCard key={g.k} items={g.items} member={member} att={attendance?.meetings.find((x) => x.date === g.items[0].date) ?? null} />
+                <MeetingCard key={g.k} items={g.items} member={member} roster={[...(rosters.get(g.items[0].bodyId ?? '') ?? [])]} att={attendance?.meetings.find((x) => x.date === g.items[0].date) ?? null} />
               ),
             )}
         </div>
