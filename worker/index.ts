@@ -193,7 +193,9 @@ export default {
     } catch (e) {
       if (e instanceof HttpError) return errorResponse(e);
       console.error(JSON.stringify({ event: 'api_error', path: url.pathname, message: e instanceof Error ? e.message : String(e) }));
-      return json({ error: { kind: 'server', message: 'Something went wrong while reading the archive.' } }, { status: 500 });
+      // The ingest job's own calls (token-gated) get the reason; the public never does.
+      const detail = url.pathname.startsWith('/api/admin/') ? { detail: (e instanceof Error ? e.message : String(e)).slice(0, 300) } : {};
+      return json({ error: { kind: 'server', message: 'Something went wrong while reading the archive.', ...detail } }, { status: 500 });
     }
   },
 

@@ -225,7 +225,13 @@ async function migrate(env: Env): Promise<Response> {
   const strayDocs = "SELECT id FROM documents WHERE title LIKE '%, 20__-__-__)' OR title LIKE '%, 20__-__-__, item %)'";
   const strayKeys = `SELECT ds.canonical_key FROM document_sources ds JOIN crawl_queue q ON q.url_key = ds.canonical_key
     WHERE ds.document_id IN (${strayDocs}) AND q.source_id = 'vineyard-civicclerk-meetings' AND json_extract(q.metadata_json, '$.dedupeMeeting') = 1`;
+  const strayOwn = `SELECT ds2.canonical_key FROM document_sources ds2 WHERE ds2.document_id IN (SELECT ds.document_id FROM document_sources ds WHERE ds.canonical_key IN (${strayKeys}))
+    AND ds2.canonical_key NOT IN (${strayKeys})`;
   await env.CATALOG_DB.batch([
+    env.CATALOG_DB.prepare(
+      `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL
+       WHERE url_key IN (${strayOwn}) AND status IN ('done', 'unchanged', 'error', 'skipped')`,
+    ),
     env.CATALOG_DB.prepare(
       `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = 1
        WHERE url_key IN (${strayKeys}) AND status IN ('done', 'unchanged', 'error', 'skipped')`,
@@ -491,7 +497,18 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
       )
       .bind(`src_${canonicalKey.slice(0, 16)}_${docIdCache.id.slice(4, 12)}`, docIdCache.id, sourceId, sourceUrl, canonicalKey, s(src.parentUrl, 1500), s(src.linkText, 500), retrievedAt, now, s(src.etag, 200), s(src.lastModified, 100), n(src.httpStatus));
 
-  const known = await db.prepare('SELECT d.* FROM document_sources ds JOIN documents d ON d.id = ds.document_id WHERE ds.canonical_key = ? LIMIT 1').bind(canonicalKey).first<Json>();
+  // An agenda-item attachment ("..., 2026-06-23, item 1)") is never a meeting's own record, however its title reads.
+  const ATTACHMENT_TITLE = /, 20\d\d-\d\d-\d\d(, item [^)]*)?\)$/;
+  const isAttachment = ATTACHMENT_TITLE.test(title);
+  let known = await db.prepare('SELECT d.* FROM document_sources ds JOIN documents d ON d.id = ds.document_id WHERE ds.canonical_key = ? LIMIT 1').bind(canonicalKey).first<Json>();
+  if (known && !isAttachment && ATTACHMENT_TITLE.test(String(known.title))) {
+    // This meeting file was once filed under an attachment record: unlink it, and read the attachment's own file again.
+    await db.batch([
+      db.prepare(`UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL WHERE url_key IN (SELECT canonical_key FROM document_sources WHERE document_id = ? AND canonical_key <> ?)`).bind(known.id, canonicalKey),
+      db.prepare('DELETE FROM document_sources WHERE canonical_key = ? AND document_id = ?').bind(canonicalKey, known.id),
+    ]);
+    known = null;
+  }
 
   if (known) {
     docIdCache.id = String(known.id);
@@ -559,7 +576,10 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
   }
 
   if (sha) {
-    const dup = await db.prepare('SELECT * FROM documents WHERE sha256 = ? LIMIT 1').bind(sha).first<Json>();
+    const dup = await db
+      .prepare(isAttachment ? 'SELECT * FROM documents WHERE sha256 = ? LIMIT 1' : "SELECT * FROM documents WHERE sha256 = ? AND title NOT LIKE '%, 20__-__-__)' AND title NOT LIKE '%, 20__-__-__, item %)' LIMIT 1")
+      .bind(sha)
+      .first<Json>();
     if (dup) {
       docIdCache.id = String(dup.id);
       const r = await db.batch([
