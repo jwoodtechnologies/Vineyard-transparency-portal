@@ -238,6 +238,12 @@ async function migrate(env: Env): Promise<Response> {
     ),
     env.CATALOG_DB.prepare(`DELETE FROM document_sources WHERE canonical_key IN (${strayKeys}) AND document_id IN (${strayDocs})`),
   ]).catch(() => undefined);
+  // A record that a second source's copy once rewrote (see upsertDocument) is read again from the file it was first made from.
+  await env.CATALOG_DB.prepare(
+    `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = 1
+     WHERE url_key IN (SELECT d.canonical_key FROM documents d WHERE d.current_version > 1 AND d.canonical_key IS NOT NULL
+       AND (SELECT count(*) FROM document_sources ds WHERE ds.document_id = d.id) > 1) AND status IN ('done', 'unchanged', 'error', 'skipped')`,
+  ).run().catch(() => undefined);
   // Files skipped only because a robots.txt answered 403 (ArcGIS, Amazon S3) go back in the queue.
   await env.CATALOG_DB.prepare("UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL WHERE status = 'skipped' AND last_error LIKE 'RobotsDisallowed%'").run().catch(() => undefined);
   await ensureActivityTables(env);
@@ -529,6 +535,14 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
 
   if (known) {
     docIdCache.id = String(known.id);
+    if (sha && known.sha256 !== sha && known.canonical_key && known.canonical_key !== canonicalKey) {
+      // A second copy of this record (the same meeting filed on another site, or an agenda-item file) never rewrites it:
+      // the record keeps the file it was first made from, and this copy only refreshes its own link.
+      const r = await db.batch([sourceRow(), db.prepare('UPDATE documents SET last_seen_at = ? WHERE id = ?').bind(now, known.id)]);
+      const rows = sum(r);
+      await budget.record(rows);
+      return json({ status: 'unchanged', documentId: known.id, shard: known.search_shard, needsChunks: false, needsArchive: false, rowsWritten: rows });
+    }
     if (!sha || known.sha256 === sha) {
       // Unchanged content. Refresh verification + fill metadata gaps only.
       const r = await db.batch([
