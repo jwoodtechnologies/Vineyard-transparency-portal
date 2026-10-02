@@ -339,7 +339,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       const r = await queryMotions(env, { member, pageSize: 400 }).catch(() => ({ items: [] as MotionOut[], total: 0 }));
       if (r.items.length) {
         const nice = (d: string | null) => (d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '');
-        const what = (m: MotionOut) => (m.items.length ? 'the consent items' : (m.item ?? m.motion).replace(/^\d+(?:\.\d+)*\s+/, '').replace(/\s+/g, ' ').slice(0, 110));
+        const what = (m: MotionOut) => (m.items.length ? `consent items (${m.items.slice(0, 3).map((x) => x.replace(/^\d+(?:\.\d+)*\s+/, '').replace(/^Approv(?:al of|e)\s+(?:the\s+)?/i, '').slice(0, 70)).join(', ')}${m.items.length > 3 ? ', and more' : ''})` : (m.item ?? m.motion).replace(/^\d+(?:\.\d+)*\s+/, '').replace(/\s+/g, ' ').slice(0, 110));
         const newest = r.items.filter((m) => m.date === r.items[0].date);
         const meetings = new Set(r.items.map((m) => `${m.bodyId}|${m.date}`)).size;
         const recent = `The most recent ${newest.length === 1 ? 'was' : 'were'} on ${nice(newest[0].date)}: ${newest.slice(0, 4).map(what).join('; ')}.`;
@@ -349,9 +349,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
           const mine = r.items.map((m) => m.votes.find((v) => v.member === member || v.member === last)?.vote).filter(Boolean) as string[];
           const n = (k: string) => mine.filter((v) => v === k).length;
           const other = mine.length - n('yes') - n('no');
-          text = `${member} has ${mine.length} recorded ${mine.length === 1 ? 'vote' : 'votes'} on policy items since January 2026: ${n('yes')} yes and ${n('no')} no${other ? `, plus ${other} abstained, recused or absent` : ''}. ${recent} Open a vote to see the full roll call.`;
+          text = `${member} has ${mine.length} recorded ${mine.length === 1 ? 'vote' : 'votes'} on policy items in the minutes posted since January 2026: ${n('yes')} yes and ${n('no')} no${other ? `, plus ${other} abstained, recused or absent` : ''}. ${recent} Open a vote to see the full roll call.`;
         } else {
-          text = `The City Council and RDA board have ${r.total} recorded policy ${r.total === 1 ? 'vote' : 'votes'} across ${meetings} meetings since January 2026. ${recent} Each card shows how every member voted, and the full record is one tap away.`;
+          text = `The City Council and RDA board have ${r.total} recorded policy ${r.total === 1 ? 'vote' : 'votes'} across ${meetings} meetings in the minutes posted since January 2026. ${recent} Each card shows how every member voted, and the full record is one tap away.`;
         }
         return final(text, { votes: { member, q: '', items: newest.slice(0, 3) }, suggestedFollowUps: member ? [`What did ${member} vote no on?`] : ['What was the latest thing passed?', 'Which votes were not unanimous?'] });
       }
