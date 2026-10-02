@@ -18,6 +18,7 @@ import { handleAsk } from './ai/rag';
 import { listEvents } from './api/events';
 import { getMapLayer, listMapLayers } from './api/map';
 import { getLatest } from './api/latest';
+import { getBudget } from './api/budget';
 import { getPerson, getPersonPhoto, listPeople } from './api/people';
 import { handleVotes } from './api/votes';
 import { listBoards } from './api/boards';
@@ -89,6 +90,9 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     case 'latest':
       if (!b) return getLatest(env);
       break;
+    case 'budget':
+      if (!b) return getBudget(env);
+      break;
     case 'people':
       if (!b) return listPeople(env);
       if (/^[a-z0-9-]{2,80}$/.test(b) && !c) return getPerson(env, b);
@@ -131,7 +135,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
  * and POST /api/ask, admin, health and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|latest|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|map\/layers(\/[a-z]+)?|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|latest|budget|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|map\/layers(\/[a-z]+)?|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
 
 async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '');

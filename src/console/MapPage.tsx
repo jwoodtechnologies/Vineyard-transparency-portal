@@ -132,6 +132,8 @@ const LABEL: Record<string, string> = {
   Department: 'Department',
   Project_Phase: 'Phase',
   Phase_Status: 'Phase progress',
+  FY27_Budget: 'Budgeted for fiscal 2027',
+  FY27_Source: 'Paid from',
   Total_Budget: 'Total budget',
   Funding_Source: 'Funding',
   Location: 'Location',
@@ -207,7 +209,7 @@ const HIDE = new Set(['OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Leng
 
 function fmt(key: string, v: unknown): string | null {
   if (v == null || v === '' || v === ' ') return null;
-  if ((key === 'Total_Budget' || key === 'total_taxable' || key === 'MKT_CUR_VALUE') && Number.isFinite(Number(v))) return `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  if ((key === 'FY27_Budget' || key === 'Total_Budget' || key === 'total_taxable' || key === 'MKT_CUR_VALUE') && Number.isFinite(Number(v))) return `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if ((key === 'OrdinanceDate' || key === 'LASTUPDATE') && Number.isFinite(Number(v)) && Number(v) > 1e11) return new Date(Number(v)).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   // City fiscal years run July to June: fiscal 2026 is July 2025 to June 2026.
   if (key === 'Construction_Fiscal' && /^\d{4}$/.test(String(v))) return `Fiscal year ${v} (July ${Number(v) - 1} to June ${v})`;
@@ -403,8 +405,8 @@ function askFor(p: { layer: string; name: string; props: Record<string, unknown>
   const name = p.name;
   switch (p.layer) {
     case 'projects': {
-      const bits = [v('Project_Phase') && `${v('Project_Phase')} phase`, v('Total_Budget') && `budget ${v('Total_Budget')}`, v('Construction_Fiscal') && `construction fiscal ${v('Construction_Fiscal')}`].filter(Boolean).join(', ');
-      return `What is the current status, budget, funding and schedule of the ${name} capital project${bits ? ` (${bits})` : ''}, and what has the City Council decided about it?`;
+      const bits = [v('Project_Phase') && `${v('Project_Phase')} phase`, v('FY27_Budget') && `fiscal 2027 budget ${v('FY27_Budget')}`].filter(Boolean).join(', ');
+      return `What is the current status, fiscal 2027 budget, funding and schedule of the ${name} capital project${bits ? ` (${bits})` : ''}, and what has the City Council decided about it?`;
     }
     case 'roads':
       return `What capital projects, City Council decisions and plans involve ${name} in Vineyard?`;
@@ -468,6 +470,8 @@ export default function MapPage() {
   const [data, setData] = useState<Record<string, FC>>({});
   const [picked, setPicked] = useState<Picked | null>(null);
   const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820);
+  // The legend starts folded on phones so it never sits on top of the zoom buttons.
+  const [legendOpen, setLegendOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 640);
   const [q, setQ] = useState('');
   const [zoom, setZoom] = useState(13);
   const [error, setError] = useState<string | null>(null);
@@ -854,33 +858,46 @@ export default function MapPage() {
           if (!shown.length) return null;
           const name = (k: string) => catalog?.find((l) => l.key === k)?.label ?? k;
           return (
-            <aside className="vc-map-legend" aria-label="Legend">
-              {shown.map((k) => {
-                const values = LOOK[k]?.by ? LEGENDS.get(k) : null;
-                if (values && values.length > 1 && values.length <= 16)
+            <aside className="vc-map-legend" data-open={legendOpen} aria-label="Legend">
+              <button type="button" className="vc-map-legend-toggle" aria-expanded={legendOpen} onClick={() => setLegendOpen((o) => !o)}>
+                <span className="vc-map-legend-dots" aria-hidden="true">
+                  {shown.slice(0, 3).map((k) => (
+                    <span key={k} className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: LOOK[k]?.outline ?? LOOK[k]?.color }} />
+                  ))}
+                </span>
+                Legend
+                <ChevronDown size={14} className="vc-map-chev" data-open={legendOpen} />
+              </button>
+              {legendOpen && (
+                <div className="vc-map-legend-body">
+                  {shown.map((k) => {
+                  const values = LOOK[k]?.by ? LEGENDS.get(k) : null;
+                  if (values && values.length > 1 && values.length <= 16)
+                    return (
+                      <div key={k}>
+                        <p className="vc-map-legend-title">{LEGEND_TITLE[k] ?? name(k)}</p>
+                        <ul>
+                          {[...values].sort((a, b) => Number(!a[0].trim()) - Number(!b[0].trim()) || a[0].localeCompare(b[0], undefined, { numeric: true })).map(([v, c]) => (
+                            <li key={v || 'none'}>
+                              <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: c }} />
+                              {legendValue(k, v)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
                   return (
-                    <div key={k}>
-                      <p className="vc-map-legend-title">{LEGEND_TITLE[k] ?? name(k)}</p>
-                      <ul>
-                        {[...values].sort((a, b) => Number(!a[0].trim()) - Number(!b[0].trim()) || a[0].localeCompare(b[0], undefined, { numeric: true })).map(([v, c]) => (
-                          <li key={v || 'none'}>
-                            <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: c }} />
-                            {legendValue(k, v)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    <ul key={k}>
+                      <li>
+                        <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: LOOK[k]?.outline ?? LOOK[k]?.color }} />
+                        {name(k)}
+                        {values && values.length > 16 ? ' (colored by area)' : ''}
+                      </li>
+                    </ul>
                   );
-                return (
-                  <ul key={k}>
-                    <li>
-                      <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: LOOK[k]?.outline ?? LOOK[k]?.color }} />
-                      {name(k)}
-                      {values && values.length > 16 ? ' (colored by area)' : ''}
-                    </li>
-                  </ul>
-                );
-              })}
+                })}
+                </div>
+              )}
             </aside>
           );
         })()}
@@ -914,8 +931,9 @@ export default function MapPage() {
               const thisYear = Number(new Date().toISOString().slice(0, 4));
               return (
                 <p className="vc-map-note">
-                  The city&apos;s project list gives start and finish as years only, and a budgeted project may not have started yet.
-                  {finish && finish < thisYear && /^0%$/.test(pct) ? ' Its finish year has passed while it is still listed at 0%, so this schedule is out of date.' : ''}
+                  Only projects in the adopted fiscal 2027 budget are shown. The amount is what the budget sets aside this year; a project can cost more over several years. Phase and schedule come from the city&apos;s project list, which gives years only and can lag behind.
+                  {finish && finish < thisYear && /^0%$/.test(pct) ? ' Its finish year has passed while it is still listed at 0%, so this schedule is out of date.' : ''}{' '}
+                  <Link to="/budget?view=projects">See every budget project</Link>
                 </p>
               );
             })()}

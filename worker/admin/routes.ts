@@ -867,6 +867,27 @@ async function verify(env: Env): Promise<Response> {
   });
 }
 
+/**
+ * Removes city-map project records that the latest read of the map no longer includes (for
+ * example projects dropped from the budget). Needs the full list of records to keep, so a failed
+ * or empty read can never wipe the set.
+ */
+async function pruneGis(env: Env, body: Json): Promise<Response> {
+  const keep = new Set((Array.isArray(body.keep) ? body.keep : []).map(String));
+  const prefix = typeof body.titlePrefix === 'string' ? body.titlePrefix : '';
+  if (keep.size < 10 || prefix !== 'Capital project:') throw new HttpError(400, 'bad_request', 'Pruning needs the list of project records to keep.');
+  const db = env.CATALOG_DB;
+  const repo = new SearchRepository(env);
+  const rows = await db.prepare("SELECT id, search_shard FROM documents WHERE source_id = 'vineyard-gis' AND title LIKE ?").bind(`${prefix}%`).all<{ id: string; search_shard: number | null }>();
+  const stale = (rows.results ?? []).filter((r) => !keep.has(r.id));
+  if (stale.length > 150) throw new HttpError(400, 'bad_request', 'Too many records would be removed; refusing.');
+  for (const e of stale) {
+    await db.batch([db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id)]);
+    if (e.search_shard != null && repo.activeShards.includes(e.search_shard)) await repo.removeDocument(e.search_shard, e.id).catch(() => 0);
+  }
+  return json({ ok: true, removed: stale.length });
+}
+
 export async function handleAdmin(env: Env, request: Request, url: URL): Promise<Response> {
   await requireIngestAuth(request, env);
   const path = url.pathname.replace(/^\/api\/admin/, '');
@@ -911,6 +932,7 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   if (path === '/queue/status') return queueStatus(env, body, budget);
   if (path === '/queue/retry-errors') return retryErrors(env, budget);
   if (path === '/documents') return upsertDocument(env, body, budget);
+  if (path === '/gis/prune') return pruneGis(env, body);
   if (path === '/document-sources/availability') return sourceAvailability(env, body, budget);
   if (path === '/errors') return errors(env, body, budget);
   if (path === '/optimize') return optimize(env, budget);

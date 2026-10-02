@@ -1,0 +1,4 @@
+Contact: https://github.com/jwoodtechnologies/Vineyard-transparency-portal/issues/new
+Expires: 2027-09-30T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://vineyardportal.org/.well-known/security.txt

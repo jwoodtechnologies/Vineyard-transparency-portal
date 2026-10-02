@@ -9,6 +9,7 @@
  */
 import type { Env } from '../env';
 import { HttpError, json, notFound } from '../lib/http';
+import { budgetForFeature, FY27_PROJECTS_WHERE } from '../lib/capitalPlan';
 
 const BASE = 'https://services.arcgis.com/QdlehUncXjEmQYtI/arcgis/rest/services/';
 
@@ -28,13 +29,6 @@ export interface MapLayerDef {
   minZoom?: number;
 }
 
-/** Projects the city has canceled that still appear in its Capital Improvement Plan map. */
-export const CANCELED_PROJECTS = ['New City Hall'];
-export const FIRST_CURRENT_FISCAL_YEAR = 2026;
-export const CURRENT_PROJECTS_WHERE =
-  `Construction_Fiscal >= ${FIRST_CURRENT_FISCAL_YEAR} AND (Project_Phase IS NULL OR Project_Phase <> 'Completed')` +
-  ` AND Project_Name NOT LIKE '%Duplicate%' AND Project_Name NOT IN (${CANCELED_PROJECTS.map((n) => `'${n.replace(/'/g, "''")}'`).join(', ')})`;
-
 export const MAP_LAYERS: MapLayerDef[] = [
   { key: 'boundary', label: 'City boundary', group: 'Land', path: 'Vineyard_City_Boundary/FeatureServer/0', fields: ['NAME'], geometry: 'polygon', on: true },
   {
@@ -42,11 +36,11 @@ export const MAP_LAYERS: MapLayerDef[] = [
     label: 'Capital projects',
     group: 'Plans',
     path: 'Capital_Improvement_Plan_Public_View/FeatureServer/650',
-    fields: ['Project_Name', 'Department', 'Project_Phase', 'Phase_Status', 'Total_Budget', 'Funding_Source', 'Location', 'Description', 'Construction_Fiscal', 'Start_Date', 'Finish_Date', 'Consultant'],
+    fields: ['OBJECTID', 'Project_Name', 'Department', 'Project_Phase', 'Phase_Status', 'Location', 'Description', 'Start_Date', 'Finish_Date', 'Consultant'],
     geometry: 'polygon',
-    // Current and upcoming work only: construction in fiscal 2026 or later, not completed, no
-    // duplicate entries, and not projects the city has canceled (New City Hall).
-    where: CURRENT_PROJECTS_WHERE,
+    // Only projects in the adopted fiscal 2027 budget (see lib/capitalPlan.ts). The city's own map
+    // still lists finished, rolled-over and dropped projects from earlier years.
+    where: FY27_PROJECTS_WHERE,
   },
   { key: 'zoning', label: 'Zoning', group: 'Land', path: 'Zoning_-_Public_View/FeatureServer/8', fields: ['ZONE', 'District', 'Description', 'Ordinance', 'OrdinanceDate', 'ACRES'], geometry: 'polygon' },
   { key: 'landuse', label: 'Future land use', group: 'Plans', path: 'Vineyard_Future_Land_Use_View/FeatureServer/0', fields: ['Land_Use', 'Acres'], geometry: 'polygon' },
@@ -129,6 +123,7 @@ export async function getMapLayer(_env: Env, key: string, url: URL): Promise<Res
     cf: { cacheTtl: 43200, cacheEverything: true },
   } as RequestInit);
   if (!upstream.ok || !upstream.body) throw new HttpError(502, 'backend_unavailable', 'The city map service did not respond. Try again shortly.');
+  if (layer.key === 'projects') return annotatedProjects(upstream);
   // ArcGIS reports query errors with HTTP 200 and an {"error": ...} body; never cache those.
   const [body, peek] = upstream.body.tee();
   const reader = peek.getReader();
@@ -140,6 +135,33 @@ export async function getMapLayer(_env: Env, key: string, url: URL): Promise<Res
     throw new HttpError(502, 'backend_unavailable', 'The city map service could not return this layer right now.');
   }
   return new Response(body, {
+    status: 200,
+    headers: {
+      'content-type': 'application/geo+json; charset=utf-8',
+      'cache-control': 'public, max-age=43200, stale-while-revalidate=86400',
+      'x-content-type-options': 'nosniff',
+    },
+  });
+}
+
+/**
+ * The projects layer, with each feature's fiscal 2027 budget amount and funding source added from
+ * the adopted budget. The city's own budget, funding and construction-year fields are dropped: for
+ * these projects they describe earlier plans and would sit next to (and disagree with) the budget.
+ */
+async function annotatedProjects(upstream: Response): Promise<Response> {
+  type Feature = { id?: number | string; properties?: Record<string, unknown> | null };
+  const data = (await upstream.json().catch(() => null)) as { type?: string; features?: Feature[]; error?: unknown } | null;
+  if (!data || data.error || !Array.isArray(data.features)) throw new HttpError(502, 'backend_unavailable', 'The city map service could not return this layer right now.');
+  for (const f of data.features) {
+    const props = f.properties ?? {};
+    const oid = Number(props.OBJECTID ?? f.id);
+    const match = Number.isFinite(oid) ? budgetForFeature(oid) : null;
+    const { OBJECTID: _id, ...rest } = props;
+    void _id;
+    f.properties = match ? { FY27_Budget: match.amount, FY27_Source: match.source, ...rest } : rest;
+  }
+  return new Response(JSON.stringify(data), {
     status: 200,
     headers: {
       'content-type': 'application/geo+json; charset=utf-8',

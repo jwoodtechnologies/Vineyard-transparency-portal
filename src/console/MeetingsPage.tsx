@@ -8,9 +8,10 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, MapPin, Video } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, MapPin, Megaphone, Video } from 'lucide-react';
 import type { MeetingSummary } from '@/types/models';
 import { Frame } from './Chrome';
+import { CityFacebook } from './FacebookFeed';
 import {
   CATEGORIES,
   categoryOf,
@@ -491,6 +492,19 @@ export default function MeetingsPage() {
       {load.status === 'done' && view === 'upcoming' && <Upcoming items={shown} today={today} meetingsOnly={type === 'meetings'} />}
       {load.status === 'done' && view === 'calendar' && <Calendar items={shown} month={month} today={today} onMonth={(ym) => set({ month: ym === today.slice(0, 7) ? null : ym })} />}
       {load.status === 'done' && view === 'past' && <Past items={shown} today={today} />}
+
+      <section className="vc-latest-sec" aria-label="City posts">
+        <div className="vc-latest-sec-head">
+          <h2>
+            <Megaphone size={16} strokeWidth={1.9} />
+            From the city on Facebook
+          </h2>
+          <Link to="/latest" className="vc-latest-more">
+            Latest
+          </Link>
+        </div>
+        <CityFacebook />
+      </section>
     </Frame>
   );
 }

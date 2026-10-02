@@ -22,6 +22,8 @@ export const CACHE = {
 } as const;
 
 export const API_SECURITY_HEADERS: Record<string, string> = {
+  // Six months, this host only: browsers keep using HTTPS even if someone types http://.
+  'strict-transport-security': 'max-age=15552000',
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
   'x-frame-options': 'DENY',
@@ -39,11 +41,15 @@ export class HttpError extends Error {
   }
 }
 
+/** JSON is data, never a page: nothing in it may load, run or be framed. (Not applied to file streams such as PDFs.) */
+const JSON_ONLY_HEADERS: Record<string, string> = { 'content-security-policy': "default-src 'none'; frame-ancestors 'none'" };
+
 export function json(body: unknown, init: { status?: number; cache?: string; headers?: Record<string, string> } = {}): Response {
   const headers = new Headers({
     'content-type': 'application/json; charset=utf-8',
     'cache-control': init.cache ?? CACHE.none,
     ...API_SECURITY_HEADERS,
+    ...JSON_ONLY_HEADERS,
     ...(init.headers ?? {}),
   });
   return new Response(JSON.stringify(body), { status: init.status ?? 200, headers });
@@ -66,7 +72,7 @@ export async function jsonWithEtag(request: Request, body: unknown, cache: strin
   const text = JSON.stringify(body);
   const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(text));
   const etag = `W/"${[...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('')}"`;
-  const baseHeaders = { 'cache-control': cache, etag, ...API_SECURITY_HEADERS };
+  const baseHeaders = { 'cache-control': cache, etag, ...API_SECURITY_HEADERS, ...JSON_ONLY_HEADERS };
   if (request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: baseHeaders });
   return new Response(text, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', ...baseHeaders } });
 }

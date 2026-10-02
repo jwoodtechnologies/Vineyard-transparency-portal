@@ -4,6 +4,8 @@
  * and gives the model the plain state of things, which it must still cite from those records.
  * Pure (no Worker types).
  */
+import { budgetFacts, projectFacts } from '../lib/budgetFacts';
+
 export interface CivicTopic {
   id: string;
   match: RegExp;
@@ -41,9 +43,17 @@ export const TOPICS: CivicTopic[] = [
 /** How to request records, from the city's Records Request page (checked October 1, 2026). */
 TOPICS.push({
   id: 'budget',
-  match: /\bbudgets?\b|\bfiscal year\b|\bappropriat/i,
+  match: /\bbudgets?\b|\bfiscal year\b|\bappropriat|\bgeneral fund\b|\bcity spending\b|\btax revenue\b|\bhow much (does|is|will) (the city|vineyard) (spend|make|collect|take in)\b/i,
   queries: [{ q: 'FY {FYS} Final Budget', from: '{FY_START}-05-01' }, { q: 'FY {FYS} Budget Amendment', from: '{FY_START}-07-01' }, { q: 'FY {FYS} budget general fund total', from: '{FY_START}-04-01' }],
   note: 'Budgets: the city budget runs on a fiscal year from July 1 to June 30. The budget in effect now is the fiscal year {FY} budget (July {FY_START} to June {FY}), adopted by the City Council in June {FY_START}; its records are titled "FY {FYS} Final Budget", with amendments titled "FY {FYS} Budget Amendment". When the question says this year, current, now, or names no year, answer from the FY {FYS} final budget and its amendments: say it is fiscal year {FY} (July {FY_START} to June {FY}), give the totals from the record titled "FY {FYS} Final Budget" (never a draft or tentative version when the final is among the sources) with the adoption date, and never present an older fiscal year\'s budget as this year\'s. When the question names another year, use that fiscal year\'s budget. Every year\'s budget is listed for the reader under your answer, so do not list them yourself.',
+});
+
+/** The projects in the adopted budget; the city's own project map still lists earlier years' work. */
+TOPICS.push({
+  id: 'capital-projects',
+  match: /\bcapital (improvement )?(projects?|plans?|improvements?)\b|\bCIP\b|\binfrastructure (projects?|plans?)\b|\bwhat('s| is| are) (being|getting|going to be) built\b|\b(road|park|trail|water|sewer|street|bridge|overpass) projects?\b/i,
+  queries: [{ q: 'FY {FYS} Final Budget Slides capital projects', from: '{FY_START}-05-01' }, { q: 'FY {FYS} Budget Amendment capital', from: '{FY_START}-07-01' }],
+  note: '{PROJECTS}',
 });
 
 TOPICS.push({
@@ -77,6 +87,7 @@ export function topicsFor(question: string, today = new Date().toISOString().sli
       .replace(/\{NEXT_ELECTION\}/g, String(next))
       .replace(/\{FY\}/g, String(fy))
       .replace(/\{FYS\}/g, String(fy % 100))
-      .replace(/\{FY_START\}/g, String(fy - 1));
-  return TOPICS.filter((t) => t.match.test(question)).map((t) => ({ ...t, note: fill(t.note), queries: t.queries.map((x) => ({ ...x, q: fill(x.q), ...(x.from ? { from: fill(x.from) } : {}) })) }));
+      .replace(/\{FY_START\}/g, String(fy - 1))
+      .replace(/\{PROJECTS\}/g, projectFacts());
+  return TOPICS.filter((t) => t.match.test(question)).map((t) => ({ ...t, note: t.id === 'budget' ? `${fill(t.note)} ${budgetFacts()}` : fill(t.note), queries: t.queries.map((x) => ({ ...x, q: fill(x.q), ...(x.from ? { from: fill(x.from) } : {}) })) }));
 }

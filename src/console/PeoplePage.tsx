@@ -74,11 +74,11 @@ function Profile({ slug }: { slug: string }) {
   );
 }
 
-function Item({ p, big = false }: { p: Person; big?: boolean }) {
+function Item({ p }: { p: Person }) {
   return (
     <li>
-      <Link to={`/people/${p.slug}`} className="vc-people-item" data-big={big || undefined}>
-        <PersonPhoto person={p} size={big ? 52 : 40} />
+      <Link to={`/people/${p.slug}`} className="vc-people-item">
+        <PersonPhoto person={p} size={40} />
         <span className="vc-people-text">
           <span className="vc-people-name">{p.name}</span>
           <span className="vc-people-role">{p.role}</span>
@@ -136,12 +136,11 @@ function Directory() {
         <section className="vc-rec-group">
           <h2 className="vc-rec-month">City administration</h2>
           <ul className="vc-people vc-org-top">
-            {manager && <Item p={manager} big />}
+            {manager && <Item p={manager} />}
             {executive.map((p) => (
               <Item key={p.slug} p={p} />
             ))}
           </ul>
-          {manager && <p className="vc-org-note">The City Manager runs day-to-day operations and oversees the department heads below.</p>}
         </section>
       )}
       {deptList.length > 0 && (
@@ -158,7 +157,7 @@ function Directory() {
                   </span>
                 </summary>
                 <ul className="vc-people">
-                  {head && <Item p={head} big />}
+                  {head && <Item p={head} />}
                   {team.map((p) => (
                     <Item key={p.slug} p={p} />
                   ))}

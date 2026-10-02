@@ -14,6 +14,8 @@ const PeoplePage = lazy(() => import('@/console/PeoplePage'));
 const VotesPage = lazy(() => import('@/console/VotesPage'));
 const BoardsPage = lazy(() => import('@/console/BoardsPage'));
 const PlanningPage = lazy(() => import('@/console/PlanningPage'));
+const LatestPage = lazy(() => import('@/console/LatestPage'));
+const BudgetPage = lazy(() => import('@/console/BudgetPage'));
 
 // Warm the other screens in the background once the first one is up, so tapping Meetings or a
 // record opens instantly.
@@ -63,9 +65,9 @@ export const router = createBrowserRouter([
   { path: '/documents/:documentId', element: quiet(<DocumentView />) },
   { path: '/services', element: quiet(<ServicesPage />) },
   { path: '/services/:id', element: quiet(<ServiceView />) },
-  // Latest was folded into Records (newest first) and the calendar.
-  { path: '/latest', element: <Navigate to="/records" replace /> },
-  { path: '/news', element: <Navigate to="/records" replace /> },
+  { path: '/latest', element: quiet(<LatestPage />) },
+  { path: '/news', element: <Navigate to="/latest" replace /> },
+  { path: '/budget', element: quiet(<BudgetPage />) },
   { path: '/map', element: quiet(<MapPage />) },
   { path: '/records', element: quiet(<RecordsPage />) },
   { path: '/votes', element: quiet(<VotesPage />) },

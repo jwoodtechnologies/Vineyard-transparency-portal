@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { BookOpen, CalendarDays, FileText, Landmark, Layers, Map as MapIcon, MessageSquare, Scale, ScrollText, Users, X } from 'lucide-react';
+import { BookOpen, CalendarDays, FileText, Landmark, Layers, Map as MapIcon, MessageSquare, Newspaper, PiggyBank, Scale, ScrollText, Users, X } from 'lucide-react';
 import { RECORD_CATEGORIES } from './categories';
 
 const ICONS: Record<string, typeof FileText> = { meetings: FileText, finance: Landmark, laws: Scale, code: BookOpen, plans: Layers };
@@ -67,11 +67,17 @@ export function SiteMenu() {
               );
             })}
             <p className="vc-panel-label">Explore</p>
+            <Link to="/latest" className="vc-panel-row">
+              <Newspaper size={16} strokeWidth={1.8} /> Latest
+            </Link>
             <Link to="/meetings" className="vc-panel-row">
               <CalendarDays size={16} strokeWidth={1.8} /> Meetings and calendar
             </Link>
             <Link to="/people" className="vc-panel-row">
               <Users size={16} strokeWidth={1.8} /> People
+            </Link>
+            <Link to="/budget" className="vc-panel-row">
+              <PiggyBank size={16} strokeWidth={1.8} /> Budget
             </Link>
             <Link to="/map" className="vc-panel-row">
               <MapIcon size={16} strokeWidth={1.8} /> City map

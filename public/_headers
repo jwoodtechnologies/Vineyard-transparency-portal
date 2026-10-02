@@ -1,5 +1,6 @@
 # Security + caching headers for Cloudflare (Workers static assets / Pages).
 /*
+  Strict-Transport-Security: max-age=15552000
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
