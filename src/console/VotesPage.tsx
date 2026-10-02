@@ -69,7 +69,10 @@ const ORDER: Record<string, number> = { yes: 0, no: 1, abstain: 2, recused: 3, a
 const DAY = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00Z`) : null);
 const fmt = (iso: string | null, o: Intl.DateTimeFormatOptions) => (DAY(iso) ? DAY(iso)!.toLocaleDateString('en-US', { ...o, timeZone: 'UTC' }) : '');
 const last = (n: string) => n.split(' ').pop() ?? n;
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
+const cap = (n: string) => {
+  const t = n.charAt(0).toUpperCase() + n.slice(1);
+  return n === n.toLowerCase() ? t.replace(/^Mc([a-z])/, (_, c: string) => `Mc${c.toUpperCase()}`) : t;
+};
 /** What the body calls the people who vote in it. */
 const seat = (bodyId: string | null) => (bodyId === 'planning-commission' ? 'Commissioner' : bodyId === 'redevelopment-agency' ? 'Board Member' : 'Council Member');
 
@@ -132,11 +135,16 @@ function VoteGrid({ items, member, roster }: { items: MotionRow[]; member: strin
   const nameOf = useMemberNames();
   const isMayor = (id: string) => /^mayor$/i.test(nameOf(id).person?.role ?? '');
   const surname = (id: string) => cap(last(nameOf(id).name));
-  // Every member who voted this year gets a column at every meeting, so a member who was away shows a dash rather than no column.
+  // Every council member who voted this year gets a column at every meeting, so a member who was away shows a dash rather than no column.
   const seen = new Set<string>(roster ?? []);
   for (const m of items) for (const v of m.votes) seen.add(v.member);
-  // The mayor (who votes only to break a tie) first, then the council by surname.
-  const cols = [...seen].sort((a, b) => Number(isMayor(b)) - Number(isMayor(a)) || surname(a).localeCompare(surname(b)));
+  // The mayor votes only to break a tie, so he stays out of the columns (his vote is written under the motion) unless he votes on most motions here.
+  const mayors = [...seen].filter(isMayor);
+  const named = items.filter((m) => m.votes.some((v) => v.vote !== 'absent'));
+  const mayorVotes = mayors.length === 0 ? 0 : named.filter((m) => m.votes.some((v) => isMayor(v.member) && v.vote !== 'absent')).length;
+  const mayorCol = mayors.length > 0 && (member !== null && mayors.includes(member) ? true : named.length > 0 && mayorVotes * 2 > named.length);
+  const cols = [...seen].filter((id) => !isMayor(id) || mayorCol).sort((a, b) => Number(isMayor(a)) - Number(isMayor(b)) || surname(a).localeCompare(surname(b)));
+  const label = (id: string) => (isMayor(id) ? 'Mayor' : surname(id));
   const body = items[0]?.bodyId ?? null;
   const titled = (id: string) => `${isMayor(id) ? 'Mayor' : seat(body)} ${surname(id)}`;
   return (
@@ -148,8 +156,7 @@ function VoteGrid({ items, member, roster }: { items: MotionRow[]; member: strin
           <span className="vc-vg-cells">
             {cols.map((id) => (
               <span key={id} data-on={member === id ? 'true' : undefined} title={titled(id)}>
-                {isMayor(id) && <small>Mayor</small>}
-                {surname(id)}
+                {label(id)}
               </span>
             ))}
           </span>
@@ -157,8 +164,9 @@ function VoteGrid({ items, member, roster }: { items: MotionRow[]; member: strin
       )}
       <ol className="vc-vg-rows">
         {items.map((m) => {
-          const named = m.votes.filter((v) => v.vote !== 'absent');
-          const unanimous = m.result === 'carried' && m.unanimous && named.length === 0;
+          const rolled = m.votes.filter((v) => v.vote !== 'absent');
+          const unanimous = m.result === 'carried' && m.unanimous && rolled.length === 0;
+          const mv = mayorCol ? undefined : m.votes.find((v) => isMayor(v.member) && v.vote !== 'absent');
           const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result';
           const detail = motionDetail(m) ?? (m.refs.length > 0 && !/resolution|ordinance/i.test(motionLabel(m)) ? m.refs.join(', ') : null);
           return (
@@ -175,7 +183,11 @@ function VoteGrid({ items, member, roster }: { items: MotionRow[]; member: strin
                 )}
                 <span className="vc-vg-foot">
                   {unanimous && cols.length === 0 && <span className="vc-vg-un">Unanimous</span>}
-                  {m.tieBreak && <span className="vc-vt-meta">Mayor broke the tie</span>}
+                  {mv ? (
+                    <span className="vc-vt-meta">{`Mayor ${surname(mv.member)} ${m.tieBreak ? 'broke the tie: ' : 'voted '}${VOTE_LABEL[mv.vote] ?? mv.vote}`}</span>
+                  ) : (
+                    m.tieBreak && <span className="vc-vt-meta">Mayor broke the tie</span>
+                  )}
                   <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
                     <FileText size={11} /> Minutes{m.page ? ` p. ${m.page}` : ''}
                   </DocLink>
@@ -221,7 +233,7 @@ function Key() {
         <i data-vote="no"><X size={13} strokeWidth={2.8} /></i> No
       </span>
       <span>
-        <i data-vote="abstain">A</i> Abstained
+        <i data-vote="abstain">A</i> Abstain
       </span>
       <span>
         <i data-vote="recused">R</i> Recused
