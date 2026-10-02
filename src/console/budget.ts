@@ -35,7 +35,7 @@ export interface Budget {
   label: string;
   adopted: string;
   amended: string;
-  docs: { book: string; slides: string; amendment: string; amendmentSummary: string };
+  docs: { book: string; slides: string; amendment: string; amendmentSummary: string; tentative: string };
   allFundsTotal: number;
   funds: BudgetFund[];
   general: {
@@ -45,6 +45,7 @@ export interface Budget {
     adopted: { departments: number; transfersOut: number; total: number; surplus: number };
     amended: { departments: number; transfersOut: number; total: number; surplus: number };
     cutByAmendment: number;
+    tentativeTotal: number;
   };
   departments: BudgetLine[];
   transfersOut: BudgetLine[];

@@ -3999,6 +3999,10 @@ html.vc-locked .vc-landing {
 .vc-bud-hero > div { display: grid; gap: 6px; align-content: start; padding: 14px 16px 15px; border: 1px solid var(--vc-line-2); border-top: 4px solid var(--vc-line-2); border-radius: 14px; background: var(--vc-surface); }
 .vc-bud-hero > div[data-k='spend'] { border-top-color: var(--b1); }
 .vc-bud-hero > div[data-k='left'] { border-top-color: var(--b3); }
+.vc-bud-hero > div[data-k='cut'] { border-top-color: var(--b4); }
+.vc-bud-hero em { font-style: normal; font-size: 0.78rem; line-height: 1.25; color: var(--vc-muted); }
+.vc-bud-cuts { margin-top: -2px; }
+.vc-bud-cuts b { font-size: 2rem; }
 .vc-bud-hero span { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vc-muted); }
 .vc-bud-hero b { font-family: var(--vc-serif); font-size: 2.4rem; font-weight: 500; letter-spacing: -0.02em; line-height: 1; color: var(--vc-ink); font-variant-numeric: tabular-nums; }
 .vc-bud-flow { display: flex; gap: 2px; height: 12px; margin-top: -4px; }
@@ -4115,6 +4119,8 @@ html.vc-locked .vc-landing {
   .vc-bud-hero > div { padding: 11px 10px 12px; border-top-width: 3px; border-radius: 12px; }
   .vc-bud-hero b { font-size: 1.55rem; }
   .vc-bud-hero span { font-size: 0.66rem; letter-spacing: 0.05em; }
+  .vc-bud-hero em { font-size: 0.7rem; }
+  .vc-bud-cuts b { font-size: 1.45rem; }
   .vc-bud-lede { font-size: 0.86rem; }
   .vc-bud-tabs { justify-self: stretch; }
   .vc-bud-tabs button { flex: 1 1 auto; padding-inline: 8px; font-size: 0.8rem; }

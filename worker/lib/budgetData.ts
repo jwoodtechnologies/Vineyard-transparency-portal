@@ -20,6 +20,7 @@ export const BUDGET_DOCS = {
   slides: 'doc_4d69a97b95e87bea',
   amendment: 'doc_3931ec08b88d5fbf',
   amendmentSummary: 'doc_9570af43463830a8',
+  tentative: 'doc_4f9d4e3b68713059',
 } as const;
 
 export interface BudgetFund {
@@ -162,6 +163,8 @@ export const GENERAL = {
   adopted: { departments: 14_085_690, transfersOut: 3_418_464, total: 17_504_153, surplus: 270_654 },
   amended: { departments: 13_865_308, transfersOut: 3_393_464, total: 17_258_772, surplus: 516_036 },
   cutByAmendment: 245_382,
+  /** General Fund spending in the tentative budget the council saw May 12, 2026 (budget summary, page 2). */
+  tentativeTotal: 17_712_003,
 } as const;
 
 /** Five years of the biggest General Fund lines: FY23 to FY25 actual, FY26 final budget, FY27 adopted. */

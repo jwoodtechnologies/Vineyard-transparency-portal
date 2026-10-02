@@ -26,3 +26,12 @@ describe('budget framing', () => {
     expect(budgetPayload().notes.join(' ')).not.toMatch(/FY23/);
   });
 });
+
+describe('budget cuts', () => {
+  it('states the cut since the tentative budget and the departments below last year', () => {
+    const facts = budgetFacts();
+    expect(GENERAL.tentativeTotal - GENERAL.amended.total).toBe(453_231);
+    expect(facts).toContain('$453,231 below the $17,712,003');
+    expect(facts).toContain('11 departments are budgeted $1,018,261 below');
+  });
+});

@@ -131,7 +131,6 @@ function Numbers({ summary, children }: { summary: string; children: ReactNode }
 }
 
 function SpendTab({ b }: { b: Budget }) {
-  const [view, setView] = useState<'amended' | 'adopted'>('amended');
   const all: BudgetLine[] = useMemo(() => [...b.departments, ...b.transfersOut], [b]);
   const slices: Slice[] = useMemo(
     () =>
@@ -141,40 +140,30 @@ function SpendTab({ b }: { b: Budget }) {
           key: g.key,
           slot,
           name: g.name,
-          amount: items.reduce((s, l) => s + l[view], 0),
-          items: items.map((l) => ({ name: l.name, amount: l[view] })),
+          amount: items.reduce((s, l) => s + l.amended, 0),
+          items: items.map((l) => ({ name: l.name, amount: l.amended })),
         };
       }),
-    [b, all, view],
+    [b, all],
   );
   return (
     <>
-      <div className="vc-bud-tools">
-        <div className="vc-segment" role="tablist" aria-label="Which version of the budget">
-          <button type="button" role="tab" aria-selected={view === 'amended'} data-on={view === 'amended'} onClick={() => setView('amended')}>
-            After Aug 25
-          </button>
-          <button type="button" role="tab" aria-selected={view === 'adopted'} data-on={view === 'adopted'} onClick={() => setView('adopted')}>
-            Adopted June 23
-          </button>
-        </div>
-      </div>
       <Squares slices={slices} noun="spending" caption="Tap a color to see what is inside." />
       <Numbers summary="See every department as a table">
         <table>
           <thead>
             <tr>
               <th>Department</th>
-              <th>Adopted June 23</th>
-              <th>After Aug 25</th>
+              <th>Budget</th>
+              <th>Cut from last year</th>
             </tr>
           </thead>
           <tbody>
             {all.map((l) => (
               <tr key={l.name}>
                 <td>{l.name}</td>
-                <td>{money(l.adopted)}</td>
                 <td>{money(l.amended)}</td>
+                <td>{l.prior > l.amended ? money(l.prior - l.amended) : ''}</td>
               </tr>
             ))}
           </tbody>
@@ -350,6 +339,9 @@ export default function BudgetPage() {
   }, []);
 
   const b = load.status === 'done' ? load.data : null;
+  const lastYear = useMemo(() => (b ? b.departments.filter((d) => d.prior > d.amended) : []), [b]);
+  const cutDepts = lastYear.length;
+  const cutTotal = lastYear.reduce((t, d) => t + (d.prior - d.amended), 0);
 
   return (
     <Frame wide>
@@ -389,7 +381,24 @@ export default function BudgetPage() {
                 <i data-k="spend" style={{ flexGrow: b.general.amended.total }} />
                 <i data-k="left" style={{ flexGrow: Math.max(b.general.amended.surplus, b.general.revenueTotal * 0.015) }} />
               </div>
-              <p className="vc-bud-cap">General Fund only, after the August 25 amendment. Revenue minus spending is the surplus.</p>
+              <p className="vc-bud-cap">General Fund only, with the amendment just passed on August 25. Revenue minus spending is the surplus.</p>
+              <div className="vc-bud-hero vc-bud-cuts">
+                <div data-k="cut">
+                  <span>Cut by the amendment</span>
+                  <b>{short(b.general.cutByAmendment)}</b>
+                  <em>just passed</em>
+                </div>
+                <div data-k="cut">
+                  <span>Cut since tentative</span>
+                  <b>{short(b.general.tentativeTotal - b.general.amended.total)}</b>
+                  <em>from {short(b.general.tentativeTotal)} in May</em>
+                </div>
+                <div data-k="cut">
+                  <span>Cut from last year</span>
+                  <b>{short(cutTotal)}</b>
+                  <em>{cutDepts} departments</em>
+                </div>
+              </div>
               {b.newer.length > 0 && (
                 <p className="vc-bud-cap">
                   Newer paper posted, not included yet:{' '}
@@ -426,6 +435,11 @@ export default function BudgetPage() {
                 <li>
                   <a href={pdfHref(b.docs.slides)} {...NEW_TAB}>
                     <FileText size={13} /> FY 27 Budget slides (PDF)
+                  </a>
+                </li>
+                <li>
+                  <a href={pdfHref(b.docs.tentative)} {...NEW_TAB}>
+                    <FileText size={13} /> FY 27 Tentative Budget, May 2026 (PDF)
                   </a>
                 </li>
                 <li>
