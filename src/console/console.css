@@ -4474,3 +4474,58 @@ html { overscroll-behavior-y: none; }
 .vc-ptr-ring[data-busy='true'] { animation: vc-ptr-spin 0.85s linear infinite; }
 @keyframes vc-ptr-spin { to { rotate: 360deg; } }
 @media (prefers-reduced-motion: reduce) { .vc-ptr-ring[data-busy='true'] { animation-duration: 2.4s; } }
+
+/* city social panel: a sheet on phones, a drawer and a docked column on wide screens */
+.vc-soc-mark { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 13px; background: linear-gradient(150deg, var(--vc-accent-2), var(--vc-accent)); color: var(--vc-bg); font-family: var(--vc-serif); font-size: 1.3rem; font-weight: 600; line-height: 1; }
+.vc-soc-launch { display: flex; align-items: center; gap: 14px; width: 100%; margin: 0 0 22px; padding: 14px 16px; border: 1px solid var(--vc-line-2); border-radius: 18px; background: linear-gradient(120deg, var(--vc-accent-soft), transparent 65%), var(--vc-surface); color: var(--vc-ink); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--vc-shadow-sm); -webkit-tap-highlight-color: transparent; transition: border-color 0.2s, transform 0.2s; }
+.vc-soc-launch:hover { border-color: var(--vc-muted); }
+.vc-soc-launch:active { transform: scale(0.985); }
+.vc-soc-launch-text { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.vc-soc-launch-text b { font-size: 0.98rem; font-weight: 620; }
+.vc-soc-launch-text span { font-size: 0.82rem; color: var(--vc-muted); }
+.vc-soc-launch > svg { flex: none; color: var(--vc-muted); }
+.vc-soc-pill { display: inline-flex; flex: none; align-items: center; gap: 8px; height: 2.4rem; padding: 0 14px 0 5px; border: 1px solid var(--vc-line-2); border-radius: 999px; background: var(--vc-surface); color: var(--vc-ink); font: inherit; font-size: 0.84rem; font-weight: 560; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.vc-soc-pill .vc-soc-mark { width: 30px; height: 30px; border-radius: 10px; font-size: 1rem; }
+.vc-page-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vc-page-head-row .vc-page-title { min-width: 0; }
+
+.vc-soc-scrim { position: fixed; inset: 0; z-index: 90; background: rgba(8, 8, 10, 0.5); animation: vc-soc-fade 0.25s ease both; }
+.vc-soc-scrim[data-closing='true'] { animation: vc-soc-fade 0.22s ease reverse both; }
+@keyframes vc-soc-fade { from { opacity: 0; } }
+.vc-soc-sheet { position: fixed; z-index: 91; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; height: min(92dvh, 880px); padding-bottom: env(safe-area-inset-bottom); border-radius: 22px 22px 0 0; background: var(--vc-bg); color: var(--vc-ink); box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.45); overscroll-behavior: contain; animation: vc-soc-up 0.42s var(--vc-ease) both; }
+.vc-soc-sheet[data-closing='true'] { animation: vc-soc-up 0.22s ease-in reverse both; }
+@keyframes vc-soc-up { from { transform: translateY(100%); } }
+@keyframes vc-soc-in { from { transform: translateX(100%); } }
+.vc-soc-head { position: relative; display: flex; flex: none; align-items: center; gap: 12px; padding: 14px 16px 12px; }
+.vc-soc-head-sheet { padding-top: 24px; touch-action: none; }
+.vc-soc-grab { position: absolute; top: 9px; left: 50%; width: 38px; height: 4px; margin-left: -19px; border-radius: 2px; background: color-mix(in srgb, var(--vc-ink) 22%, transparent); }
+.vc-soc-title { display: grid; flex: 1; gap: 1px; min-width: 0; }
+.vc-soc-title b { font-family: var(--vc-serif); font-size: 1.15rem; font-weight: 550; letter-spacing: -0.01em; }
+.vc-soc-title span { font-size: 0.78rem; color: var(--vc-muted); }
+.vc-soc-close { display: grid; flex: none; place-items: center; width: 38px; height: 38px; border: 0; border-radius: 50%; background: var(--vc-bg-2); color: var(--vc-ink); cursor: pointer; }
+.vc-soc-frame { position: relative; flex: 1; min-height: 0; margin: 0 14px; border: 1px solid var(--vc-line); border-radius: 16px; background: #ffffff; overflow: hidden; }
+.vc-soc-frame iframe { position: relative; z-index: 1; display: block; width: 100%; height: 100%; border: 0; opacity: 0; transition: opacity 0.3s; }
+.vc-soc-frame[data-loaded='true'] iframe { opacity: 1; }
+.vc-soc-wait { position: absolute; inset: 0; display: grid; align-content: start; gap: 14px; padding: 18px; }
+.vc-soc-wait i { display: block; height: 86px; border-radius: 12px; background: linear-gradient(100deg, #f1f1f2 30%, #f8f8f9 50%, #f1f1f2 70%) 0 0 / 220% 100%; animation: vc-soc-shimmer 1.3s linear infinite; }
+@keyframes vc-soc-shimmer { to { background-position: -220% 0; } }
+.vc-soc-foot { display: grid; flex: none; gap: 8px; padding: 12px 16px 16px; }
+.vc-soc-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 2.8rem; border-radius: 999px; background: var(--vc-ink); color: var(--vc-bg); font-size: 0.9rem; font-weight: 600; text-decoration: none; }
+.vc-soc-foot p { margin: 0; font-size: 0.74rem; line-height: 1.5; color: var(--vc-muted); }
+.vc-soc-foot p a { color: var(--vc-accent); text-decoration: underline; text-underline-offset: 2px; }
+html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
+
+.vc-latest-grid[data-dock='true'] { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 32px; align-items: start; }
+.vc-soc-dock { position: sticky; top: 76px; display: flex; flex-direction: column; height: min(740px, calc(100dvh - 104px)); min-height: 480px; border: 1px solid var(--vc-line-2); border-radius: 22px; background: var(--vc-surface); box-shadow: var(--vc-shadow-sm); overflow: hidden; }
+.vc-soc-dock .vc-soc-frame { margin: 0 12px; }
+
+@media (min-width: 760px) {
+  .vc-soc-sheet { top: 0; left: auto; width: min(460px, 92vw); height: auto; padding-bottom: 0; border-radius: 22px 0 0 22px; animation-name: vc-soc-in; }
+  .vc-soc-sheet[data-closing='true'] { animation-name: vc-soc-in; }
+  .vc-soc-grab { display: none; }
+  .vc-soc-head-sheet { padding-top: 16px; touch-action: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vc-soc-sheet, .vc-soc-scrim { animation-duration: 0.01s; }
+  .vc-soc-wait i { animation: none; }
+}

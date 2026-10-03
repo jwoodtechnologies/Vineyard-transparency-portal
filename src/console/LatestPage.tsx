@@ -2,12 +2,13 @@
 import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, FileText, Megaphone, Users } from 'lucide-react';
+import { ChevronRight, FileText, Users } from 'lucide-react';
 import type { MeetingSummary } from '@/types/models';
 import { Frame } from './Chrome';
-import { CityFacebook } from './FacebookFeed';
+import { SocialDock, SocialLauncher, SocialSheet } from './FacebookFeed';
+import { useWide } from './useWide';
 import { MeetingFiles } from './MeetingFiles';
 import { dayNumber, formatTime, longDate, meetingHref, monthShort, todayIso, toneOf, useMeetings, weekdayShort } from './meetings';
 
@@ -78,6 +79,8 @@ export default function LatestPage() {
   const year = Number(today.slice(0, 4));
   // Early in the year the last meeting may have been in December.
   const load = useMeetings(Number(today.slice(5, 7)) <= 2 ? [year - 1, year] : [year]);
+  const wide = useWide(1040);
+  const [social, setSocial] = useState(false);
 
   useEffect(() => {
     document.title = 'Latest | Vineyard Transparency Portal';
@@ -103,10 +106,14 @@ export default function LatestPage() {
   }, [load, today]);
 
   return (
-    <Frame>
+    <Frame wide>
       <header className="vc-page-head vc-latest-head">
         <h1 className="vc-page-title">Latest</h1>
       </header>
+
+      <div className="vc-latest-grid" data-dock={wide}>
+      <div className="vc-latest-main">
+      {!wide && <SocialLauncher onOpen={() => setSocial(true)} />}
 
       <Section
         title="Last City Council meeting"
@@ -146,9 +153,10 @@ export default function LatestPage() {
         {load.status === 'done' && (boards.length ? <div className="vc-sched-list">{boards.map((m) => <MeetingCard key={m.id} m={m} />)}</div> : <div className="vc-empty">No board or commission meetings have been posted yet.</div>)}
       </Section>
 
-      <Section title="From the city on Facebook" icon={<Megaphone size={16} strokeWidth={1.9} />}>
-        <CityFacebook />
-      </Section>
+      </div>
+      {wide && <SocialDock />}
+      </div>
+      {social && !wide && <SocialSheet onClose={() => setSocial(false)} />}
     </Frame>
   );
 }

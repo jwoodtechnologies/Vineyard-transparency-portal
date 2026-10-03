@@ -1,4 +1,0 @@
-City social media gets its own panel: a slide-up sheet on phones (pull the header down to close), a drawer on wide screens, docked beside Latest on wide screens. The Facebook embed loads only when the panel is open. Calendar has a City on Facebook button at the top, the small embed at the bottom is gone.
-
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X

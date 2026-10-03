@@ -8,10 +8,10 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, MapPin, Megaphone } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import type { MeetingSummary } from '@/types/models';
 import { Frame } from './Chrome';
-import { CityFacebook } from './FacebookFeed';
+import { SocialLauncher, SocialSheet } from './FacebookFeed';
 import { MeetingFiles } from './MeetingFiles';
 import {
   CATEGORIES,
@@ -364,6 +364,7 @@ export default function MeetingsPage() {
   const yearParam = Number(params.get('year'));
   const year = yearParam >= 1990 && yearParam <= thisYear + 1 ? yearParam : thisYear;
   const bodies = useBodies();
+  const [social, setSocial] = useState(false);
 
   useEffect(() => {
     document.title = 'Calendar | Vineyard Transparency Portal';
@@ -418,8 +419,9 @@ export default function MeetingsPage() {
 
   return (
     <Frame wide>
-      <header className="vc-page-head">
+      <header className="vc-page-head vc-page-head-row">
         <h1 className="vc-page-title">Calendar</h1>
+        <SocialLauncher variant="pill" onOpen={() => setSocial(true)} />
       </header>
 
       <div className="vc-sched-controls">
@@ -476,18 +478,7 @@ export default function MeetingsPage() {
       {load.status === 'done' && view === 'calendar' && <Calendar items={shown} month={month} today={today} onMonth={(ym) => set({ month: ym === today.slice(0, 7) ? null : ym })} />}
       {load.status === 'done' && view === 'past' && <Past items={shown} today={today} />}
 
-      <section className="vc-latest-sec" aria-label="City posts">
-        <div className="vc-latest-sec-head">
-          <h2>
-            <Megaphone size={16} strokeWidth={1.9} />
-            From the city on Facebook
-          </h2>
-          <Link to="/latest" className="vc-latest-more">
-            Latest
-          </Link>
-        </div>
-        <CityFacebook />
-      </section>
+      {social && <SocialSheet onClose={() => setSocial(false)} />}
     </Frame>
   );
 }
