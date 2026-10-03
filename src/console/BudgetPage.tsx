@@ -439,7 +439,6 @@ export default function BudgetPage() {
                   <Link to="/budget?view=past">Earlier years: past budgets</Link>
                 </li>
               </ul>
-              <p>Where the slides and the book differ, the book is used.</p>
             </footer>
           )}
         </div>

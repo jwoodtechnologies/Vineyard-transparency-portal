@@ -1,8 +1,8 @@
 /**
  * Pull down to refresh, on touch screens. Dragging down from the top of a page slides the whole page down
  * and a ring draws itself in the space that opens up (no backing panel); let go past the line and the page
- * settles, the ring spins and the page reloads. Skipped over maps, text fields, open panels and the document
- * viewer, and whenever the page is not at the very top.
+ * settles, the ring spins and the page reloads. Works on every page including the home screen. Skipped over maps,
+ * text fields, open panels and the document viewer, and whenever the page is not at the very top.
  */
 import { useEffect, useRef } from 'react';
 
@@ -90,7 +90,6 @@ export default function PullToRefresh() {
     const onStart = (e: TouchEvent) => {
       if (state !== 'idle') return;
       if (e.touches.length !== 1 || window.scrollY > 0) return;
-      if (document.documentElement.classList.contains('vc-locked')) return;
       const t = e.target instanceof Element ? e.target : null;
       if (t && (t.closest(BLOCK) || scrolledInside(t))) return;
       page = document.querySelector<HTMLElement>('.vc');
