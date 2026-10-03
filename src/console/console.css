@@ -4151,28 +4151,30 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
   .vc-meeting-docs .vc-tag { height: 1.85rem; padding: 0 0.75rem; font-size: 0.76rem; }
 }
 
-/* Voting records as a sheet: a row per motion, a column per member */
-.vc-vg { --vg-col: 68px; --vg-res: 92px; }
-.vc-vg-head, .vc-vg-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--vg-res) calc(var(--n) * var(--vg-col)); column-gap: 14px; align-items: center; padding: 10px 16px; }
-.vc-vg-head { padding-top: 8px; padding-bottom: 8px; background: var(--vc-bg-2); border-bottom: 1px solid var(--vc-line-2); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--vc-muted); }
-.vc-vg-head .vc-vg-cells > span { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; text-align: center; line-height: 1.25; font-size: 0.74rem; letter-spacing: 0; text-transform: none; color: var(--vc-ink-2); min-width: 0; }
-.vc-vg-head .vc-vg-cells > span small { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.1em; color: var(--vc-muted); }
+/* Voting records as a sheet: each motion and its result on one line, the member marks in a strip under it, lined up with the names at the top. */
+.vc-vg { container-type: inline-size; container-name: vg; }
+.vc-vg-head, .vc-vg-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 8px; align-items: center; padding: 10px 12px; }
+.vc-vg-head { grid-template-columns: 1fr; padding-top: 8px; padding-bottom: 8px; background: var(--vc-bg-2); border-bottom: 1px solid var(--vc-line-2); color: var(--vc-muted); }
+.vc-vg-h-what, .vc-vg-h-res { display: none; }
+.vc-vg-head .vc-vg-cells { align-items: end; }
+.vc-vg-head .vc-vg-cells > span { display: block; min-width: 0; text-align: center; line-height: 1.25; font-size: 0.72rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--vc-ink-2); }
+.vc-vg-head .vc-vg-cells > span small { display: block; font-size: 0.56rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--vc-muted); }
 .vc-vg-head .vc-vg-cells > span[data-on='true'] { color: var(--vc-ink); font-weight: 700; }
-.vc-vg-h-res { text-align: center; }
 .vc-vg-rows { list-style: none; margin: 0; padding: 0; }
 .vc-vg-row { border-top: 1px solid var(--vc-line); }
 .vc-vg-row:first-child { border-top: 0; }
 .vc-vg-row:nth-child(even) { background: color-mix(in srgb, var(--vc-bg-2) 55%, transparent); }
+.vc-vg-row .vc-vg-cells { grid-column: 1 / -1; grid-row: 2; }
 .vc-vg-what { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .vc-vg-label { margin: 0; font-size: 0.92rem; font-weight: 600; line-height: 1.38; color: var(--vc-ink); }
 .vc-vg-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 3px; }
 .vc-vg-foot .vc-vt-min { margin-left: 0; border-color: transparent; background: none; padding: 0; color: var(--vc-muted); font-size: 0.72rem; }
 .vc-vg-foot .vc-vt-min:hover { color: var(--vc-accent); }
-.vc-vg-res { justify-self: center; }
-.vc-vg-cells { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 4px; min-width: 0; }
+.vc-vg-res { align-self: start; justify-self: end; }
+.vc-vg-cells { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 0; min-width: 0; }
 .vc-vg-cell { display: flex; align-items: center; justify-content: center; height: 30px; border-radius: 9px; font-size: 0.8rem; font-weight: 700; color: var(--vc-muted); }
 .vc-vg-cell[data-vote='yes'] { color: var(--vc-ink-2); }
-.vc-vg-cell[data-vote='no'] { background: var(--vc-surface); color: var(--vc-ink); box-shadow: inset 0 0 0 1.5px var(--vc-ink-2); }
+.vc-vg-cell[data-vote='no'] { background: var(--vc-surface); color: var(--vc-ink); box-shadow: inset 0 0 0 1.5px var(--vc-ink-2); margin: 0 3px; }
 .vc-vg-cell[data-vote='abstain'], .vc-vg-cell[data-vote='recused'] { color: var(--vc-ink-2); }
 .vc-vg-cell[data-vote='absent'], .vc-vg-cell[data-vote='none'] { color: var(--vc-muted); font-weight: 500; }
 .vc-vg-cell[data-on='true'] { outline: 2px solid var(--vc-ink); outline-offset: 1px; }
@@ -4185,22 +4187,18 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 .vc-vg-key i[data-vote='no'] { background: var(--vc-surface); color: var(--vc-ink); box-shadow: inset 0 0 0 1.5px var(--vc-ink-2); }
 .vc-vg-key i[data-vote='abstain'], .vc-vg-key i[data-vote='recused'] { color: var(--vc-ink-2); }
 .vc-vg-key i[data-vote='absent'] { color: var(--vc-muted); }
-/* Phones: the motion and its result on one line, the member marks in a strip under it, lined up with the names at the top. */
+/* A small card: slimmer names. With six or more members (the Planning Commission) on a narrow card the names stand upright so each one fits over its column. */
+@container vg (max-width: 420px) { .vc-vg-head .vc-vg-cells > span { font-size: 0.66rem; } }
+@container vg (max-width: 520px) {
+  .vc-vg[data-many] .vc-vg-head .vc-vg-cells > span { writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; height: 6.6em; width: 1.4em; text-align: start; font-size: 0.72rem; overflow: visible; }
+  .vc-vg[data-many] .vc-vg-head .vc-vg-cells > span small { display: inline; margin-top: 0.5em; letter-spacing: 0.04em; }
+  .vc-vg[data-many] .vc-vg-cell[data-vote='no'] { margin: 0 2px; }
+}
 @media (max-width: 640px) {
-  .vc-vg-head, .vc-vg-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; padding: 10px 12px; }
-  .vc-vg-head { grid-template-columns: 1fr; }
-  .vc-vg-h-what, .vc-vg-h-res { display: none; }
-  .vc-vg-row .vc-vg-cells { grid-column: 1 / -1; grid-row: 2; }
-  .vc-vg-res { align-self: start; }
-  .vc-vg-cell { height: 30px; }
-  .vc-vg-cells { gap: 0; }
-  .vc-vg-head .vc-vg-cells > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; text-align: center; font-size: 0.72rem; }
-  .vc-vg-cell[data-vote='no'] { margin: 0 3px; }
   .vc-vg-key { justify-content: space-between; flex-wrap: nowrap; gap: 6px; font-size: 0.72rem; }
   .vc-vg-key span { gap: 4px; white-space: nowrap; }
   .vc-vg-key i { width: 18px; height: 18px; border-radius: 6px; }
-  .vc-vfilters:not([hidden]) { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 4px 8px; }
+  .vc-vfilters:not([hidden]) { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 4px 8px; }
   .vc-vfilters .vc-vfilter-search { grid-column: 1 / -1; }
-  .vc-vfilters select { min-width: 0; width: 100%; font-size: 0.82rem; text-overflow: ellipsis; }
+  .vc-vfilters select { min-width: 0; width: 100%; font-size: 0.78rem; text-overflow: ellipsis; }
 }
-@media (max-width: 380px) { .vc-vg-head .vc-vg-cells > span { font-size: 0.66rem; } }

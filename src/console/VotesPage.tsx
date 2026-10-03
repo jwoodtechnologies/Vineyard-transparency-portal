@@ -144,11 +144,10 @@ function VoteGrid({ items, member, roster }: { items: MotionRow[]; member: strin
   const mayorVotes = mayors.length === 0 ? 0 : named.filter((m) => m.votes.some((v) => isMayor(v.member) && v.vote !== 'absent')).length;
   const mayorCol = mayors.length > 0 && (member !== null && mayors.includes(member) ? true : named.length > 0 && mayorVotes * 2 > named.length);
   const cols = [...seen].filter((id) => !isMayor(id) || mayorCol).sort((a, b) => Number(isMayor(a)) - Number(isMayor(b)) || surname(a).localeCompare(surname(b)));
-  const label = (id: string) => (isMayor(id) ? 'Mayor' : surname(id));
   const body = items[0]?.bodyId ?? null;
   const titled = (id: string) => `${isMayor(id) ? 'Mayor' : seat(body)} ${surname(id)}`;
   return (
-    <div className="vc-vg" style={{ '--n': cols.length } as CSSProperties}>
+    <div className="vc-vg" data-many={cols.length >= 6 ? 'true' : undefined} style={{ '--n': cols.length } as CSSProperties}>
       {cols.length > 0 && (
         <div className="vc-vg-head" aria-hidden="true">
           <span className="vc-vg-h-what">Motion</span>
@@ -156,7 +155,8 @@ function VoteGrid({ items, member, roster }: { items: MotionRow[]; member: strin
           <span className="vc-vg-cells">
             {cols.map((id) => (
               <span key={id} data-on={member === id ? 'true' : undefined} title={titled(id)}>
-                {label(id)}
+                {isMayor(id) && <small>Mayor</small>}
+                {surname(id)}
               </span>
             ))}
           </span>
@@ -276,6 +276,7 @@ interface HeldMeeting {
   date: string | null;
   title: string;
   status?: string;
+  agendaDocumentId?: string | null;
   minutesDocumentId: string | null;
 }
 
@@ -300,11 +301,15 @@ function useMeetingStatus(bodies: string[], year: number, on: boolean) {
     const ready = m1.status === 'done' && (!bodies[1] || m2.status === 'done') && rd.status === 'done';
     const read = new Map((rd.status === 'done' ? rd.data.meetings : []).map((r) => [`${r.bodyId}|${r.date}`, r]));
     const held = new Map<string, { key: string; bodyId: string; date: string; meeting: HeldMeeting }>();
+    const cancelledOn = new Set<string>();
     const add = (items: HeldMeeting[], bodyId: string) => {
+      for (const m of items) if (/cancel/i.test(`${m.title} ${m.status ?? ''}`)) cancelledOn.add(`${bodyId}|${(m.date ?? '').slice(0, 10)}`);
       for (const m of items) {
         const date = (m.date ?? '').slice(0, 10);
         if (!date || date > today || /cancel/i.test(`${m.title} ${m.status ?? ''}`)) continue;
         const key = `${bodyId}|${date}`;
+        // A bare second calendar entry (no agenda, no minutes) on a day the city cancelled is the same cancelled meeting.
+        if (cancelledOn.has(key) && !m.agendaDocumentId && !m.minutesDocumentId) continue;
         const prev = held.get(key);
         // One card per body and day: the meeting itself wins over a hearing notice filed on the same day.
         if (!prev || (/notice/i.test(prev.meeting.title) && !/notice/i.test(m.title))) held.set(key, { key, bodyId, date, meeting: m });
