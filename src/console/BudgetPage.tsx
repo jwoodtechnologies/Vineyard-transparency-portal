@@ -1,7 +1,9 @@
 /**
- * /budget : the fiscal 2027 budget made readable. Four views:
- *   Spending       every $100 of General Fund spending as 100 squares, tap a color to open its departments
+ * /budget : the fiscal 2027 budget made readable. Five views:
+ *   Spending       every $100 of General Fund spending as 100 squares or a donut, tap a color to open its departments;
+ *                  then the money in each of the city's nine funds
  *   Revenue        the same for revenue, with taxes shown apart from fees, grants and money moved between funds
+ *   Sales tax      what the city budgets from sales tax, the rate in Vineyard and where each part goes, by year
  *   Projects       the funds paying for the capital projects the council listed, then every project
  *   Past budgets   every budget, audit and budget resolution in the archive, by fiscal year, with search
  * The numbers come from GET /api/budget, which is keyed in from the adopted budget book and slides.
@@ -9,24 +11,25 @@
 import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, ChevronDown, FileText } from 'lucide-react';
+import { ArrowUpRight, FileText } from 'lucide-react';
 import { docHref } from './files';
 import BudgetArchive from './BudgetArchive';
+import { Donut, Numbers, Split, type Slice } from './BudgetCharts';
+import SalesTaxTab, { SalesTaxSources } from './SalesTaxTab';
 import { Frame } from './Chrome';
 import { useJson } from './api';
-import { allocate100, money, pct, short, treemap, type Budget, type BudgetLine, type Project } from './budget';
+import { money, pct, share, short, swatch, treemap, type Budget, type BudgetLine, type Project } from './budget';
 
-type Tab = 'spend' | 'revenue' | 'projects' | 'past';
+type Tab = 'spend' | 'revenue' | 'sales' | 'projects' | 'past';
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'spend', label: 'Spending' },
   { id: 'revenue', label: 'Revenue' },
+  { id: 'sales', label: 'Sales tax' },
   { id: 'projects', label: 'Projects' },
   { id: 'past', label: 'Past budgets' },
 ];
-
-const swatch = (slot: number): CSSProperties => ({ '--c': `var(--b${(slot % 7) + 1})` }) as CSSProperties;
 
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
@@ -39,94 +42,39 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-/* ---------- the "every $100" squares ---------- */
+/* ---------- the nine funds ---------- */
 
-interface Slice {
-  key: string;
-  slot: number;
-  name: string;
-  amount: number;
-  items: Array<{ name: string; amount: number }>;
-}
+const BIG_FUNDS = 5;
 
-function Squares({ slices, noun, caption }: { slices: Slice[]; noun: string; caption: string }) {
-  const [sel, setSel] = useState<string | null>(null);
-  const [hov, setHov] = useState<string | null>(null);
-  const ranked = useMemo(() => [...slices].sort((a, b) => b.amount - a.amount), [slices]);
-  const total = ranked.reduce((s, x) => s + x.amount, 0);
-  const counts = useMemo(() => allocate100(ranked.map((s) => s.amount)), [ranked]);
-  const cells = useMemo(() => ranked.flatMap((s, i) => Array.from({ length: counts[i] }, () => s.key)), [ranked, counts]);
-  const active = hov ?? sel;
-  const cur = ranked.find((s) => s.key === active) ?? null;
-  const curCount = cur ? counts[ranked.indexOf(cur)] : 0;
-
+function AllFunds({ b }: { b: Budget }) {
+  const rda = b.funds.find((f) => f.key === 'rda')?.total ?? 0;
+  const slices: Slice[] = useMemo(() => {
+    const ranked = [...b.funds].sort((x, y) => y.total - x.total);
+    const big = ranked.slice(0, BIG_FUNDS);
+    const rest = ranked.slice(BIG_FUNDS);
+    const out: Slice[] = big.map((f, slot) => ({ key: f.key, slot, name: f.name, amount: f.total, items: [], note: f.about }));
+    if (rest.length) {
+      out.push({
+        key: 'rest',
+        slot: BIG_FUNDS,
+        name: `${rest.length} smaller funds`,
+        amount: rest.reduce((t, f) => t + f.total, 0),
+        items: rest.map((f) => ({ name: f.name, amount: f.total })),
+      });
+    }
+    return out;
+  }, [b]);
   return (
-    <div className="vc-bud-split">
-      <div className="vc-bud-squares-wrap">
-        <h3 className="vc-bud-q">Every $100 of {noun}</h3>
-        <div
-          className="vc-bud-squares"
-          aria-hidden="true"
-          onPointerLeave={() => setHov(null)}
-          onClick={(e) => {
-            const key = (e.target as HTMLElement).dataset.key;
-            if (key) setSel((c) => (c === key ? null : key));
-          }}
-        >
-          {cells.map((key, i) => {
-            const s = ranked.find((r) => r.key === key)!;
-            return <i key={i} data-key={key} data-dim={active != null && active !== key} style={swatch(s.slot)} onPointerEnter={() => setHov(key)} />;
-          })}
-        </div>
-        <p className="vc-bud-readout" aria-live="polite">
-          {cur ? (
-            <>
-              <b>{cur.name}</b>: {curCount} of 100 squares, {short(cur.amount)} ({pct(cur.amount, total)})
-            </>
-          ) : (
-            <>{caption}</>
-          )}
-        </p>
-      </div>
-
-      <ul className="vc-bud-rows">
-        {ranked.map((s, i) => {
-          const open = sel === s.key;
-          return (
-            <li key={s.key} data-open={open} data-dim={active != null && active !== s.key} onPointerEnter={() => setHov(s.key)} onPointerLeave={() => setHov(null)}>
-              <button type="button" className="vc-bud-row" aria-expanded={open} onClick={() => setSel(open ? null : s.key)}>
-                <i className="vc-bud-sw" style={swatch(s.slot)} />
-                <span className="vc-bud-row-name">{s.name}</span>
-                <span className="vc-bud-row-n">{counts[i] > 0 ? `$${counts[i]}` : '<$1'}</span>
-                <span className="vc-bud-row-amt">{short(s.amount)}</span>
-                <ChevronDown size={15} strokeWidth={1.8} className="vc-bud-chev" />
-              </button>
-              {open && (
-                <ul className="vc-bud-items">
-                  {[...s.items]
-                    .sort((a, b) => b.amount - a.amount)
-                    .map((it) => (
-                      <li key={it.name}>
-                        <span>{it.name}</span>
-                        <span className="vc-bud-items-amt">{money(it.amount)}</span>
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-function Numbers({ summary, children }: { summary: string; children: ReactNode }) {
-  return (
-    <details className="vc-bud-table">
-      <summary>{summary}</summary>
-      <div className="vc-bud-scroll">{children}</div>
-    </details>
+    <section className="vc-bud-sec">
+      <h2>All nine city funds</h2>
+      <p className="vc-bud-lede">
+        The General Fund is one of nine. Together they hold {money(b.allFundsTotal)} for fiscal 2027, and {share(rda, b.allFundsTotal)} of it is the Redevelopment Agency&apos;s work on roads, utilities and the downtown core.
+      </p>
+      <Split kind="donut" slices={slices} noun="money" title="Money in each fund" centerCaption="all funds" caption="Tap a color to see what the fund is for." />
+      <p className="vc-bud-fine">
+        Each fund&apos;s budgeted money for the year, including savings carried over from earlier years (the Redevelopment Agency&apos;s includes $13.0 million). Money one fund sends to another shows in both. From the All Funds Summary, page 3 of the budget book.
+      </p>
+    </section>
   );
 }
 
@@ -148,7 +96,8 @@ function SpendTab({ b }: { b: Budget }) {
   );
   return (
     <>
-      <Squares slices={slices} noun="spending" caption="Tap a color to see what is inside." />
+      <Split kind="switch" slices={slices} noun="spending" title="General Fund spending" centerCaption="General Fund" caption="Tap a color to see what is inside." />
+      <AllFunds b={b} />
       <Numbers summary="See every department as a table">
         <table>
           <thead>
@@ -192,7 +141,7 @@ function RevenueTab({ b }: { b: Budget }) {
           Taxes are <b>{share} of every $100</b> ({short(taxes)})
         </p>
       </div>
-      <Squares slices={slices} noun="revenue" caption="Tap a color to see what is inside." />
+      <Split kind="switch" slices={slices} noun="revenue" title="General Fund revenue" centerCaption="General Fund" caption="Tap a color to see what is inside." />
       <Numbers summary="See every revenue line as a table">
         <table>
           <thead>
@@ -243,9 +192,28 @@ function ProjectsTab({ b }: { b: Budget }) {
   const shownTotal = shown.reduce((s, p) => s + p.amount, 0);
   const allTotal = b.projects.reduce((t, p) => t + p.amount, 0);
   const general = totals.get('general')?.total ?? 0;
+  const ring: Slice[] = useMemo(
+    () => b.projectFunds.map((f, slot) => ({ key: f.key, slot, name: f.name, amount: totals.get(f.key)?.total ?? 0, items: [] })).filter((x) => x.amount > 0),
+    [b, totals],
+  );
 
   return (
     <>
+      {narrow && (
+        <div className="vc-bud-ring">
+          <Donut
+            slices={ring}
+            total={allTotal}
+            active={fund}
+            format={short}
+            caption="in projects"
+            label="Capital project money by fund. Tap a color to list that fund's projects."
+            digits={0}
+            onHover={() => undefined}
+            onPick={(k) => setFund((c) => (c === k ? null : k))}
+          />
+        </div>
+      )}
       {!narrow && (
       <div className="vc-bud-tree" style={{ aspectRatio: `${W} / ${H}` }} role="group" aria-label="Capital project money by fund">
         {tiles.map((t) => {
@@ -420,6 +388,7 @@ export default function BudgetPage() {
 
           {tab === 'spend' && <SpendTab b={b} />}
           {tab === 'revenue' && <RevenueTab b={b} />}
+          {tab === 'sales' && <SalesTaxTab b={b} />}
           {tab === 'projects' && <ProjectsTab b={b} />}
           {tab === 'past' && <BudgetArchive />}
 
@@ -427,6 +396,7 @@ export default function BudgetPage() {
             <footer className="vc-bud-sources">
               <h2>Sources</h2>
               <ul>
+                {tab === 'sales' && <SalesTaxSources />}
                 <li>
                   <Link to={docHref(b.docs.book)}>
                     <FileText size={13} /> FY 27 Final Budget (PDF)

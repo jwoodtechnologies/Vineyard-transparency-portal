@@ -1,4 +1,5 @@
 /** Budget page helpers: types for GET /api/budget, money formatting, the "per $100" split, the treemap layout and fiscal-year labels for past budgets. */
+import type { CSSProperties } from 'react';
 import type { DocumentSummary } from '@/types/models';
 
 export interface BudgetFund {
@@ -82,6 +83,18 @@ export function short(n: number): string {
 /** "+$602K" or "-$44K". */
 export function signed(n: number): string {
   return `${n > 0 ? '+' : n < 0 ? '-' : ''}${short(Math.abs(n))}`;
+}
+
+/** The page's color slot as a CSS variable: slots 0 to 6 are --b1 to --b7. */
+export const swatch = (slot: number): CSSProperties => ({ '--c': `var(--b${(slot % 7) + 1})` }) as CSSProperties;
+
+/** 27%, 6.4%, <1%. With digits 1, always one decimal. */
+export function share(part: number, whole: number, digits: 0 | 1 = 0): string {
+  const p = whole > 0 ? (part / whole) * 100 : 0;
+  if (digits === 1) return `${p.toFixed(1)}%`;
+  if (p >= 9.5) return `${Math.round(p)}%`;
+  if (p >= 1) return `${p.toFixed(1)}%`;
+  return p > 0 ? '<1%' : '0%';
 }
 
 export function pct(part: number, whole: number, digits = 1): string {
