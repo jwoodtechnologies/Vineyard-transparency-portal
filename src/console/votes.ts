@@ -53,6 +53,14 @@ export function useMemberNames(): (member: string, full?: string | null) => { na
   };
 }
 
+/** The count shown next to a result. When the minutes name how each member voted, the count is taken from those names (the minutes sometimes print a total that does not match their own list). */
+export function motionTally(m: MotionRow): string | null {
+  const named = m.votes.filter((v) => v.vote === 'yes' || v.vote === 'no' || v.vote === 'abstain');
+  if (named.length < 2) return m.tally;
+  const n = (k: string) => named.filter((v) => v.vote === k).length;
+  return n('abstain') > 0 ? `${n('yes')}-${n('no')}-${n('abstain')}` : `${n('yes')}-${n('no')}`;
+}
+
 /** What was voted on, in a few words: the agenda item when the motion just says "approve item 5.4". */
 export function motionLabel(m: MotionRow): string {
   const item = (m.item ?? '').replace(/^\d+(?:\.\d+)*\.?\s+/, '').replace(/\s*\([^)]*\)\s*$/, '').trim();

@@ -10,7 +10,7 @@ import { Check, ChevronDown, ChevronRight, FileText, Search, X } from 'lucide-re
 import { DocLink } from './DocLink';
 import { Frame } from './Chrome';
 import { useJson } from './api';
-import { motionDetail, motionLabel, useMemberNames, type MotionRow, type VoteMember } from './votes';
+import { motionDetail, motionLabel, motionTally, useMemberNames, type MotionRow, type VoteMember } from './votes';
 import { usePeople } from './people';
 
 const BODIES: Array<[string, string]> = [
@@ -95,7 +95,7 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
         </span>
         <span className="vc-vt-result" data-result={m.result}>
           {outcome}
-          {m.tally ? ` ${m.tally}` : ''}
+          {motionTally(m) ? ` ${motionTally(m)}` : ''}
         </span>
       </div>
       {(m.items?.length ?? 0) > 0 && (
@@ -195,7 +195,7 @@ function VoteGrid({ items, member, roster }: { items: MotionRow[]; member: strin
               </div>
               <span className="vc-vt-result vc-vg-res" data-result={m.result}>
                 {outcome}
-                {m.tally ? ` ${m.tally}` : ''}
+                {motionTally(m) ? ` ${motionTally(m)}` : ''}
               </span>
               {cols.length > 0 && (
                 <span className="vc-vg-cells">
