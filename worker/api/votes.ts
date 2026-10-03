@@ -11,7 +11,7 @@ import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 13;
+export const VOTES_PARSER = 14;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {

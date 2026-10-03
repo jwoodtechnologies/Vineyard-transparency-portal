@@ -9,7 +9,20 @@ import { Check, ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
 import { DocLink } from './DocLink';
 import { Frame } from './Chrome';
 import { useJson } from './api';
-import { motionDetail, motionLabel, motionTally, sheetRows, STATUS_WORD, useMemberNames, type MotionRow, type SheetRow } from './votes';
+import {
+  mergeRows,
+  motionDetail,
+  motionLabel,
+  motionTally,
+  pendingRows,
+  sheetRows,
+  STATUS_WORD,
+  useMemberNames,
+  type MeetingLite,
+  type MinutesRead,
+  type MotionRow,
+  type SheetRow,
+} from './votes';
 import { usePeople } from './people';
 
 interface Attendance {
@@ -153,27 +166,36 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   );
 }
 
-/** What the marks in the chart mean. */
-function Key() {
+/** What the marks in the chart mean, and (council) the switch that adds the Redevelopment Agency's votes. */
+function Key({ rda, onRda }: { rda?: boolean; onRda?: () => void }) {
   return (
-    <p className="vc-sh-key" aria-label="Key to the marks">
-      <b>Key</b>
-      <span>
-        <Check size={14} strokeWidth={2.8} /> Yes
-      </span>
-      <span>
-        <X size={14} strokeWidth={2.8} /> No
-      </span>
-      <span>
-        <i>A</i> Abstained
-      </span>
-      <span>
-        <i>R</i> Recused
-      </span>
-      <span>
-        <i data-absent="true" /> Absent
-      </span>
-    </p>
+    <div className="vc-sh-bar">
+      <p className="vc-sh-key" aria-label="Key to the marks">
+        <span>
+          <Check size={14} strokeWidth={2.8} /> Yes
+        </span>
+        <span>
+          <X size={14} strokeWidth={2.8} /> No
+        </span>
+        <span>
+          <i>A</i> Abstained
+        </span>
+        <span>
+          <i>R</i> Recused
+        </span>
+        <span>
+          <i data-absent="true" /> Absent
+        </span>
+      </p>
+      {onRda && (
+        <button type="button" role="switch" aria-checked={!!rda} className="vc-sw" onClick={onRda}>
+          <span className="vc-sw-track" aria-hidden="true">
+            <span className="vc-sw-knob" />
+          </span>
+          <span className="vc-sw-label">RDA votes</span>
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -237,9 +259,9 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
             const tally = motionTally(m);
             const to = m.meetingId ? `/meetings/${encodeURIComponent(m.meetingId)}` : null;
             const date = fmt(m.date, { month: 'short', day: 'numeric', year: 'numeric' });
-            const tag = showBody && m.bodyId === 'redevelopment-agency' ? 'RDA Board' : null;
+            const tag = showBody && m.bodyId === 'redevelopment-agency' ? 'RDA' : null;
             return (
-              <tbody key={m.id} data-open={isOpen ? 'true' : undefined}>
+              <tbody key={m.id} data-open={isOpen ? 'true' : undefined} data-pending={r.pending ? 'true' : undefined}>
                 <tr className="vc-sh-row" onClick={() => toggle(m.id)}>
                   <td className="vc-sh-what">
                     <button
@@ -271,7 +293,9 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
                   <td className="vc-sh-status" data-status={r.status}>
                     {STATUS_WORD[r.status]}
                   </td>
-                  {unanimous || rolled.length === 0 ? (
+                  {r.pending ? (
+                    <td colSpan={cols.length} className="vc-sh-note" aria-hidden="true" />
+                  ) : unanimous || rolled.length === 0 ? (
                     <td colSpan={cols.length} className="vc-sh-note" data-tone={unanimous ? 'good' : undefined}>
                       {unanimous ? 'Unanimous' : 'Names not listed'}
                     </td>
@@ -303,48 +327,61 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
                   <tr className="vc-sh-more">
                     <td colSpan={span}>
                       <div className="vc-sh-detail">
-                        <p className="vc-sh-line">
-                          <b>{STATUS_WORD[r.status]}</b>
-                          {tally ? ` ${tally}` : ''}
-                          {unanimous ? ', unanimous' : ''}
-                          {` on ${fmt(m.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
-                          {m.bodyName ? `, ${m.bodyId === 'redevelopment-agency' ? 'RDA Board' : m.bodyName}` : ''}
-                        </p>
-                        {motionText && <p className="vc-sh-line">{`Motion: ${motionText.charAt(0).toUpperCase()}${motionText.slice(1)}`}</p>}
-                        {(m.mover || m.seconder) && (
+                        {r.pending ? (
                           <p className="vc-sh-line">
-                            {m.mover ? `Moved by ${surname(m.mover)}` : ''}
-                            {m.mover && m.seconder ? ', ' : ''}
-                            {m.seconder ? `${m.mover ? 'seconded' : 'Seconded'} by ${surname(m.seconder)}` : ''}
+                            {`${m.bodyName ?? 'The meeting'} met on ${fmt(m.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}. The city has not posted the minutes yet. The votes will appear here once it does.`}
                           </p>
-                        )}
-                        {(m.items?.length ?? 0) > 0 && (
-                          <ol className="vc-vt-items">
-                            {m.items!.map((it) => (
-                              <li key={it}>{it.replace(/^(\d+\.\d+)\s+/, '$1  ')}</li>
-                            ))}
-                          </ol>
-                        )}
-                        {m.refs.length > 0 && !/resolution|ordinance/i.test(r.title) && <p className="vc-sh-line">{m.refs.join(', ')}</p>}
-                        {roll.length > 0 ? (
-                          <ul className="vc-sh-roll" aria-label="How each member voted">
-                            {roll.map((v) => (
-                              <li key={v.member} data-on={isOn(v.member) ? 'true' : undefined}>
-                                <span>
-                                  {isMayor(v.member) || (mayor !== null && sameMember(v.member, mayor)) ? `Mayor ${surname(v.member)}` : `${seat(m.bodyId)} ${surname(v.member)}`}
-                                </span>
-                                <b>{VOTE_LABEL[v.vote] ?? v.vote}</b>
-                              </li>
-                            ))}
-                          </ul>
                         ) : (
-                          !unanimous && <p className="vc-sh-line">The minutes do not say how each member voted.</p>
+                          <>
+                            {r.full !== r.title && <p className="vc-sh-line">{r.full}</p>}
+                            <p className="vc-sh-line">
+                              <b>{STATUS_WORD[r.status]}</b>
+                              {tally ? ` ${tally}` : ''}
+                              {unanimous ? ', unanimous' : ''}
+                              {` on ${fmt(m.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
+                              {m.bodyName ? `, ${m.bodyId === 'redevelopment-agency' ? 'RDA Board' : m.bodyName}` : ''}
+                            </p>
+                            {motionText && <p className="vc-sh-line">{`Motion: ${motionText.charAt(0).toUpperCase()}${motionText.slice(1)}`}</p>}
+                            {(m.mover || m.seconder) && (
+                              <p className="vc-sh-line">
+                                {m.mover ? `Moved by ${surname(m.mover)}` : ''}
+                                {m.mover && m.seconder ? ', ' : ''}
+                                {m.seconder ? `${m.mover ? 'seconded' : 'Seconded'} by ${surname(m.seconder)}` : ''}
+                              </p>
+                            )}
+                            {(m.items?.length ?? 0) > 0 && (
+                              <ol className="vc-vt-items">
+                                {m.items!.map((it) => (
+                                  <li key={it}>{it.replace(/^(\d+\.\d+)\s+/, '$1  ')}</li>
+                                ))}
+                              </ol>
+                            )}
+                            {m.refs.length > 0 && !/resolution|ordinance/i.test(r.title) && <p className="vc-sh-line">{m.refs.join(', ')}</p>}
+                            {roll.length > 0 ? (
+                              <ul className="vc-sh-roll" aria-label="How each member voted">
+                                {roll.map((v) => (
+                                  <li key={v.member} data-on={isOn(v.member) ? 'true' : undefined}>
+                                    <span>
+                                      {isMayor(v.member) || (mayor !== null && sameMember(v.member, mayor))
+                                        ? `Mayor ${surname(v.member)}`
+                                        : `${seat(m.bodyId)} ${surname(v.member)}`}
+                                    </span>
+                                    <b>{VOTE_LABEL[v.vote] ?? v.vote}</b>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              !unanimous && <p className="vc-sh-line">The minutes do not say how each member voted.</p>
+                            )}
+                            {m.tieBreak && mayor && <p className="vc-sh-line">{`Mayor ${surname(mayor)} broke the tie.`}</p>}
+                          </>
                         )}
-                        {m.tieBreak && mayor && <p className="vc-sh-line">{`Mayor ${surname(mayor)} broke the tie.`}</p>}
                         <p className="vc-sh-links">
-                          <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
-                            <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
-                          </DocLink>
+                          {!r.pending && (
+                            <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
+                              <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
+                            </DocLink>
+                          )}
                           {to && (
                             <Link to={to} className="vc-vt-min">
                               Meeting page <ChevronRight size={12} />
@@ -373,6 +410,8 @@ function YearSection({
   commission,
   showBody,
   result,
+  bodies,
+  plain,
 }: {
   year: number;
   query: string;
@@ -382,9 +421,25 @@ function YearSection({
   commission: boolean;
   showBody: boolean;
   result: string;
+  /** The bodies on this chart, for finding meetings whose minutes are not posted yet. */
+  bodies: string[];
+  /** No filter is narrowing the list, so a meeting with no minutes belongs on it. */
+  plain: boolean;
 }) {
   const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?scope=current&${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
-  const rows = useMemo<SheetRow[]>(() => (list.status === 'done' ? sheetRows(list.data.items, result === 'carried' || result === 'failed' ? result : '') : []), [list, result]);
+  const meet = (b: string | undefined) => (open && plain && b ? `/api/meetings?year=${year}&body=${b}&pageSize=100&sort=date_desc` : null);
+  const first = useJson<{ items: MeetingLite[] }>(meet(bodies[0]));
+  const second = useJson<{ items: MeetingLite[] }>(meet(bodies[1]));
+  const read = useJson<{ meetings: MinutesRead[] }>(open && plain ? `/api/votes/meetings?year=${year}` : null);
+  // Utah's evening is already tomorrow in UTC, so the day is counted from six hours back.
+  const [today] = useState(() => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
+  const rows = useMemo<SheetRow[]>(() => {
+    if (list.status !== 'done') return [];
+    const votes = sheetRows(list.data.items, result === 'carried' || result === 'failed' ? result : '');
+    if (!plain || read.status !== 'done' || first.status !== 'done' || (bodies[1] && second.status !== 'done')) return votes;
+    const held = [...first.data.items, ...(second.status === 'done' ? second.data.items : [])];
+    return mergeRows(votes, pendingRows(held, read.data.meetings, today));
+  }, [list, result, plain, first, second, read, bodies, today]);
   // The council's columns are everyone serving now: the mayor first, then the council in alphabetical order. The commission's are whoever voted.
   const people = usePeople();
   const { council, mayor } = useMemo(() => {
@@ -420,7 +475,18 @@ function YearSection({
 export function VotesView({ commission = false }: { commission?: boolean }) {
   const [params, setParams] = useSearchParams();
   const asked = params.get('body') ?? '';
-  const body = commission ? 'planning-commission' : ['city-council', 'redevelopment-agency'].includes(asked) ? asked : '';
+  const rdaOnly = !commission && asked === 'redevelopment-agency';
+  const rda = !commission && (params.get('rda') === '1' || rdaOnly);
+  // The council's chart is the City Council alone; the switch adds the Redevelopment Agency's votes, where the same members sit as its board.
+  const body = commission ? 'planning-commission' : rdaOnly ? 'redevelopment-agency' : rda ? '' : 'city-council';
+  const bodies = commission ? ['planning-commission'] : rdaOnly ? ['redevelopment-agency'] : rda ? ['city-council', 'redevelopment-agency'] : ['city-council'];
+  const toggleRda = () => {
+    const next = new URLSearchParams(params);
+    next.delete('body');
+    if (rda) next.delete('rda');
+    else next.set('rda', '1');
+    setParams(next, { replace: true });
+  };
   const member = params.get('member') ?? '';
   const q = params.get('q') ?? '';
   const result = params.get('result') ?? '';
@@ -463,7 +529,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
       )}
       {commission && view === 'attendance' && att && <AttendanceView a={att} />}
 
-      {view !== 'attendance' && <Key />}
+      {view !== 'attendance' && <Key rda={rda} onRda={commission ? undefined : toggleRda} />}
       {years.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
           <span style={{ width: '60%' }} />
@@ -478,6 +544,8 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
             result={result}
             commission={commission}
             showBody={!body}
+            bodies={bodies}
+            plain={!member && !q && !result && !vote}
             query={query}
             member={member || null}
             open={isOpen(y.year, i)}

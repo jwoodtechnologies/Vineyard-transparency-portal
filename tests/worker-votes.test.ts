@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { namesIn, parseMinutes } from '../worker/lib/votes';
+import { consentItems, headingAt, namesIn, parseMinutes } from '../worker/lib/votes';
 
 const v = (m: { votes: Array<{ member: string; vote: string }> }) => Object.fromEntries(m.votes.map((x) => [x.member, x.vote]));
 
@@ -160,5 +160,97 @@ describe('public sign-in list', () => {
     expect(r.fullNames.McCumber).toBe('Parker McCumber');
     expect(r.motions[0].votes.map((v) => v.member).sort()).toEqual(['Holdaway', 'Lauret', 'McCumber', 'Nair', 'Wood']);
     expect(r.motions[0].tally).toBe('5-0');
+  });
+});
+
+describe('agenda headings that wrap onto the next line', () => {
+  it('joins the rest of a long heading and leaves short ones alone', () => {
+    const lines = [
+      '5.4. Approve Ordinance 2026-07 Amending Municipal Code for the Planning',
+      '',
+      'Department (Anthony Fletcher)',
+      '',
+      'Items 5.4 and 5.5 were removed from the Consent Items and discussed by Council.',
+    ];
+    expect(headingAt(lines, 0)).toBe('5.4. Approve Ordinance 2026-07 Amending Municipal Code for the Planning Department (Anthony Fletcher)');
+    expect(headingAt(['8.3. Adopt Resolution 2026-29 City Manager', 'Responsibilities and Duties (Mayor Stratton)'], 0)).toBe('8.3. Adopt Resolution 2026-29 City Manager Responsibilities and Duties (Mayor Stratton)');
+    expect(headingAt(['3.2. Travel Policy Review', 'Administrative Director David Kyle presented the proposed travel policy to the council.'], 0)).toBe('3.2. Travel Policy Review');
+    expect(headingAt(['3.3. Municipal Waste Water Planning Program (MWPP) Survey Review', 'Councilmember Holdaway was excused at 12:58pm.'], 0)).toBe('3.3. Municipal Waste Water Planning Program (MWPP) Survey Review');
+    expect(headingAt(['8.1. Approve Ordinance 2026-09, Stormwater Management Code Update (Naseem', 'Ghandour)'], 0)).toBe('8.1. Approve Ordinance 2026-09, Stormwater Management Code Update (Naseem Ghandour)');
+    expect(headingAt(['4.1. Amend the Consolidated Fee Schedule for the Transportation Utility Fee and', 'Vineyard Days. Allow the Mayor the power to lower Fees.'], 0)).toBe('4.1. Amend the Consolidated Fee Schedule for the Transportation Utility Fee and Vineyard Days');
+    expect(headingAt(['8.1. Approval of the February 12th 2026, City Council Special Session Meeting', 'Minutes', '8.2. Next item'], 0)).toBe('8.1. Approval of the February 12th 2026, City Council Special Session Meeting Minutes');
+  });
+  it('names the item in full for a motion that follows it', () => {
+    const text = `NOTICE OF A REGULAR
+CITY COUNCIL MEETING
+August 11, 2026, at 4:00 PM
+Present
+Mayor Zack Stratton
+Councilmember Jacob Holdaway
+Councilmember David Lauret
+Councilmember Parker McCumber
+Staff Present: City Manager Brian Voeks
+5.4. Approve Ordinance 2026-07 Amending Municipal Code for the Planning
+
+Department (Anthony Fletcher)
+
+Council Member Lauret asked for clarification.
+Motion: Council Member Lauret moved to approve item 5.4 as presented. Council Member McCumber seconded the motion. Roll Call Vote. Yes: Council Members Holdaway, Lauret, and McCumber. No: None. Motion Passed 3-0.`;
+    const p = parseMinutes(text, '2026-08-11');
+    expect(p.motions).toHaveLength(1);
+    expect(p.motions[0].item).toBe('5.4 Approve Ordinance 2026-07 Amending Municipal Code for the Planning Department (Anthony Fletcher)');
+  });
+});
+
+describe('items named by the resolution a motion adopts', () => {
+  const text = `NOTICE OF A REGULAR
+CITY COUNCIL MEETING
+January 20, 2026, at 6:00 PM
+Present
+Mayor Zack Stratton
+Councilmember Jacob Holdaway
+Councilmember David Lauret
+Staff Present: City Manager Brian Voeks
+2.1. City Council Listening Session for Vineyard Interfaith and Non-Profit Organizations
+5.1. Approve Resolution 2026-03 Supporting Interfaith Partnerships (Jane Doe)
+Motion: Council Member Lauret moved to Adopt Resolution 202603 with the proposed amendments. Council Member Holdaway seconded the motion. Roll Call Vote. Yes: Council Members Holdaway and Lauret. No: None. Motion Passed 2-0.`;
+  it('finds the heading that carries the resolution number', () => {
+    const p = parseMinutes(text, '2026-01-20');
+    expect(p.motions[0].item).toBe('5.1 Approve Resolution 2026-03 Supporting Interfaith Partnerships (Jane Doe)');
+  });
+});
+
+describe('consent lists', () => {
+  it('reads the numbered list under the consent heading, not a later sentence about it', () => {
+    const before = `5. CONSENT ITEMS
+5.1. Approval of the July 7, 2026, City Council Meeting Minutes
+5.2. Approve Resolution 2026-30 Updating the Records Retention Schedule (Jane Doe)
+Items 5.4 and 5.5 were removed from the Consent Items and discussed by Council.
+`;
+    expect(consentItems(before, 'approve the Consent Items 5.1 and 5.2 as presented')).toEqual([
+      '5.1 Approval of the July 7, 2026, City Council Meeting Minutes',
+      '5.2 Approve Resolution 2026-30 Updating the Records Retention Schedule',
+    ]);
+  });
+});
+
+describe('sub-item numbers set on their own line', () => {
+  const vote = (n: string) => `Motion: COUNCILMEMBER NAIR MOVED TO ADOPT ${n}. COUNCILMEMBER LAURET SECONDED. COUNCILMEMBERS NAIR AND LAURET VOTED IN FAVOR. THE MOTION PASSED UNANIMOUSLY.`;
+
+  it('names the item from the line below the number', () => {
+    const minutes = `Present: Councilmember Nair, Councilmember Lauret\n10. BUSINESS ITEMS\n\n10.1.\n\nAmending The Travel Policy\n\n${vote('RESOLUTION 2026-18')}\n\n10.2.\n\nARCH Commission RAP Tax Grant Awards (Resolution 2026-06)\n\nThe council discussed the amended suggestions.\n${vote('RESOLUTION 2026-06 WITH ADJUSTMENTS')}`;
+    const motions = parseMinutes(minutes, '2026-03-24').motions;
+    expect(motions[0]?.item).toBe('10.1 Amending The Travel Policy');
+    expect(motions[1]?.item).toMatch(/^10\.2 ARCH Commission RAP Tax Grant Awards/);
+  });
+
+  it('takes the title above the number when a description follows it', () => {
+    const minutes = `Present: Councilmember Nair, Councilmember Lauret\n10. BUSINESS ITEMS\n\nApprove ARCH Grant Extension Request (Brian Vawdrey)\n\n10.1.\n\nThe Council considered a request related to arts grants approved in the prior\nfiscal year. Mr. Vawdrey explained that certain projects requested deadline extensions.\n${vote('THE ARTS GRANT EXTENSION')}`;
+    expect(parseMinutes(minutes, '2026-06-09').motions[0]?.item).toBe('10.1 Approve ARCH Grant Extension Request (Brian Vawdrey)');
+  });
+
+  it('joins a title that runs through the number', () => {
+    const minutes = `Present: Councilmember Nair, Councilmember Lauret\n10. BUSINESS ITEMS\n\nApprove Holdaway Fields Development Agreement Amendment (Anthony\n\n10.2. Fletcher and David Herring)\n\nThe Council considered a proposed amendment.\n${vote('THE AMENDMENT')}`;
+    expect(parseMinutes(minutes, '2026-06-09').motions[0]?.item).toBe('10.2 Approve Holdaway Fields Development Agreement Amendment (Anthony Fletcher and David Herring)');
   });
 });

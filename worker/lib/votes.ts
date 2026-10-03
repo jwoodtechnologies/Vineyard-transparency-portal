@@ -126,6 +126,37 @@ const TIE_A = new RegExp(String.raw`\btie\b[^.]{0,40}?\b(?:resolved|broken|broke
 const TIE_B = new RegExp(String.raw`\bmayor\s+${NAME}\s+voted\s+(yes|aye|no|nay)\s+to break the tie`, 'i');
 const MOTION_START = new RegExp(String.raw`\bmotion:\s*|\b${TITLE}\s+${NAME}\s+(?:made a motion|moved|motioned|motions? to)\b`, 'gi');
 
+/** Lines that start narrative or a new part of the minutes, never the rest of a heading that wrapped. */
+const NOT_HEADING_TAIL = /^(?:\d{1,2}(?:\.\d{1,2}){0,2}\.?\s|motion\b|vote\b|roll call\b|page \d|items?\s|council\b|mayor\b|board\b|chair\b|commission(?:er)?\b|mr\.|ms\.|mrs\.|dr\.|staff\b|public\b|present\b|absent\b|call to order\b|adjourn|this item\b|moved\b|none\b|no\s|there\b|discussed\b|interim\b|deputy\b|senior\b|long range\b|chief\b|finance\b|administrative\b|planner\b|planning (?:technician|manager|director|commission)\b|city (?:manager|recorder|attorney|staff)\b|at the request\b|the\s)/i;
+const SENTENCE_VERB = /\b(?:was|were|will|provided|presented|discussed|explained|stated|asked|noted|reported|updated|introduced|outlined|led|gave|raised|recognized|congratulated|requests?|requested|requesting|proposes?|considered|reviewed|received|recommended|heard|approved|presents?)\b/i;
+
+/**
+ * An agenda heading with the lines it wrapped onto. The minutes break a long heading at the page width
+ * ("5.4. Approve Ordinance 2026-07 Amending Municipal Code for the Planning" and then, on the next line,
+ * "Department (Anthony Fletcher)"), so the heading on its own line is only the start of its name.
+ */
+export function headingAt(lines: string[], at: number): string {
+  let head = (lines[at] ?? '').replace(/\s+/g, ' ').trim();
+  let i = at;
+  for (let step = 0; step < 3; step++) {
+    const open = /\([^)]*$/.test(head);
+    const short = !open && head.length < 68;
+    if (!open && /[).:;!?]$/.test(head)) break;
+    let j = i + 1;
+    while (j < lines.length && !lines[j].trim() && j - i < 3) j++;
+    const next = (lines[j] ?? '').replace(/\s+/g, ' ').trim();
+    if (!next || next.length > 110) break;
+    // A short heading is joined only to a fragment that closes with the presenter in brackets ("Responsibilities and Duties (Mayor Stratton)").
+    if (short && !(next.length <= 60 && /\)$/.test(next) && !/\.\s/.test(next) && !NOT_HEADING_TAIL.test(next) && !SENTENCE_VERB.test(next))) break;
+    if (!open && (NOT_HEADING_TAIL.test(next) || (SENTENCE_VERB.test(next) && !/\)$/.test(next)))) break;
+    const first = next.split(/\.\s+(?=[A-Z])/)[0] ?? next;
+    head = `${head} ${first}`.trim();
+    i = j;
+    if (first !== next) break;
+  }
+  return head;
+}
+
 function lastItem(before: string): string | null {
   // The agenda item heading closest before the motion: "5.4 Ordinance 2026-12 Plat Signatures".
   const lines = before.slice(-6000).split(/\n/);
@@ -133,10 +164,10 @@ function lastItem(before: string): string | null {
     const m = lines[i].trim().match(/^(\d{1,2}(?:\.\d{1,2}){0,2})\.?\s+([A-Z][^\n]{3,600})$/);
     if (m && !/^\d+$/.test(m[2])) {
       // A heading run into its first sentence ("3. CLOSED SESSION The Chair and Board ...") keeps the heading.
-      const head = m[2].replace(/\s+/g, ' ').trim();
+      const head = headingAt(lines, i).replace(/^\d{1,2}(?:\.\d{1,2}){0,2}\.?\s+/, '').replace(/\s+/g, ' ').trim();
       const caps = head.match(/^([A-Z0-9][A-Z0-9 &,'()/-]{3,}?)(?=\s+[A-Z][a-z])/);
       const label = caps ? caps[1] : head.split(/(?<=[a-z)])\.\s/)[0];
-      return `${m[1]} ${label}`.slice(0, 160);
+      return `${m[1]} ${label}`.slice(0, 220);
     }
   }
   return null;
@@ -147,14 +178,19 @@ function lastItem(before: string): string | null {
  * before the motion, narrowed to the numbers the motion names, without any it removed.
  */
 export function consentItems(before: string, motion: string): string[] {
-  const at = before.search(/\bconsent\s+(?:items|agenda|calendar)\b(?![\s\S]*\bconsent\s+(?:items|agenda|calendar)\b)/i);
+  // The last CONSENT heading that is followed by the numbered list (not a later sentence such as "Items 5.4 and 5.5 were removed from the Consent Items").
+  let at = -1;
+  for (const h of before.matchAll(/\bconsent\s+(?:items|agenda|calendar)\b/gi)) if (/^[\s\S]{0,600}?\n\s*\d{1,2}\.\d{1,2}\.?\s+[A-Z]/.test(before.slice((h.index ?? 0) + h[0].length))) at = h.index ?? 0;
   if (at < 0) return [];
   const section = before.slice(at);
   const out: Array<[string, string]> = [];
-  for (const m of section.matchAll(/(?:^|\n)\s*(\d{1,2}\.\d{1,2})\.?\s+([A-Z][^\n]{3,220})/g)) {
-    const title = m[2].replace(/\s+/g, ' ').replace(/\s*\((?:[A-Z][a-z]+ ?){1,3}\)\s*$/, '').trim();
+  const rows = section.split('\n');
+  for (let k = 0; k < rows.length; k++) {
+    const m = rows[k].match(/^\s*(\d{1,2}\.\d{1,2})\.?\s+([A-Z][^\n]{3,220})/);
+    if (!m) continue;
+    const title = headingAt(rows, k).replace(/^\d{1,2}\.\d{1,2}\.?\s+/, '').replace(/\s+/g, ' ').replace(/\s*\((?:[A-Z][a-z]+ ?){1,3}\)\s*$/, '').trim();
     if (/^(motion|vote|yes|no)\b/i.test(title)) continue;
-    if (!out.some(([n]) => n === m[1])) out.push([m[1], title.slice(0, 180)]);
+    if (!out.some(([n]) => n === m[1])) out.push([m[1], title.slice(0, 220)]);
   }
   const named = [...motion.matchAll(/\b(\d{1,2}\.\d{1,2})\b/g)].map((m) => m[1]);
   const removed = (motion.match(/\b(?:remov\w*|except|exclud\w*|pull\w*|without)\b(?:[^.]|\.(?=\d))*/i)?.[0] ?? '').match(/\d{1,2}\.\d{1,2}/g) ?? ([] as string[]);
@@ -168,16 +204,96 @@ function itemFor(motion: string, flat: string): string | null {
   const n = motion.match(/\b(?:items?\s+)?(\d{1,2}\.\d{1,2})\b(?!\s*(?:million|%|percent|acres?))/i);
   if (!n) return null;
   const esc = n[1].replace('.', '\\.');
-  const line = flat.match(new RegExp(`(?:^|\\n)\\s*${esc}\\.?\\s+([A-Z][^\\n]{3,160})`));
-  return line ? `${n[1]} ${line[1].replace(/\s+/g, ' ').trim()}`.slice(0, 180) : null;
+  const lines = flat.split('\n');
+  const at = lines.findIndex((l) => new RegExp(`^\\s*${esc}\\.?\\s+[A-Z][^\\n]{3,160}`).test(l));
+  if (at < 0) return null;
+  return `${n[1]} ${headingAt(lines, at).replace(/^\d{1,2}\.\d{1,2}\.?\s+/, '').replace(/\s+/g, ' ').trim()}`.slice(0, 220);
+}
+
+/** The agenda heading that names a resolution or ordinance a motion adopts ("Adopt Resolution 202603" is item 5.1 "Approve Resolution 2026-03 ..."). */
+function itemByRef(motion: string, flat: string): { num: string; heading: string | null } | null {
+  const m = motion.match(/\b(?:resolution|ordinance)\s+u?((?:19|20)\d{2})\s*-?\s*(\d{2,3})\b/i);
+  if (!m) return null;
+  const num = `${m[1]}-${m[2]}`;
+  const re = new RegExp(`\\b${num}\\b`);
+  const lines = flat.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const h = lines[i].trim().match(/^(\d{1,2}\.\d{1,2})\.?\s+[A-Z]/);
+    if (!h) continue;
+    const full = headingAt(lines, i).replace(/^\d{1,2}\.\d{1,2}\.?\s+/, '').replace(/\s+/g, ' ').trim();
+    if (re.test(full) && !/\bminutes\b/i.test(full)) return { num, heading: `${h[1]} ${full}`.slice(0, 220) };
+  }
+  return { num, heading: null };
 }
 
 /** Every motion in a set of minutes, with mover, seconder, result and each member's vote. */
+const PAGE_HEADER = /^(?:page \d+ of \d+|.*\b(?:city council|planning commission|redevelopment agency)\b.*\b(?:agenda|minutes|summary)\b.*)$/i;
+
+/**
+ * Some minutes set a sub-item number on a line of its own. The title then sits below the number ("10.2." over "ARCH Commission ..."),
+ * above it ("Approve ARCH Grant Extension Request (Brian Vawdrey)" over "10.1."), or runs through it ("... (Anthony" / "10.2. Fletcher and David Herring)").
+ * Each is written back as one line, "10.2. Title", so everything that reads headings sees the same thing.
+ */
+export function joinNumbers(text: string): string {
+  const lines = text.split('\n');
+  const out: string[] = [];
+  const lastIndex = () => {
+    for (let k = out.length - 1; k >= 0 && out.length - k <= 4; k--) if (out[k].trim()) return k;
+    return -1;
+  };
+  const headingLike = (v: string) =>
+    v.length >= 6 && v.length <= 150 && /^[A-Z0-9"“]/.test(v) && v !== v.toUpperCase() && !/[.!?:]$/.test(v) && !/^\d{1,2}(?:\.\d{1,2})*\.?\s/.test(v) && !PAGE_HEADER.test(v) && !/^(?:motion|yes|no|vote|roll call)\b/i.test(v);
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^\s*(\d{1,2}\.\d{1,2})\.?\s*(.*)$/.exec(lines[i]);
+    if (!m) {
+      out.push(lines[i]);
+      continue;
+    }
+    const num = m[1];
+    let rest = m[2].trim();
+    let next = i + 1;
+    while (next < lines.length && next - i <= 3 && !lines[next].trim()) next++;
+    const nx = (lines[next] ?? '').trim();
+    const pi = lastIndex();
+    const prev = pi >= 0 ? out[pi].trim() : '';
+    // A heading that opened a bracket above the number and closes it after the number.
+    if (prev && /\([^)]*$/.test(prev) && !/^\d{1,2}\./.test(prev) && prev.length <= 150) {
+      const tail = rest || (/\)$/.test(nx) ? nx : '');
+      if (tail && /\)$/.test(tail)) {
+        out[pi] = `${num}. ${prev} ${tail}`;
+        if (!rest) i = next;
+        continue;
+      }
+    }
+    if (rest) {
+      out.push(lines[i]);
+      continue;
+    }
+    // The title above the number, with the description under it.
+    if (headingLike(prev) && (nx.length > 60 || /[.]$/.test(nx) || PAGE_HEADER.test(nx))) {
+      out[pi] = `${num}. ${prev}`;
+      continue;
+    }
+    if (nx && !PAGE_HEADER.test(nx)) {
+      rest = nx;
+      out.push(`${num}. ${rest}`);
+      i = next;
+      continue;
+    }
+    out.push(lines[i]);
+  }
+  return out.join('\n');
+}
+
 export function parseMinutes(text: string, date: string | null = null): ParsedMinutes {
   const head = text.slice(0, 2500);
   const { present, absent, full: listedFull } = attendance(head);
   // Line-numbered minutes put a bare number on its own line; those are not part of the words.
-  const flat = text.replace(/[‘’]/g, "'").replace(/[ \t]+/g, ' ').replace(/\n\s*\d{1,4}\s*(?=\n)/g, '\n');
+  let flat = text
+    .replace(/[‘’]/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\d{1,4}\s*(?=\n)/g, '\n');
+  flat = joinNumbers(flat);
   const starts: number[] = [];
   for (const m of flat.matchAll(MOTION_START)) {
     const at = m.index ?? 0;
@@ -239,7 +355,12 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     const refs = [...new Set([...seg.slice(0, 900).matchAll(/\b(resolution|ordinance)\s+(?:no\.?\s*)?((?:19|20)\d{2}\s*-\s*\d{1,3}[A-Z]?)/gi)].map((m) => `${titleCase(m[1])} ${m[2].replace(/\s+/g, '')}`))];
     motions.push({
       seq: motions.length + 1,
-      item: itemFor(textOut, flat) ?? lastItem(flat.slice(0, at)),
+      item: (() => {
+        const found = itemFor(textOut, flat) ?? lastItem(flat.slice(0, at));
+        if (found === 'Consent items') return found;
+        const ref = itemByRef(textOut, flat);
+        return ref?.heading && !found?.includes(ref.num) ? ref.heading : found;
+      })(),
       text: sentenceCase(textOut).slice(0, 700),
       mover: mover ? namesIn(mover[1])[0] ?? null : null,
       seconder: seconder ? namesIn(seconder[1])[0] ?? null : null,
