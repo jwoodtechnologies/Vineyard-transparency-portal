@@ -313,7 +313,7 @@ export default function ConstructionPage() {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Construction projects</h1>
-        <p className="vc-page-sub">What is being built in Vineyard, where, and when. From the city&apos;s own construction notices and project list.</p>
+        <p className="vc-page-sub">From the city&apos;s construction notices and project list.</p>
       </header>
 
       <section className="vc-cp-mapsec" ref={mapBox} aria-label="Map">
@@ -380,7 +380,7 @@ export default function ConstructionPage() {
             City&apos;s page <ArrowUpRight size={12} strokeWidth={2} />
           </a>
         </div>
-        {latest && <p className="vc-cp-lede">The city&apos;s most recent update is dated {shortDate(latest)}. For today&apos;s closures, call the project hotline on each card.</p>}
+        {latest && <p className="vc-cp-lede">Latest city update: {shortDate(latest)}.</p>}
         <div className="vc-cp-cards">
           {ACTIVE.map((p) => (
             <ActiveCard key={p.id} p={p} onShow={showActive} picked={pickedActive?.id === p.id} />
@@ -400,7 +400,7 @@ export default function ConstructionPage() {
         {plans.length > 0 && (
           <>
             <p className="vc-cp-lede">
-              {plans.length} projects from the city&apos;s Capital Improvement Plan are in the fiscal 2027 budget, about {millions(total)} in all. They are listed furthest along first. Tap one for its schedule and funding.
+              {plans.length} projects in the fiscal 2027 budget, {millions(total)} in all.
             </p>
             <div className="vc-cp-chips" role="group" aria-label="Filter by type">
               <button type="button" className="vc-chip" data-active={category === 'All'} onClick={() => setCategory('All')}>
@@ -418,7 +418,7 @@ export default function ConstructionPage() {
               ))}
             </ul>
             <p className="vc-cp-fine">
-              Stage and years come from the city&apos;s project list, which gives years only and can lag behind council decisions. Amounts are what the adopted budget sets aside this fiscal year (July 1, 2026 to June 30, 2027); a project can cost more over several years.
+              Stage and years: city project list (years only). Amounts: adopted FY27 budget, July 1, 2026 to June 30, 2027.
             </p>
           </>
         )}
@@ -428,7 +428,7 @@ export default function ConstructionPage() {
             Also funded this year <span>{ALSO_FUNDED.length}</span>
             <ChevronDown size={15} strokeWidth={1.9} className="vc-cp-docs-chev" />
           </summary>
-          <p className="vc-cp-fine">Described in the council&apos;s FY 2026-2027 Capital Projects Reference Guide. These are not drawn on the city&apos;s project map.</p>
+          <p className="vc-cp-fine">From the FY 2026-2027 Capital Projects Reference Guide. Not on the city&apos;s project map.</p>
           <ul>
             {ALSO_FUNDED.map((a) => (
               <li key={a.name}>

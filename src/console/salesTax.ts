@@ -41,12 +41,12 @@ export const COMBINED_RATE = 7.45;
 export const FOOD_RATE = 3.0;
 
 /** The groups the chart colors, in the order they are colored. */
-export const RATE_GROUPS: Array<{ key: RatePart['group']; name: string }> = [
-  { key: 'state', name: 'State of Utah' },
-  { key: 'city', name: 'Vineyard (local sales tax)' },
-  { key: 'transit', name: 'Public transit' },
-  { key: 'roads', name: 'Roads and highways' },
-  { key: 'county', name: 'County option' },
+export const RATE_GROUPS: Array<{ key: RatePart['group']; name: string; note: string }> = [
+  { key: 'state', name: 'State of Utah', note: 'Applies statewide.' },
+  { key: 'city', name: 'Vineyard', note: 'The local sales and use tax. Vineyard levies the maximum 1%.' },
+  { key: 'transit', name: 'Public transit', note: 'Four transit taxes that fund public transit service.' },
+  { key: 'roads', name: 'Roads and highways', note: 'Funds transportation and highway projects.' },
+  { key: 'county', name: 'County option', note: 'The county option sales and use tax.' },
 ];
 
 /** Hundredths of a percent as an exact number, so the parts add without floating-point drift. */

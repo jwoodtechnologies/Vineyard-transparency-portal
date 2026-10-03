@@ -4461,3 +4461,16 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
   .vc-cp-chips { flex-wrap: wrap; overflow: visible; margin: 0 0 0.9rem; padding: 0; }
   .vc-cp-actions > * { flex: 0 0 auto; }
 }
+
+/* pull down to refresh (touch screens): the page slides down and a ring draws itself in the opening */
+html { overscroll-behavior-y: none; }
+.vc-ptr { position: fixed; inset: 0 0 auto 0; z-index: 0; display: none; height: 190px; pointer-events: none; background: #ffffff; color: #7a2d52; }
+.dark .vc-ptr { background: #0a0a0b; color: #e6a9c6; }
+.vc-ptr-ring { position: absolute; top: 0; left: 50%; width: 44px; height: 44px; margin-left: -22px; opacity: 0; will-change: translate, scale, opacity; }
+.vc-ptr-ring svg { display: block; width: 100%; height: 100%; }
+.vc-ptr-ring circle { fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+.vc-ptr-track { opacity: 0.16; }
+.vc-ptr-arc { transform: rotate(-90deg); transform-box: fill-box; transform-origin: center; }
+.vc-ptr-ring[data-busy='true'] { animation: vc-ptr-spin 0.85s linear infinite; }
+@keyframes vc-ptr-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .vc-ptr-ring[data-busy='true'] { animation-duration: 2.4s; } }

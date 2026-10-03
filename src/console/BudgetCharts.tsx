@@ -249,7 +249,7 @@ export function YearBars({ bars, slot, title, actualWord, budgetWord }: { bars: 
       <p className="vc-bud-readout" aria-live="polite">
         {cur ? (
           <>
-            <b>{cur.label}</b>: {money(cur.value)} {cur.kind === 'actual' ? actualWord : budgetWord}
+            <b>{cur.label}</b>: {money(cur.value)}, {(cur.kind === 'actual' ? actualWord : budgetWord).toLowerCase()}
             {change != null && Math.abs(change) >= 0.05 ? `, ${change > 0 ? 'up' : 'down'} ${Math.abs(change).toFixed(1)}% from ${before!.label}` : ''}
           </>
         ) : (

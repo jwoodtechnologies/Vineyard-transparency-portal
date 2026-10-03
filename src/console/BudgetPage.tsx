@@ -47,7 +47,6 @@ function useNarrow(): boolean {
 const BIG_FUNDS = 5;
 
 function AllFunds({ b }: { b: Budget }) {
-  const rda = b.funds.find((f) => f.key === 'rda')?.total ?? 0;
   const slices: Slice[] = useMemo(() => {
     const ranked = [...b.funds].sort((x, y) => y.total - x.total);
     const big = ranked.slice(0, BIG_FUNDS);
@@ -66,17 +65,35 @@ function AllFunds({ b }: { b: Budget }) {
   }, [b]);
   return (
     <section className="vc-bud-sec">
-      <h2>All nine city funds</h2>
+      <h2>All funds</h2>
       <p className="vc-bud-lede">
-        The General Fund is one of nine. Together they hold {money(b.allFundsTotal)} for fiscal 2027, and {share(rda, b.allFundsTotal)} of it is the Redevelopment Agency&apos;s work on roads, utilities and the downtown core.
+        Nine funds hold {short(b.allFundsTotal)} for fiscal 2027. The Redevelopment Agency&apos;s roads, utilities and downtown work is {share(b.funds.find((f) => f.key === 'rda')?.total ?? 0, b.allFundsTotal)} of it; the General Fund pays for everyday city services.
       </p>
-      <Split kind="donut" slices={slices} noun="money" title="Money in each fund" centerCaption="all funds" caption="Tap a color to see what the fund is for." />
-      <p className="vc-bud-fine">
-        Each fund&apos;s budgeted money for the year, including savings carried over from earlier years (the Redevelopment Agency&apos;s includes $13.0 million). Money one fund sends to another shows in both. From the All Funds Summary, page 3 of the budget book.
-      </p>
+      <Split kind="donut" slices={slices} noun="money" title="Budget by fund" centerCaption="All funds" caption="Tap a color for details." />
+      <p className="vc-bud-fine">Budgeted revenue including prior-year fund balance. FY 27 budget book, All Funds Summary, page 3.</p>
     </section>
   );
 }
+
+/* What each group is, in plain words (descriptions follow the city's own Citizens Budget). Keyed by the group keys in /api/budget. */
+const SPEND_NOTES: Record<string, string> = {
+  safety: 'Keeping residents safe: the Police and Fire departments.',
+  transfers: 'Money the General Fund sends to the Transportation, Capital Projects, Internal Service and Stormwater funds.',
+  streets: 'Managing infrastructure: streets, public works, engineering and sanitation (trash) service.',
+  parks: 'Recreation and outdoor opportunities: parks, recreation programs and city events.',
+  admin: 'Governance and customer service: elected officials, city manager, recorder, finance and communications.',
+  planning: 'Planning and building: development review, permits and inspections.',
+  library: 'The Vineyard library.',
+};
+const REVENUE_NOTES: Record<string, string> = {
+  property: 'Property tax paid by owners of homes and businesses in Vineyard.',
+  sales: 'The local sales tax, the transportation tax and the RAP (recreation, arts and parks) tax.',
+  transfers: 'Money moved in from the Redevelopment Agency and the Capital Projects Fund.',
+  fees: 'Fees collected for building permits, plan reviews, inspections and business licenses.',
+  fines: 'Fines and sanitation (trash) charges.',
+  state: 'Money from other governments: grants and Class B and C road funds.',
+  other: 'Franchise fees, recreation fees, rents, donations, interest and smaller items.',
+};
 
 function SpendTab({ b }: { b: Budget }) {
   const all: BudgetLine[] = useMemo(() => [...b.departments, ...b.transfersOut], [b]);
@@ -90,6 +107,7 @@ function SpendTab({ b }: { b: Budget }) {
           name: g.name,
           amount: items.reduce((s, l) => s + l.amended, 0),
           items: items.map((l) => ({ name: l.name, amount: l.amended })),
+          note: SPEND_NOTES[g.key],
         };
       }),
     [b, all],
@@ -128,7 +146,7 @@ function RevenueTab({ b }: { b: Budget }) {
     () =>
       b.revenueGroups.map((g, slot) => {
         const items = lines.filter((l) => g.lines?.includes(l.name));
-        return { key: g.key, slot, name: g.name, amount: items.reduce((s, l) => s + l.amount, 0), items: items.map((l) => ({ name: l.name, amount: l.amount })) };
+        return { key: g.key, slot, name: g.name, amount: items.reduce((s, l) => s + l.amount, 0), items: items.map((l) => ({ name: l.name, amount: l.amount })), note: REVENUE_NOTES[g.key] };
       }),
     [b, lines],
   );
