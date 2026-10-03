@@ -73,7 +73,12 @@ export const DIRECTORY: DirectoryEntry[] = [
   { id: 'recreation', group: 'Parks, library and community', label: 'Recreation programs', href: `${G}/government/recreation.php`, kind: 'form', match: /\b(recreation|sports|leagues?|classes|sign ?up for|register for)\b/i },
   { id: 'events', group: 'Parks, library and community', label: 'City events', href: `${G}/government/events.php`, kind: 'page', match: /\b(events?|vineyard days|festival|concerts?)\b/i },
   { id: 'splash', group: 'Parks, library and community', label: 'Splash pad', href: `${G}/government/splash_pad.php`, kind: 'page', match: /\bsplash pad\b/i },
-  { id: 'library', group: 'Parks, library and community', label: "Vineyard Children's Library", href: 'https://vineyard.lib.utah.gov/', kind: 'page', match: /\blibrar(y|ies)\b/i },
+  { id: 'library', group: 'Parks, library and community', label: "Vineyard Children's Library", href: 'https://vineyard.lib.utah.gov/', hint: '125 S Main St, 801-226-1929', kind: 'page', match: /\blibrar(y|ies)\b/i },
+  { id: 'library-catalog', group: 'Parks, library and community', label: 'Library catalog', hint: 'Search and reserve books', href: 'https://vineyard.aspendiscovery.org/', kind: 'page', match: /\b(library catalog|search (for )?books?|reserve (a )?books?|find a book|check out (a )?books?|books? (hold|reserve))\b/i },
+  { id: 'library-online', group: 'Parks, library and community', label: 'Online library resources', hint: 'Ebooks, audiobooks and databases', href: 'https://vineyard.lib.utah.gov/online_resources/', kind: 'page', match: /\b(online (library )?resources|ebooks?|e-books?|audiobooks?|libby|overdrive)\b/i },
+  { id: 'library-events', group: 'Parks, library and community', label: 'Library events and programs', href: 'https://vineyard.lib.utah.gov/events-programs/', kind: 'page', match: /\b(story ?times?|library (events?|programs?|classes)|reading program|summer reading)\b/i },
+  { id: 'bookmobile', group: 'Parks, library and community', label: 'Bookmobile', hint: 'Run by the Utah State Library; bring a library card', href: 'https://vineyard.lib.utah.gov/events/bookmobile/', kind: 'page', match: /\b(book ?mobiles?|mobile library)\b/i },
+  { id: 'bookmobile-schedule', group: 'Parks, library and community', label: 'Bookmobile schedule and stops', href: 'https://bookmobiles.utah.gov/utah/schedule/', kind: 'page', match: /\bbook ?mobiles?\b[^.?!]*\b(schedule|stops?|times?|when|where|next)\b|\b(schedule|stops?|when|where|next)\b[^.?!]*\bbook ?mobiles?\b/i },
   { id: 'library-card', group: 'Parks, library and community', label: 'Get a library card', href: 'https://vineyard.lib.utah.gov/get-a-library-card/', kind: 'form', match: /\blibrary card\b/i },
   { id: 'garden', group: 'Parks, library and community', label: 'Community garden', href: `${G}/community_/vineyard_community_garden.php`, kind: 'form', match: /\b(community garden|garden plot)\b/i },
   { id: 'trails', group: 'Parks, library and community', label: 'Trails', href: `${G}/community_/trails.php`, kind: 'page', match: /\btrails?\b/i },
@@ -98,7 +103,15 @@ export const DIRECTORY: DirectoryEntry[] = [
 
 export const DIRECTORY_GROUPS: Array<DirectoryEntry['group']> = ['Records and government', 'Permits and development', 'Utilities and public works', 'Financial reports', 'Parks, library and community', 'Safety and emergencies', 'Jobs and volunteering'];
 
-/** The entries a question asks for, strongest first, at most `max`. */
+/** The entries a question asks for, the most specific first ("library card" before "library"), at most `max`. */
 export function directoryFor(question: string, max = 4): DirectoryEntry[] {
-  return DIRECTORY.filter((e) => e.match.test(question)).slice(0, max);
+  const hits: Array<{ e: DirectoryEntry; at: number; len: number }> = [];
+  DIRECTORY.forEach((e, at) => {
+    const m = e.match.exec(question);
+    if (m) hits.push({ e, at, len: m[0].length });
+  });
+  return hits
+    .sort((a, b) => b.len - a.len || a.at - b.at)
+    .slice(0, max)
+    .map((h) => h.e);
 }

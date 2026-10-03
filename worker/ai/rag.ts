@@ -25,6 +25,7 @@ import { countAnswer, countKind, isMeetingCountQuestion, isScheduleQuestion, mee
 import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
+import { serviceAnswer } from './serviceAnswers';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
@@ -366,6 +367,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     }) as Prepared;
   const todayUT = utahToday();
   const frame = resolveTime(body.question, todayUT);
+  // A library card or the bookmobile: one right answer from the library's own site, with the button to its page.
+  const service = serviceAnswer(body.question);
+  if (service) return quick(service.text, undefined, service.followUps);
   // "Is the city hiring?": the official job site, live.
   if (isJobsQuestion(body.question)) {
     const jobs = await openJobs().catch(() => null);

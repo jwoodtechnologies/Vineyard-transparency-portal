@@ -205,8 +205,9 @@ export function QuickLinks({ answer }: { answer: ConsoleAnswer }) {
   const all = [...services, ...maps].slice(0, 7).map((b): Bubble => {
     if (b.internal || !b.href.startsWith('http')) return b;
     if (b.href === LINKS.staff.href) return { ...b, href: '/people', internal: true };
+    // The city's own pages open inside the portal with the official form one tap further; a service run by someone else (the library, the bookmobile, permits, alerts) opens its official site straight away.
     const entry = DIRECTORY.find((e) => e.href === b.href);
-    return entry ? { ...b, href: `/services/${entry.id}`, internal: true } : b;
+    return entry && /^https:\/\/(www\.)?vineyardutah\.gov\//.test(entry.href) ? { ...b, href: `/services/${entry.id}`, internal: true } : b;
   });
   // A message that just names a part of the portal already has its own card.
   if (!all.length || answer.section) return null;
