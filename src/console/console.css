@@ -1205,8 +1205,20 @@
     top: auto;
     left: 0.75rem;
     right: 0.75rem;
-    bottom: 0.75rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    z-index: 96;
     max-height: 60dvh;
+    overscroll-behavior: contain;
+  }
+  .vc-menu .vc-option {
+    min-height: 46px;
+  }
+  .vc-menu-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    background: rgba(8, 8, 10, 0.4);
+    animation: vc-soc-fade 0.2s ease both;
   }
 }
 
@@ -4217,9 +4229,10 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 .vc-sh-table tbody:nth-of-type(even) { background: var(--vc-bg-2); }
 .vc-sh-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .vc-sh-row:hover > td:not(.vc-sh-status):not([data-tone]) { background: color-mix(in srgb, var(--vc-ink) 5%, transparent); }
-.vc-sh-what { padding: 8px 4px 8px 6px; }
+.vc-sh-what { min-width: 0; padding: 8px 4px 8px 6px; overflow-wrap: anywhere; }
+.vc-sh-table thead th.vc-sh-th-who:last-child, .vc-sh-cell:last-child { padding-right: 5px; }
 .vc-sh-title { display: flex; align-items: flex-start; gap: 3px; width: 100%; padding: 0; border: 0; background: none; font: inherit; font-size: 0.76rem; font-weight: 400; line-height: 1.32; text-align: left; color: var(--vc-ink); cursor: pointer; overflow-wrap: break-word; }
-.vc-sh-title span { min-width: 0; }
+.vc-sh-title span { min-width: 0; overflow-wrap: anywhere; }
 .vc-sh-title:focus-visible { outline: 2px solid var(--vc-ink); outline-offset: 2px; }
 .vc-sh-chev { flex: none; margin-top: 0.18em; color: var(--vc-muted); transition: transform 0.15s; }
 .vc-sh-table tbody[data-open='true'] .vc-sh-chev { transform: rotate(90deg); }
@@ -4259,14 +4272,7 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 .vc-sh-roll li[data-on='true'] span { font-weight: 700; color: var(--vc-ink); }
 .vc-sh-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 0; }
 .vc-sh-links .vc-vt-min { margin-left: 0; }
-.vc-sh-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; margin: 4px 0 8px; }
-.vc-sh-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0; font-size: 0.78rem; color: var(--vc-muted); }
-.vc-sw { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; margin-left: auto; padding: 0; border: 0; background: none; font: inherit; font-size: 0.78rem; color: var(--vc-ink-2); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.vc-sw-track { position: relative; flex: none; width: 32px; height: 18px; border-radius: 999px; border: 1px solid var(--vc-line-2); background: var(--vc-bg-2); transition: background 0.15s, border-color 0.15s; }
-.vc-sw-knob { position: absolute; top: 1px; left: 1px; width: 14px; height: 14px; border-radius: 50%; background: var(--vc-muted); transition: transform 0.15s, background 0.15s; }
-.vc-sw[aria-checked='true'] .vc-sw-track { background: var(--vc-ink); border-color: var(--vc-ink); }
-.vc-sw[aria-checked='true'] .vc-sw-knob { transform: translateX(14px); background: var(--vc-bg); }
-.vc-sw:focus-visible { outline: 2px solid var(--vc-ink); outline-offset: 3px; border-radius: 6px; }
+.vc-sh-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 4px 0 10px; font-size: 0.78rem; color: var(--vc-muted); }
 .vc-sh-key span { display: inline-flex; align-items: center; gap: 5px; }
 .vc-sh-key svg { color: var(--vc-ink); }
 .vc-sh-key i { font-style: normal; font-weight: 800; color: var(--vc-ink); }
@@ -4285,6 +4291,12 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
   .vc-sh-cell svg { width: 17px; height: 17px; }
   .vc-sh-note { font-size: 0.78rem; }
   .vc-sh-detail { padding-left: 28px; }
+}
+/* The smallest phones: a little less type so every member column still fits. */
+@container sh (max-width: 340px) {
+  .vc-sh-table thead th.vc-sh-th-who { font-size: 0.54rem; }
+  .vc-sh-title { font-size: 0.72rem; }
+  .vc-sh-meta { padding-left: 15px; }
 }
 /* Seven or more members (the Planning Commission) cannot fit beside the titles on a phone: the chart slides sideways there while the titles stay put. */
 @container sh (max-width: 519px) {

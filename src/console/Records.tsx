@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Archive, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { DocumentType, FacetBucket, SearchFilters, SearchResult, SearchSort } from '@/types/models';
@@ -6,6 +7,7 @@ import { docHref } from '@/lib/routes';
 import type { Turn } from './types';
 import { TYPE_LABEL, formatDate } from './format';
 import { Highlighted } from './Highlighted';
+import { useWide } from './useWide';
 
 interface MenuProps {
   label: string;
@@ -18,10 +20,14 @@ interface MenuProps {
 function FilterMenu({ label, value, options, onPick, showCounts = true }: MenuProps) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  // On a phone the list is a sheet over the page, so the question box at the bottom can never cover it.
+  const sheet = !useWide(641);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (box.current && !box.current.contains(t) && !menu.current?.contains(t)) setOpen(false);
     };
     const esc = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('mousedown', close);
@@ -33,27 +39,31 @@ function FilterMenu({ label, value, options, onPick, showCounts = true }: MenuPr
   }, [open]);
   const current = options.find((o) => o.value === value);
   if (!options.length && !value) return null;
+  const list = (
+    <div ref={menu} className="vc-menu" role="listbox" aria-label={label} data-sheet={sheet ? 'true' : undefined}>
+      <button type="button" className="vc-option" role="option" aria-selected={!value} data-selected={!value} onClick={() => (onPick(null), setOpen(false))}>
+        <span className="vc-option-check">{!value && <Check size={14} strokeWidth={2.4} />}</span>
+        Any {label.toLowerCase()}
+      </button>
+      {options.map((o) => (
+        <button key={o.value} type="button" className="vc-option" role="option" aria-selected={o.value === value} data-selected={o.value === value} onClick={() => (onPick(o.value), setOpen(false))}>
+          <span className="vc-option-check">{o.value === value && <Check size={14} strokeWidth={2.4} />}</span>
+          {o.label}
+          {showCounts && <span className="vc-option-count">{o.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
   return (
     <div className="vc-filter" ref={box}>
       <button type="button" className="vc-chip" data-active={Boolean(value)} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         {current ? current.label : label}
         <ChevronDown size={14} strokeWidth={2} />
       </button>
-      {open && (
-        <div className="vc-menu" role="listbox" aria-label={label}>
-          <button type="button" className="vc-option" role="option" aria-selected={!value} data-selected={!value} onClick={() => (onPick(null), setOpen(false))}>
-            <span className="vc-option-check">{!value && <Check size={14} strokeWidth={2.4} />}</span>
-            Any {label.toLowerCase()}
-          </button>
-          {options.map((o) => (
-            <button key={o.value} type="button" className="vc-option" role="option" aria-selected={o.value === value} data-selected={o.value === value} onClick={() => (onPick(o.value), setOpen(false))}>
-              <span className="vc-option-check">{o.value === value && <Check size={14} strokeWidth={2.4} />}</span>
-              {o.label}
-              {showCounts && <span className="vc-option-count">{o.count}</span>}
-            </button>
-          ))}
-        </div>
-      )}
+      {open && (sheet ? createPortal(<>
+          <div className="vc-menu-scrim" onClick={() => setOpen(false)} aria-hidden="true" />
+          {list}
+        </>, document.querySelector<HTMLElement>('.vc') ?? document.body) : list)}
     </div>
   );
 }

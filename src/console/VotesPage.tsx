@@ -166,36 +166,26 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
   );
 }
 
-/** What the marks in the chart mean, and (council) the switch that adds the Redevelopment Agency's votes. */
-function Key({ rda, onRda }: { rda?: boolean; onRda?: () => void }) {
+/** What the marks in the chart mean. */
+function Key() {
   return (
-    <div className="vc-sh-bar">
-      <p className="vc-sh-key" aria-label="Key to the marks">
-        <span>
-          <Check size={14} strokeWidth={2.8} /> Yes
-        </span>
-        <span>
-          <X size={14} strokeWidth={2.8} /> No
-        </span>
-        <span>
-          <i>A</i> Abstained
-        </span>
-        <span>
-          <i>R</i> Recused
-        </span>
-        <span>
-          <i data-absent="true" /> Absent
-        </span>
-      </p>
-      {onRda && (
-        <button type="button" role="switch" aria-checked={!!rda} className="vc-sw" onClick={onRda}>
-          <span className="vc-sw-track" aria-hidden="true">
-            <span className="vc-sw-knob" />
-          </span>
-          <span className="vc-sw-label">RDA votes</span>
-        </button>
-      )}
-    </div>
+    <p className="vc-sh-key" aria-label="Key to the marks">
+      <span>
+        <Check size={14} strokeWidth={2.8} /> Yes
+      </span>
+      <span>
+        <X size={14} strokeWidth={2.8} /> No
+      </span>
+      <span>
+        <i>A</i> Abstained
+      </span>
+      <span>
+        <i>R</i> Recused
+      </span>
+      <span>
+        <i data-absent="true" /> Absent
+      </span>
+    </p>
   );
 }
 
@@ -476,17 +466,9 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
   const [params, setParams] = useSearchParams();
   const asked = params.get('body') ?? '';
   const rdaOnly = !commission && asked === 'redevelopment-agency';
-  const rda = !commission && (params.get('rda') === '1' || rdaOnly);
-  // The council's chart is the City Council alone; the switch adds the Redevelopment Agency's votes, where the same members sit as its board.
-  const body = commission ? 'planning-commission' : rdaOnly ? 'redevelopment-agency' : rda ? '' : 'city-council';
-  const bodies = commission ? ['planning-commission'] : rdaOnly ? ['redevelopment-agency'] : rda ? ['city-council', 'redevelopment-agency'] : ['city-council'];
-  const toggleRda = () => {
-    const next = new URLSearchParams(params);
-    next.delete('body');
-    if (rda) next.delete('rda');
-    else next.set('rda', '1');
-    setParams(next, { replace: true });
-  };
+  // The council's chart carries every vote of the City Council and the Redevelopment Agency, where the same members sit as its board. An RDA row is tagged.
+  const body = commission ? 'planning-commission' : rdaOnly ? 'redevelopment-agency' : '';
+  const bodies = commission ? ['planning-commission'] : rdaOnly ? ['redevelopment-agency'] : ['city-council', 'redevelopment-agency'];
   const member = params.get('member') ?? '';
   const q = params.get('q') ?? '';
   const result = params.get('result') ?? '';
@@ -529,7 +511,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
       )}
       {commission && view === 'attendance' && att && <AttendanceView a={att} />}
 
-      {view !== 'attendance' && <Key rda={rda} onRda={commission ? undefined : toggleRda} />}
+      {view !== 'attendance' && <Key />}
       {years.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
           <span style={{ width: '60%' }} />

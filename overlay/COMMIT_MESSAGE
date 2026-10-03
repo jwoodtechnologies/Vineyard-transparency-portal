@@ -1,8 +1,0 @@
-Votes: fit every member column on phones, always include RDA votes; Records filter menu opens as a sheet above the question box
-
-The City Council voting recap now lists City Council and Redevelopment Agency votes together (RDA rows keep their tag) and the RDA switch is gone. The chart no longer overflows on phones: long titles wrap inside their column so every member column, including the last, stays on screen from 320 to 430 px.
-
-On phones the Type, Year, Body and Sort filters under More records open as a sheet over the page. The menu used to open behind the question box and could not be tapped. Pull to refresh ignores the menu.
-
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X

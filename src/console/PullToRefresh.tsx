@@ -17,7 +17,7 @@ const RESIST = 0.5;
 const R = 18;
 const CIRC = 2 * Math.PI * R;
 
-const BLOCK = '.maplibregl-map, input, textarea, select, iframe, [contenteditable="true"], [role="dialog"], .vc-history, .vc-soc-sheet, .vc-viewer-shell, [data-no-ptr]';
+const BLOCK = '.maplibregl-map, input, textarea, select, iframe, [contenteditable="true"], [role="dialog"], .vc-history, .vc-soc-sheet, .vc-menu, .vc-viewer-shell, [data-no-ptr]';
 
 /** True when something between the finger and the page is a scroller that is not at its top. */
 function scrolledInside(from: Element | null): boolean {
