@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, CalendarDays, ClipboardList, FileText, History, Landmark, Map as MapIcon, Moon, Scale, Sun, Users, Vote } from 'lucide-react';
+import { ArrowLeft, Building2, CalendarDays, ClipboardList, FileText, HardHat, History, Landmark, Map as MapIcon, Moon, Newspaper, Scale, Sun, Users, Vote } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 
@@ -116,6 +116,14 @@ export function SettingsMenu() {
             <Link to="/services" className="vc-menu-tile">
               <ClipboardList size={17} strokeWidth={1.8} />
               <span>Services</span>
+            </Link>
+            <Link to="/construction" className="vc-menu-tile">
+              <HardHat size={17} strokeWidth={1.8} />
+              <span>Construction</span>
+            </Link>
+            <Link to="/latest" className="vc-menu-tile">
+              <Newspaper size={17} strokeWidth={1.8} />
+              <span>Latest</span>
             </Link>
           </div>
 

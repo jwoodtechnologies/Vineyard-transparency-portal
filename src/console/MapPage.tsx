@@ -933,7 +933,7 @@ export default function MapPage() {
                 <p className="vc-map-note">
                   Only projects in the adopted fiscal 2027 budget are shown. The amount is what the budget sets aside this year; a project can cost more over several years. Phase and schedule come from the city&apos;s project list, which gives years only and can lag behind.
                   {finish && finish < thisYear && /^0%$/.test(pct) ? ' Its finish year has passed while it is still listed at 0%, so this schedule is out of date.' : ''}{' '}
-                  <Link to="/budget?view=projects">See every budget project</Link>
+                  <Link to="/construction">Construction timelines</Link> · <Link to="/budget?view=projects">Every budget project</Link>
                 </p>
               );
             })()}
