@@ -1,6 +1,0 @@
-Votes: read "voted against" typos, members not in attendance, and tallies
-
-The March 24 Forge vote (3 to 2) was missing its two no votes because the minutes spell "against" as "agains". Members noted as "not in attendance during the vote" are now recorded as absent, a page footer in the middle of a sentence no longer splits it, and "unanimously" misspellings are recognized. When the printed tally does not match the names read, no names are shown rather than wrong ones, and when a unanimous vote leaves out the mover or seconder by typo they are counted as yes. The parser version is bumped so every set of minutes is read again.
-
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X

@@ -157,6 +157,45 @@ seconded. The motion passed unanimously.`;
   });
 });
 
+describe('typos and absences in a vote sentence', () => {
+  const head = `MINUTES OF A REGULAR CITY COUNCIL MEETING
+March 24, 2026, at 6:01 PM
+Present
+Mayor Zack Stratton
+Councilmember Parker McCumber
+Councilmember Jacob Wood
+Councilmember Jacob Holdaway
+Councilmember David Lauret
+Councilmember Ezra Nair
+Absent
+`;
+  const p = parseMinutes(`${head}Motion: COUNCILMEMBER MCCUMBER MOVED TO APROVE THE AMENDMENTS TO THE FORGE DEVELOPMENT AGREEMENT AS PRESENTED. COUNCILMEMBER NAIR SECONDED. COUNCILMEMBERS NAIR, WOOD, AND MCCUMBER VOTED IN FAVOR. COUNCILMEBERS LAURET AND HOLDAWAY VOTED AGAINS. THE MOTION PASSED WITH A VOTE OF THREE (3) TO TWO (2)
+Motion: COUNCILMEMBER LAURET MOVED TO CONTINUE ITEM 8.6 TO THE NEXT REGULARLY SCHEDULED CITY COUNCIL MEETING. COUNCILMEMBER MCCUMBER SECONDED. COUNCILMEMBERS NAIR, LAURET, MCCUMBER AND WOOD VOTED IN FAVOR. COUNCILMEMBER HOLDAWAY WAS NOT IN
+Page 5 of 7; March 24, 2026, City Council Minutes
+ATTENDANCE DURING THE VOTE. THE MOTION PASSED UNANIMOUSLY.
+Motion: COUNCILMEMBER HOLDAWAY MOVED TO APPROVE THE FORMATION OF THE SUBCOMMITTEE AS PRESENTED. COUNCILMEMBER MCCUMBER SECONDED. COUNCILMEMBERS NAIR, LAURET, WOOD, HOLDAWAY AND VOTED IN FAVOR. THE MOTION PASSED UNINMOUSLY.`, '2026-03-24');
+  it('reads "voted agains" as no and agrees with the printed tally', () => {
+    const m = p.motions[0];
+    expect(v(m)).toEqual({ Nair: 'yes', Wood: 'yes', McCumber: 'yes', Lauret: 'no', Holdaway: 'no' });
+    expect(m.tally).toBe('3-2');
+    expect(m.result).toBe('carried');
+  });
+  it('records a member who was not there for the vote as absent', () => {
+    const m = p.motions[1];
+    expect(v(m)).toEqual({ Nair: 'yes', Lauret: 'yes', McCumber: 'yes', Wood: 'yes', Holdaway: 'absent' });
+  });
+  it('counts the seconder when the minutes leave a name out of a unanimous vote', () => {
+    const m = p.motions[2];
+    expect(v(m)).toEqual({ Nair: 'yes', Lauret: 'yes', Wood: 'yes', Holdaway: 'yes', McCumber: 'yes' });
+    expect(m.unanimous).toBe(true);
+  });
+  it('says nothing when the names do not add up to the tally', () => {
+    const q = parseMinutes(`${head}Motion: COUNCILMEMBER LAURET MOVED TO APPROVE THE ITEM. COUNCILMEMBER NAIR SECONDED. COUNCILMEMBERS NAIR AND LAURET VOTED IN FAVOR. THE MOTION PASSED 3-2.`, '2026-03-24');
+    expect(q.motions[0].votes).toEqual([]);
+    expect(q.motions[0].tally).toBe('3-2');
+  });
+});
+
 describe('Planning Commission attendance', () => {
   it('reads a list of names with no titles', () => {
     const p = parseMinutes(`PLANNING COMMISSION MINUTES

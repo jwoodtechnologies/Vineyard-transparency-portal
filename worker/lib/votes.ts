@@ -303,7 +303,9 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
   let flat = text
     .replace(/[‘’]/g, "'")
     .replace(/[ \t]+/g, ' ')
-    .replace(/\n\s*\d{1,4}\s*(?=\n)/g, '\n');
+    .replace(/\n\s*\d{1,4}\s*(?=\n)/g, '\n')
+    // A page footer in the middle of a sentence ("Page 5 of 7; March 24, 2026, City Council Minutes").
+    .replace(/^ ?Page \d+ of \d+;.*$/gim, '');
   flat = joinNumbers(flat);
   const starts: number[] = [];
   for (const m of flat.matchAll(MOTION_START)) {
@@ -333,23 +335,25 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
       }
     } else {
       // Roll call form: "... VOTED YES. COUNCILMEMBER X VOTED NO. COUNCILMEMBER Y ABSTAINED."
-      const voteAt = seg.search(/roll call|voted (?:yes|aye|no|nay|in favor|against)/i);
+      const voteAt = seg.search(/roll call|voted (?:yes|aye|no|nay|in favor|agains\w*)/i);
       // "Mayor Pro Temp Wood and councilmembers McCumber, Holdaway and Lauret voted in favor." names the voters before the verb,
       // so a sentence of that kind is read from its first word.
       const sentenceAt = seg.lastIndexOf('. ', voteAt) < 0 ? 0 : seg.lastIndexOf('. ', voteAt) + 2;
       const rollAt = voteAt > 0 && !/^roll call/i.test(seg.slice(voteAt)) ? sentenceAt : voteAt;
       if (rollAt >= 0) {
         const roll = seg.slice(rollAt).replace(/^roll call (?:vote\.?|went |was )?(?:as follows)?:?/i, '');
-        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:voted|vote)\s+(yes|aye|no|nay|in favor|against)\b/gi)) add(listed(m[1]), /^(no|nay|against)$/i.test(m[2]) ? 'no' : 'yes');
+        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:voted|vote)\s+(yes|aye|no|nay|in favor|agains\w*)\b/gi)) add(listed(m[1]), /^(no|nay|agains)/i.test(m[2]) ? 'no' : 'yes');
         for (const m of roll.matchAll(/([^.;:]*?)\s+(?:abstained|abstaining|chose to abstain)\b/gi)) add(listed(m[1]), 'abstain');
-        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:was|were)\s+(?:absent|excused)\b/gi)) add(listed(m[1]), 'absent');
+        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:was|were)\s+(?:absent|excused|not\s+(?:in\s+attendance|present))\b/gi)) add(listed(m[1]), 'absent');
         for (const m of roll.matchAll(/([^.;:]*?)\s+recused\b/gi)) add(listed(m[1]), 'recused');
       }
     }
     // "Tie Vote resolved by Mayor Stratton's vote of Yes."
     const tie = seg.match(TIE_A) ?? seg.match(TIE_B);
     if (tie) add(namesIn(tie[1]).slice(-1), /^(no|nay)$/i.test(tie[2]) ? 'no' : 'yes');
-    const unanimous = /\bunanimous(?:ly)?\b|\ball (?:were |members? )?(?:present )?(?:voted )?in favor\b|\ball in favor\b|\bpassed unanimously\b/i.test(seg.slice(0, 1200));
+    // "passed 3-2", "passed with a vote of THREE (3) TO TWO (2)".
+    const tally = seg.match(/\b(?:carried|passed|failed|vote of)\s+(?:(?:with|by)\s+a\s+vote\s+of\s+)?(?:[a-z]+\s+)?\(?(\d)\)?\s*(?:-|–|to)\s*(?:[a-z]+\s+)?\(?(\d)\)?/i);
+    const unanimous = /\bun[a-z]{1,3}mous(?:ly)?\b|\ball (?:were |members? )?(?:present )?(?:voted )?in favor\b|\ball in favor\b|\bpassed unanimously\b/i.test(seg.slice(0, 1200));
     if (!votes.length && unanimous && present.length) {
       // Members present who vote: the council (and before 2026 the mayor, who voted then).
       add(
@@ -358,12 +362,23 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
       );
       inferred = true;
     }
+    if (!inferred && votes.length) {
+      // A tally that does not match the names read means the names were not read right: say nothing rather than something wrong.
+      const y = votes.filter((v) => v.vote === 'yes').length;
+      const n = votes.filter((v) => v.vote === 'no').length;
+      if (tally && (y !== Number(tally[1]) || n !== Number(tally[2]))) votes.length = 0;
+      // "Passed unanimously" with the mover or seconder missing from the list (a typo in the minutes): they voted yes.
+      else if (unanimous && votes.every((v) => v.vote === 'yes')) {
+        for (const who of [mover && namesIn(mover[1])[0], seconder && namesIn(seconder[1])[0]]) {
+          if (who && !votes.some((v) => v.member === who) && !absent.includes(who)) votes.push({ member: who, vote: 'yes' });
+        }
+      }
+    }
     const res = seg.match(/\bmotion\s+(?:was\s+)?(carried|passed|approved|failed|died|denied|defeated|withdrawn)\b|\b(carried|failed)\s+(?:unanimously|\d)/i);
     const word = (res?.[1] ?? res?.[2] ?? '').toLowerCase();
     const yes = votes.filter((v) => v.vote === 'yes').length;
     const no = votes.filter((v) => v.vote === 'no').length;
     const result: ParsedMotion['result'] = /carried|passed|approved/.test(word) ? 'carried' : /failed|died|denied|defeated/.test(word) ? 'failed' : votes.length ? (yes > no ? 'carried' : 'failed') : 'unknown';
-    const tally = seg.match(/\b(?:carried|passed|failed)\s+(?:by a vote of\s+)?(\d)\s*(?:-|–|to)\s*(\d)\b/i);
     // "Councilmember Holdaway nominated Councilmember Wood to serve as Mayor Pro Temp" is a motion to nominate.
     const textOut = `${/^nominated$/i.test(wording?.[1] ?? '') ? 'nominate ' : ''}${wording?.[2] ?? ''}`.replace(/\s+/g, ' ').trim();
     if (!mover && !votes.length && !res) return; // a stray "motion" with nothing recorded
