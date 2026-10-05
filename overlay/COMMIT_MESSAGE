@@ -1,0 +1,6 @@
+Votes: keep names when a scan garbles a title or a printed tally has a typo
+
+A scanned "Counéil Members" no longer adds a stray name that breaks the tally check, and a printed Yes and No roll is kept when the printed tally disagrees with it. The vote reader version is raised so every set of minutes is read again.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X
