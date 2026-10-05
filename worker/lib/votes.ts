@@ -325,10 +325,13 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     const votes: Array<{ member: string; vote: VoteValue }> = [];
     const add = (names: string[], vote: VoteValue) => names.forEach((n) => !votes.some((v) => v.member === n.replace(/^Mayor /, '')) && votes.push({ member: n.replace(/^Mayor /, ''), vote }));
     let inferred = false;
+    // A "Yes: ... No: ..." roll printed in the minutes is the record itself; a typo in the printed tally does not overrule it.
+    let printedRoll = false;
     // Labeled lists: "Vote Yes: A, B No: None", "Roll Call Vote. Yes: ... No: ... Recused: ... Absent: ..."
     const afterSecond = seg.slice(Math.max(0, seg.search(/seconded/i)));
     const labeled = [...afterSecond.matchAll(LABELED)];
     if (labeled.some((m) => /^(yes|ayes?)$/i.test(m[1]))) {
+      printedRoll = labeled.some((m) => /^(no|nays?)$/i.test(m[1]));
       for (const m of labeled) {
         const k = m[1].toLowerCase();
         add(listed(m[2]), /^(yes|aye)/.test(k) ? 'yes' : /^(no|nay)/.test(k) ? 'no' : /^abst/.test(k) ? 'abstain' : k === 'recused' ? 'recused' : 'absent');
@@ -364,9 +367,11 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     }
     if (!inferred && votes.length) {
       // A tally that does not match the names read means the names were not read right: say nothing rather than something wrong.
-      const y = votes.filter((v) => v.vote === 'yes').length;
-      const n = votes.filter((v) => v.vote === 'no').length;
-      if (tally && (y !== Number(tally[1]) || n !== Number(tally[2]))) votes.length = 0;
+      // Only names on the attendance list are counted: a word mangled by the scan ("Counéil") is not a voter.
+      const counted = votes.filter((v) => !known.length || known.includes(v.member));
+      const y = counted.filter((v) => v.vote === 'yes').length;
+      const n = counted.filter((v) => v.vote === 'no').length;
+      if (tally && !printedRoll && (y !== Number(tally[1]) || n !== Number(tally[2]))) votes.length = 0;
       // "Passed unanimously" with the mover or seconder missing from the list (a typo in the minutes): they voted yes.
       else if (unanimous && votes.every((v) => v.vote === 'yes')) {
         for (const who of [mover && namesIn(mover[1])[0], seconder && namesIn(seconder[1])[0]]) {

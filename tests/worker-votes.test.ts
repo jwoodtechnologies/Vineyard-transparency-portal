@@ -196,6 +196,37 @@ Motion: COUNCILMEMBER HOLDAWAY MOVED TO APPROVE THE FORMATION OF THE SUBCOMMITTE
   });
 });
 
+describe('scan damage in a printed roll', () => {
+  // The attendance block of a scanned page: the two columns run together, so every name falls after "Absent:".
+  const head = `NOTICE OF A REGULAR
+CITY COUNCIL MEETING
+June 23, 2026, at 6:00 PM
+Present: Absent:
+Mayor Zack Stratton Council Member McCumber
+Council Member Holdaway
+Council Member Lauret
+Council Member Nair
+Council Member Wood
+Staff Present: Administrative Director David Kyle Herrifg, City Attorney Jesse Riddle
+AGENDA
+`;
+  it('reads the names when a scan turns "Council" into "Counéil"', () => {
+    const p = parseMinutes(`${head}MOTION: Council Member Holdaway motioned to approve the consentitems as
+presented. Council Member Wood seconded,the-motion. Yes: Counéil Members
+Holdaway, Lauret, Nair, and Wood. No: None. Motion. passed 4-0.`, '2026-06-23');
+    const m = p.motions[0];
+    expect(v(m)).toMatchObject({ Holdaway: 'yes', Lauret: 'yes', Nair: 'yes', Wood: 'yes' });
+    expect(m.tally).toBe('4-0');
+    expect(m.result).toBe('carried');
+  });
+  it('keeps a printed Yes and No roll when the printed tally has a typo', () => {
+    const p = parseMinutes(`${head}MOTION: Council Member Holdaway motioned to approve the Fee Waiver. Seconded by Council Member Wood Yes: Council Members Holdaway, Lauret, Nair, and Wood. No: None. MOTION PASSED 4-1.`, '2026-06-23');
+    const m = p.motions[0];
+    expect(v(m)).toEqual({ Holdaway: 'yes', Lauret: 'yes', Nair: 'yes', Wood: 'yes' });
+    expect(m.result).toBe('carried');
+  });
+});
+
 describe('Planning Commission attendance', () => {
   it('reads a list of names with no titles', () => {
     const p = parseMinutes(`PLANNING COMMISSION MINUTES
