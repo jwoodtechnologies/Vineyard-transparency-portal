@@ -1,0 +1,8 @@
+Minutes: draft minutes attached to the next meeting's agenda are no longer deleted by the duplicate cleanup, and ones it removed are fetched again; the opened roll call lists every member who voted, including one who has left
+
+The step that folds duplicate copies of a meeting's record into one treated an agenda-item attachment as a copy of the meeting's own minutes and removed it. That is how the draft minutes of Aug 25 (council and RDA), attached to the Sep 8 agendas, went missing. Attachments are now left out of that step, a test covers it, and the next migrate run queues every attachment whose record was removed so the ingest job files it again.
+
+Voting recap: a member who no longer sits still shows in the roll call when a motion is opened, without a column of their own.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X
