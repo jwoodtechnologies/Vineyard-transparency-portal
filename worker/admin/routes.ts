@@ -235,15 +235,18 @@ async function migrate(env: Env): Promise<Response> {
     env.CATALOG_DB.prepare(`DELETE FROM document_sources WHERE canonical_key IN (${strayKeys}) AND document_id IN (${strayDocs})`),
   ]).catch(() => undefined);
   // Agenda-item attachments (the draft minutes of an earlier meeting, staff reports) whose record was removed by an earlier
-  // merge: queue them to be fetched and filed again, minutes first.
+  // merge: queue them to be fetched and filed again, minutes first. The saved version stamp on each one is cleared as well,
+  // because with it the source answers "not changed" and nothing would be filed.
+  const lostAttachments = `SELECT url_key FROM crawl_queue WHERE source_id = 'vineyard-civicclerk-meetings' AND url LIKE '%#attachment=%' AND document_id IS NOT NULL AND document_id NOT IN (SELECT id FROM documents)`;
   const restored = await env.CATALOG_DB
-    .prepare(
-      `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = 1
-       WHERE source_id = 'vineyard-civicclerk-meetings' AND url LIKE '%#attachment=%' AND status IN ('done', 'unchanged')
-         AND document_id IS NOT NULL AND document_id NOT IN (SELECT id FROM documents)`,
-    )
-    .run()
-    .then((r) => Number(r.meta?.changes ?? 0))
+    .batch([
+      env.CATALOG_DB.prepare(`UPDATE document_sources SET etag = NULL, last_modified = NULL WHERE canonical_key IN (${lostAttachments})`),
+      env.CATALOG_DB.prepare(
+        `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = 1
+         WHERE url_key IN (${lostAttachments}) AND status IN ('done', 'unchanged')`,
+      ),
+    ])
+    .then((r) => Number(r[1]?.meta?.changes ?? 0))
     .catch(() => 0);
   // A record that a second source's copy once rewrote (see upsertDocument) is read again from the file it was first made from.
   await env.CATALOG_DB.prepare(

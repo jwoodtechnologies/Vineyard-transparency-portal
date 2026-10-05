@@ -1,6 +1,0 @@
-Restore lost attachments: clear their saved version stamps in migrate
-
-The 169 agenda-item attachments (draft minutes and other exhibits) removed by the old merge were requeued, but the ingest skipped them because the source rows still held their old etags. Migrate now clears the stamps on those rows before requeueing, so the next ingest files them again and the votes can be read.
-
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X
