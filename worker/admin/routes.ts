@@ -17,6 +17,7 @@ import { nowIso, utcDay, chunked } from '../lib/util';
 import { categoriesForType, normalizeType } from '../lib/taxonomy';
 import { adoptionDate, titleDate } from '../lib/adoptionDate';
 import { processVotes } from '../api/votes';
+import { MEETING_COPY_GROUPS_SQL } from '../lib/meetingCopies';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
@@ -98,6 +99,8 @@ export function dateInTitle(title: string): string | null {
  * One record per meeting: fills missing meeting dates from titles, then folds any second copy of
  * the same minutes or agenda (same body, date and special/regular) into the first, keeping the
  * CivicClerk copy when there is one. Sources move to the kept record; the copy's search text goes.
+ * A file attached to an agenda item ("..., 2026-09-08, item 1)") is never a copy of the meeting's own record:
+ * it is the draft minutes of an earlier meeting, so it stays out of this step.
  */
 async function mergeDuplicateMeetings(env: Env): Promise<{ dated: number; merged: number }> {
   const db = env.CATALOG_DB;
@@ -111,14 +114,7 @@ async function mergeDuplicateMeetings(env: Env): Promise<{ dated: number; merged
     if (d.search_shard != null && repo.activeShards.includes(d.search_shard)) await repo.shard(d.search_shard).prepare('UPDATE shard_documents SET document_date = ?, year = ? WHERE document_id = ?').bind(date, Number(date.slice(0, 4)), d.id).run().catch(() => undefined);
     dated++;
   }
-  const groups = await db
-    .prepare(
-      `SELECT document_type AS t, document_date AS dt, government_body_id AS b, (CASE WHEN lower(title) LIKE '%special%' THEN 1 ELSE 0 END) AS sp,
-              json_group_array(json_object('id', id, 'src', source_id, 'seen', first_seen_at, 'shard', search_shard)) AS docs
-       FROM documents WHERE document_type IN ('minutes','agenda','agenda_packet') AND document_date IS NOT NULL AND government_body_id IS NOT NULL
-       GROUP BY t, dt, b, sp HAVING count(*) > 1 LIMIT 2000`,
-    )
-    .all<{ docs: string }>();
+  const groups = await db.prepare(MEETING_COPY_GROUPS_SQL).all<{ docs: string }>();
   let merged = 0;
   // Code site entries that were only a title (no minutes text, no file) are not records.
   const empties = await db
@@ -238,6 +234,17 @@ async function migrate(env: Env): Promise<Response> {
     ),
     env.CATALOG_DB.prepare(`DELETE FROM document_sources WHERE canonical_key IN (${strayKeys}) AND document_id IN (${strayDocs})`),
   ]).catch(() => undefined);
+  // Agenda-item attachments (the draft minutes of an earlier meeting, staff reports) whose record was removed by an earlier
+  // merge: queue them to be fetched and filed again, minutes first.
+  const restored = await env.CATALOG_DB
+    .prepare(
+      `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = 1
+       WHERE source_id = 'vineyard-civicclerk-meetings' AND url LIKE '%#attachment=%' AND status IN ('done', 'unchanged')
+         AND document_id IS NOT NULL AND document_id NOT IN (SELECT id FROM documents)`,
+    )
+    .run()
+    .then((r) => Number(r.meta?.changes ?? 0))
+    .catch(() => 0);
   // A record that a second source's copy once rewrote (see upsertDocument) is read again from the file it was first made from.
   await env.CATALOG_DB.prepare(
     `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, priority = 1
@@ -249,7 +256,7 @@ async function migrate(env: Env): Promise<Response> {
   await ensureActivityTables(env);
   // While no panel owner exists, each migrate run prints a fresh one-time setup code (24 hours).
   const panelSetupCode = await newSetupCode(env);
-  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, meetings, recordDates, votes, ...(panelSetupCode ? { panelSetupCode } : {}) });
+  return json({ ok: true, catalogStatements: catalog.length, searchStatements: search.length, rowsWritten: { catalog: sum(r1), shards }, meetings, recordDates, votes, restoredAttachments: restored, ...(panelSetupCode ? { panelSetupCode } : {}) });
 }
 
 async function quota(env: Env): Promise<Response> {

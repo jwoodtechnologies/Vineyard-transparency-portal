@@ -242,8 +242,9 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
             const isOpen = open.has(m.id);
             const rolled = m.votes.filter((v) => v.vote !== 'absent');
             const unanimous = m.result === 'carried' && m.unanimous && rolled.length === 0;
+            // Everyone who voted is listed when the motion is opened, including a member who has since left (no column of their own). A bare last name is dropped when the same vote also carries the full name.
             const roll = m.votes
-              .filter((v) => cols.some((n) => sameMember(v.member, n)))
+              .filter((v) => v.member.includes(' ') || !m.votes.some((o) => o !== v && o.member.includes(' ') && lower(last(o.member)) === lower(v.member)))
               .sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || surname(a.member).localeCompare(surname(b.member)));
             const motionText = m.motion.replace(/\s+/g, ' ').trim();
             const tally = motionTally(m);
