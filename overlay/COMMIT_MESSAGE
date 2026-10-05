@@ -1,6 +1,0 @@
-Votes: read roll calls written in a sentence, and nominations as motions
-
-The August 25 minutes name the voters in a sentence ("Mayor Pro Temp Wood and councilmembers McCumber Holdaway and Lauret voted in favor") with no roll call heading, and record the Mayor Pro Temp choice as "nominated". The reader now starts a roll call at the sentence that names the voters, splits names listed without commas using the attendance list, and treats a nomination as a motion with its mover and vote. The parser version is bumped so every set of minutes is read again.
-
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01MeyQ6fXQicWMP228b1np6X

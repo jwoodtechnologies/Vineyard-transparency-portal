@@ -106,6 +106,57 @@ MOTION: Board Member McCumber motion to go into a closed session. Board Member L
   });
 });
 
+describe('votes named in a sentence', () => {
+  const text = `NOTICE OF A REGULAR CITY COUNCIL MEETING
+August 25, 2026, at 5:30 PM
+Present
+Councilmember Parker McCumber
+Mayor Pro Temp Jacob Wood
+Councilmember Jacob Holdaway
+Councilmember David Lauret
+Councilmember Ezra Nair
+Absent
+Mayor Zack Stratton
+1. CALL TO ORDER
+Motion: Councilmember Nair moved to nominate Councilmember McCumber to serve as
+Mayor Pro Temp. Councilmember McCumber seconded. The roll call was as follows:
+Councilmembers McCumber and Nair Voted in favor. Councilmembers Holdaway, Wood and
+Lauret voted against. The motion failed.
+Motion: Councilmember Holdaway nominated Councilmember Wood to serve as Mayor Pro
+Temp. Councilmember Lauret seconded. The roll call was as follows: Councilmembers McCumber,
+Holdaway, Wood and Lauret voted in Favor. Councilmember Nair voted against. The motion
+passed.
+8. BUSINESS ITEMS
+8.1. Approve Ordinance 2026-10 Budget Amendments to the Fiscal Year 2026-2027 Budget
+Motion: Councilmember Lauret moved to adopt Ordinance 2026-10 amending the Fiscal
+Year 2026-2027 budget as presented.
+Councilmember Holdaway seconded. Mayor Pro Temp Wood and councilmembers McCumber
+Holdaway and Lauret voted in favor. Councilmember Nair voted against. The motion passed.
+9. ADJOURNMENT
+Motion: Councilmember Holdaway motioned to adjourn the meeting. Councilmember Lauret
+seconded. The motion passed unanimously.`;
+  const p = parseMinutes(text, '2026-08-25');
+  it('reads a nomination as a motion with its roll call', () => {
+    const m = p.motions.find((x) => /Wood to serve/.test(x.text));
+    expect(m?.text).toBe('nominate Councilmember Wood to serve as Mayor Pro Temp');
+    expect(m?.mover).toBe('Holdaway');
+    expect(m?.seconder).toBe('Lauret');
+    expect(m?.result).toBe('carried');
+    expect(v(m!)).toEqual({ McCumber: 'yes', Holdaway: 'yes', Wood: 'yes', Lauret: 'yes', Nair: 'no' });
+  });
+  it('keeps the first name before "voted in favor" and the names after', () => {
+    const m = p.motions.find((x) => /Ordinance 2026-10/.test(x.text));
+    expect(m?.result).toBe('carried');
+    expect(v(m!)).toEqual({ Wood: 'yes', McCumber: 'yes', Holdaway: 'yes', Lauret: 'yes', Nair: 'no' });
+  });
+  it('still reads a failed nomination and leaves no motion without wording', () => {
+    const m = p.motions.find((x) => /McCumber to serve/.test(x.text));
+    expect(m?.result).toBe('failed');
+    expect(v(m!)).toEqual({ McCumber: 'yes', Nair: 'yes', Holdaway: 'no', Wood: 'no', Lauret: 'no' });
+    expect(p.motions.every((x) => x.text.length > 3)).toBe(true);
+  });
+});
+
 describe('Planning Commission attendance', () => {
   it('reads a list of names with no titles', () => {
     const p = parseMinutes(`PLANNING COMMISSION MINUTES

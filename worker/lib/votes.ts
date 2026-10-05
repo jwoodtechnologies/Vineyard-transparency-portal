@@ -55,7 +55,7 @@ const STOP = new Set(['the', 'and', 'none', 'all', 'motion', 'council', 'city', 
 const titleCase = (w: string) => w.toLowerCase().replace(/(^|[\s'’-])([a-z])/g, (_, p: string, c: string) => p + c.toUpperCase()).replace(/^Mc([a-z])/, (_, c: string) => `Mc${c.toUpperCase()}`);
 
 /** "Council Members Holdaway, Lauret, McCumber, and Nair" -> ["Holdaway", "Lauret", "McCumber", "Nair"]. */
-export function namesIn(list: string): string[] {
+export function namesIn(list: string, known: string[] = []): string[] {
   const cleaned = list
     .replace(new RegExp(`\\b${TITLE}\\b`, 'gi'), ',')
     .replace(/\b(voted|vote|votes|yes|no|aye|ayes|nay|nays|were|was|is|in favor|favor|absent|abstained|abstaining|abstain|excused|recused|present|also|none|n\/a)\b/gi, ',')
@@ -64,6 +64,15 @@ export function namesIn(list: string): string[] {
   for (const part of cleaned.split(',')) {
     const w = part.replace(/[^A-Za-z'’\s-]/g, ' ').trim().split(/\s+/).filter(Boolean);
     if (!w.length) continue;
+    // "McCumber Holdaway and Lauret": two members listed with no comma between them (both are on the attendance list).
+    const members = w.filter((x) => known.some((k) => k.toLowerCase() === x.toLowerCase()));
+    if (members.length > 1) {
+      for (const x of members) {
+        const name = titleCase(x);
+        if (!out.includes(name)) out.push(name);
+      }
+      continue;
+    }
     const last = w[w.length - 1];
     if (last.length < 2 || STOP.has(last.toLowerCase())) continue;
     const name = titleCase(last.replace(/['’]s$/i, ''));
@@ -288,6 +297,8 @@ export function joinNumbers(text: string): string {
 export function parseMinutes(text: string, date: string | null = null): ParsedMinutes {
   const head = text.slice(0, 2500);
   const { present, absent, full: listedFull } = attendance(head);
+  const known = [...present, ...absent].map((n) => n.replace(/^Mayor /, ''));
+  const listed = (list: string) => namesIn(list, known);
   // Line-numbered minutes put a bare number on its own line; those are not part of the words.
   let flat = text
     .replace(/[‘’]/g, "'")
@@ -306,8 +317,8 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
   starts.forEach((at, i) => {
     const end = Math.min(starts[i + 1] ?? flat.length, at + 2200);
     const seg = flat.slice(at, end).replace(/\s+/g, ' ');
-    const mover = seg.match(new RegExp(`${TITLE}\\s+${NAME}\\s+(?:made a motion|moved|motioned|motions? to)`, 'i'));
-    const wording = seg.match(/\b(?:made a motion|moved|motioned|motions?(?=\s+to\b))\s+(?:to\s+|that\s+|the\s+)?([\s\S]{3,900}?)(?=\.\s+(?:[A-Z][A-Za-z]*\s+){0,3}[A-Za-z'-]+\s+seconded|\.?\s+seconded by\b|\s+(?:council ?members?|councilm[ae]n|councilwoman|commissioners?|board ?members?|chair(?:man|woman|person)?|vice[- ]chair|mayor)\s+[A-Z][A-Za-z'-]+\s+seconded|\s+seconded\b|\.\s+(?:the )?motion (?:was )?seconded|\.\s+vote\b|\.\s+roll call|\.\s+all\b|$)/i);
+    const mover = seg.match(new RegExp(`${TITLE}\\s+${NAME}\\s+(?:made a motion|moved|motioned|nominated|motions? to)`, 'i'));
+    const wording = seg.match(/\b(made a motion|moved|motioned|nominated|motions?(?=\s+to\b))\s+(?:to\s+|that\s+|the\s+)?([\s\S]{3,900}?)(?=\.\s+(?:[A-Z][A-Za-z]*\s+){0,3}[A-Za-z'-]+\s+seconded|\.?\s+seconded by\b|\s+(?:council ?members?|councilm[ae]n|councilwoman|commissioners?|board ?members?|chair(?:man|woman|person)?|vice[- ]chair|mayor)\s+[A-Z][A-Za-z'-]+\s+seconded|\s+seconded\b|\.\s+(?:the )?motion (?:was )?seconded|\.\s+vote\b|\.\s+roll call|\.\s+all\b|$)/i);
     const seconder = seg.match(new RegExp(`${TITLE}\\s+${NAME}\\s+seconded`, 'i')) ?? seg.match(new RegExp(`seconded by\\s+${TITLE}?\\s*${NAME}`, 'i'));
     const votes: Array<{ member: string; vote: VoteValue }> = [];
     const add = (names: string[], vote: VoteValue) => names.forEach((n) => !votes.some((v) => v.member === n.replace(/^Mayor /, '')) && votes.push({ member: n.replace(/^Mayor /, ''), vote }));
@@ -318,17 +329,21 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     if (labeled.some((m) => /^(yes|ayes?)$/i.test(m[1]))) {
       for (const m of labeled) {
         const k = m[1].toLowerCase();
-        add(namesIn(m[2]), /^(yes|aye)/.test(k) ? 'yes' : /^(no|nay)/.test(k) ? 'no' : /^abst/.test(k) ? 'abstain' : k === 'recused' ? 'recused' : 'absent');
+        add(listed(m[2]), /^(yes|aye)/.test(k) ? 'yes' : /^(no|nay)/.test(k) ? 'no' : /^abst/.test(k) ? 'abstain' : k === 'recused' ? 'recused' : 'absent');
       }
     } else {
       // Roll call form: "... VOTED YES. COUNCILMEMBER X VOTED NO. COUNCILMEMBER Y ABSTAINED."
-      const rollAt = seg.search(/roll call|voted (?:yes|aye|no|nay)/i);
+      const voteAt = seg.search(/roll call|voted (?:yes|aye|no|nay|in favor|against)/i);
+      // "Mayor Pro Temp Wood and councilmembers McCumber, Holdaway and Lauret voted in favor." names the voters before the verb,
+      // so a sentence of that kind is read from its first word.
+      const sentenceAt = seg.lastIndexOf('. ', voteAt) < 0 ? 0 : seg.lastIndexOf('. ', voteAt) + 2;
+      const rollAt = voteAt > 0 && !/^roll call/i.test(seg.slice(voteAt)) ? sentenceAt : voteAt;
       if (rollAt >= 0) {
         const roll = seg.slice(rollAt).replace(/^roll call (?:vote\.?|went |was )?(?:as follows)?:?/i, '');
-        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:voted|vote)\s+(yes|aye|no|nay|in favor|against)\b/gi)) add(namesIn(m[1]), /^(no|nay|against)$/i.test(m[2]) ? 'no' : 'yes');
-        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:abstained|abstaining|chose to abstain)\b/gi)) add(namesIn(m[1]), 'abstain');
-        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:was|were)\s+(?:absent|excused)\b/gi)) add(namesIn(m[1]), 'absent');
-        for (const m of roll.matchAll(/([^.;:]*?)\s+recused\b/gi)) add(namesIn(m[1]), 'recused');
+        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:voted|vote)\s+(yes|aye|no|nay|in favor|against)\b/gi)) add(listed(m[1]), /^(no|nay|against)$/i.test(m[2]) ? 'no' : 'yes');
+        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:abstained|abstaining|chose to abstain)\b/gi)) add(listed(m[1]), 'abstain');
+        for (const m of roll.matchAll(/([^.;:]*?)\s+(?:was|were)\s+(?:absent|excused)\b/gi)) add(listed(m[1]), 'absent');
+        for (const m of roll.matchAll(/([^.;:]*?)\s+recused\b/gi)) add(listed(m[1]), 'recused');
       }
     }
     // "Tie Vote resolved by Mayor Stratton's vote of Yes."
@@ -349,7 +364,8 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     const no = votes.filter((v) => v.vote === 'no').length;
     const result: ParsedMotion['result'] = /carried|passed|approved/.test(word) ? 'carried' : /failed|died|denied|defeated/.test(word) ? 'failed' : votes.length ? (yes > no ? 'carried' : 'failed') : 'unknown';
     const tally = seg.match(/\b(?:carried|passed|failed)\s+(?:by a vote of\s+)?(\d)\s*(?:-|–|to)\s*(\d)\b/i);
-    const textOut = (wording?.[1] ?? '').replace(/\s+/g, ' ').trim();
+    // "Councilmember Holdaway nominated Councilmember Wood to serve as Mayor Pro Temp" is a motion to nominate.
+    const textOut = `${/^nominated$/i.test(wording?.[1] ?? '') ? 'nominate ' : ''}${wording?.[2] ?? ''}`.replace(/\s+/g, ' ').trim();
     if (!mover && !votes.length && !res) return; // a stray "motion" with nothing recorded
     if (textOut.length < 4 && !votes.length) return;
     const refs = [...new Set([...seg.slice(0, 900).matchAll(/\b(resolution|ordinance)\s+(?:no\.?\s*)?((?:19|20)\d{2}\s*-\s*\d{1,3}[A-Z]?)/gi)].map((m) => `${titleCase(m[1])} ${m[2].replace(/\s+/g, '')}`))];
