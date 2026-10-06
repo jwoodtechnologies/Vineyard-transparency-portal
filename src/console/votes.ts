@@ -393,9 +393,15 @@ export interface MinutesRead {
 
 const BODY_NAME: Record<string, string> = { 'city-council': 'City Council', 'redevelopment-agency': 'Redevelopment Agency', 'planning-commission': 'Planning Commission' };
 
-/** Meetings already held whose minutes are not posted yet: a row each, so a missing meeting is never mistaken for a meeting with no votes. */
+/** Days a held meeting can wait for its minutes and still be listed as not yet posted. */
+export const PENDING_DAYS = 60;
+
+/** Meetings held in the last two months whose minutes are not posted yet: a row each, so a recent meeting is never mistaken for a meeting with no votes. */
 export function pendingRows(meetings: MeetingLite[], read: MinutesRead[], today: string, from = '2026-01-01'): SheetRow[] {
   const day = (d: string | null) => (d ?? '').slice(0, 10);
+  const [y, mo, d] = today.split('-').map(Number);
+  const recent = new Date(Date.UTC(y, mo - 1, d - PENDING_DAYS)).toISOString().slice(0, 10);
+  const since = recent > from ? recent : from;
   const have = new Set(read.map((r) => `${r.bodyId}|${day(r.date)}`));
   const cancelled = new Set(meetings.filter((m) => m.status === 'cancelled' && m.date).map((m) => `${m.governmentBodyId}|${day(m.date)}`));
   const seen = new Set<string>();
@@ -403,7 +409,7 @@ export function pendingRows(meetings: MeetingLite[], read: MinutesRead[], today:
   for (const mt of meetings) {
     const date = day(mt.date);
     const key = `${mt.governmentBodyId}|${date}`;
-    if (!date || date < from || date > today || mt.status !== 'held' || have.has(key) || cancelled.has(key) || seen.has(key)) continue;
+    if (!date || date < since || date > today || mt.status !== 'held' || have.has(key) || cancelled.has(key) || seen.has(key)) continue;
     if (/\b(?:notice|cancel\w*)\b/i.test(mt.title)) continue;
     seen.add(key);
     const kind =
