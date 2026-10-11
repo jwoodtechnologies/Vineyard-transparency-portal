@@ -217,6 +217,7 @@ function shown(raw: string): string {
     .replace(/^(?:public hearing|discussion and (?:possible )?(?:action|acton)|action item|business item)\s*[:\-–—]*\s*/i, '')
     .replace(/^(?:approve|adopt|accept|approval of|adoption of|adopting|approving|discuss|discussion of)\s+(?:the\s+)?/i, '')
     .replace(/\s+[-–—]+\s+/g, ': ')
+    .replace(/(\w)[–—](\w)/g, '$1-$2')
     .replace(/\s+as presented\.?$/i, '')
     .replace(
       /\b(Resolution|Ordinance)\s+(U?)((?:19|20)\d{2})(\d{2})\b/gi,
