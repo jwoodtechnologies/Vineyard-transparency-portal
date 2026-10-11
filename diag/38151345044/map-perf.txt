@@ -1,0 +1,11 @@
+parcel-lines-low 200 63789 bytes over the wire
+parcel-lines-mid 200 101245 bytes over the wire
+map z12 toggle lines drawn 921 ms (runs 921, 830, 1016)  set 62.9 KB over the wire  /api/map/parcel-lines?level=low  z16 tiles 0
+map z12 load   lines drawn 2867 ms (runs 2867, 2830, 2970)  set 62.9 KB over the wire  /api/map/parcel-lines?level=low  z16 tiles 0
+map z13 toggle lines drawn 878 ms (runs 878, 892, 769)  set 62.9 KB over the wire  /api/map/parcel-lines?level=low  z16 tiles 0
+map z13 load   lines drawn 2787 ms (runs 2785, 2787, 2821)  set 62.9 KB over the wire  /api/map/parcel-lines?level=low  z16 tiles 0
+map z14 toggle lines drawn 948 ms (runs 930, 975, 948)  set 99.5 KB over the wire  /api/map/parcel-lines?level=mid  z16 tiles 0
+map z14 load   lines drawn 2880 ms (runs 2840, 3247, 2880)  set 99.5 KB over the wire  /api/map/parcel-lines?level=mid  z16 tiles 0
+map z15 toggle lines drawn 916 ms (runs 916, 924, 896)  set 99.5 KB over the wire  /api/map/parcel-lines?level=mid  z16 tiles 0
+map z15 load   lines drawn 2845 ms (runs 2845, 2849, 2830)  set 99.5 KB over the wire  /api/map/parcel-lines?level=mid  z16 tiles 0
+wrote diag/38151345044/map-perf.json

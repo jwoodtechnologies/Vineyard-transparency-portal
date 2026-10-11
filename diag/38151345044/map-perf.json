@@ -1,0 +1,123 @@
+{
+  "base": "https://vineyardportal.org",
+  "at": "2026-10-11T15:29:56.466Z",
+  "mode": "map-perf",
+  "desktop": false,
+  "net": "fast4g",
+  "cpu": 4,
+  "runs": 3,
+  "results": {
+    "z12-toggle": {
+      "ms": 921,
+      "linesKB": 62.9,
+      "linesUrls": [
+        "/api/map/parcel-lines?level=low"
+      ],
+      "tiles16": 0,
+      "runs": [
+        921,
+        830,
+        1016
+      ],
+      "errors": []
+    },
+    "z12-load": {
+      "ms": 2867,
+      "linesKB": 62.9,
+      "linesUrls": [
+        "/api/map/parcel-lines?level=low"
+      ],
+      "tiles16": 0,
+      "runs": [
+        2867,
+        2830,
+        2970
+      ],
+      "errors": []
+    },
+    "z13-toggle": {
+      "ms": 878,
+      "linesKB": 62.9,
+      "linesUrls": [
+        "/api/map/parcel-lines?level=low"
+      ],
+      "tiles16": 0,
+      "runs": [
+        878,
+        892,
+        769
+      ],
+      "errors": []
+    },
+    "z13-load": {
+      "ms": 2787,
+      "linesKB": 62.9,
+      "linesUrls": [
+        "/api/map/parcel-lines?level=low"
+      ],
+      "tiles16": 0,
+      "runs": [
+        2785,
+        2787,
+        2821
+      ],
+      "errors": []
+    },
+    "z14-toggle": {
+      "ms": 948,
+      "linesKB": 99.5,
+      "linesUrls": [
+        "/api/map/parcel-lines?level=mid"
+      ],
+      "tiles16": 0,
+      "runs": [
+        930,
+        975,
+        948
+      ],
+      "errors": []
+    },
+    "z14-load": {
+      "ms": 2880,
+      "linesKB": 99.5,
+      "linesUrls": [
+        "/api/map/parcel-lines?level=mid"
+      ],
+      "tiles16": 0,
+      "runs": [
+        2840,
+        3247,
+        2880
+      ],
+      "errors": []
+    },
+    "z15-toggle": {
+      "ms": 916,
+      "linesKB": 99.5,
+      "linesUrls": [
+        "/api/map/parcel-lines?level=mid"
+      ],
+      "tiles16": 0,
+      "runs": [
+        916,
+        924,
+        896
+      ],
+      "errors": []
+    },
+    "z15-load": {
+      "ms": 2845,
+      "linesKB": 99.5,
+      "linesUrls": [
+        "/api/map/parcel-lines?level=mid"
+      ],
+      "tiles16": 0,
+      "runs": [
+        2845,
+        2849,
+        2830
+      ],
+      "errors": []
+    }
+  }
+}
