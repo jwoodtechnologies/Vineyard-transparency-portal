@@ -1,12 +1,15 @@
 /**
- * The public "Add to the record" page (/add): anyone can add a document (PDF, PNG, JPG), a project,
- * a note or a link. Each goes live at once in its own collection (source resident-submitted, type
- * resident_submission), labelled "Resident submitted. Not a city record." everywhere it shows.
+ * The public "Submit a public record" page (/add): anyone can send a document (PDF, PNG, JPG), a
+ * project, a note or a link. A submission waits as pending (stored, its file under resident/, but
+ * not indexed, not in search and not served) until the owner approves it in the panel. Approved
+ * items go into their own collection (source resident-submitted, type resident_submission),
+ * labelled "Resident submitted. Not a city record." everywhere they show. Rejected ones are deleted.
  *
  * Guard rails, with no secret: plain text only, a honeypot field, 3 items per person and 30 in all
  * per day (people are told apart by a salted hash of the IP address; the address itself is never
  * stored), a Report button that hides an item after reports from 2 different people, a 300 MB
- * budget for files (R2 prefix resident/), and an on/off switch and one-click removal for the owner.
+ * budget for files (R2 prefix resident/, pending files included), owner approval before anything is
+ * public, and an on/off switch and one-click removal for the owner.
  */
 import type { Env } from '../env';
 import { Budget } from '../admin/routes';
@@ -14,7 +17,7 @@ import { HttpError, badRequest, json, notFound, readJson } from '../lib/http';
 import { nowIso, utcDay } from '../lib/util';
 import { MIME, plainLine, sanitizeName, sniffFile, titleFromName, plainText } from '../lib/contrib';
 import { sha256Hex } from '../sync/ingest';
-import { SYNC_PDF_BYTES, contributionFrom, createRecord, purgeCached, removeRecord, type Contribution } from './indexing';
+import { SYNC_PDF_BYTES, contributionFrom, createRecord, purgeCached, removeRecord } from './indexing';
 import { ensureContribTables, ensurePortalSources, getSetting, setSetting } from './schema';
 import { formFields } from './staff';
 
@@ -62,32 +65,27 @@ async function gate(env: Env, ip: string): Promise<void> {
   if (Number(r?.total ?? 0) >= TOTAL_PER_DAY) throw new HttpError(429, 'rate_limited', "Today's limit for new items is reached. Try again tomorrow.", 3600);
 }
 
-async function begin(env: Env, request: Request): Promise<{ ip: string; budget: Budget }> {
+async function begin(env: Env, request: Request): Promise<{ ip: string }> {
   await ensureContribTables(env);
   await ensurePortalSources(env);
   const ip = await ipHash(env, request);
   await gate(env, ip);
-  const budget = new Budget(env);
-  await budget.check(20);
-  return { ip, budget };
+  await new Budget(env).check(20);
+  return { ip };
 }
 
 /** A honeypot hit gets the same answer as a real submission, and nothing is stored. */
 const trapped = (v: unknown) => typeof v === 'string' && v.trim() !== '';
 
-async function finish(env: Env, c: Contribution, bytes: Uint8Array | null, ip: string, budget: Budget): Promise<Response> {
-  try {
-    const r = await createRecord(env, c, bytes, budget, c.fileKind === 'pdf' && (c.fileSize ?? 0) > SYNC_PDF_BYTES);
-    await env.CATALOG_DB.prepare('UPDATE resident_submissions SET document_id = ?, index_status = ? WHERE id = ?').bind(r.documentId, r.indexStatus, c.id).run();
-    await log(env, 'submit', c.id, ip, `${c.kind}: ${c.title}`);
-    return json({ ok: true, documentId: r.documentId }, { status: 201 });
-  } catch (e) {
-    await env.CATALOG_DB.prepare('DELETE FROM resident_submissions WHERE id = ?').bind(c.id).run();
-    if (c.fileKey && env.ARCHIVE) await env.ARCHIVE.delete(c.fileKey).catch(() => undefined);
-    if (e instanceof HttpError) throw e;
-    console.error(JSON.stringify({ event: 'resident_submit_failed', message: String(e instanceof Error ? e.message : e).slice(0, 300) }));
-    throw new HttpError(500, 'server', 'That could not be added. Try again later.');
-  }
+export const PENDING_MESSAGE = 'Thanks. Your submission will appear after review.';
+
+/** The answer to every accepted submission (and to a honeypot hit, so bots learn nothing). */
+const accepted = (id: string) => json({ ok: true, pending: true, id, message: PENDING_MESSAGE }, { status: 201, ...NO_STORE });
+
+/** A new submission waits for the owner: nothing is indexed, searchable or served until approval. */
+async function finish(env: Env, id: string, kind: string, title: string, ip: string): Promise<Response> {
+  await log(env, 'submit', id, ip, `${kind}: ${title}`);
+  return accepted(id);
 }
 
 /** POST /api/add/file (multipart: file, title, description, website). */
@@ -99,8 +97,8 @@ export async function addFile(env: Env, request: Request): Promise<Response> {
   } catch {
     throw badRequest('Choose a file to add.');
   }
-  if (trapped(form.get('website'))) return json({ ok: true }, { status: 201 });
-  const { ip, budget } = await begin(env, request);
+  if (trapped(form.get('website'))) return accepted(`sub_${randomHex(8)}`);
+  const { ip } = await begin(env, request);
   const file = form.get('file');
   if (!file || typeof file === 'string') throw badRequest('Choose a file to add.');
   if (file.size <= 0) throw badRequest('That file is empty.');
@@ -118,33 +116,28 @@ export async function addFile(env: Env, request: Request): Promise<Response> {
   const fileName = sanitizeName(file.name, kind);
   await env.ARCHIVE.put(key, bytes, { httpMetadata: { contentType: MIME[kind], contentDisposition: `inline; filename="${fileName}"` } });
   await env.CATALOG_DB.prepare(
-    `INSERT INTO resident_submissions (id, kind, title, body, file_key, file_name, mime, file_size, sha256, ip_hash, day, created_at) VALUES (?, 'file', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO resident_submissions (id, kind, title, body, file_key, file_name, mime, file_size, sha256, ip_hash, day, created_at, status) VALUES (?, 'file', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
   )
     .bind(id, title, body, key, fileName, MIME[kind], bytes.byteLength, sha, ip, utcDay(), nowIso())
     .run();
-  const c: Contribution = {
-    origin: 'resident', id, kind: 'file', title, docType: 'resident_submission', docDate: null, body, url: null, statusText: null, location: null, meetingId: null,
-    projectName: null, fileKind: kind, fileName, mime: MIME[kind], fileSize: bytes.byteLength, sha256: sha, fileKey: key, fileText: null,
-  };
-  return finish(env, c, bytes, ip, budget);
+  return finish(env, id, 'file', title, ip);
 }
 
 /** POST /api/add (JSON: kind project | note | link, plus its fields, plus the website honeypot). */
 export async function addForm(env: Env, request: Request): Promise<Response> {
   const b = await readJson<Record<string, unknown>>(request, 32 * 1024);
-  if (trapped(b.website)) return json({ ok: true }, { status: 201 });
+  if (trapped(b.website)) return accepted(`sub_${randomHex(8)}`);
   const kind = String(b.kind ?? '');
   if (!['project', 'note', 'link'].includes(kind)) throw badRequest('Choose what to add.');
   const f = formFields(kind, b);
-  const { ip, budget } = await begin(env, request);
+  const { ip } = await begin(env, request);
   const id = `sub_${randomHex(8)}`;
   await env.CATALOG_DB.prepare(
-    `INSERT INTO resident_submissions (id, kind, title, body, url, status_text, location, ip_hash, day, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO resident_submissions (id, kind, title, body, url, status_text, location, ip_hash, day, created_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
   )
     .bind(id, f.kind, f.title, f.body, f.url, f.statusText, f.location, ip, utcDay(), nowIso())
     .run();
-  const c: Contribution = { origin: 'resident', id, ...f, docType: 'resident_submission', docDate: null, meetingId: null, projectName: null, fileKind: null, fileName: null, mime: null, fileSize: null, sha256: null, fileKey: null, fileText: null };
-  return finish(env, c, null, ip, budget);
+  return finish(env, id, f.kind, f.title, ip);
 }
 
 /** Takes a submission out of search and the catalog, keeping its file so the owner can restore it. */
@@ -185,11 +178,15 @@ export async function addStatus(env: Env): Promise<Response> {
 
 export async function listSubmissions(env: Env): Promise<Record<string, unknown>> {
   await ensureContribTables(env);
+  const pending = await env.CATALOG_DB.prepare(
+    `SELECT id, kind, title, substr(body, 1, 5000) AS body, url, status_text, location, file_name, mime, file_size, substr(ip_hash, 1, 8) AS person, created_at
+       FROM resident_submissions WHERE status = 'pending' ORDER BY created_at LIMIT 200`,
+  ).all();
   const r = await env.CATALOG_DB.prepare(
     `SELECT id, document_id, kind, title, substr(body, 1, 400) AS body, url, status_text, location, file_name, mime, file_size, substr(ip_hash, 1, 8) AS person,
-            reports, index_status, created_at, hidden_at, removed_at FROM resident_submissions ORDER BY created_at DESC LIMIT 200`,
+            reports, index_status, created_at, hidden_at, removed_at FROM resident_submissions WHERE status <> 'pending' ORDER BY created_at DESC LIMIT 200`,
   ).all();
-  return { items: r.results ?? [], open: await submissionsOpen(env), storage: { used: await residentBytesUsed(env), limit: RESIDENT_STORAGE_BYTES } };
+  return { pending: pending.results ?? [], items: r.results ?? [], open: await submissionsOpen(env), storage: { used: await residentBytesUsed(env), limit: RESIDENT_STORAGE_BYTES } };
 }
 
 export async function submissionLog(env: Env): Promise<Record<string, unknown>> {
@@ -205,6 +202,8 @@ async function submission(env: Env, id: unknown): Promise<Record<string, unknown
   return sub;
 }
 
+const isPending = (sub: Record<string, unknown>) => sub.status === 'pending';
+
 /** One-click removal: out of the catalog and search, and the file deleted. */
 export async function removeSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
   const sub = await submission(env, id);
@@ -218,16 +217,13 @@ export async function removeSubmission(env: Env, id: unknown): Promise<Record<st
 
 export async function hideSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
   const sub = await submission(env, id);
+  if (isPending(sub)) throw badRequest('Approve or reject this item first.');
   if (!sub.hidden_at && !sub.removed_at) await hide(env, sub, null, 'by owner');
   return { ok: true };
 }
 
-/** Puts a hidden item back (reports start again from zero). */
-export async function restoreSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
-  const sub = await submission(env, id);
-  if (sub.removed_at) throw badRequest('Removed items cannot be restored.');
-  if (!sub.hidden_at) return { ok: true };
-  const budget = new Budget(env);
+/** Creates the public record for a stored submission (indexed, searchable, labelled). */
+async function publish(env: Env, sub: Record<string, unknown>): Promise<{ documentId: string; indexStatus: string }> {
   const c = contributionFrom('resident', sub);
   let bytes: Uint8Array | null = null;
   if (c.fileKey) {
@@ -235,7 +231,17 @@ export async function restoreSubmission(env: Env, id: unknown): Promise<Record<s
     if (!obj) throw badRequest('The file is no longer stored.');
     bytes = new Uint8Array(await obj.arrayBuffer());
   }
-  const r = await createRecord(env, c, bytes, budget, c.fileKind === 'pdf' && (c.fileSize ?? 0) > SYNC_PDF_BYTES);
+  const r = await createRecord(env, c, bytes, new Budget(env), c.fileKind === 'pdf' && (c.fileSize ?? 0) > SYNC_PDF_BYTES);
+  return { documentId: r.documentId, indexStatus: r.indexStatus };
+}
+
+/** Puts a hidden item back (reports start again from zero). */
+export async function restoreSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
+  const sub = await submission(env, id);
+  if (isPending(sub)) throw badRequest('Approve or reject this item first.');
+  if (sub.removed_at) throw badRequest('Removed items cannot be restored.');
+  if (!sub.hidden_at) return { ok: true };
+  const r = await publish(env, sub);
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('UPDATE resident_submissions SET hidden_at = NULL, reports = 0, document_id = ?, index_status = ? WHERE id = ?').bind(r.documentId, r.indexStatus, sub.id),
     env.CATALOG_DB.prepare('DELETE FROM resident_reports WHERE submission_id = ?').bind(sub.id),
@@ -245,6 +251,61 @@ export async function restoreSubmission(env: Env, id: unknown): Promise<Record<s
   return { ok: true };
 }
 
+async function pendingSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
+  const sub = await submission(env, id);
+  if (!isPending(sub)) throw new HttpError(409, 'bad_request', 'That item is not waiting for review.');
+  return sub;
+}
+
+/** Owner approval: the record is created exactly as a live item was before, and the item is live. */
+export async function approveSubmission(env: Env, id: unknown, by = 'by owner'): Promise<Record<string, unknown>> {
+  const sub = await pendingSubmission(env, id);
+  let r: { documentId: string; indexStatus: string };
+  try {
+    r = await publish(env, sub);
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    console.error(JSON.stringify({ event: 'resident_approve_failed', message: String(e instanceof Error ? e.message : e).slice(0, 300) }));
+    throw new HttpError(500, 'server', 'That could not be added. Try again later.');
+  }
+  await env.CATALOG_DB.prepare("UPDATE resident_submissions SET status = 'approved', document_id = ?, index_status = ? WHERE id = ?").bind(r.documentId, r.indexStatus, sub.id).run();
+  await purgeCached(r.documentId);
+  await log(env, 'approve', String(sub.id), null, `${by}: ${String(sub.title)}`);
+  return { ok: true, documentId: r.documentId };
+}
+
+/** Owner rejection: the file and the row are deleted. Nothing was ever public. */
+export async function rejectSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
+  const sub = await pendingSubmission(env, id);
+  if (sub.file_key && env.ARCHIVE) await env.ARCHIVE.delete(String(sub.file_key)).catch(() => undefined);
+  await env.CATALOG_DB.batch([
+    env.CATALOG_DB.prepare('DELETE FROM resident_reports WHERE submission_id = ?').bind(sub.id),
+    env.CATALOG_DB.prepare('DELETE FROM resident_submissions WHERE id = ?').bind(sub.id),
+  ]);
+  await log(env, 'reject', String(sub.id), null, `by owner: ${String(sub.title)}`);
+  return { ok: true };
+}
+
+/** The stored file of a submission, for the owner's preview only (sandboxed, never sniffed, never cached). */
+export async function submissionFile(env: Env, id: unknown): Promise<Response> {
+  const sub = await submission(env, id);
+  if (!sub.file_key || sub.removed_at) throw notFound('That item has no file.');
+  const obj = env.ARCHIVE ? await env.ARCHIVE.get(String(sub.file_key)) : null;
+  if (!obj) throw notFound('The file is no longer stored.');
+  const name = String(sub.file_name ?? 'file').replace(/[^\w .()-]/g, '_');
+  return new Response(obj.body, {
+    headers: {
+      'content-type': String(sub.mime ?? 'application/octet-stream'),
+      'content-disposition': `inline; filename="${name}"`,
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'content-security-policy': "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'",
+      'x-robots-tag': 'noindex, nofollow, noarchive',
+      'referrer-policy': 'no-referrer',
+    },
+  });
+}
+
 export async function setSubmissionsOpen(env: Env, open: boolean): Promise<Record<string, unknown>> {
   await ensureContribTables(env);
   await setSetting(env, 'submissions_open', open ? '1' : '0');
@@ -252,26 +313,34 @@ export async function setSubmissionsOpen(env: Env, open: boolean): Promise<Recor
   return { ok: true, open };
 }
 
-/** Titles the automated end to end test uses. The admin cleanup route touches nothing else. */
+/** Titles the automated end to end test uses. The admin routes touch nothing else. */
 export const E2E_TITLE_PREFIX = 'Portal end to end test';
 
-async function e2eSubmission(env: Env, documentId: unknown): Promise<Record<string, unknown>> {
+/** A test item by its submission id (sub_...) or, once approved, its record id. */
+async function e2eSubmission(env: Env, ref: unknown): Promise<Record<string, unknown>> {
   await ensureContribTables(env);
-  const sub = await env.CATALOG_DB.prepare('SELECT * FROM resident_submissions WHERE document_id = ?').bind(String(documentId ?? '').slice(0, 64)).first<Record<string, unknown>>();
+  const key = String(ref ?? '').slice(0, 64);
+  const sub = await env.CATALOG_DB.prepare('SELECT * FROM resident_submissions WHERE id = ? OR document_id = ?').bind(key, key).first<Record<string, unknown>>();
   if (!sub) throw notFound('That item was not found.');
   if (!String(sub.title ?? '').startsWith(E2E_TITLE_PREFIX)) throw new HttpError(403, 'unauthorized', 'Only end to end test items can be handled here.');
   return sub;
 }
 
 /** State of a test item, for the end to end check (admin, GitHub OIDC). */
-export async function e2eState(env: Env, documentId: unknown): Promise<Record<string, unknown>> {
-  const sub = await e2eSubmission(env, documentId);
-  return { id: sub.id, hidden: Boolean(sub.hidden_at), removed: Boolean(sub.removed_at), reports: Number(sub.reports ?? 0) };
+export async function e2eState(env: Env, ref: unknown): Promise<Record<string, unknown>> {
+  const sub = await e2eSubmission(env, ref);
+  return { id: sub.id, status: sub.status, documentId: sub.document_id ?? null, hidden: Boolean(sub.hidden_at), removed: Boolean(sub.removed_at), reports: Number(sub.reports ?? 0) };
+}
+
+/** Approves a pending test item the same way the owner's Approve button does. */
+export async function e2eApprove(env: Env, ref: unknown): Promise<Record<string, unknown>> {
+  const sub = await e2eSubmission(env, ref);
+  return approveSubmission(env, sub.id, 'end to end test');
 }
 
 /** Removes a test item the same way the owner's Remove button does, then deletes its rows. */
-export async function e2eCleanup(env: Env, documentId: unknown): Promise<Record<string, unknown>> {
-  const sub = await e2eSubmission(env, documentId);
+export async function e2eCleanup(env: Env, ref: unknown): Promise<Record<string, unknown>> {
+  const sub = await e2eSubmission(env, ref);
   await removeSubmission(env, sub.id);
   const after = await env.CATALOG_DB.prepare('SELECT removed_at FROM resident_submissions WHERE id = ?').bind(sub.id).first<{ removed_at: string | null }>();
   await env.CATALOG_DB.batch([

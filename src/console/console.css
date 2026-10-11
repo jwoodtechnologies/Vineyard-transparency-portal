@@ -4822,7 +4822,7 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-viewer-image { display: grid; place-items: center; padding: 12px; background: var(--vc-bg-2); }
 .vc-viewer-image img { max-width: 100%; max-height: 80vh; height: auto; border-radius: 8px; }
 
-/* /add : Add to the record */
+/* /add : Submit a public record */
 .vc-add-lede { margin: 10px 0 0; color: var(--vc-muted); font-size: var(--vc-fs-body); line-height: 1.5; max-width: 60ch; }
 .vc-add-kinds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 22px 0 18px; }
 .vc-add-kind { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 64px; padding: 10px 6px; border: 1px solid var(--vc-line-2); border-radius: 14px; background: var(--vc-surface); color: var(--vc-ink-2); font: inherit; font-size: var(--vc-fs-sm); font-weight: 600; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
@@ -4995,7 +4995,9 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 }
 .vc-rss-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 0.4rem 1.1rem;
   margin: 1.5rem 0 0;
 }
 /* records home: topic tiles, record chips, numbered indexes */
