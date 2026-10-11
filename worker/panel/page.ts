@@ -2,7 +2,8 @@
  * The private panel page. Self-contained (served only at PANEL_PREFIX, never part of the public site
  * bundle). All data is rendered with textContent, never as HTML.
  *
- * Owner: activity, adding records, every upload, resident submissions, people and invites, and the
+ * Owner: activity, adding records, every upload, resident submissions (pending ones to approve or
+ * reject, approved ones to hide or remove), people and invites, and the
  * coverage check (what the archive is missing, with a CSV download), and job health (each scheduled
  * check and source: last run, last success, last error, failures in a row).
  * Uploader: adding records and its own uploads. An invite link (PANEL_PREFIX/invite/<token>) opens
@@ -88,6 +89,7 @@ html.dark .seg button[aria-pressed=true]{background:rgba(255,255,255,.1)}
 .pill{align-self:start;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
 .pill.up{background:var(--goodbg);color:var(--good)}.pill.down{background:var(--badbg);color:var(--bad)}
 .pill.soft{background:var(--bg2);color:var(--muted);font-weight:600}
+.hint.pre{white-space:pre-wrap;max-height:16em;overflow:auto}
 .mark{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px;background:var(--faint)}.mark.fail{background:var(--accent)}
 .err1{overflow-wrap:anywhere}
 .empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:14px}
@@ -225,9 +227,12 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
 
     <div id="v-subs" class="view hidden">
       <div class="head"><h1>Submissions</h1></div>
-      <div class="card pad switch"><div><p class="label">Add to the record page</p><div class="hint" id="subState"></div></div><button class="btn" id="subSwitch" type="button"></button></div>
-      <h2 class="sub">Items</h2>
-      <div class="card"><ul class="feed" id="subList"></ul><div class="empty hidden" id="subEmpty">No submissions yet.</div></div>
+      <div class="card pad switch"><div><p class="label">Submit a public record page</p><div class="hint" id="subState"></div></div><button class="btn" id="subSwitch" type="button"></button></div>
+      <h2 class="sub">Pending</h2>
+      <p class="hint">Not public until approved. Approve adds it to the portal with the label "Resident submitted. Not a city record." Reject deletes it and its file.</p>
+      <div class="card"><ul class="feed" id="subPending"></ul><div class="empty hidden" id="subPendingEmpty">Nothing waiting for review.</div></div>
+      <h2 class="sub">Approved</h2>
+      <div class="card"><ul class="feed" id="subList"></ul><div class="empty hidden" id="subEmpty">No approved submissions yet.</div></div>
       <h2 class="sub">Log</h2>
       <div class="card"><ul class="feed" id="subLog"></ul><div class="empty hidden" id="subLogEmpty">Nothing logged yet.</div></div>
     </div>

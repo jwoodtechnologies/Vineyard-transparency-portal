@@ -260,6 +260,26 @@ export const PANEL_SCRIPT = String.raw`(function(){
       subOpen = !!j.open;
       $('subState').textContent = (subOpen ? 'Open to everyone.' : 'Paused. The page shows "Submissions are paused."') + ' Files ' + bytes(j.storage.used) + ' of ' + bytes(j.storage.limit) + '.';
       $('subSwitch').textContent = subOpen ? 'Pause submissions' : 'Turn submissions on';
+      var pl = $('subPending'); pl.textContent = ''; var pending = j.pending || [];
+      pending.forEach(function(s){
+        var li = el('li', 'item'); li.appendChild(whenEl(s.created_at));
+        var main = el('div', 'main'); main.appendChild(el('div', 'q', s.title));
+        if (s.body) main.appendChild(el('div', 'hint pre', s.body));
+        if (s.url) main.appendChild(el('div', 'path', s.url));
+        if (s.status_text || s.location) main.appendChild(el('div', 'hint', [s.status_text, s.location].filter(Boolean).join(', ')));
+        var meta = el('div', 'meta');
+        [KIND[s.kind], s.file_name ? s.file_name + ' (' + bytes(s.file_size || 0) + ')' : null, 'Person ' + s.person].forEach(function(t){ if (t) meta.appendChild(el('span', null, t)); });
+        main.appendChild(meta);
+        var acts = el('div', 'rowacts');
+        if (s.file_name) { var f = el('a', 'open', 'Open file'); f.href = P + '/submissions/file?id=' + encodeURIComponent(s.id); f.target = '_blank'; f.rel = 'noopener noreferrer'; acts.appendChild(f); }
+        acts.appendChild(btn('Approve', 'primary', function(){ if (confirm('Add this to the portal?')) post('/submissions/approve', { id: s.id }).then(loadSubs, function(x){ alert(x.message); }); }));
+        acts.appendChild(btn('Reject', 'danger', function(){ if (confirm('Reject and delete this item and its file?')) post('/submissions/reject', { id: s.id }).then(loadSubs, function(x){ alert(x.message); }); }));
+        main.appendChild(acts);
+        li.appendChild(main);
+        li.appendChild(el('span', 'pill soft', 'Pending'));
+        pl.appendChild(li);
+      });
+      $('subPendingEmpty').classList.toggle('hidden', pending.length > 0);
       var ul = $('subList'); ul.textContent = ''; var items = j.items || [];
       items.forEach(function(s){
         var li = el('li', 'item'); li.appendChild(whenEl(s.created_at));
@@ -285,7 +305,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
     }).catch(authFail);
     api('/submissions/log').then(function(j){
       var ul = $('subLog'); ul.textContent = ''; var items = j.items || [];
-      var NAMES = { submit: 'Added', report: 'Reported', hide: 'Hidden', remove: 'Removed', restore: 'Restored', pause: 'Paused', resume: 'Turned on' };
+      var NAMES = { submit: 'Submitted', approve: 'Approved', reject: 'Rejected', report: 'Reported', hide: 'Hidden', remove: 'Removed', restore: 'Restored', pause: 'Paused', resume: 'Turned on' };
       items.forEach(function(r){ var li = el('li', 'item'); li.appendChild(whenEl(r.at)); var main = el('div', 'main'); main.appendChild(el('div', null, (NAMES[r.action] || r.action) + (r.detail ? ': ' + r.detail : ''))); var meta = el('div', 'meta'); if (r.submission_id) meta.appendChild(el('span', 'ip', r.submission_id)); if (r.person) meta.appendChild(el('span', null, 'Person ' + r.person)); main.appendChild(meta); li.appendChild(main); li.appendChild(el('span')); ul.appendChild(li); });
       $('subLogEmpty').classList.toggle('hidden', items.length > 0);
     }).catch(authFail);

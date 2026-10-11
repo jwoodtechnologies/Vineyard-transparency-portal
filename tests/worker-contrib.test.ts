@@ -3,8 +3,9 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { testEnv } from './helpers/d1';
 import { PANEL_PREFIX, handlePanel } from '../worker/panel/routes';
 import { newSetupCode } from '../worker/panel/auth';
-import { addFile, addForm, addStatus, e2eCleanup, e2eState, reportSubmission, RESIDENT_STORAGE_BYTES } from '../worker/contrib/resident';
+import { addFile, addForm, addStatus, approveSubmission, e2eApprove, e2eCleanup, e2eState, PENDING_MESSAGE, rejectSubmission, reportSubmission, residentBytesUsed, RESIDENT_STORAGE_BYTES } from '../worker/contrib/resident';
 import { getDocumentFile } from '../worker/api/documents';
+import { ensureContribTables } from '../worker/contrib/schema';
 import { HttpError } from '../worker/lib/http';
 import { plainText, sanitizeName, sniffFile } from '../worker/lib/contrib';
 import { citationLabel, officialTopic, withoutResidentFor } from '../worker/ai/submissions';
@@ -345,26 +346,138 @@ describe('staff uploads', () => {
 
 // ------------------------------------------------------------------ resident submissions
 
-describe('resident submissions', () => {
-  it('adds a plain-text note to its own labelled collection', async () => {
+/** The submission id a resident gets back (the item waits for review). */
+async function subIdOf(r: Response): Promise<string> {
+  const j = (await r.json()) as { id: string; pending: boolean; documentId?: string };
+  expect(j.pending).toBe(true);
+  expect(j.documentId).toBeUndefined();
+  return j.id;
+}
+
+/** Submits, then approves as the owner would, and returns the new record id. */
+async function live(env: TestEnv, r: Response | Promise<Response>): Promise<string> {
+  const res = await r;
+  expect(res.status).toBe(201);
+  const out = await approveSubmission(env, await subIdOf(res));
+  return String(out.documentId);
+}
+
+const count = (env: TestEnv, sql: string, ...args: unknown[]) => Number((env.CATALOG_DB.db.prepare(sql).get(...args) as { n: number }).n);
+
+describe('resident submissions: pending until approved', () => {
+  it('a submission is stored as pending: not indexed, not in search, not served', async () => {
     const env = testEnv();
-    const r = await note(env, '<script>alert(1)</script> The crosswalk light on Main is broken.');
+    const r = await note(env, 'The crosswalk light on Main is broken.');
     expect(r.status).toBe(201);
-    const { documentId } = (await r.json()) as { documentId: string };
-    const doc = env.CATALOG_DB.db.prepare('SELECT source_id, document_type, mime_type, original_url, meeting_id FROM documents WHERE id = ?').get(documentId) as Record<string, unknown>;
-    expect(doc).toMatchObject({ source_id: 'resident-submitted', document_type: 'resident_submission', mime_type: 'text/plain', meeting_id: null });
-    expect(String(doc.original_url)).not.toMatch(/^https?:/);
-    const chunk = env.SEARCH_DB_0.db.prepare('SELECT text FROM chunks WHERE document_id = ?').get(documentId) as { text: string };
-    // Kept as literal text, never interpreted, and carrying the label.
-    expect(chunk.text).toContain('<script>alert(1)</script>');
-    expect(chunk.text).toContain('Resident submitted. Not a city record.');
-    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM resident_submissions WHERE ip_hash LIKE ?').get('%192.0.2.1%')!.n).toBe(0);
+    const j = (await r.clone().json()) as { message: string };
+    expect(j.message).toBe(PENDING_MESSAGE);
+    expect(PENDING_MESSAGE).toBe('Thanks. Your submission will appear after review.');
+    const id = await subIdOf(r);
+    expect(env.CATALOG_DB.db.prepare('SELECT status, document_id FROM resident_submissions WHERE id = ?').get(id)).toMatchObject({ status: 'pending', document_id: null });
+    expect(count(env, 'SELECT count(*) AS n FROM documents')).toBe(0);
+    expect(Number((env.SEARCH_DB_0.db.prepare('SELECT count(*) AS n FROM chunks').get() as { n: number }).n)).toBe(0);
+    // Reports go only to approved items.
+    expect((await call(() => reportSubmission(env, residentReq('/api/add/report', { body: { documentId: id } })))).status).toBe(404);
   });
 
+  it('a pending file is kept under resident/ and counts against the 300 MB budget', async () => {
+    const env = testEnv();
+    const r = await call(() => addFile(env, residentReq('/api/add/file', { form: fileForm(PNG, 'street.png') })));
+    expect(r.status).toBe(201);
+    await subIdOf(r);
+    expect([...env.ARCHIVE.objects.keys()][0]).toMatch(/^resident\/sub_[0-9a-f]{16}\.png$/);
+    expect(await residentBytesUsed(env)).toBe(PNG.byteLength);
+    expect(count(env, 'SELECT count(*) AS n FROM documents')).toBe(0);
+  });
+
+  it('approve creates the labelled record exactly as before and logs it', async () => {
+    const env = testEnv();
+    const id = await subIdOf(await note(env, '<script>alert(1)</script> The crosswalk light on Main is broken.'));
+    const { documentId } = (await approveSubmission(env, id)) as { documentId: string };
+    const doc = env.CATALOG_DB.db.prepare('SELECT source_id, document_type, mime_type, original_url, meeting_id FROM documents WHERE id = ?').get(documentId) as Record<string, unknown>;
+    expect(doc).toMatchObject({ source_id: 'resident-submitted', document_type: 'resident_submission', mime_type: 'text/plain', meeting_id: null });
+    const chunk = env.SEARCH_DB_0.db.prepare('SELECT text FROM chunks WHERE document_id = ?').get(documentId) as { text: string };
+    expect(chunk.text).toContain('<script>alert(1)</script>');
+    expect(chunk.text).toContain('Resident submitted. Not a city record.');
+    expect(env.CATALOG_DB.db.prepare('SELECT status, document_id FROM resident_submissions WHERE id = ?').get(id)).toMatchObject({ status: 'approved', document_id: documentId });
+    const actions = env.CATALOG_DB.db.prepare('SELECT action FROM resident_log ORDER BY id').all().map((x) => x.action);
+    expect(actions).toEqual(['submit', 'approve']);
+    // Only pending items can be approved or rejected.
+    await expect(approveSubmission(env, id)).rejects.toThrow(/not waiting for review/);
+    await expect(rejectSubmission(env, id)).rejects.toThrow(/not waiting for review/);
+  });
+
+  it('reject deletes the file and the row and logs it', async () => {
+    const env = testEnv();
+    const id = await subIdOf(await call(() => addFile(env, residentReq('/api/add/file', { form: fileForm(JPG, 'photo.jpg', { title: 'Spam photo' }) }))));
+    expect(env.ARCHIVE.objects.size).toBe(1);
+    expect(await rejectSubmission(env, id)).toEqual({ ok: true });
+    expect(env.ARCHIVE.objects.size).toBe(0);
+    expect(count(env, 'SELECT count(*) AS n FROM resident_submissions')).toBe(0);
+    expect(count(env, 'SELECT count(*) AS n FROM documents')).toBe(0);
+    const last = env.CATALOG_DB.db.prepare('SELECT action, submission_id, detail FROM resident_log ORDER BY id DESC').get() as Record<string, string>;
+    expect(last).toMatchObject({ action: 'reject', submission_id: id });
+    expect(last.detail).toContain('Spam photo');
+  });
+
+  it('the owner reviews in the panel: Pending list with preview, file, Approve and Reject; uploaders cannot', async () => {
+    const env = testEnv();
+    const owner = await setupOwner(env);
+    const fileId = await subIdOf(await call(() => addFile(env, residentReq('/api/add/file', { form: fileForm(PNG, 'map.png', { title: 'Map of the trail', description: 'Line one\nLine two' }), ip: '198.51.100.40' }))));
+    const noteId = await subIdOf(await note(env, 'A note to reject', '198.51.100.41'));
+    const list = (await (await panel(env, 'GET', '/api/submissions', { cookie: owner })).json()) as { pending: Array<Record<string, unknown>>; items: unknown[] };
+    expect(list.items).toEqual([]);
+    expect(list.pending.map((p) => p.id).sort()).toEqual([fileId, noteId].sort());
+    expect(list.pending.find((p) => p.id === fileId)).toMatchObject({ title: 'Map of the trail', kind: 'file', body: 'Line one\nLine two', file_name: 'map.png' });
+
+    const file = await panel(env, 'GET', `/api/submissions/file?id=${fileId}`, { cookie: owner });
+    expect(file.status).toBe(200);
+    expect(file.headers.get('content-type')).toBe('image/png');
+    expect(file.headers.get('cache-control')).toContain('no-store');
+    expect(file.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(file.headers.get('content-security-policy')).toMatch(/^sandbox/);
+    expect(new Uint8Array(await file.arrayBuffer())).toEqual(PNG);
+    expect((await panel(env, 'GET', `/api/submissions/file?id=${fileId}`)).status).toBe(401);
+
+    const uploader = await uploaderSession(env, owner);
+    expect((await panel(env, 'GET', '/api/submissions', { cookie: uploader })).status).toBe(403);
+    expect((await panel(env, 'GET', `/api/submissions/file?id=${fileId}`, { cookie: uploader })).status).toBe(403);
+    expect((await panel(env, 'POST', '/api/submissions/approve', { body: { id: fileId }, cookie: uploader })).status).toBe(403);
+    expect((await panel(env, 'POST', '/api/submissions/reject', { body: { id: noteId }, cookie: uploader })).status).toBe(403);
+    expect(count(env, "SELECT count(*) AS n FROM resident_submissions WHERE status = 'pending'")).toBe(2);
+
+    // Pending items cannot be hidden or restored, only approved or rejected.
+    expect((await panel(env, 'POST', '/api/submissions/hide', { body: { id: fileId }, cookie: owner })).status).toBe(400);
+    const ok = await panel(env, 'POST', '/api/submissions/approve', { body: { id: fileId }, cookie: owner });
+    expect(ok.status).toBe(200);
+    const { documentId } = (await ok.json()) as { documentId: string };
+    expect(env.CATALOG_DB.db.prepare('SELECT source_id FROM documents WHERE id = ?').get(documentId)).toMatchObject({ source_id: 'resident-submitted' });
+    expect((await panel(env, 'POST', '/api/submissions/reject', { body: { id: noteId }, cookie: owner })).status).toBe(200);
+    const after = (await (await panel(env, 'GET', '/api/submissions', { cookie: owner })).json()) as { pending: unknown[]; items: Array<Record<string, unknown>> };
+    expect(after.pending).toEqual([]);
+    expect(after.items.map((i) => i.id)).toEqual([fileId]);
+    const log = (await (await panel(env, 'GET', '/api/submissions/log', { cookie: owner })).json()) as { items: Array<{ action: string }> };
+    expect(log.items.map((i) => i.action).reverse()).toEqual(['submit', 'submit', 'approve', 'reject']);
+  });
+
+  it('rows from before the review step stay approved (column added on first use)', async () => {
+    const env = testEnv();
+    env.CATALOG_DB.db.exec(`CREATE TABLE resident_submissions (
+      id TEXT PRIMARY KEY, document_id TEXT, kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT, url TEXT, status_text TEXT, location TEXT,
+      file_key TEXT, file_name TEXT, mime TEXT, file_size INTEGER, sha256 TEXT, ip_hash TEXT NOT NULL, day TEXT NOT NULL,
+      reports INTEGER NOT NULL DEFAULT 0, index_status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, hidden_at TEXT, removed_at TEXT)`);
+    env.CATALOG_DB.db.prepare("INSERT INTO resident_submissions (id, document_id, kind, title, ip_hash, day, created_at) VALUES ('sub_old', 'doc_old', 'note', 't', 'h', '2000-01-01', '2000-01-01')").run();
+    await ensureContribTables(env);
+    expect(env.CATALOG_DB.db.prepare("SELECT status FROM resident_submissions WHERE id = 'sub_old'").get()).toMatchObject({ status: 'approved' });
+    const id = await subIdOf(await note(env, 'new one'));
+    expect(env.CATALOG_DB.db.prepare('SELECT status FROM resident_submissions WHERE id = ?').get(id)).toMatchObject({ status: 'pending' });
+  });
+});
+
+describe('resident submissions', () => {
   it('links are kept as text, with no web address of their own', async () => {
     const env = testEnv();
-    const r = await call(() => addForm(env, residentReq('/api/add', { body: { kind: 'link', url: 'https://example.org/page', title: 'A page' } })));
-    const { documentId } = (await r.json()) as { documentId: string };
+    const documentId = await live(env, call(() => addForm(env, residentReq('/api/add', { body: { kind: 'link', url: 'https://example.org/page', title: 'A page' } }))));
     const doc = env.CATALOG_DB.db.prepare('SELECT original_url FROM documents WHERE id = ?').get(documentId) as { original_url: string };
     expect(doc.original_url.startsWith('vtp:')).toBe(true);
     expect((await call(() => addForm(env, residentReq('/api/add', { body: { kind: 'link', url: 'javascript:alert(1)' } })))).status).toBe(400);
@@ -385,11 +498,10 @@ describe('resident submissions', () => {
     expect([...env.ARCHIVE.objects.keys()][0]).toMatch(/^resident\/sub_[0-9a-f]{16}\.jpg$/);
   });
 
-  it('serves resident files sandboxed and never sniffed', async () => {
+  it('serves approved resident files sandboxed and never sniffed', async () => {
     const env = testEnv();
     const pdf = await pdfWith('Neighborhood petition about the Center Street crossing, signed by forty residents');
-    const r = await call(() => addFile(env, residentReq('/api/add/file', { form: fileForm(pdf, 'petition.pdf') })));
-    const { documentId } = (await r.json()) as { documentId: string };
+    const documentId = await live(env, call(() => addFile(env, residentReq('/api/add/file', { form: fileForm(pdf, 'petition.pdf') }))));
     const url = new URL(`${ORIGIN}/api/documents/${documentId}/file`);
     const res = await getDocumentFile(env, new Request(url), documentId, url);
     expect(res.status).toBe(200);
@@ -401,7 +513,7 @@ describe('resident submissions', () => {
     expect(text.t).toContain('Neighborhood petition');
   });
 
-  it('allows 3 items per person and 30 in all each day', async () => {
+  it('allows 3 items per person and 30 in all each day (pending ones count)', async () => {
     const env = testEnv();
     for (let i = 0; i < 3; i++) expect((await note(env, `note ${i}`, '198.51.100.1')).status).toBe(201);
     const fourth = await note(env, 'note 4', '198.51.100.1');
@@ -411,18 +523,20 @@ describe('resident submissions', () => {
     expect((await note(env, 'one more', '198.51.102.1')).status).toBe(429);
     // The address itself is never stored.
     expect(env.CATALOG_DB.db.prepare("SELECT count(*) AS n FROM resident_submissions WHERE ip_hash LIKE '198.%'").get()!.n).toBe(0);
+    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM resident_submissions WHERE ip_hash LIKE ?').get('%192.0.2.1%')!.n).toBe(0);
   });
 
-  it('a filled honeypot stores nothing', async () => {
+  it('a filled honeypot gets the same answer and stores nothing', async () => {
     const env = testEnv();
     const r = await note(env, 'spam', '203.0.113.5', { website: 'http://spam.example' });
     expect(r.status).toBe(201);
+    expect(((await r.json()) as { pending: boolean; message: string }).message).toBe(PENDING_MESSAGE);
     expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM documents').get()!.n).toBe(0);
   });
 
-  it('hides an item after reports from 2 different people', async () => {
+  it('hides an approved item after reports from 2 different people', async () => {
     const env = testEnv();
-    const { documentId } = (await (await note(env, 'Something false')).json()) as { documentId: string };
+    const documentId = await live(env, note(env, 'Something false'));
     const report = (ip: string) => call(() => reportSubmission(env, residentReq('/api/add/report', { body: { documentId }, ip })));
     expect((await report('203.0.113.1')).status).toBe(200);
     expect((await report('203.0.113.1')).status).toBe(200); // same person again counts once
@@ -434,13 +548,13 @@ describe('resident submissions', () => {
     expect(sub.hidden_at).not.toBeNull();
     expect(sub.reports).toBe(2);
     const actions = env.CATALOG_DB.db.prepare('SELECT action FROM resident_log ORDER BY id').all().map((r) => r.action);
-    expect(actions).toEqual(['submit', 'report', 'report', 'hide']);
+    expect(actions).toEqual(['submit', 'approve', 'report', 'report', 'hide']);
   });
 
   it('reports are rate limited per person', async () => {
     const env = testEnv();
     const ids: string[] = [];
-    for (let i = 0; i < 11; i++) ids.push(((await (await note(env, `item ${i}`, `198.18.0.${i}`)).json()) as { documentId: string }).documentId);
+    for (let i = 0; i < 11; i++) ids.push(await live(env, note(env, `item ${i}`, `198.18.0.${i}`)));
     const statuses: number[] = [];
     for (const documentId of ids) statuses.push((await call(() => reportSubmission(env, residentReq('/api/add/report', { body: { documentId }, ip: '198.18.1.1' })))).status);
     expect(statuses.slice(0, 10).every((s) => s === 200)).toBe(true);
@@ -450,7 +564,7 @@ describe('resident submissions', () => {
   it('the owner switch pauses submissions, and removal is one click', async () => {
     const env = testEnv();
     const owner = await setupOwner(env);
-    const { documentId } = (await (await note(env, 'Bad item')).json()) as { documentId: string };
+    const documentId = await live(env, note(env, 'Bad item'));
     expect((await panel(env, 'POST', '/api/submissions/switch', { body: { open: false }, cookie: owner })).status).toBe(200);
     expect(((await (await addStatus(env)).json()) as { open: boolean }).open).toBe(false);
     const paused = await note(env, 'Another', '198.51.100.77');
@@ -462,7 +576,7 @@ describe('resident submissions', () => {
     await panel(env, 'POST', '/api/submissions/switch', { body: { open: true }, cookie: owner });
     expect((await note(env, 'Back on', '198.51.100.78')).status).toBe(201);
     const log = (await (await panel(env, 'GET', '/api/submissions/log', { cookie: owner })).json()) as { items: Array<{ action: string }> };
-    expect(log.items.map((i) => i.action).reverse()).toEqual(['submit', 'pause', 'remove', 'resume', 'submit']);
+    expect(log.items.map((i) => i.action).reverse()).toEqual(['submit', 'approve', 'pause', 'remove', 'resume', 'submit']);
   });
 
   it('refuses files when the 300 MB resident budget is full', async () => {
@@ -473,15 +587,20 @@ describe('resident submissions', () => {
     expect(r.status).toBe(507);
   });
 
-  it('the end to end admin routes touch only test items, and cleanup deletes them', async () => {
+  it('the end to end admin routes touch only test items: pending, approve, cleanup', async () => {
     const env = testEnv();
-    const real = (await (await note(env, 'A real note from a resident', '198.51.100.7')).json()) as { documentId: string };
-    await expect(e2eState(env, real.documentId)).rejects.toThrow(/end to end test/);
-    await expect(e2eCleanup(env, real.documentId)).rejects.toThrow(/end to end test/);
-    const test = (await (await note(env, 'Automated check', '198.51.100.8', { title: 'Portal end to end test e2e1' })).json()) as { documentId: string };
-    expect(await e2eState(env, test.documentId)).toMatchObject({ hidden: false, removed: false });
-    expect(await e2eCleanup(env, test.documentId)).toMatchObject({ ok: true, deleted: true });
-    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM resident_submissions WHERE document_id = ?').get(test.documentId)!.n).toBe(0);
-    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM documents WHERE id = ?').get(test.documentId)!.n).toBe(0);
+    const realId = await subIdOf(await note(env, 'A real note from a resident', '198.51.100.7'));
+    await expect(e2eState(env, realId)).rejects.toThrow(/end to end test/);
+    await expect(e2eApprove(env, realId)).rejects.toThrow(/end to end test/);
+    await expect(e2eCleanup(env, realId)).rejects.toThrow(/end to end test/);
+    expect(env.CATALOG_DB.db.prepare('SELECT status FROM resident_submissions WHERE id = ?').get(realId)).toMatchObject({ status: 'pending' });
+    const testId = await subIdOf(await note(env, 'Automated check', '198.51.100.8', { title: 'Portal end to end test e2e1' }));
+    expect(await e2eState(env, testId)).toMatchObject({ status: 'pending', documentId: null, hidden: false, removed: false });
+    const { documentId } = (await e2eApprove(env, testId)) as { documentId: string };
+    expect(env.CATALOG_DB.db.prepare('SELECT source_id FROM documents WHERE id = ?').get(documentId)).toMatchObject({ source_id: 'resident-submitted' });
+    expect(await e2eState(env, documentId)).toMatchObject({ id: testId, status: 'approved', documentId, hidden: false });
+    expect(await e2eCleanup(env, testId)).toMatchObject({ ok: true, deleted: true });
+    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM resident_submissions WHERE id = ?').get(testId)!.n).toBe(0);
+    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM documents WHERE id = ?').get(documentId)!.n).toBe(0);
   });
 });

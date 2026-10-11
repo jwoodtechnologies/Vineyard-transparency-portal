@@ -22,7 +22,7 @@ import { ensureContribTables, syncOwnerAccount } from '../contrib/schema';
 import { archiveRoom } from '../contrib/indexing';
 import { plainLine } from '../lib/contrib';
 import { auditLog, listUploads, lookupMeetings, lookupProjects, staffDelete, staffEdit, staffFile, staffForm, type Me } from '../contrib/staff';
-import { hideSubmission, listSubmissions, removeSubmission, restoreSubmission, setSubmissionsOpen, submissionLog } from '../contrib/resident';
+import { approveSubmission, hideSubmission, listSubmissions, rejectSubmission, removeSubmission, restoreSubmission, setSubmissionsOpen, submissionFile, submissionLog } from '../contrib/resident';
 import { coverage, refreshCoverage } from '../lib/coverage';
 import { jobHealth } from '../sync/jobHealth';
 
@@ -424,6 +424,8 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
       await db.prepare(`UPDATE panel_accounts SET disabled_at = ${route === '/accounts/disable' ? '?' : 'NULL'} WHERE id = ? AND role = 'uploader'`).bind(...(route === '/accounts/disable' ? [new Date().toISOString(), id] : [id])).run();
       return reply({ ok: true });
     }
+    if (route === '/submissions/approve') return reply(await approveSubmission(env, b.id));
+    if (route === '/submissions/reject') return reply(await rejectSubmission(env, b.id));
     if (route === '/submissions/remove') return reply(await removeSubmission(env, b.id));
     if (route === '/submissions/hide') return reply(await hideSubmission(env, b.id));
     if (route === '/submissions/restore') return reply(await restoreSubmission(env, b.id));
@@ -455,6 +457,8 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
   if (route === '/audit') return reply(await auditLog(env));
   if (route === '/submissions') return reply(await listSubmissions(env));
   if (route === '/submissions/log') return reply(await submissionLog(env));
+  // The file of a submission, pending ones included: shown to the owner only.
+  if (route === '/submissions/file') return submissionFile(env, p.get('id'));
   if (route === '/coverage') return reply(await coverage(env));
   if (route === '/health') return reply(await jobHealth(env));
 

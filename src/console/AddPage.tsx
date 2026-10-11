@@ -1,11 +1,10 @@
 /**
- * /add : "Add to the record". Anyone can add a document (PDF, PNG or JPG), a project, a note or a
- * link. Items show right away in their own collection, labelled "Resident submitted. Not a city
- * record." Everything is plain text.
+ * /add : "Submit a public record". Anyone can send a document (PDF, PNG or JPG), a project, a note
+ * or a link. Nothing is public until the portal owner approves it; approved items go into their own
+ * collection, labelled "Resident submitted. Not a city record." Everything is plain text.
  */
 import './styles';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { FileUp, FolderKanban, Link2, StickyNote } from 'lucide-react';
 import { Frame } from './Chrome';
 import { RESIDENT_LABEL } from './format';
@@ -20,12 +19,15 @@ const KINDS: Array<{ id: Kind; label: string; Icon: typeof FileUp }> = [
 ];
 const MAX_BYTES = 15 * 1024 * 1024;
 
-type Sent = { status: 'idle' } | { status: 'sending' } | { status: 'done'; documentId: string | null } | { status: 'error'; message: string };
+type Sent = { status: 'idle' } | { status: 'sending' } | { status: 'done'; message: string } | { status: 'error'; message: string };
 
-async function send(url: string, init: RequestInit): Promise<{ documentId?: string }> {
+/** What the submitter sees after sending (the server says the same). */
+const PENDING_NOTE = 'Thanks. Your submission will appear after review.';
+
+async function send(url: string, init: RequestInit): Promise<{ message?: string }> {
   const r = await fetch(url, init);
-  const j = (await r.json().catch(() => ({}))) as { documentId?: string; error?: { message?: string } };
-  if (!r.ok) throw new Error(j.error?.message ?? 'That could not be added. Try again later.');
+  const j = (await r.json().catch(() => ({}))) as { message?: string; error?: { message?: string } };
+  if (!r.ok) throw new Error(j.error?.message ?? 'That could not be sent. Try again later.');
   return j;
 }
 
@@ -40,7 +42,7 @@ export default function AddPage() {
   const picker = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setHead('Add to the record');
+    setHead('Submit a public record');
     let live = true;
     fetch('/api/add/status', { cache: 'no-store' })
       .then((r) => r.json() as Promise<{ open?: boolean }>)
@@ -68,7 +70,7 @@ export default function AddPage() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const text = (k: string) => String(fd.get(k) ?? '');
-    let req: Promise<{ documentId?: string }>;
+    let req: Promise<{ message?: string }>;
     if (kind === 'file') {
       if (!file) {
         setFileError('Choose a file to add.');
@@ -88,7 +90,7 @@ export default function AddPage() {
     setSent({ status: 'sending' });
     req.then(
       (j) => {
-        setSent({ status: 'done', documentId: j.documentId ?? null });
+        setSent({ status: 'done', message: j.message ?? PENDING_NOTE });
         form.current?.reset();
         setFile(null);
       },
@@ -99,8 +101,8 @@ export default function AddPage() {
   return (
     <Frame>
       <header className="vc-page-head">
-        <h1 className="vc-page-title">Add to the record</h1>
-        <p className="vc-add-lede">Share a document, a project, a note or a link about Vineyard. It shows right away with the label "{RESIDENT_LABEL}"</p>
+        <h1 className="vc-page-title">Submit a public record</h1>
+        <p className="vc-add-lede">Send a document, a project, a note or a link about Vineyard. Each submission is reviewed first. If approved, it appears on the portal with the label "{RESIDENT_LABEL}" If not, it is deleted.</p>
       </header>
 
       {open === null ? (
@@ -112,21 +114,16 @@ export default function AddPage() {
         <div className="vc-empty">Submissions are paused.</div>
       ) : sent.status === 'done' ? (
         <div className="vc-add-done" role="status">
-          <p className="vc-add-done-title">Added.</p>
+          <p className="vc-add-done-title">{sent.message}</p>
           <div className="vc-add-actions">
-            {sent.documentId && (
-              <Link to={`/documents/${encodeURIComponent(sent.documentId)}`} className="vc-primary">
-                View it
-              </Link>
-            )}
             <button type="button" className="vc-secondary" onClick={() => setSent({ status: 'idle' })}>
-              Add another
+              Submit another
             </button>
           </div>
         </div>
       ) : (
         <>
-          <div className="vc-add-kinds" role="radiogroup" aria-label="What to add">
+          <div className="vc-add-kinds" role="radiogroup" aria-label="What to submit">
             {KINDS.map(({ id, label, Icon }) => (
               <button
                 key={id}
@@ -227,10 +224,10 @@ export default function AddPage() {
             )}
             <div className="vc-add-actions">
               <button type="submit" className="vc-primary" disabled={sent.status === 'sending'}>
-                {sent.status === 'sending' ? 'Adding...' : 'Add'}
+                {sent.status === 'sending' ? 'Sending...' : 'Submit'}
               </button>
             </div>
-            <p className="vc-add-hint">Plain text only. Up to 3 items a day. Anyone can report an item.</p>
+            <p className="vc-add-hint">Plain text only. Up to 3 items a day. Nothing is public until approved. Anyone can report an approved item.</p>
           </form>
         </>
       )}

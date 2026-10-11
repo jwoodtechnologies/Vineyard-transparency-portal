@@ -25,8 +25,9 @@ the records, not by the model. If AI is unavailable, search still works.
 - **Construction** (`/construction`): the city's construction page, read every five minutes and kept
   by version, with the project map.
 - **Map** (`/map`): city GIS layers, Utah County parcels (no owner data) and aerial imagery, UDOT projects.
-- **Add to the record** (`/add`): residents can add a document, project, note or link. Shown at once,
-  labeled "Resident submitted. Not a city record.", kept apart from official records.
+- **Submit a public record** (`/add`): residents can submit a document, project, note or link. Nothing
+  is public until the owner approves it in the panel; approved items are labeled "Resident submitted.
+  Not a city record." and kept apart from official records. Adding records directly is staff only (panel).
 - **Sources** (`/sources`): every outside system the portal reads, with last check and last new record.
 
 ## How it runs
