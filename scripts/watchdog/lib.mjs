@@ -20,6 +20,13 @@ export const THRESHOLD = 3;
 export const NOTE_EVERY_MS = 24 * 3600_000;
 export const MARKER = '<!-- watchdog -->';
 
+/**
+ * Checks that are expected to fail and are not watched: `civicclerk` is the Worker's hourly try at the
+ * city's agenda portal, which refuses Cloudflare (403); the GitHub ingest reads that portal instead and is
+ * watched as `ingest`. An open issue for one of these is closed.
+ */
+export const QUIET = new Set(['job:civicclerk', 'source:civicclerk']);
+
 const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
 
 /** "2026-10-11T07:41:12.345Z" as "2026-10-11 07:41 UTC". */
@@ -64,7 +71,8 @@ function rowItem(row, kind, base) {
     ...(row.status ? [`- Status: ${clean(row.status)}`] : []),
     `- Health: ${base}/api/health/jobs`,
   ];
-  return { key: `${kind}:${row.id}`, title, failing: row.failing === true || n >= THRESHOLD, details: lines.join('\n') };
+  const key = `${kind}:${row.id}`;
+  return { key, title, failing: !QUIET.has(key) && (row.failing === true || n >= THRESHOLD), details: lines.join('\n') };
 }
 
 /**

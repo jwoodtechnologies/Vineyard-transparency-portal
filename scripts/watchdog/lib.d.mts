@@ -46,6 +46,7 @@ export type Action = { type: 'create'; title: string; body: string; number?: und
 
 export const LABEL: string;
 export const THRESHOLD: number;
+export const QUIET: Set<string>;
 export const NOTE_EVERY_MS: number;
 export const MARKER: string;
 export function stamp(iso: string | null | undefined): string;

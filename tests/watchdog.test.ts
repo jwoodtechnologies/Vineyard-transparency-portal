@@ -98,3 +98,12 @@ describe('watchdog', () => {
     expect(lastNoteAt({ created_at: '2026-10-01T00:00:00Z' }, [])).toBe('2026-10-01T00:00:00Z');
   });
 });
+
+describe('quiet checks', () => {
+  it('never reports the CivicClerk check refused by Cloudflare, and closes its issue', () => {
+    const items = evaluate({ health: { jobs: [{ id: 'civicclerk', consecutiveFailures: 40, failing: true, lastRunAt: null, lastSuccessAt: null, lastErrorAt: null, lastError: 'HTTP 403' }], sources: [] }, chatRun: null, ingestRuns: null, repo: 'o/r', base: 'https://x' });
+    expect(items.find((i: { key: string }) => i.key === 'job:civicclerk')?.failing).toBe(false);
+    const actions = plan(items, [{ number: 12, title: 'Watchdog: civicclerk failing', lastNoteAt: null }], Date.now(), true);
+    expect(actions.some((a: { type: string; number?: number }) => a.type === 'close' && a.number === 12)).toBe(true);
+  });
+});

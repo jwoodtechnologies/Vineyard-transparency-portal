@@ -106,7 +106,7 @@ export const MAP_LAYERS: MapLayerDef[] = [
     where: TRAILS_WHERE,
     geometry: 'line',
   },
-  { key: 'snowplow', label: 'Snow plow routes', group: 'Streets', path: 'VNY_PWTR_SnowPlow_Routes_view/FeatureServer/286', fields: ['ROADNAME', 'Priority', 'Maintained', 'ROADCLASS'], geometry: 'line' },
+  { key: 'snowplow', label: 'Snow plow routes', group: 'Streets', path: 'VNY_PWTR_SnowPlow_Routes_view/FeatureServer/286', fields: ['ROADNAME', 'Maintained', 'ROADCLASS'], geometry: 'line' },
   { key: 'evacroutes', label: 'Evacuation routes', group: 'Safety', path: 'VNY_HZ_EvacuationRoutes/FeatureServer/601', fields: ['Direction', 'ToCity', 'Zone', 'Status'], geometry: 'line' },
   { key: 'evaczones', label: 'Evacuation zones', group: 'Safety', path: 'VNY_HZ_EvacuationZone/FeatureServer/602', fields: ['Zone'], geometry: 'polygon' },
   { key: 'crossings', label: 'School crossings', group: 'Safety', path: 'VNY_LO_School_Crossing_view/FeatureServer/314', fields: ['School_Name'], geometry: 'point' },
