@@ -14,7 +14,7 @@ import { DIRECTORY, directoryFor } from './directory';
 import { dedupeCards } from './cards';
 
 /** Keep in step with DATA_VERSION in MapPage so both read the same cached layer data. */
-const MAP_DATA_VERSION = 5;
+const MAP_DATA_VERSION = 9;
 
 interface Bubble {
   key: string;
@@ -75,11 +75,10 @@ const MAPPY = /\b(map|where|located|location|project|construction|road|street|wi
 const NOT_MAP = /\b(vote[sd]?|voting|meeting|minutes|agenda|budget|tax|salary|who|when|ordinance|resolution|code says|allowed|mayor|council ?members?|appoint|fee|rate|cost|paid|pay)\b/i;
 
 const AREA_LAYERS: Array<[RegExp, string, string]> = [
-  [/\bura\b|urban renewal/i, 'ura', 'Urban renewal areas'],
   [/\bzon(e|ing)\b/i, 'zoning', 'Zoning'],
   [/\bland use|general plan\b/i, 'landuse', 'Land use'],
   [/\bsubdivision/i, 'subdivisions', 'Subdivisions'],
-  [/\btrails?\b|\bbike (lane|path)/i, 'trails', 'Trails and bike paths'],
+  [/\btrails?\b|\bbike path/i, 'trails', 'Trails'],
   [/\bsnow ?plow|snow removal/i, 'snowplow', 'Snowplow routes'],
   [/\bevacuat/i, 'evaczones,evacroutes', 'Evacuation zones'],
   [/\bcrossing guard|school crossing/i, 'crossings', 'School crossings'],

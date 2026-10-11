@@ -12,6 +12,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { blankStyle, byZoom, CASING, firstLabelLayer, streetsBg, streetsStyle, whenBasePainted } from './mapBase';
 import { STAGES, STAGE_COLOR, type ActiveProject, type Stage } from './construction';
+import { FullscreenToggle } from './mapFullscreen';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -86,14 +87,29 @@ export default function ConstructionMap({ plans, active, dark, focus, selected, 
         bounds: VINEYARD,
         fitBoundsOptions: { padding: 12 },
         attributionControl: { compact: true },
-        cooperativeGestures: true,
+        // One finger pans (the page still scrolls by swiping above or below the map); pinch and double
+        // tap zoom; the wheel zooms only in full screen, so it never hijacks scrolling the page.
+        cooperativeGestures: false,
+        scrollZoom: false,
+        dragRotate: false,
+        touchPitch: false,
+        pitchWithRotate: false,
         maxZoom: 18,
         minZoom: 11,
       });
+      m.touchZoomRotate.disableRotation();
+      m.keyboard.disableRotation();
       map = m;
       mapRef.current = m;
       stopWatch = whenBasePainted(m, () => setPainted(true));
       m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+      m.addControl(
+        new FullscreenToggle(
+          () => box.current?.parentElement ?? null,
+          (full) => (full ? m.scrollZoom.enable() : m.scrollZoom.disable()),
+        ),
+        'top-right',
+      );
 
       markers = activeRef.current.flatMap((p) =>
         p.sites.map((s) => {

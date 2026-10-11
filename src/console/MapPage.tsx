@@ -23,6 +23,7 @@ import { getJson, type MapLayerInfo } from './api';
 import { ProjectDetail } from './ProjectDetail';
 import { BASE_BG, blankStyle, byZoom, CASING, firstLabelLayer, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
 import { hasTile, loadedTileCount, loadTile, mergedParcels, tilesFor } from './parcelTiles';
+import { FullscreenToggle } from './mapFullscreen';
 import { FULL_ZOOM, levelFor, LINES_MIN_ZOOM, loadLines, MID_ZOOM, tapLooksUpParcel, tilesMinZoom, type LineFC, type LineLevel } from './parcelLines';
 import { formatDate } from '@/lib/dates';
 import { setHead } from '@/lib/head';
@@ -96,7 +97,6 @@ const LOOK: Record<string, Look> = {
   rda: { color: '#7048e8', kind: 'fill', opacity: 0.16, outline: '#5f3dc4', width: 2.6, dash: true, label: 'REDEV', labelZoom: 12 },
   rdaparcels: { color: '#7048e8', kind: 'fill', by: 'RDA', opacity: 0.3, width: 0.7, label: 'RDA', labelZoom: 15.5 },
   pdoverlay: { color: '#f76707', kind: 'fill', opacity: 0.12, outline: '#d9480f', width: 2.6, dash: true, label: 'GRANTEE', labelZoom: 12.5 },
-  ura: { color: '#c2255c', kind: 'fill', opacity: 0.08, outline: '#c2255c', width: 3, dash: true, label: 'Name', labelZoom: 12 },
   snowplow: { color: '#1c7ed6', kind: 'line', by: 'Priority', width: 2.5 },
   evacroutes: { color: '#e03131', kind: 'line', width: 3.5 },
   evaczones: { color: '#f08c00', kind: 'fill', by: 'Zone', opacity: 0.16, width: 2.4, label: 'Zone', labelZoom: 12 },
@@ -130,7 +130,6 @@ const NAME_FIELD: Record<string, string[]> = {
   amenities: ['Facility'],
   trails: ['FULLNAME', 'Facilities'],
   rdaparcels: ['RDA', 'PARCEL_ADD'],
-  ura: ['Name'],
   snowplow: ['ROADNAME'],
   evacroutes: ['ToCity', 'Direction'],
   evaczones: ['Zone'],
@@ -323,7 +322,7 @@ interface Picked {
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
-const DATA_VERSION = 8;
+const DATA_VERSION = 9;
 const loaded = new Map<string, Promise<FC>>();
 /** Maps whose style has finished loading (tiles may still be streaming; layers can be added). */
 const styleReady = new WeakSet<maplibregl.Map>();
@@ -346,7 +345,7 @@ function loadLayer(info: Pick<MapLayerInfo, 'key' | 'pages'>): Promise<FC> {
   return p;
 }
 
-const FOCUS_LAYER: Record<string, string> = { road: 'roads', project: 'projects', park: 'parks', school: 'schools', business: 'businesses', subdivision: 'subdivisions', rda: 'rda', ura: 'ura', zone: 'zoning' };
+const FOCUS_LAYER: Record<string, string> = { road: 'roads', project: 'projects', park: 'parks', school: 'schools', business: 'businesses', subdivision: 'subdivisions', rda: 'rda', zone: 'zoning' };
 const WORD: Record<string, string> = { north: 'n', south: 's', east: 'e', west: 'w', street: 'st', road: 'rd', avenue: 'ave', drive: 'dr', lane: 'ln', boulevard: 'blvd', circle: 'cir', court: 'ct', parkway: 'pkwy', place: 'pl' };
 /** "1200 North Main Street" and "1200 N Main St" match each other. */
 const norm = (t: string) =>
@@ -371,8 +370,8 @@ const PROJECT_WIDTH: Array<[number, number]> = [[11, 1.4], [14, 2.2], [17, 3.6]]
 const PROJECT_CASING: Array<[number, number]> = [[11, 3.4], [14, 4.6], [17, 6.6]];
 /** The parcel collection each map's source last took. */
 const parcelDrawn = new WeakMap<maplibregl.Map, FC>();
-const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda', 'ura'];
-const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda'];
+const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
 
 /** Readable area names: "GENEVA PHASE 2-MEGAPLEX" becomes "Geneva Phase 2, Megaplex". */
 function areaName(v: unknown, key: string): string {
@@ -472,8 +471,6 @@ function askFor(p: { layer: string; name: string; props: Record<string, unknown>
     case 'rda':
     case 'rdaparcels':
       return `What is the ${name} redevelopment project area in Vineyard: when was it created, what is it for, and what has the Redevelopment Agency decided about it?`;
-    case 'ura':
-      return `What is the ${name} urban renewal or community reinvestment area in Vineyard, and what has been decided about it?`;
     case 'subdivisions':
       return `When was the ${name} subdivision approved in Vineyard, and what did the approval include?`;
     case 'parks':
@@ -509,6 +506,7 @@ export default function MapPage() {
   const [params, setParams] = useSearchParams();
   const { resolved } = useTheme();
   const box = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
   // Counts loaded map styles. A basemap switch makes a new map whose style can load before React
@@ -664,7 +662,11 @@ export default function MapPage() {
     const create = (style: maplibregl.StyleSpecification) => {
       if (cancelled || !box.current) return;
       const point = pointRef.current;
-      const m = new maplibregl.Map({ container: box.current, style, maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 19, minZoom: 10 });
+      const m = new maplibregl.Map({ container: box.current, style, maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 19, minZoom: 10,
+        // Simple movement: one finger pans, pinch and double tap zoom, the wheel zooms; nothing rotates or tilts by accident.
+        dragRotate: false, touchPitch: false, pitchWithRotate: false, cooperativeGestures: false });
+      m.touchZoomRotate.disableRotation();
+      m.keyboard.disableRotation();
       map = m;
       stopWatch = whenBasePainted(m, () => setPainted(true));
       if (base === 'satellite') watchSatellite(m);
@@ -677,6 +679,8 @@ export default function MapPage() {
       }
       m.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Data: <a href="https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb" target="_blank" rel="noopener">Vineyard City Public GIS</a>' }), 'bottom-right');
       m.addControl(new maplibregl.NavigationControl({ showCompass: base === 'terrain', visualizePitch: true }), 'bottom-right');
+      // Full screen sits above the zoom buttons (bottom corners stack upward) and takes the panel and card with it.
+      m.addControl(new FullscreenToggle(() => wrapRef.current), 'bottom-right');
       // If the basemap fails before its style is ready, keep the city layers working on a plain background.
       let fellBack = false;
       m.on('error', () => {
@@ -1060,7 +1064,7 @@ export default function MapPage() {
   return (
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
-      <div className="vc-map-wrap" data-panel={panel} data-card={Boolean(picked)}>
+      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked)}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
         {!painted && (
           <div className="vc-map-loading" role="status">

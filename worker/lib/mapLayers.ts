@@ -48,6 +48,9 @@ export const UDOT_KEYWORDS = ['VINEYARD', 'GENEVA', 'SR-114', 'SR-176', '800 N',
 export const UDOT_ENVELOPE: [number, number, number, number] = [-111.8, 40.26, -111.69, 40.345];
 export const UDOT_WHERE = `pin_stat_nm NOT IN ('Abandoned', 'Closed', 'Close Out') AND (${UDOT_KEYWORDS.flatMap((k) => ['pin_desc', 'proj_loc'].map((f) => `UPPER(${f}) LIKE '%${k}%'`)).join(' OR ')})`;
 
+/** The active transportation layer without its bike lanes (see the trails layer). */
+export const TRAILS_WHERE = "Facilities IS NULL OR UPPER(Facilities) NOT LIKE '%BIKE LANE%'";
+
 export const MAP_LAYERS: MapLayerDef[] = [
   { key: 'boundary', label: 'City boundary', group: 'Land', path: 'Vineyard_City_Boundary/FeatureServer/0', fields: ['NAME'], geometry: 'polygon', on: true },
   {
@@ -84,7 +87,6 @@ export const MAP_LAYERS: MapLayerDef[] = [
   },
   { key: 'pdoverlay', label: 'Planned development overlay', group: 'Land', path: 'VNY_PLPZ_PD_Overlay_view/FeatureServer/10', fields: ['GRANTEE', 'ACRES'], geometry: 'polygon' },
   { key: 'subdivisions', label: 'Neighborhoods', group: 'Land', path: 'VNY_PLPZ_Subdivisions_view/FeatureServer/2', fields: ['Subdivision', 'Development', 'Public_Private'], geometry: 'polygon' },
-  { key: 'ura', label: 'Geneva URA project area', group: 'Plans', path: 'Original_Geneva_URA_Project_Area/FeatureServer/471', fields: ['Name'], geometry: 'polygon' },
   { key: 'watersedge', label: "Water's Edge districts", group: 'Plans', path: 'Waters_Edge_Subdistricts_-_Public_View/FeatureServer/9', fields: ['ZONE', 'District', 'Description', 'ACRES'], geometry: 'polygon' },
   {
     key: 'roads',
@@ -94,7 +96,17 @@ export const MAP_LAYERS: MapLayerDef[] = [
     fields: ['FULLNAME', 'ROADCLASS', 'ROW_WIDTH', 'YearConst', 'FROMLEFT', 'TOLEFT', 'CULDESAC'],
     geometry: 'line',
   },
-  { key: 'trails', label: 'Trails and bike lanes', group: 'Streets', path: 'VNY_PWTR_Active_Transportation_Facilities_View/FeatureServer/0', fields: ['FULLNAME', 'Facilities', 'Jurisdiction', 'ROW_WIDTH', 'YearConst'], geometry: 'line' },
+  {
+    key: 'trails',
+    label: 'Trails',
+    group: 'Streets',
+    path: 'VNY_PWTR_Active_Transportation_Facilities_View/FeatureServer/0',
+    fields: ['FULLNAME', 'Facilities', 'Jurisdiction', 'ROW_WIDTH', 'YearConst'],
+    // Trails only: the layer also holds on-street bike lanes (Facilities "Bike Lane" and "Buffered Bike
+    // Lane", October 2026), which are never sent. Trails are "Shared Use Path".
+    where: TRAILS_WHERE,
+    geometry: 'line',
+  },
   { key: 'snowplow', label: 'Snow plow routes', group: 'Streets', path: 'VNY_PWTR_SnowPlow_Routes_view/FeatureServer/286', fields: ['ROADNAME', 'Priority', 'Maintained', 'ROADCLASS'], geometry: 'line' },
   { key: 'evacroutes', label: 'Evacuation routes', group: 'Safety', path: 'VNY_HZ_EvacuationRoutes/FeatureServer/601', fields: ['Direction', 'ToCity', 'Zone', 'Status'], geometry: 'line' },
   { key: 'evaczones', label: 'Evacuation zones', group: 'Safety', path: 'VNY_HZ_EvacuationZone/FeatureServer/602', fields: ['Zone'], geometry: 'polygon' },

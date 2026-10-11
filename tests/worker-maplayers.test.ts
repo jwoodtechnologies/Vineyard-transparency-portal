@@ -174,3 +174,21 @@ describe('map layer catalog', () => {
     expect(url.searchParams.get('outFields')).toBe('SITE_FULL_ADDRESS');
   });
 });
+
+describe('map catalog: trails without bike lanes, no URA layer', () => {
+  it('has no Geneva URA project area layer', () => {
+    expect(MAP_LAYERS.find((l) => l.key === 'ura')).toBeUndefined();
+    expect(MAP_LAYERS.some((l) => /URA/.test(l.label) || /Geneva_URA/.test(l.path))).toBe(false);
+  });
+
+  it('asks the city for trails only, so bike lanes are never sent', async () => {
+    const trails = MAP_LAYERS.find((l) => l.key === 'trails');
+    expect(trails?.label).toBe('Trails');
+    const { upstreamUrl } = (await import(/* @vite-ignore */ WORKER_MAP)) as { upstreamUrl: (l: unknown, p: number) => string };
+    const where = new URL(upstreamUrl(trails, 0)).searchParams.get('where') ?? '';
+    expect(where).toContain("NOT LIKE '%BIKE LANE%'");
+    // The layer's values (October 2026): "Shared Use Path" kept; "Bike Lane" and "Buffered Bike Lane" dropped.
+    const kept = (v: string | null) => v === null || !v.toUpperCase().includes('BIKE LANE');
+    expect(['Shared Use Path', 'Bike Lane', 'Buffered Bike Lane', null].map(kept)).toEqual([true, false, false, true]);
+  });
+});
