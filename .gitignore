@@ -18,3 +18,4 @@ data/source-health.json
 !.env.production
 __pycache__/
 *.pyc
+chat-suite-results.json

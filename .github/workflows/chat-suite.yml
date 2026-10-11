@@ -1,0 +1,99 @@
+# Chat regression suite (scripts/chat-suite/run.mjs, cases in tests/chat-suite/cases.json) against the
+# live site. Read only: it asks questions through POST /api/ask like a resident would.
+#
+# Workers AI budget (8,000 Neurons a day, see worker/ai/meter.ts and scripts/chat-suite/lib.mjs):
+#   - push to main: after the new deploy is live, the deterministic cases (no model, a few ~11 Neuron
+#     follow-up rewrites) plus 2 model cases rotating by run number: about 280 Neurons.
+#   - schedule: the full suite once a day at 22:53 UTC (4:53 pm in Vineyard), near the end of the UTC
+#     metering day so it never takes the day's larger-model answers or Neurons ahead of residents:
+#     about 1,430 Neurons (worst case about 2,070), under a fifth of the daily cap.
+#   - workflow_dispatch: full=true runs the full suite, full=false the post-deploy subset.
+# The runner refuses to start above --max-neurons, and skips (does not fail) model cases when the
+# site reports AI answers unavailable.
+name: Chat suite
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "53 22 * * *"
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Run the full suite (about 1,430 Neurons) instead of the post-deploy subset
+        type: choice
+        default: "false"
+        options: ["true", "false"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chat-suite
+  cancel-in-progress: false
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BASE: https://vineyardportal.org
+      FULL: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full == 'true') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # Workers Builds deploys main on every push. Build the site here and wait (up to 12 minutes) until
+      # the served index.html carries this commit's entry script, or at least changes; then run anyway.
+      - name: Wait for the deploy
+        if: github.event_name == 'push'
+        run: |
+          set -uo pipefail
+          npm ci --no-audit --no-fund > /dev/null 2>&1 && VITE_DATA_MODE=api npx vite build --logLevel error > /dev/null 2>&1 || echo "Local build failed; waiting for any change instead."
+          want=$(grep -o 'src="/assets/[^"]*\.js"' dist/index.html 2>/dev/null | head -1 || true)
+          served() { curl -fsS --max-time 20 -H 'cache-control: no-cache' "$BASE/?deploy-check=$(date +%s)" | grep -o 'src="/assets/[^"]*\.js"' | head -1; }
+          first=$(served || true)
+          echo "Expected entry: ${want:-unknown}; served at start: ${first:-unknown}"
+          for i in $(seq 1 48); do
+            now=$(served || true)
+            if [[ -n "$want" && "$now" == "$want" ]]; then
+              echo "Deploy is live (entry script matches) after $((i * 15 - 15))s"
+              # Matching at once means the site files did not change (a Worker-only or docs commit):
+              # the build cannot be told apart, so allow a typical Workers Builds deploy time.
+              if [[ $i -eq 1 ]]; then echo "Same entry script as before this push; waiting 4 minutes for a Worker-only deploy."; sleep 240; fi
+              break
+            fi
+            if [[ -z "$want" && -n "$now" && "$now" != "$first" ]]; then echo "Served index changed after $((i * 15 - 15))s"; break; fi
+            if [[ $i -eq 48 ]]; then echo "::warning::Deploy not detected after 12 minutes; running against what is served."; fi
+            sleep 15
+          done
+          # The Worker and assets deploy together; give the edge a moment to settle.
+          sleep 20
+      - name: Run
+        id: run
+        run: |
+          set -uo pipefail
+          if [[ "$FULL" == "true" ]]; then MODE=full; else MODE=deploy; fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          node scripts/chat-suite/run.mjs --base "$BASE" --mode "$MODE" --seed "${{ github.run_number }}" --out chat-suite-results.json
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-suite-${{ github.run_id }}
+          path: chat-suite-results.json
+          if-no-files-found: ignore
+      # Same place as the Diagnostics workflow: the diagnostics branch, under suite/<run id>/. Never main.
+      - name: Save to the diagnostics branch
+        if: always()
+        run: |
+          set -euo pipefail
+          [[ -f chat-suite-results.json ]] || exit 0
+          mkdir -p "$RUNNER_TEMP/suite" && cp chat-suite-results.json "$RUNNER_TEMP/suite/results.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch -q origin diagnostics; then git checkout -q -B diagnostics origin/diagnostics; else git checkout -q --orphan diagnostics && git rm -rq --cached . && git clean -fdq; fi
+          mkdir -p "suite/${GITHUB_RUN_ID}" && cp "$RUNNER_TEMP/suite/results.json" "suite/${GITHUB_RUN_ID}/results.json"
+          git add suite && git commit -qm "Chat suite ${{ steps.run.outputs.mode }} ${GITHUB_RUN_ID}" && git push -q origin diagnostics || echo "::warning::Could not save to the diagnostics branch"
