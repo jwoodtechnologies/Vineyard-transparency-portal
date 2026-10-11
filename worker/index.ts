@@ -17,7 +17,7 @@ import { filtersFromUrl, handleSearch } from './api/search';
 import { browseFacets, getMeeting, handleHealth, handleStats, listBodies, listCategories, listMeetings, listSources, notImplementedYet, submitReport, suggestions } from './api/misc';
 import { handleAsk } from './ai/rag';
 import { listEvents } from './api/events';
-import { getMapLayer, getParcelTile, listMapLayers } from './api/map';
+import { getMapLayer, getParcelAt, getParcelOutlines, listMapLayers } from './api/map';
 import { getLatest } from './api/latest';
 import { getBudget, getBudgetArchive } from './api/budget';
 import { getDraftMinutes } from './api/draftMinutes';
@@ -121,7 +121,8 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     case 'map':
       if (b === 'layers' && !c) return listMapLayers();
       if (b === 'layers' && c && /^[a-z]{2,20}$/.test(c) && parts.length === 3) return getMapLayer(env, c, url);
-      if (b === 'tiles' && c === 'parcels' && parts.length === 6) return getParcelTile(parts[3], parts[4], parts[5]);
+      if (b === 'parcels' && parts.length === 5) return getParcelOutlines(parts[2], parts[3], parts[4]);
+      if (b === 'parcel' && parts.length === 2) return getParcelAt(url);
       break;
     case 'meetings':
       return b ? getMeeting(env, request, id(b)) : listMeetings(env, url);
@@ -150,7 +151,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
  * and POST /api/ask, admin, health and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|map\/layers(\/[a-z]+)?|map\/tiles\/parcels\/\d+\/\d+\/\d+\.png|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
 
 async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '');

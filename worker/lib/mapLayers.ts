@@ -1,12 +1,14 @@
 /**
  * The city's public ArcGIS layers the portal serves, with the fields each may expose (no parcel
- * owner names or mailing addresses, no private business licenses), and Utah County's parcel
- * boundaries as image tiles with no fields at all. Pure: no Worker types, so the
+ * owner names or mailing addresses, no private business licenses), and the Utah County parcel
+ * queries with their field allowlists. Pure: no Worker types, so the
  * Ask pipeline's place lookups and their tests can use it.
  */
 import { FY27_PROJECTS_WHERE } from './capitalPlan';
 
 export const BASE = 'https://services.arcgis.com/QdlehUncXjEmQYtI/arcgis/rest/services/';
+/** The city's 2025 copy of the county parcel layer. */
+export const CITY_PARCELS_PATH = 'VNY_CA_Parcels_2025/FeatureServer/446';
 
 export interface MapLayerDef {
   key: string;
@@ -15,11 +17,10 @@ export interface MapLayerDef {
   path: string;
   fields: string[];
   where?: string;
-  /** 'raster': drawn from image tiles (`tiles`), never served as GeoJSON with fields. */
-  geometry: 'polygon' | 'line' | 'point' | 'raster';
-  /** Raster layers only: tile URL template on the portal's own origin. */
+  geometry: 'polygon' | 'line' | 'point';
+  /** Outlines drawn from fixed zoom GeoJSON tiles on the portal's origin; `path` is then the fallback layer. */
   tiles?: string;
-  /** Raster layers only: credit shown on the map. */
+  /** Credit shown on the map for tiled layers. */
   attribution?: string;
   /** Pages of 2,000 features (ArcGIS maxRecordCount). */
   pages?: number;
@@ -46,14 +47,16 @@ export const MAP_LAYERS: MapLayerDef[] = [
   { key: 'landuse', label: 'Future land use', group: 'Plans', path: 'Vineyard_Future_Land_Use_View/FeatureServer/0', fields: ['Land_Use', 'Acres'], geometry: 'polygon' },
   {
     key: 'parcels',
-    label: 'Parcels (Utah County)',
+    label: 'Parcels',
     group: 'Land',
-    // Utah County's current parcel boundaries, as image tiles of the line layer only (see
-    // parcelTileUrl). No fields, so no owner names or any other personal data can reach the page.
-    path: '',
-    fields: [],
-    geometry: 'raster',
-    tiles: '/api/map/tiles/parcels/{z}/{x}/{y}.png',
+    // Outlines come from Utah County's current parcels as zoom 16 GeoJSON tiles with the parcel
+    // number only (/api/map/parcels, see countyParcelTileUrl). The city's 2025 copy is the fallback
+    // if the county service is down. No owner names either way.
+    path: CITY_PARCELS_PATH,
+    fields: ['PARCEL_NO', 'SITE_FULL_ADDRESS', 'ACREAGE', 'SUB_NAME', 'PROP_TYPE_DESCR', 'GLA_WEIGHTED_YRBLT', 'MKT_CUR_VALUE', 'TAX_DISTRICT_DESCR'],
+    geometry: 'polygon',
+    pages: 3,
+    tiles: '/api/map/parcels/{z}/{x}/{y}.json',
     attribution: 'Parcels: Utah County GIS',
     minZoom: 15,
   },
@@ -98,57 +101,173 @@ export const byKey = new Map(MAP_LAYERS.map((l) => [l.key, l]));
  * only the address field may be read from it.
  */
 const LOOKUPS = new Map<string, MapLayerDef>([
-  ['parcels', { key: 'parcels', label: 'Parcel addresses', group: 'Land', path: 'VNY_CA_Parcels_2025/FeatureServer/446', fields: ['SITE_FULL_ADDRESS'], geometry: 'polygon' }],
+  ['parcels', { key: 'parcels', label: 'Parcel addresses', group: 'Land', path: CITY_PARCELS_PATH, fields: ['SITE_FULL_ADDRESS'], geometry: 'polygon' }],
 ]);
 
 /* ----------------------------------------------------------------------------------------------- */
-/* Utah County parcel boundaries                                                                   */
+/* Utah County parcels                                                                             */
 /* ----------------------------------------------------------------------------------------------- */
 
 /** Utah County GIS parcel map service (copyright "Utah County GIS"). */
 export const COUNTY_PARCELS_MAPSERVER = 'https://maps200.utahcounty.gov/arcgis/rest/services/Parcels/Parcel_TaxParcelPUMA/MapServer';
 /**
- * The one layer of that service the portal draws: 3, "live_parcel_line" (boundary lines). Layer 2,
- * "OwnerParcel with Label", prints owner names and must never be used.
- * REVIEWER: confirm live that layer 3 draws lines only, with no owner or address labels.
+ * Layer 2 of that service ("OwnerParcel with Label"): current parcel polygons with no scale limit.
+ * It also holds owner names and mailing addresses, so every query names its fields and every
+ * response is stripped to an allowlist in the Worker, whatever the county sends back.
  */
-export const COUNTY_PARCEL_LINE_LAYER = 3;
-/** Zoom levels the parcel tiles are served at (the layer shows from 15). */
-export const PARCEL_TILE_ZOOM = { min: 14, max: 20 } as const;
-/** Area the parcel tiles are served for: Vineyard and a margin around it. */
-const PARCEL_AREA = { west: -111.82, south: 40.24, east: -111.66, north: 40.37 };
+export const COUNTY_PARCEL_LAYER = 2;
+/** Fields the outline tiles may carry. */
+export const PARCEL_TILE_FIELDS = ['PARCEL_NO'] as const;
+/** Fields the parcel card may show from the county. */
+export const PARCEL_CARD_FIELDS = ['PARCEL_NO', 'SITE_FULL_ADDRESS', 'ACREAGE', 'SUB_NAME', 'TAX_DISTRICT_DESCR', 'MKT_CUR_VALUE'] as const;
+/** Fields read from the city's 2025 parcel layer at the same point (the county layer has neither). */
+export const CITY_PARCEL_FIELDS = ['PARCEL_NO', 'PROP_TYPE_DESCR', 'GLA_WEIGHTED_YRBLT'] as const;
+/** The one zoom level outline tiles are served at. */
+export const PARCEL_TILE_Z = 16;
+/** Area parcels are served for: Vineyard and a margin around it. */
+export const PARCEL_AREA = { west: -111.82, south: 40.24, east: -111.66, north: 40.37 } as const;
+/** ArcGIS maxRecordCount of the county service, and how many pages one tile may read. */
+export const COUNTY_PAGE = 2000;
+export const PARCEL_TILE_PAGES = 2;
 
-const HALF = 20037508.342789244;
 const lngOfX = (x: number, z: number) => (x / 2 ** z) * 360 - 180;
 const latOfY = (y: number, z: number) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / 2 ** z))) * 180) / Math.PI;
 
-/**
- * The county's image of one 256 pixel web map tile of parcel lines (drawn at 512 pixels for sharp
- * lines on high density screens), or null for a tile outside the zoom range or area served. The
- * request always names the line layer alone: nothing a visitor sends can choose another layer or
- * ask for fields.
- */
-export function parcelTileUrl(z: number, x: number, y: number): string | null {
-  if (![z, x, y].every(Number.isInteger) || z < PARCEL_TILE_ZOOM.min || z > PARCEL_TILE_ZOOM.max) return null;
+/** [west, south, east, north] of one zoom 16 web map tile, or null for any other zoom or a tile outside the area. */
+export function parcelTileEnvelope(z: number, x: number, y: number): [number, number, number, number] | null {
+  if (![z, x, y].every(Number.isInteger) || z !== PARCEL_TILE_Z) return null;
   const n = 2 ** z;
   if (x < 0 || y < 0 || x >= n || y >= n) return null;
-  if (lngOfX(x + 1, z) < PARCEL_AREA.west || lngOfX(x, z) > PARCEL_AREA.east || latOfY(y, z) < PARCEL_AREA.south || latOfY(y + 1, z) > PARCEL_AREA.north) return null;
-  const size = (2 * HALF) / n;
-  const minX = -HALF + x * size;
-  const maxY = HALF - y * size;
-  const bbox = [minX, maxY - size, minX + size, maxY].map((v) => v.toFixed(2)).join(',');
+  const w = lngOfX(x, z);
+  const e = lngOfX(x + 1, z);
+  const north = latOfY(y, z);
+  const s = latOfY(y + 1, z);
+  if (e < PARCEL_AREA.west || w > PARCEL_AREA.east || north < PARCEL_AREA.south || s > PARCEL_AREA.north) return null;
+  return [w, s, e, north];
+}
+
+/** County query for the parcel outlines in one tile (parcel number only), page 0 or 1. */
+export function countyParcelTileUrl(z: number, x: number, y: number, page = 0): string | null {
+  const env = parcelTileEnvelope(z, x, y);
+  if (!env || !Number.isInteger(page) || page < 0 || page >= PARCEL_TILE_PAGES) return null;
   const p = new URLSearchParams({
-    bbox,
-    bboxSR: '3857',
-    imageSR: '3857',
-    size: '512,512',
-    dpi: '192',
-    format: 'png32',
-    transparent: 'true',
-    layers: `show:${COUNTY_PARCEL_LINE_LAYER}`,
-    f: 'image',
+    geometry: env.map((v) => v.toFixed(7)).join(','),
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    where: '1=1',
+    outFields: PARCEL_TILE_FIELDS.join(','),
+    returnGeometry: 'true',
+    outSR: '4326',
+    geometryPrecision: '6',
+    orderByFields: 'OBJECTID',
+    resultOffset: String(page * COUNTY_PAGE),
+    resultRecordCount: String(COUNTY_PAGE),
+    f: 'geojson',
   });
-  return `${COUNTY_PARCELS_MAPSERVER}/export?${p.toString()}`;
+  return `${COUNTY_PARCELS_MAPSERVER}/${COUNTY_PARCEL_LAYER}/query?${p.toString()}`;
+}
+
+/** A point inside the parcel area (rounded to 6 decimals), or null. */
+export function parcelPoint(lng: number, lat: number): [number, number] | null {
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+  if (lng < PARCEL_AREA.west || lng > PARCEL_AREA.east || lat < PARCEL_AREA.south || lat > PARCEL_AREA.north) return null;
+  return [Math.round(lng * 1e6) / 1e6, Math.round(lat * 1e6) / 1e6];
+}
+
+const pointQuery = (lng: number, lat: number, fields: readonly string[], geometry: boolean) =>
+  new URLSearchParams({
+    geometry: `${lng},${lat}`,
+    geometryType: 'esriGeometryPoint',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    where: '1=1',
+    outFields: fields.join(','),
+    returnGeometry: String(geometry),
+    outSR: '4326',
+    geometryPrecision: '6',
+    resultRecordCount: '5',
+    f: 'geojson',
+  }).toString();
+
+/** County query for the parcel under a point: the card fields and the parcel's shape. */
+export function countyParcelAtUrl(lng: number, lat: number): string {
+  return `${COUNTY_PARCELS_MAPSERVER}/${COUNTY_PARCEL_LAYER}/query?${pointQuery(lng, lat, PARCEL_CARD_FIELDS, true)}`;
+}
+
+/** City 2025 parcel query at a point: parcel number, property type and year built, no shape. */
+export function cityParcelAtUrl(lng: number, lat: number): string {
+  return `${BASE}${CITY_PARCELS_PATH}/query?${pointQuery(lng, lat, CITY_PARCEL_FIELDS, false)}`;
+}
+
+type GeoFeature = { type?: string; geometry?: unknown; properties?: Record<string, unknown> | null };
+export type CleanFeature = { type: 'Feature'; geometry: unknown; properties: Record<string, string | number | boolean> };
+
+/**
+ * Features reduced to their shape and the allowed fields. Anything else the upstream sends (owner
+ * names, mailing addresses, ids) is dropped here, server side.
+ */
+export function stripFeatures(features: unknown, allow: readonly string[]): CleanFeature[] {
+  if (!Array.isArray(features)) return [];
+  return (features as GeoFeature[])
+    .filter((f) => f && typeof f === 'object')
+    .map((f) => {
+      const props: Record<string, string | number | boolean> = {};
+      for (const k of allow) {
+        const v = f.properties?.[k];
+        if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') props[k] = v;
+      }
+      return { type: 'Feature' as const, geometry: f.geometry ?? null, properties: props };
+    });
+}
+
+/** Outline tile body from one or two county pages: parcel number only, one feature per parcel. */
+export function parcelTileBody(pages: unknown[]): { type: 'FeatureCollection'; features: CleanFeature[] } {
+  const seen = new Set<string>();
+  const features: CleanFeature[] = [];
+  for (const page of pages) {
+    for (const f of stripFeatures((page as { features?: unknown } | null)?.features, PARCEL_TILE_FIELDS)) {
+      if (!f.geometry) continue;
+      const no = String(f.properties.PARCEL_NO ?? '').trim();
+      if (no && seen.has(no)) continue;
+      if (no) seen.add(no);
+      features.push(f);
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+const blank = (v: unknown) => v === undefined || v === null || (typeof v === 'string' && !v.trim()) || (typeof v === 'number' && (!Number.isFinite(v) || v === 0));
+
+export interface ParcelCard {
+  found: boolean;
+  /** Card fields in card order; empty ones are left out. */
+  properties: Record<string, string | number>;
+  /** Which of `properties` came from the city's 2025 parcel layer (the rest are current county records). */
+  city: string[];
+  geometry: unknown;
+}
+
+/**
+ * The parcel card for a point: current county fields, plus property type and year built from the
+ * city's 2025 layer when it names the same parcel. Only allowlisted fields can appear.
+ */
+export function parcelCard(county: unknown, city: unknown): ParcelCard {
+  const c = stripFeatures((county as { features?: unknown } | null)?.features, PARCEL_CARD_FIELDS)[0];
+  if (!c) return { found: false, properties: {}, city: [], geometry: null };
+  const properties: Record<string, string | number> = {};
+  const put = (k: string, v: unknown) => {
+    if (blank(v)) return false;
+    properties[k] = typeof v === 'number' ? v : String(v).trim();
+    return true;
+  };
+  const no = String(c.properties.PARCEL_NO ?? '').trim();
+  const match = stripFeatures((city as { features?: unknown } | null)?.features, CITY_PARCEL_FIELDS).find((f) => !no || String(f.properties.PARCEL_NO ?? '').trim() === no);
+  const cityKeys: string[] = [];
+  for (const k of ['SITE_FULL_ADDRESS', 'PARCEL_NO', 'ACREAGE', 'SUB_NAME'] as const) put(k, c.properties[k]);
+  for (const k of ['PROP_TYPE_DESCR', 'GLA_WEIGHTED_YRBLT'] as const) if (match && put(k, match.properties[k])) cityKeys.push(k);
+  for (const k of ['MKT_CUR_VALUE', 'TAX_DISTRICT_DESCR'] as const) put(k, c.properties[k]);
+  return { found: true, properties, city: cityKeys, geometry: c.geometry };
 }
 
 /**
@@ -157,7 +276,7 @@ export function parcelTileUrl(z: number, x: number, y: number): string | null {
  */
 export function layerQueryUrl(key: string, where: string, fields?: string[]): string | null {
   const layer = LOOKUPS.get(key) ?? byKey.get(key);
-  if (!layer || layer.geometry === 'raster' || !layer.path) return null;
+  if (!layer || !layer.path) return null;
   const outFields = (fields ?? layer.fields).filter((f) => layer.fields.includes(f));
   const p = new URLSearchParams({ where, outFields: outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '6', f: 'geojson', resultRecordCount: '200' });
   return `${BASE}${layer.path}/query?${p.toString()}`;

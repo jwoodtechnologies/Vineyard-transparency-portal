@@ -58,11 +58,11 @@ export interface MapLayerInfo {
   key: string;
   label: string;
   group: 'Plans' | 'Land' | 'Streets' | 'Places' | 'Safety';
-  geometry: 'polygon' | 'line' | 'point' | 'raster';
+  geometry: 'polygon' | 'line' | 'point';
   pages: number;
   on: boolean;
   minZoom: number | null;
-  /** Raster layers only: tile URL template (on the portal's origin) and map credit. */
+  /** Tiled layers only (parcels): zoom 16 GeoJSON tile URL template on the portal's origin, and map credit. */
   tiles?: string;
   attribution?: string | null;
 }

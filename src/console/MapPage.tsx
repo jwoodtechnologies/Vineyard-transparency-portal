@@ -21,7 +21,8 @@ import { ChevronDown, Crosshair, Layers, MessageSquare, Search, X } from 'lucide
 import { useTheme } from '@/hooks/useTheme';
 import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
-import { BASE_BG, blankStyle, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
+import { BASE_BG, blankStyle, byZoom, CASING, firstLabelLayer, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
+import { hasTile, loadedTileCount, loadTile, mergedParcels, PARCEL_MIN_ZOOM, tilesFor } from './parcelTiles';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
 
@@ -87,7 +88,7 @@ const LOOK: Record<string, Look> = {
   projects: { color: '#d6336c', kind: 'fill', opacity: 0.28, outline: '#a61e4d', width: 2.2, label: 'Project_Name', labelZoom: 13 },
   zoning: { color: '#3b6ea8', kind: 'fill', by: 'ZONE', opacity: 0.22, width: 1.6, label: 'ZONE', labelZoom: 13 },
   landuse: { color: '#1f7a6c', kind: 'fill', by: 'Land_Use', opacity: 0.22, width: 1.4, label: 'Land_Use', labelZoom: 13 },
-  parcels: { color: '#5c5f66', kind: 'line', width: 0.8 },
+  parcels: { color: '#7048e8', kind: 'line', width: 1 },
   subdivisions: { color: '#1098ad', kind: 'fill', by: 'Subdivision', opacity: 0.14, width: 2.4, label: 'Subdivision', labelZoom: 12.5 },
   rda: { color: '#7048e8', kind: 'fill', opacity: 0.16, outline: '#5f3dc4', width: 2.6, dash: true, label: 'REDEV', labelZoom: 12 },
   rdaparcels: { color: '#7048e8', kind: 'fill', by: 'RDA', opacity: 0.3, width: 0.7, label: 'RDA', labelZoom: 15.5 },
@@ -192,8 +193,8 @@ const LABEL: Record<string, string> = {
   RDA: 'RDA phase',
   SITE_FULL_ADDRESS: 'Address',
   SUB_NAME: 'Subdivision',
-  PROP_TYPE_DESCR: 'Property type',
-  GLA_WEIGHTED_YRBLT: 'Year built',
+  PROP_TYPE_DESCR: 'Property type (2025 city parcel data)',
+  GLA_WEIGHTED_YRBLT: 'Year built (2025 city parcel data)',
   MKT_CUR_VALUE: 'Market value (county)',
   TAX_DISTRICT_DESCR: 'Tax district',
   GRANTEE: 'Planned development',
@@ -213,10 +214,25 @@ const LABEL: Record<string, string> = {
   Owner: 'Owner',
 };
 
-const HIDE = new Set(['OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Length', '__c', '__label', 'CULDESAC', 'SITE_STATE']);
+const HIDE = new Set(['OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Length', '__c', '__label', '__src', '__loading', 'CULDESAC', 'SITE_STATE']);
+
+/** Parcel outline colors: yellow on imagery and dark maps, violet on the light streets map. */
+const parcelLine = (dark: boolean) => (dark ? '#ffd400' : '#7048e8');
+/** A layer's look, with the parcel color for the current basemap. */
+const lookOf = (key: string, dark: boolean): Look | undefined => (key === 'parcels' ? { ...LOOK.parcels, color: parcelLine(dark) } : LOOK[key]);
+
+/** The parcel card from /api/map/parcel. */
+interface ParcelCardResponse {
+  found: boolean;
+  properties: Record<string, string | number>;
+  city: string[];
+  geometry: Geometry | null;
+}
 
 function fmt(key: string, v: unknown): string | null {
   if (v == null || v === '' || v === ' ') return null;
+  // A zero acreage, value or year built in the parcel records means not recorded.
+  if ((key === 'ACREAGE' || key === 'MKT_CUR_VALUE' || key === 'GLA_WEIGHTED_YRBLT') && Number(v) === 0) return null;
   if ((key === 'FY27_Budget' || key === 'Total_Budget' || key === 'total_taxable' || key === 'MKT_CUR_VALUE') && Number.isFinite(Number(v))) return `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if ((key === 'OrdinanceDate' || key === 'LASTUPDATE') && Number.isFinite(Number(v)) && Number(v) > 1e11) return new Date(Number(v)).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   // City fiscal years run July to June: fiscal 2026 is July 2025 to June 2026.
@@ -330,8 +346,17 @@ const norm = (t: string) =>
     .filter(Boolean)
     .map((w) => WORD[w] ?? w)
     .join(' ');
-/** Layers drawn from image tiles, never fetched as GeoJSON. */
-const RASTER = new Set(['parcels']);
+/** Layers drawn from the API's fixed zoom tiles (fetched whole only as a fallback). */
+const TILED = new Set(['parcels']);
+/** Outline widths by zoom ([zoom, px]): each line sits on a dark casing about 2.5 to 3 px wider. */
+const PARCEL_WIDTH: Array<[number, number]> = [[15, 1], [17, 1.7], [19, 3]];
+const PARCEL_CASING: Array<[number, number]> = [[15, 2.8], [17, 3.8], [19, 5.8]];
+const BOUNDARY_WIDTH: Array<[number, number]> = [[10, 1.8], [13, 2.6], [17, 5]];
+const BOUNDARY_CASING: Array<[number, number]> = [[10, 4.5], [13, 5.6], [17, 8.5]];
+const PROJECT_WIDTH: Array<[number, number]> = [[11, 1.4], [14, 2.2], [17, 3.6]];
+const PROJECT_CASING: Array<[number, number]> = [[11, 3.4], [14, 4.6], [17, 6.6]];
+/** The parcel collection each map's source last took. */
+const parcelDrawn = new WeakMap<maplibregl.Map, FC>();
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda', 'ura'];
 const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
 
@@ -470,6 +495,10 @@ export default function MapPage() {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
+  // Counts loaded map styles. A basemap switch makes a new map whose style can load before React
+  // renders the old map's "not ready", so `ready` alone may never change; this always does, and the
+  // overlay layers are drawn again on the new map.
+  const [mapGen, setMapGen] = useState(0);
   // False until the basemap has drawn its first screen: a small "Loading map" notice shows meanwhile.
   const [painted, setPainted] = useState(false);
   const [catalog, setCatalog] = useState<MapLayerInfo[] | null>(null);
@@ -490,8 +519,17 @@ export default function MapPage() {
   const [error, setError] = useState<string | null>(null);
   const hoverRef = useRef<{ source: string; id: string | number } | null>(null);
   const [base, setBase] = useState<Base>(() => readBase(params.get('base')) ?? savedBase() ?? 'streets');
+  // True once the county parcel tiles have failed: the city's 2025 parcel layer is drawn instead.
+  const [parcelFallback, setParcelFallback] = useState(false);
+  const parcelFallbackRef = useRef(false);
+  const parcelSeq = useRef(0);
   // Overlays and labels use the dark treatment on dark mode and on satellite imagery.
   const dark = resolved === 'dark' || base === 'satellite';
+  const darkRef = useRef(dark);
+  useEffect(() => {
+    darkRef.current = dark;
+    parcelFallbackRef.current = parcelFallback;
+  });
   const labelsRef = useRef(new Map<string, string>());
   const explicitLayers = useRef(Boolean(params.get('layers')));
   useEffect(() => {
@@ -544,7 +582,7 @@ export default function MapPage() {
   // Layer catalog, then the default layers (or the ones named in the address). The city boundary
   // and any layers named in the address start loading now, alongside the catalog, not after it.
   useEffect(() => {
-    for (const key of ['boundary', ...on]) if (LOOK[key] && !RASTER.has(key)) loadLayer({ key, pages: 1 }).catch(() => undefined);
+    for (const key of ['boundary', ...on]) if (LOOK[key] && !TILED.has(key)) loadLayer({ key, pages: 1 }).catch(() => undefined);
     getJson<{ layers: MapLayerInfo[] }>(`/api/map/layers?v=${DATA_VERSION}`).then(
       (j) => {
         setCatalog(j.layers);
@@ -555,6 +593,30 @@ export default function MapPage() {
     // Only the layers named when the page opened are fetched early.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A parcel tapped on the map: its number shows at once, then the card fills from the county
+  // records (and the city's 2025 layer for property type and year built).
+  const pickParcel = useCallback((m: maplibregl.Map, ll: maplibregl.LngLat, props: Record<string, unknown>) => {
+    const seq = ++parcelSeq.current;
+    const label = labelsRef.current.get('parcels') ?? 'Parcels';
+    const no = String(props.PARCEL_NO ?? '');
+    setPicked({ layer: 'parcels', label, name: nameOf('parcels', props), props: { ...props, __loading: true } });
+    const shape = no ? dataRef.current.parcels?.features.find((f) => String(f.properties?.PARCEL_NO ?? '') === no)?.geometry : null;
+    if (shape) highlightParcel(m, shape, darkRef.current);
+    else clearHighlight(m);
+    const settle = (next: Record<string, unknown>, geometry?: Geometry | null) => {
+      if (seq !== parcelSeq.current) return;
+      setPicked((p) => (p?.layer === 'parcels' ? { layer: 'parcels', label, name: nameOf('parcels', next), props: next } : p));
+      if (geometry && mapRef.current === m) highlightParcel(m, geometry, darkRef.current);
+    };
+    // Without county records, what the city's 2025 layer gave (fallback mode) or the number alone.
+    const fromLayer = { ...props, __src: parcelFallbackRef.current ? 'city' : 'none' };
+    getJson<ParcelCardResponse>(`/api/map/parcel?lng=${ll.lng.toFixed(6)}&lat=${ll.lat.toFixed(6)}`).then(
+      (r) => (r.found ? settle({ ...r.properties, __src: r.city.length ? 'county+city' : 'county' }, r.geometry) : settle(fromLayer)),
+      () => settle(fromLayer),
+    );
+  }, []);
+  const pickParcelRef = useRef(pickParcel);
 
   // Map instance, re-made when the theme or basemap changes. The style is ready at once for
   // satellite and plain maps, and after one fetch (kept for the visit) for streets.
@@ -589,10 +651,13 @@ export default function MapPage() {
       });
       m.on('style.load', () => {
         styleReady.add(m);
+        // The opening zoom, so "zoom in" hints are right before the first zoom gesture.
+        setZoom(m.getZoom());
         if (base === 'terrain' && m.getSource('dem')) {
           m.setTerrain({ source: 'dem', exaggeration: 1.6 });
         }
         setReady(true);
+        setMapGen((g) => g + 1);
         readyRef.current = true;
         setTimeout(() => applyRef.current(), 0);
       });
@@ -605,6 +670,10 @@ export default function MapPage() {
         const f = [...hits].sort((a, b) => order(a) - order(b))[0];
         if (!f) return;
         const key = f.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|circle)$/, '');
+        if (key === 'parcels') {
+          pickParcelRef.current(m, e.lngLat, f.properties ?? {});
+          return;
+        }
         setPicked({ layer: key, label: labelsRef.current.get(key) ?? '', name: nameOf(key, f.properties ?? {}), props: f.properties ?? {} });
         highlight(m, f);
       });
@@ -626,7 +695,8 @@ export default function MapPage() {
   // Fetch data for layers that are switched on (and the searchable ones, for the search box).
   useEffect(() => {
     if (!catalog) return;
-    const want = catalog.filter((l) => l.geometry !== 'raster' && (on.has(l.key) || SEARCHABLE.includes(l.key) || l.key === 'boundary'));
+    // Tiled layers (parcels) are fetched whole only when their tiles have failed.
+    const want = catalog.filter((l) => (!l.tiles || parcelFallback) && (on.has(l.key) || SEARCHABLE.includes(l.key) || l.key === 'boundary'));
     for (const l of want) {
       if (data[l.key]) continue;
       loadLayer(l).then(
@@ -638,7 +708,56 @@ export default function MapPage() {
         () => setError('Some map layers could not be loaded. Try again shortly.'),
       );
     }
-  }, [catalog, on, data]);
+  }, [catalog, on, data, parcelFallback]);
+
+  // County parcel outlines: from zoom 15, the zoom 16 tiles covering the view are fetched (once
+  // each, after the map stops moving) and drawn as one source. If the tiles fail before any has
+  // loaded, the city's 2025 parcel layer is drawn instead.
+  useEffect(() => {
+    const map = mapRef.current;
+    const template = catalog?.find((l) => l.key === 'parcels')?.tiles;
+    if (!map || !ready || !template || parcelFallback || !on.has('parcels')) return;
+    let stopped = false;
+    let failed = 0;
+    let moveTimer: ReturnType<typeof setTimeout> | undefined;
+    let mergeTimer: ReturnType<typeof setTimeout> | undefined;
+    const publish = () => {
+      if (mergeTimer) return;
+      mergeTimer = setTimeout(() => {
+        mergeTimer = undefined;
+        if (stopped) return;
+        const fc = mergedParcels();
+        dataRef.current = { ...dataRef.current, parcels: fc };
+        setData((d) => ({ ...d, parcels: fc }));
+      }, 150);
+    };
+    const refresh = () => {
+      if (stopped || map.getZoom() < PARCEL_MIN_ZOOM) return;
+      const b = map.getBounds();
+      for (const [x, y] of tilesFor({ west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() })) {
+        if (hasTile(x, y)) continue;
+        void loadTile(x, y, template).then((ok) => {
+          if (stopped) return;
+          if (ok) publish();
+          else if (++failed >= 2 && loadedTileCount() === 0) setParcelFallback(true);
+        });
+      }
+    };
+    const onMove = () => {
+      clearTimeout(moveTimer);
+      moveTimer = setTimeout(refresh, 250);
+    };
+    map.on('moveend', onMove);
+    refresh();
+    // Tiles loaded for an earlier map (before a basemap switch) are drawn at once.
+    if (loadedTileCount() && !dataRef.current.parcels) publish();
+    return () => {
+      stopped = true;
+      map.off('moveend', onMove);
+      clearTimeout(moveTimer);
+      clearTimeout(mergeTimer);
+    };
+  }, [ready, mapGen, catalog, on, parcelFallback]);
 
   // Draw: add sources and layers once per map instance, then toggle visibility.
   useEffect(() => {
@@ -651,26 +770,23 @@ export default function MapPage() {
       console.warn('map draw', e);
     }
     function drawLayers(map: maplibregl.Map, catalog: MapLayerInfo[]) {
+    // Areas and outlines go above the basemap but under its labels, under every point and label
+    // layer of ours, and under any layer that comes later in DRAW_ORDER, whatever was turned on first.
+    const beforeFor = (key: string) => {
+      const later = DRAW_ORDER.slice(DRAW_ORDER.indexOf(key) + 1);
+      const ours = (l: { id: string; type: string }) => l.type === 'symbol' || l.type === 'circle' || l.id === 'vtp-mask-fill' || l.id.startsWith('vtp-pick') || later.some((k) => l.id.startsWith(`vtp-${k}-`));
+      const mine = (map.getStyle().layers ?? []).find((l) => l.id.startsWith('vtp-') && ours(l))?.id;
+      const labels = firstLabelLayer(map, (id) => id.startsWith('vtp-'));
+      if (!mine) return labels;
+      if (!labels) return mine;
+      const ids = (map.getStyle().layers ?? []).map((l) => l.id);
+      return ids.indexOf(mine) < ids.indexOf(labels) ? mine : labels;
+    };
     for (const key of DRAW_ORDER) {
       const fc = data[key];
       const info = catalog.find((l) => l.key === key);
       const look = LOOK[key];
       const src = `vtp-${key}`;
-      // Image tile layers (county parcel lines): added only once switched on, so no tiles load before.
-      if (info?.geometry === 'raster' && info.tiles) {
-        if (!map.getSource(src) && on.has(key)) {
-          const tiles = info.tiles.startsWith('/') ? `${window.location.origin}${info.tiles}` : info.tiles;
-          map.addSource(src, { type: 'raster', tiles: [tiles], tileSize: 256, minzoom: info.minZoom ?? 0, maxzoom: 20, attribution: info.attribution ?? undefined });
-          // Under the city edge, its mask and the street and point layers, whatever was switched on first.
-          const later = DRAW_ORDER.slice(DRAW_ORDER.indexOf(key) + 1);
-          const before = (map.getStyle().layers ?? []).find((l) => l.id === 'vtp-mask-fill' || l.id.startsWith('vtp-pick') || later.some((k) => l.id.startsWith(`vtp-${k}-`)))?.id;
-          // The county draws dark lines; on dark maps and imagery they are shown light (brightness inverted).
-          const paint = dark ? { 'raster-opacity': 0.8, 'raster-brightness-min': 1, 'raster-brightness-max': 0, 'raster-fade-duration': 150 } : { 'raster-opacity': 0.75, 'raster-fade-duration': 150 };
-          map.addLayer({ id: `${src}-raster`, type: 'raster', source: src, minzoom: info.minZoom ?? 0, paint }, before);
-        }
-        if (map.getLayer(`${src}-raster`)) map.setLayoutProperty(`${src}-raster`, 'visibility', on.has(key) ? 'visible' : 'none');
-        continue;
-      }
       if (!fc || !info || !look) continue;
       if (key === 'boundary' && !map.getSource(src) && !focusRef.current && !pointRef.current) {
         const b = boundsOf(fc.features);
@@ -678,29 +794,51 @@ export default function MapPage() {
         // Terrain opens tilted toward the mountains, still framed on Vineyard.
         if (b) map.fitBounds(b, base === 'terrain' ? { padding: pad, pitch: 50, bearing: -20, duration: 0 } : { padding: pad, duration: 0 });
       }
+      // Parcel outlines grow as tiles arrive: the source takes each new set.
+      if (key === 'parcels' && map.getSource(src) && parcelDrawn.get(map) !== fc) {
+        (map.getSource(src) as GeoJSONSource).setData(fc);
+        parcelDrawn.set(map, fc);
+      }
       if (!map.getSource(src)) {
         map.addSource(src, { type: 'geojson', data: fc, generateId: true });
+        if (key === 'parcels') parcelDrawn.set(map, fc);
+        const before = beforeFor(key);
         const color = look.by ? (['coalesce', ['get', '__c'], look.color] as unknown as string) : look.color;
         const edge = look.outline ?? color;
         const minzoom = info.minZoom ?? 0;
         const hover = (a: number, b: number) => ['case', ['boolean', ['feature-state', 'hover'], false], b, a] as unknown as number;
         const w = look.width ?? 1;
+        const casing = (stops: Array<[number, number]>) => ({ 'line-color': CASING.color, 'line-opacity': CASING.opacity, 'line-width': byZoom(stops) });
         if (key === 'boundary') {
-          // Everything outside the city is dimmed and the line has a light casing, so the city edge is unmistakable.
+          // Everything outside the city is dimmed and the edge is a bright line on a dark casing, so it is unmistakable.
           map.addSource('vtp-mask', { type: 'geojson', data: maskOf(fc) });
-          map.addLayer({ id: 'vtp-mask-fill', type: 'fill', source: 'vtp-mask', paint: { 'fill-color': dark ? '#000000' : '#1b1b1f', 'fill-opacity': dark ? 0.42 : 0.16 } });
-          map.addLayer({ id: `${src}-casing`, type: 'line', source: src, layout: { 'line-join': 'round' }, paint: { 'line-color': dark ? '#0a0a0b' : '#ffffff', 'line-width': 8, 'line-opacity': 0.9 } });
-          map.addLayer({ id: `${src}-line`, type: 'line', source: src, layout: { 'line-join': 'round' }, paint: { 'line-color': dark ? '#e6a9c6' : color, 'line-width': w } });
+          map.addLayer({ id: 'vtp-mask-fill', type: 'fill', source: 'vtp-mask', paint: { 'fill-color': dark ? '#000000' : '#1b1b1f', 'fill-opacity': dark ? 0.42 : 0.16 } }, before);
+          map.addLayer({ id: `${src}-casing`, type: 'line', source: src, layout: { 'line-join': 'round' }, paint: casing(BOUNDARY_CASING) }, before);
+          map.addLayer({ id: `${src}-line`, type: 'line', source: src, layout: { 'line-join': 'round' }, paint: { 'line-color': dark ? '#f783ac' : '#862e9c', 'line-width': byZoom(BOUNDARY_WIDTH) } }, before);
+        } else if (key === 'parcels') {
+          // A clear fill (so a tap anywhere inside picks the parcel), then the outline on its casing.
+          const lc = parcelLine(dark);
+          map.addLayer({ id: `${src}-fill`, type: 'fill', source: src, minzoom, paint: { 'fill-color': lc, 'fill-opacity': hover(0, 0.16) } }, before);
+          map.addLayer({ id: `${src}-casing`, type: 'line', source: src, minzoom, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: casing(PARCEL_CASING) }, before);
+          map.addLayer({ id: `${src}-line`, type: 'line', source: src, minzoom, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': lc, 'line-width': byZoom(PARCEL_WIDTH), 'line-opacity': 0.95 } }, before);
         } else if (look.kind === 'fill') {
-          map.addLayer({ id: `${src}-fill`, type: 'fill', source: src, minzoom, paint: { 'fill-color': color, 'fill-opacity': hover(look.opacity ?? 0.2, Math.min(0.6, (look.opacity ?? 0.2) + 0.25)) } });
-          map.addLayer({
-            id: `${src}-line`,
-            type: 'line',
-            source: src,
-            minzoom,
-            layout: { 'line-join': 'round' },
-            paint: { 'line-color': edge, 'line-width': hover(w, w + 2), 'line-opacity': 0.95, ...(look.dash ? { 'line-dasharray': [3, 2] } : {}) },
-          });
+          map.addLayer({ id: `${src}-fill`, type: 'fill', source: src, minzoom, paint: { 'fill-color': color, 'fill-opacity': hover(look.opacity ?? 0.2, Math.min(0.6, (look.opacity ?? 0.2) + 0.25)) } }, before);
+          // Capital projects: a bright edge on a dark casing, thicker when zoomed in.
+          if (key === 'projects') map.addLayer({ id: `${src}-casing`, type: 'line', source: src, minzoom, layout: { 'line-join': 'round' }, paint: casing(PROJECT_CASING) }, before);
+          map.addLayer(
+            {
+              id: `${src}-line`,
+              type: 'line',
+              source: src,
+              minzoom,
+              layout: { 'line-join': 'round' },
+              paint:
+                key === 'projects'
+                  ? { 'line-color': dark ? '#ff8fab' : edge, 'line-width': ['interpolate', ['linear'], ['zoom'], ...PROJECT_WIDTH.flatMap(([z, v]) => [z, hover(v, v + 2)])] as unknown as number, 'line-opacity': 1 }
+                  : { 'line-color': edge, 'line-width': hover(w, w + 2), 'line-opacity': 0.95, ...(look.dash ? { 'line-dasharray': [3, 2] } : {}) },
+            },
+            before,
+          );
         } else if (look.kind === 'line') {
           map.addLayer({
             id: `${src}-line`,
@@ -711,10 +849,10 @@ export default function MapPage() {
             paint: {
               'line-color': color,
               'line-width': key === 'roads' ? (['interpolate', ['linear'], ['zoom'], 12, ['case', ['boolean', ['feature-state', 'hover'], false], 3, 1.2], 17, ['case', ['boolean', ['feature-state', 'hover'], false], 9, 5]] as unknown as number) : hover(w, w + 1.5),
-              'line-opacity': key === 'parcels' ? 0.7 : 0.95,
+              'line-opacity': 0.95,
               ...(look.dash ? { 'line-dasharray': [2, 1.5] } : {}),
             },
-          });
+          }, before);
         } else {
           map.addLayer({ id: `${src}-circle`, type: 'circle', source: src, minzoom, paint: { 'circle-color': color, 'circle-radius': hover(look.radius ?? 4, (look.radius ?? 4) + 3), 'circle-stroke-color': dark ? '#0a0a0b' : '#ffffff', 'circle-stroke-width': 2 } });
         }
@@ -758,10 +896,10 @@ export default function MapPage() {
         }
       }
       const vis = on.has(key) || key === 'boundary' ? 'visible' : 'none';
-      for (const id of [`${src}-fill`, `${src}-line`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+      for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
     }
     }
-  }, [ready, catalog, data, on, dark, base]);
+  }, [ready, mapGen, catalog, data, on, dark, base]);
 
   const results = useMemo(() => {
     const raw = q.trim().toLowerCase();
@@ -902,7 +1040,7 @@ export default function MapPage() {
                 <p className="vc-panel-label">{group}</p>
                 {layers.map((l) => (
                   <label key={l.key} className="vc-map-layer" data-dim={l.minZoom != null && zoom < l.minZoom && on.has(l.key)}>
-                    <span className="vc-map-swatch" data-kind={LOOK[l.key]?.kind} style={{ background: LOOK[l.key]?.color }} />
+                    <span className="vc-map-swatch" data-kind={LOOK[l.key]?.kind} style={{ background: lookOf(l.key, dark)?.color }} />
                     <span className="vc-map-lname">
                       {l.label}
                       {l.minZoom != null && zoom < l.minZoom && on.has(l.key) && <em> · zoom in</em>}
@@ -918,7 +1056,7 @@ export default function MapPage() {
 
         {!panel && !picked && (() => {
           // Every layer on the map, in drawing order: one swatch, or one per value for color-coded layers.
-          const shown = DRAW_ORDER.filter((k) => on.has(k) && (data[k] || catalog?.some((l) => l.key === k && l.geometry === 'raster'))).reverse();
+          const shown = DRAW_ORDER.filter((k) => on.has(k) && (data[k] || catalog?.some((l) => l.key === k && l.tiles))).reverse();
           if (!shown.length) return null;
           const name = (k: string) => catalog?.find((l) => l.key === k)?.label ?? k;
           return (
@@ -926,7 +1064,7 @@ export default function MapPage() {
               <button type="button" className="vc-map-legend-toggle" aria-expanded={legendOpen} onClick={() => setLegendOpen((o) => !o)}>
                 <span className="vc-map-legend-dots" aria-hidden="true">
                   {shown.slice(0, 3).map((k) => (
-                    <span key={k} className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: LOOK[k]?.outline ?? LOOK[k]?.color }} />
+                    <span key={k} className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: lookOf(k, dark)?.outline ?? lookOf(k, dark)?.color }} />
                   ))}
                 </span>
                 Legend
@@ -953,7 +1091,7 @@ export default function MapPage() {
                   return (
                     <ul key={k}>
                       <li>
-                        <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: LOOK[k]?.outline ?? LOOK[k]?.color }} />
+                        <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: lookOf(k, dark)?.outline ?? lookOf(k, dark)?.color }} />
                         {name(k)}
                         {values && values.length > 16 ? ' (colored by area)' : ''}
                       </li>
@@ -970,7 +1108,7 @@ export default function MapPage() {
           <aside className="vc-map-card" aria-label="Details">
             <div className="vc-map-card-head">
               <span className="vc-map-kind">
-                <span className="vc-map-swatch" style={{ background: LOOK[picked.layer]?.color }} /> {picked.label}
+                <span className="vc-map-swatch" style={{ background: lookOf(picked.layer, dark)?.color }} /> {picked.label}
               </span>
               <button type="button" className="vc-ghost" data-icon-only="true" onClick={() => (setPicked(null), clearHighlight(mapRef.current))} aria-label="Close details">
                 <X size={17} />
@@ -989,6 +1127,19 @@ export default function MapPage() {
                   </div>
                 ))}
             </dl>
+            {picked.layer === 'parcels' && (
+              <p className="vc-map-note">
+                {picked.props.__loading
+                  ? 'Loading parcel details.'
+                  : picked.props.__src === 'county+city'
+                    ? 'Current Utah County GIS records. Property type and year built are from 2025 city parcel data.'
+                    : picked.props.__src === 'county'
+                      ? 'Current Utah County GIS records.'
+                      : picked.props.__src === 'city'
+                        ? 'From 2025 city parcel data (a copy of Utah County records).'
+                        : 'Parcel details could not be loaded right now. Try again shortly.'}
+              </p>
+            )}
             {picked.layer === 'projects' && (() => {
               const finish = Number(picked.props.Finish_Date);
               const pct = String(picked.props.Phase_Status ?? '');
@@ -1037,6 +1188,7 @@ function fitPadding() {
 }
 
 function highlight(map: maplibregl.Map, f: Feature | FeatureCollection) {
+  (map.getSource('vtp-pickp') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: [] });
   const data: FC = f.type === 'FeatureCollection' ? (f as FC) : { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: (f as Feature).geometry, properties: {} }] };
   const src = map.getSource('vtp-pick') as GeoJSONSource | undefined;
   if (src) {
@@ -1054,6 +1206,23 @@ function highlight(map: maplibregl.Map, f: Feature | FeatureCollection) {
 }
 
 function clearHighlight(map: maplibregl.Map | null) {
-  const src = map?.getSource('vtp-pick') as GeoJSONSource | undefined;
-  src?.setData({ type: 'FeatureCollection', features: [] });
+  for (const id of ['vtp-pick', 'vtp-pickp']) (map?.getSource(id) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: [] });
+}
+
+/** The selected parcel: a translucent fill in the parcel color and a stronger outline on a dark casing. */
+function highlightParcel(map: maplibregl.Map, geometry: Geometry, dark: boolean) {
+  (map.getSource('vtp-pick') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: [] });
+  const data: FC = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry, properties: {} }] };
+  const ids = ['vtp-pickp-fill', 'vtp-pickp-casing', 'vtp-pickp-line'];
+  const src = map.getSource('vtp-pickp') as GeoJSONSource | undefined;
+  if (src) {
+    src.setData(data);
+    for (const id of ids) if (map.getLayer(id)) map.moveLayer(id);
+    return;
+  }
+  const lc = parcelLine(dark);
+  map.addSource('vtp-pickp', { type: 'geojson', data });
+  map.addLayer({ id: ids[0], type: 'fill', source: 'vtp-pickp', paint: { 'fill-color': lc, 'fill-opacity': 0.3 } });
+  map.addLayer({ id: ids[1], type: 'line', source: 'vtp-pickp', layout: { 'line-join': 'round' }, paint: { 'line-color': CASING.color, 'line-opacity': 0.7, 'line-width': byZoom([[15, 5], [17, 6.5], [19, 9]]) } });
+  map.addLayer({ id: ids[2], type: 'line', source: 'vtp-pickp', layout: { 'line-join': 'round' }, paint: { 'line-color': lc, 'line-width': byZoom([[15, 2.6], [17, 3.6], [19, 5.5]]) } });
 }
