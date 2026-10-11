@@ -1,0 +1,270 @@
+{
+  "base": "https://vineyardportal.org",
+  "at": "2026-10-11T09:44:08.625Z",
+  "desktop": false,
+  "net": "fast4g",
+  "cpu": 4,
+  "runs": 3,
+  "results": {
+    "/": {
+      "cold": {
+        "fcp": 1088,
+        "header": 1088,
+        "title": 1088,
+        "content": 1088,
+        "lcp": 1088,
+        "api": 1,
+        "jsKB": 182,
+        "totalKB": 316,
+        "apiUrls": [
+          "/api/people"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": null,
+        "header": 276,
+        "title": 276,
+        "content": 276,
+        "lcp": null,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 2,
+        "apiUrls": [
+          "/api/people"
+        ],
+        "errors": []
+      }
+    },
+    "/construction": {
+      "cold": {
+        "fcp": 1312,
+        "header": 1312,
+        "title": 1312,
+        "content": 1403,
+        "lcp": 1312,
+        "api": 2,
+        "jsKB": 476,
+        "totalKB": 638,
+        "apiUrls": [
+          "/api/construction",
+          "/api/map/layers/projects?page=0&v=5"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 928,
+        "header": 928,
+        "title": 928,
+        "content": 928,
+        "lcp": 928,
+        "api": 2,
+        "jsKB": 0,
+        "totalKB": 2,
+        "apiUrls": [
+          "/api/construction",
+          "/api/map/layers/projects?page=0&v=5"
+        ],
+        "errors": []
+      }
+    },
+    "/add": {
+      "cold": {
+        "fcp": 1252,
+        "header": 1252,
+        "title": 1252,
+        "content": 1252,
+        "lcp": 1312,
+        "api": 1,
+        "jsKB": 186,
+        "totalKB": 316,
+        "apiUrls": [
+          "/api/add/status"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 780,
+        "header": 780,
+        "title": 780,
+        "content": 780,
+        "lcp": 780,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 3,
+        "apiUrls": [
+          "/api/add/status"
+        ],
+        "errors": []
+      }
+    },
+    "/votes": {
+      "cold": {
+        "fcp": 1232,
+        "header": 1232,
+        "title": 1232,
+        "content": 1727,
+        "lcp": 1308,
+        "api": 6,
+        "jsKB": 182,
+        "totalKB": 333,
+        "apiUrls": [
+          "/api/votes/years?scope=current",
+          "/api/votes?scope=current&year=2026&pageSize=400",
+          "/api/meetings?year=2026&body=city-council&pageSize=100&sort=date_desc",
+          "/api/meetings?year=2026&body=redevelopment-agency&pageSize=100&sort=date_desc",
+          "/api/votes/meetings?year=2026",
+          "/api/people"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 612,
+        "header": 612,
+        "title": 612,
+        "content": 867,
+        "lcp": 612,
+        "api": 6,
+        "jsKB": 0,
+        "totalKB": 2,
+        "apiUrls": [
+          "/api/votes/years?scope=current",
+          "/api/votes?scope=current&year=2026&pageSize=400",
+          "/api/meetings?year=2026&body=city-council&pageSize=100&sort=date_desc",
+          "/api/meetings?year=2026&body=redevelopment-agency&pageSize=100&sort=date_desc",
+          "/api/votes/meetings?year=2026",
+          "/api/people"
+        ],
+        "errors": []
+      }
+    },
+    "/planning": {
+      "cold": {
+        "fcp": 1224,
+        "header": 1224,
+        "title": 1224,
+        "content": 1489,
+        "lcp": 1304,
+        "api": 12,
+        "jsKB": 183,
+        "totalKB": 327,
+        "apiUrls": [
+          "/api/votes/years?scope=current&body=planning-commission",
+          "/api/votes/attendance",
+          "/api/votes?scope=current&body=planning-commission&year=2026&pageSize=400",
+          "/api/meetings?year=2026&body=planning-commission&pageSize=100&sort=date_desc",
+          "/api/votes/meetings?year=2026&body=planning-commission",
+          "/api/people",
+          "/api/draft-minutes?date=2026-10-07&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-09-02&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-08-05&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-07-15&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-03-18&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-01-07&body=Planning%20Commission"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 620,
+        "header": 620,
+        "title": 620,
+        "content": 682,
+        "lcp": 620,
+        "api": 12,
+        "jsKB": 0,
+        "totalKB": 2,
+        "apiUrls": [
+          "/api/votes/years?scope=current&body=planning-commission",
+          "/api/votes/attendance",
+          "/api/votes?scope=current&body=planning-commission&year=2026&pageSize=400",
+          "/api/meetings?year=2026&body=planning-commission&pageSize=100&sort=date_desc",
+          "/api/votes/meetings?year=2026&body=planning-commission",
+          "/api/people",
+          "/api/draft-minutes?date=2026-10-07&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-09-02&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-08-05&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-07-15&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-03-18&body=Planning%20Commission",
+          "/api/draft-minutes?date=2026-01-07&body=Planning%20Commission"
+        ],
+        "errors": []
+      }
+    },
+    "/map": {
+      "cold": {
+        "fcp": 1308,
+        "header": 1308,
+        "title": 1308,
+        "content": 1402,
+        "lcp": 1308,
+        "api": 9,
+        "jsKB": 481,
+        "totalKB": 723,
+        "apiUrls": [
+          "/api/map/layers/boundary?page=0&v=8",
+          "/api/map/layers?v=8",
+          "/api/map/layers/projects?page=0&v=8",
+          "/api/map/layers/subdivisions?page=0&v=8",
+          "/api/map/layers/ura?page=0&v=8",
+          "/api/map/layers/roads?page=0&v=8",
+          "/api/map/layers/parks?page=0&v=8",
+          "/api/map/layers/schools?page=0&v=8",
+          "/api/map/layers/businesses?page=0&v=8"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 608,
+        "header": 608,
+        "title": 608,
+        "content": 649,
+        "lcp": 608,
+        "api": 9,
+        "jsKB": 0,
+        "totalKB": 2,
+        "apiUrls": [
+          "/api/map/layers/boundary?page=0&v=8",
+          "/api/map/layers?v=8",
+          "/api/map/layers/projects?page=0&v=8",
+          "/api/map/layers/subdivisions?page=0&v=8",
+          "/api/map/layers/ura?page=0&v=8",
+          "/api/map/layers/roads?page=0&v=8",
+          "/api/map/layers/parks?page=0&v=8",
+          "/api/map/layers/schools?page=0&v=8",
+          "/api/map/layers/businesses?page=0&v=8"
+        ],
+        "errors": []
+      }
+    },
+    "/budget": {
+      "cold": {
+        "fcp": 1308,
+        "header": 1308,
+        "title": 1308,
+        "content": 1308,
+        "lcp": 1308,
+        "api": 1,
+        "jsKB": 196,
+        "totalKB": 331,
+        "apiUrls": [
+          "/api/budget"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 660,
+        "header": 660,
+        "title": 660,
+        "content": 660,
+        "lcp": 660,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 2,
+        "apiUrls": [
+          "/api/budget"
+        ],
+        "errors": []
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+/              cold   fcp 376  header 376  title 376  content 376  lcp 376  api 1  js 181 KB
+/              repeat fcp null  header 56  title 56  content 56  lcp null  api 1  js 0 KB
+/construction  cold   fcp 724  header 724  title 724  content 724  lcp 724  api 2  js 476 KB
+/construction  repeat fcp 616  header 616  title 616  content 616  lcp 616  api 2  js 0 KB
+/add           cold   fcp 652  header 652  title 652  content 652  lcp 652  api 1  js 185 KB
+/add           repeat fcp 780  header 780  title 780  content 780  lcp 780  api 1  js 0 KB
+/votes         cold   fcp 688  header 688  title 688  content 756  lcp 756  api 6  js 182 KB
+/votes         repeat fcp null  header 360  title 360  content 436  lcp null  api 6  js 0 KB
+/planning      cold   fcp 708  header 708  title 708  content 748  lcp 748  api 12  js 183 KB
+/planning      repeat fcp 476  header 381  title 381  content 381  lcp 476  api 12  js 0 KB
+/map           cold   fcp 536  header 536  title 536  content 536  lcp 644  api 9  js 481 KB
+/map           repeat fcp 404  header 404  title 404  content 404  lcp 404  api 9  js 0 KB
+/budget        cold   fcp 672  header 672  title 672  content 672  lcp 672  api 1  js 196 KB
+/budget        repeat fcp null  header 370  title 370  content 370  lcp null  api 1  js 0 KB
+wrote diag/38129214227/perf-desktop.json
