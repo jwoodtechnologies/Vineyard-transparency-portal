@@ -5,6 +5,7 @@
  * server delay per API call (the Worker plus D1 on an edge miss).
  *
  *   node scripts/perf/serve.mjs --dist dist --fixtures <dir> [--port 4173] [--delay 300] [--draft-delay 1200] [--construction-delay 600]
+ *        [--lines <dir with parcel-lines-low.json and parcel-lines-mid.json>]
  *
  * <dir>/index.txt lists saved responses as the Diagnostics workflow writes them
  * ("<file> <status> <bytes> <url>"). The aggregated page endpoints (/api/pages/*) are composed from the
@@ -80,7 +81,7 @@ function api(req, url) {
   const m = /^\/api\/pages\/(votes|planning|construction)$/.exec(path);
   if (m) return [200, page(m[1], url)];
   if (path === '/api/draft-minutes') return [200, { draft: null }];
-  const hit = load(`${path}${url.search}`);
+  const hit = load(`${path}${url.search}`) ?? (path === '/api/map/layers' ? load('/api/map/layers') : null);
   if (hit) return [200, hit];
   if (path.startsWith('/api/map/layers/')) return [200, { type: 'FeatureCollection', features: [] }];
   return [404, { error: { kind: 'not_found', message: 'Not saved.' } }];
@@ -98,8 +99,22 @@ function send(req, res, status, type, buf, cache) {
   res.end(req.method === 'HEAD' ? undefined : buf);
 }
 
+/** Parcel line sets (ingest/parcel_lines.py output), served gzipped like the Worker serves them from R2. */
+const LINES = args.lines ? resolve(args.lines) : null;
+function lines(req, res, url) {
+  const level = url.searchParams.get('level');
+  const file = LINES && /^(low|mid)$/.test(level ?? '') ? join(LINES, `parcel-lines-${level}.json`) : null;
+  setTimeout(() => {
+    if (!file || !existsSync(file)) return void res.writeHead(404, { 'content-type': 'application/json' }).end('{}');
+    const buf = gz.get(file) ?? gz.set(file, gzipSync(readFileSync(file), { level: 9 })).get(file);
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-encoding': 'gzip', 'cache-control': 'public, max-age=3600, stale-while-revalidate=604800', 'content-length': buf.length });
+    res.end(buf);
+  }, DELAY);
+}
+
 createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+  if (url.pathname === '/api/map/parcel-lines') return lines(req, res, url);
   if (url.pathname.startsWith('/api/')) {
     const [status, body] = api(req, url);
     setTimeout(() => {

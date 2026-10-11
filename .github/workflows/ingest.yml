@@ -11,7 +11,7 @@ on:
         description: What to run
         type: choice
         default: run
-        options: [run, crawl, ingest, ingest:resume, gis, people, backup, sources:discover, verify, stats, retry-errors, index, migrate, archive-plan, archive-apply]
+        options: [run, crawl, ingest, ingest:resume, gis, parcel-lines, people, backup, sources:discover, verify, stats, retry-errors, index, migrate, archive-plan, archive-apply]
       limit:
         description: Max documents to process (ingest/run)
         default: "3000"
@@ -34,7 +34,8 @@ on:
     # Every 10 minutes (GitHub runs it less often under load): CivicClerk meetings and newly posted files
     # (CivicClerk refuses Cloudflare's network, so the Worker cannot read it), then the file queue.
     - cron: "*/10 * * * *"
-    # Weekly: refresh the GIS records (every road, capital project, zoning district, park, school).
+    # Weekly: refresh the GIS records (every road, capital project, zoning district, park, school)
+    # and the parcel lines the map draws at city view (ingest/parcel_lines.py).
     - cron: "37 10 * * 1"
     # Weekly catalog backup to R2 (Sundays)
     - cron: "7 11 * * 0"
@@ -75,7 +76,7 @@ jobs:
       - name: Run ingestion
         run: |
           set -euo pipefail
-          case "$IN_COMMAND" in run|crawl|ingest|ingest:resume|gis|people|backup|sources:discover|verify|stats|retry-errors|index|migrate|archive-plan|archive-apply) ;; *) echo "bad command"; exit 2;; esac
+          case "$IN_COMMAND" in run|crawl|ingest|ingest:resume|gis|parcel-lines|people|backup|sources:discover|verify|stats|retry-errors|index|migrate|archive-plan|archive-apply) ;; *) echo "bad command"; exit 2;; esac
           [[ "$IN_LIMIT" =~ ^[0-9]{1,5}$ ]] || { echo "bad limit"; exit 2; }
           [[ "$IN_HOURS" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "bad hours"; exit 2; }
           ARGS=(--limit "$IN_LIMIT" --hours "$IN_HOURS")

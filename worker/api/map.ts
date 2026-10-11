@@ -7,10 +7,12 @@
  * edge caching, so the Worker does almost no CPU work and the city's servers see one request per
  * layer page per cache period, not one per visitor. Utah County's current parcels come through as
  * zoom 16 GeoJSON tiles with the parcel number only, and a point lookup for the parcel card, both
- * stripped to field allowlists here (never owner names or mailing addresses).
+ * stripped to field allowlists here (never owner names or mailing addresses). For the city-wide view
+ * (zoom 12 to 15) a prebuilt, generalized set of parcel lines is served from R2 (geometry only).
  */
 import type { Env } from '../env';
-import { HttpError, json, notFound } from '../lib/http';
+import { API_SECURITY_HEADERS, badRequest, HttpError, json, notFound, readJson } from '../lib/http';
+import { checkParcelLines, isParcelLineLevel, PARCEL_LINES_MAX_BYTES, parcelLinesKey } from '../lib/parcelLines';
 import { budgetForFeature } from '../lib/capitalPlan';
 import { BASE, byKey, cityParcelAtUrl, COUNTY_PAGE, countyParcelAtUrl, countyParcelTileUrl, MAP_LAYERS, PARCEL_TILE_PAGES, parcelCard, parcelPoint, parcelTileBody, type MapLayerDef } from '../lib/mapLayers';
 
@@ -18,7 +20,7 @@ export { MAP_LAYERS, type MapLayerDef };
 
 /** Public catalog of layers (no upstream URLs needed by the client). */
 export function listMapLayers(): Response {
-  const layers = MAP_LAYERS.map(({ key, label, group, geometry, pages, on, minZoom, tiles, attribution }) => ({ key, label, group, geometry, pages: pages ?? 1, on: Boolean(on), minZoom: minZoom ?? null, ...(tiles ? { tiles, attribution: attribution ?? null } : {}) }));
+  const layers = MAP_LAYERS.map(({ key, label, group, geometry, pages, on, minZoom, tiles, attribution, lines, linesMinZoom }) => ({ key, label, group, geometry, pages: pages ?? 1, on: Boolean(on), minZoom: minZoom ?? null, ...(tiles ? { tiles, attribution: attribution ?? null } : {}), ...(lines ? { lines, linesMinZoom: linesMinZoom ?? null } : {}) }));
   return json({ layers, source: { name: 'Vineyard City Public GIS', url: 'https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb' } }, { headers: { 'cache-control': 'public, max-age=3600' } });
 }
 
@@ -156,4 +158,54 @@ async function annotatedProjects(upstream: Response): Promise<Response> {
       'x-content-type-options': 'nosniff',
     },
   });
+}
+
+/** Browsers keep a line set for an hour and may use it for a week while checking for a newer one (the ETag is its version). */
+export const PARCEL_LINES_CACHE = 'public, max-age=3600, stale-while-revalidate=604800';
+
+/**
+ * GET /api/map/parcel-lines?level=low|mid → the prebuilt parcel lines for zoom 12 to 13 (low) or
+ * 14 to 15 (mid), gzipped as stored. 404 until the weekly build has stored one (the map then falls
+ * back to the zoom 16 tiles). A matching If-None-Match gets 304.
+ */
+export async function getParcelLines(env: Env, request: Request, url: URL): Promise<Response> {
+  const level = url.searchParams.get('level');
+  if (!isParcelLineLevel(level)) throw notFound('No such parcel line level.');
+  if (!env.ARCHIVE) throw notFound('Parcel lines are not available.');
+  const obj = await env.ARCHIVE.get(parcelLinesKey(level));
+  if (!obj) throw notFound('Parcel lines are not built yet.');
+  const version = obj.customMetadata?.version ?? obj.etag;
+  const etag = `"pl-${level}-${version}"`;
+  const headers: Record<string, string> = {
+    ...API_SECURITY_HEADERS,
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': PARCEL_LINES_CACHE,
+    etag,
+    vary: 'accept-encoding',
+  };
+  const inm = request.headers.get('if-none-match') ?? '';
+  if (inm.split(',').some((t) => t.trim().replace(/^W\//, '') === etag)) {
+    void obj.body.cancel();
+    return new Response(null, { status: 304, headers });
+  }
+  // Stored gzipped: sent as is to every browser (all accept gzip); unpacked for a client that does not.
+  if (/\bgzip\b/i.test(request.headers.get('accept-encoding') ?? '')) {
+    return new Response(obj.body, { status: 200, headers: { ...headers, 'content-encoding': 'gzip', 'content-length': String(obj.size) }, encodeBody: 'manual' } as ResponseInit);
+  }
+  return new Response(obj.body.pipeThrough(new DecompressionStream('gzip')), { status: 200, headers });
+}
+
+/** PUT /api/admin/map/parcel-lines/:level (ingest only): checks the upload field by field and stores it gzipped under map/. */
+export async function putParcelLines(env: Env, request: Request, level: string): Promise<Response> {
+  if (!isParcelLineLevel(level)) throw notFound('No such parcel line level.');
+  if (!env.ARCHIVE) throw new HttpError(503, 'backend_unavailable', 'The archive bucket is not bound.');
+  const checked = checkParcelLines(await readJson<unknown>(request, PARCEL_LINES_MAX_BYTES), level);
+  if (typeof checked === 'string') throw badRequest(checked);
+  const text = JSON.stringify(checked);
+  const gz = await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  await env.ARCHIVE.put(parcelLinesKey(level), gz, {
+    httpMetadata: { contentType: 'application/json; charset=utf-8', contentEncoding: 'gzip' },
+    customMetadata: { version: checked.version, built: checked.built, lines: String(checked.count) },
+  });
+  return json({ ok: true, key: parcelLinesKey(level), version: checked.version, lines: checked.count, bytes: text.length, gzip: gz.byteLength });
 }

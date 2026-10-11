@@ -32,6 +32,7 @@ import { newSetupCode } from '../panel/auth';
 import { requireIngestAuth } from './auth';
 import { splitSql } from '../lib/sql';
 import { exportPage, exportTables, pruneBackups, putBackup } from './backup';
+import { putParcelLines } from '../api/map';
 import { ensureSourceCounter, SOURCE_COUNTER_SET } from '../sync/jobHealth';
 
 export const BUDGET_MESSAGE = 'Daily free-tier ingestion budget reached. Resume next UTC quota period.';
@@ -1062,6 +1063,8 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   if (path === '/export' && method === 'GET') return exportPage(env, url);
   // Backups are reads plus R2 writes, so they run even after the day's D1 write budget is spent.
   if (method === 'PUT' && path.startsWith('/backup/')) return putBackup(env, request, path.slice('/backup/'.length));
+  // The weekly parcel line sets for the map (R2 under map/, not counted as archive storage).
+  if (method === 'PUT' && path.startsWith('/map/parcel-lines/')) return putParcelLines(env, request, path.slice('/map/parcel-lines/'.length));
   if (method === 'POST' && path === '/backup/prune') {
     const b = await readJson<Json>(request, 4096);
     return pruneBackups(env, Number(b.keepDays ?? 90) || 90);

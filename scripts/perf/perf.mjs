@@ -11,6 +11,12 @@
  * Medians over the runs. Third-party hosts (map tiles) are blocked so runs compare like with like.
  * Needs playwright or playwright-core (npm i --no-save playwright-core; npx playwright install chromium), or
  * --pw <path to playwright's index.mjs>.
+ *
+ * --map (map-perf): parcel lines on /map instead. For each zoom (--zooms 12,13,14,15), the map opens on
+ * Vineyard at that zoom, Parcels is switched on, and the time until the line layer has drawn (the page's
+ * "vtp-parcel-lines-<level>" mark, set on the map's next idle) is taken, with the bytes of the line set
+ * over the wire and any zoom 16 tile requests (there should be none). Also "load": the same zoom opened
+ * with Parcels already on (?layers=parcels), timed from navigation.
  */
 import { writeFileSync } from 'node:fs';
 
@@ -38,6 +44,10 @@ const PAGES = {
 };
 const THIRD_PARTY = ['*tiles.openfreemap.org*', '*s3.amazonaws.com*', '*basemap.nationalmap.gov*', '*gisaerials.utahcounty.gov*', '*facebook.com*', '*facebook.net*', '*fbcdn.net*', '*youtube.com*', '*arcgis.com*'];
 const pages = (args.pages ? args.pages.split(',') : Object.keys(PAGES)).filter((p) => PAGES[p]);
+const MAP = args.map === 'true';
+const ZOOMS = (args.zooms ?? '12,13,14,15').split(',').map(Number);
+/** The middle of Vineyard. */
+const CENTER = { lat: 40.3065, lng: -111.7525 };
 
 let chromium;
 if (args.pw) ({ chromium } = await import(args.pw));
@@ -125,9 +135,67 @@ async function measure(browser, path, repeat) {
   return out;
 }
 
+/** One map-perf run at a zoom: toggle (switch Parcels on after the map is up) or load (on from the start). */
+async function measureMap(browser, zoom, mode) {
+  const ctx = await browser.newContext(DESKTOP ? { viewport: { width: 1366, height: 900 } } : { viewport: { width: 412, height: 860 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36 VineyardPerf/1.0' });
+  const page = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send('Network.enable');
+  await cdp.send('Network.setBlockedURLs', { urls: THIRD_PARTY });
+  await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
+  if (NET === 'fast4g') await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 170, downloadThroughput: (9 * 1024 * 1024) / 8, uploadThroughput: (1.5 * 1024 * 1024) / 8 });
+  if (CPU > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
+  const urls = new Map();
+  const net = { linesBytes: 0, linesUrls: [], tiles16: 0 };
+  cdp.on('Network.requestWillBeSent', (e) => {
+    const u = new URL(e.request.url);
+    if (u.pathname === '/api/map/parcel-lines') urls.set(e.requestId, `${u.pathname}${u.search}`);
+    if (u.pathname.startsWith('/api/map/parcels/16/')) net.tiles16++;
+  });
+  cdp.on('Network.loadingFinished', (e) => {
+    if (!urls.has(e.requestId)) return;
+    net.linesBytes += e.encodedDataLength;
+    net.linesUrls.push(urls.get(e.requestId));
+  });
+  const level = zoom >= 14 ? 'mid' : 'low';
+  const q = `lat=${CENTER.lat}&lng=${CENTER.lng}&z=${zoom}`;
+  await page.goto(`${BASE}/map?${q}${mode === 'load' ? '&layers=parcels' : ''}`, { waitUntil: 'commit', timeout: TIMEOUT });
+  let start = 0;
+  if (mode === 'toggle') {
+    await page.waitForSelector('.maplibregl-canvas', { timeout: TIMEOUT });
+    await page.waitForTimeout(2500); // the map and the layer list settle first
+    if (!(await page.locator('.vc-map-panel').count())) await page.click('.vc-map-fab');
+    const box = page.locator('label.vc-map-layer', { hasText: 'Parcels' }).locator('input');
+    await box.waitFor({ timeout: TIMEOUT });
+    start = await box.evaluate((el) => {
+      const t = performance.now();
+      el.click();
+      return t;
+    });
+  }
+  const mark = `vtp-parcel-lines-${level}`;
+  await page.waitForFunction((m) => performance.getEntriesByName(m).length > 0, mark, { timeout: TIMEOUT, polling: 50 });
+  const drawn = await page.evaluate((m) => performance.getEntriesByName(m)[0].startTime, mark);
+  await page.waitForTimeout(500);
+  await ctx.close();
+  return { zoom, mode, level, ms: Math.round(drawn - start), linesKB: Math.round(net.linesBytes / 102.4) / 10, linesUrls: net.linesUrls, tiles16: net.tiles16 };
+}
+
 const browser = await chromium.launch({ executablePath: args.chromium || undefined, args: ['--no-sandbox'] });
 const results = {};
-for (const path of pages) {
+if (MAP) {
+  for (const zoom of ZOOMS) {
+    for (const mode of ['toggle', 'load']) {
+      const runs = [];
+      for (let i = 0; i < RUNS; i++) runs.push(await measureMap(browser, zoom, mode).catch((e) => ({ error: String(e).slice(0, 200) })));
+      const ok = runs.filter((r) => !r.error);
+      const r = { ms: median(ok.map((x) => x.ms)), linesKB: ok[0]?.linesKB ?? null, linesUrls: ok[0]?.linesUrls ?? [], tiles16: ok[0]?.tiles16 ?? null, runs: ok.map((x) => x.ms), errors: runs.filter((x) => x.error).map((x) => x.error) };
+      results[`z${zoom}-${mode}`] = r;
+      console.log(`map z${zoom} ${mode.padEnd(6)} lines drawn ${r.ms} ms (runs ${r.runs.join(', ')})  set ${r.linesKB} KB over the wire  ${r.linesUrls.join(' ')}  z16 tiles ${r.tiles16}${r.errors.length ? `  errors ${r.errors.join(' | ')}` : ''}`);
+    }
+  }
+}
+for (const path of MAP ? [] : pages) {
   results[path] = {};
   for (const kind of ['cold', 'repeat']) {
     const runs = [];
@@ -140,5 +208,5 @@ for (const path of pages) {
   }
 }
 await browser.close();
-writeFileSync(OUT, JSON.stringify({ base: BASE, at: new Date().toISOString(), desktop: DESKTOP, net: NET, cpu: CPU, runs: RUNS, results }, null, 2));
+writeFileSync(OUT, JSON.stringify({ base: BASE, at: new Date().toISOString(), mode: MAP ? 'map-perf' : 'pages', desktop: DESKTOP, net: NET, cpu: CPU, runs: RUNS, results }, null, 2));
 console.log(`wrote ${OUT}`);

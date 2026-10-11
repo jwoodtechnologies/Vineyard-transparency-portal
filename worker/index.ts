@@ -17,7 +17,7 @@ import { filtersFromUrl, handleSearch } from './api/search';
 import { browseFacets, getMeeting, handleHealth, handleHealthJobs, handleStats, listBodies, listCategories, listMeetings, listSources, notImplementedYet, submitReport, suggestions } from './api/misc';
 import { handleAsk } from './ai/rag';
 import { listEvents } from './api/events';
-import { getMapLayer, getParcelAt, getParcelOutlines, listMapLayers } from './api/map';
+import { getMapLayer, getParcelAt, getParcelLines, getParcelOutlines, listMapLayers } from './api/map';
 import { getLatest } from './api/latest';
 import { getBudget, getBudgetArchive } from './api/budget';
 import { getDraftMinutes } from './api/draftMinutes';
@@ -152,6 +152,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       if (b === 'layers' && c && /^[a-z]{2,20}$/.test(c) && parts.length === 3) return getMapLayer(env, c, url);
       if (b === 'parcels' && parts.length === 5) return getParcelOutlines(parts[2], parts[3], parts[4]);
       if (b === 'parcel' && parts.length === 2) return getParcelAt(url);
+      if (b === 'parcel-lines' && parts.length === 2) return getParcelLines(env, request, url);
       break;
     case 'meetings':
       return b ? getMeeting(env, request, id(b)) : listMeetings(env, url);

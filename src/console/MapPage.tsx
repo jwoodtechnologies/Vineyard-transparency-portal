@@ -22,7 +22,8 @@ import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
 import { ProjectDetail } from './ProjectDetail';
 import { BASE_BG, blankStyle, byZoom, CASING, firstLabelLayer, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
-import { hasTile, loadedTileCount, loadTile, mergedParcels, PARCEL_MIN_ZOOM, tilesFor } from './parcelTiles';
+import { hasTile, loadedTileCount, loadTile, mergedParcels, tilesFor } from './parcelTiles';
+import { FULL_ZOOM, levelFor, LINES_MIN_ZOOM, loadLines, MID_ZOOM, tapLooksUpParcel, tilesMinZoom, type LineFC, type LineLevel } from './parcelLines';
 import { formatDate } from '@/lib/dates';
 import { setHead } from '@/lib/head';
 
@@ -361,6 +362,9 @@ const TILED = new Set(['parcels']);
 /** Outline widths by zoom ([zoom, px]): each line sits on a dark casing about 2.5 to 3 px wider. */
 const PARCEL_WIDTH: Array<[number, number]> = [[15, 1], [17, 1.7], [19, 3]];
 const PARCEL_CASING: Array<[number, number]> = [[15, 2.8], [17, 3.8], [19, 5.8]];
+/** City-wide parcel lines (zoom 12 to 15): hairlines at city view, meeting the tiles' width at zoom 16. */
+const PLINE_WIDTH: Array<[number, number]> = [[12, 0.45], [13, 0.6], [14, 0.85], [16, 1.35]];
+const PLINE_CASING: Array<[number, number]> = [[12, 1.3], [13, 1.6], [14, 2.2], [16, 3.3]];
 const BOUNDARY_WIDTH: Array<[number, number]> = [[10, 1.8], [13, 2.6], [17, 5]];
 const BOUNDARY_CASING: Array<[number, number]> = [[10, 4.5], [13, 5.6], [17, 8.5]];
 const PROJECT_WIDTH: Array<[number, number]> = [[11, 1.4], [14, 2.2], [17, 3.6]];
@@ -368,7 +372,7 @@ const PROJECT_CASING: Array<[number, number]> = [[11, 3.4], [14, 4.6], [17, 6.6]
 /** The parcel collection each map's source last took. */
 const parcelDrawn = new WeakMap<maplibregl.Map, FC>();
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda', 'ura'];
-const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
 
 /** Readable area names: "GENEVA PHASE 2-MEGAPLEX" becomes "Geneva Phase 2, Megaplex". */
 function areaName(v: unknown, key: string): string {
@@ -535,12 +539,23 @@ export default function MapPage() {
   const [parcelFallback, setParcelFallback] = useState(false);
   const parcelFallbackRef = useRef(false);
   const parcelSeq = useRef(0);
+  // City-wide parcel lines by level (zoom 12 to 15), and whether they could not be loaded (the
+  // tiles then start at zoom 15, as before the lines existed).
+  const [lines, setLines] = useState<Partial<Record<LineLevel, LineFC>>>({});
+  const [linesFailed, setLinesFailed] = useState(false);
+  // What a tap needs to know: are parcels on, and are lines (not tiles) drawn at this zoom.
+  const parcelTapRef = useRef({ on: false, linesOk: false });
   // Overlays and labels use the dark treatment on dark mode and on satellite imagery.
   const dark = resolved === 'dark' || base === 'satellite';
   const darkRef = useRef(dark);
+  const linesUrl = catalog?.find((l) => l.key === 'parcels')?.lines;
+  const linesMinZoom = catalog?.find((l) => l.key === 'parcels')?.linesMinZoom ?? LINES_MIN_ZOOM;
+  // Lines count as available while they load, so the zoom 15 tiles are not fetched meanwhile.
+  const linesOk = Boolean(linesUrl) && !linesFailed;
   useEffect(() => {
     darkRef.current = dark;
     parcelFallbackRef.current = parcelFallback;
+    parcelTapRef.current = { on: on.has('parcels'), linesOk };
   });
   const labelsRef = useRef(new Map<string, string>());
   const explicitLayers = useRef(Boolean(params.get('layers')));
@@ -612,19 +627,27 @@ export default function MapPage() {
     const seq = ++parcelSeq.current;
     const label = labelsRef.current.get('parcels') ?? 'Parcels';
     const no = String(props.PARCEL_NO ?? '');
-    setPicked({ layer: 'parcels', label, name: nameOf('parcels', props), props: { ...props, __loading: true } });
+    // A tap on the city-wide lines has no parcel number yet: "Parcel" until the card arrives.
+    const title = (p: Record<string, unknown>) => (p.PARCEL_NO || p.SITE_FULL_ADDRESS ? nameOf('parcels', p) : 'Parcel');
+    setPicked({ layer: 'parcels', label, name: title(props), props: { ...props, __loading: true } });
     const shape = no ? dataRef.current.parcels?.features.find((f) => String(f.properties?.PARCEL_NO ?? '') === no)?.geometry : null;
     if (shape) highlightParcel(m, shape, darkRef.current);
     else clearHighlight(m);
     const settle = (next: Record<string, unknown>, geometry?: Geometry | null) => {
       if (seq !== parcelSeq.current) return;
-      setPicked((p) => (p?.layer === 'parcels' ? { layer: 'parcels', label, name: nameOf('parcels', next), props: next } : p));
+      setPicked((p) => (p?.layer === 'parcels' ? { layer: 'parcels', label, name: title(next), props: next } : p));
       if (geometry && mapRef.current === m) highlightParcel(m, geometry, darkRef.current);
     };
     // Without county records, what the city's 2025 layer gave (fallback mode) or the number alone.
     const fromLayer = { ...props, __src: parcelFallbackRef.current ? 'city' : 'none' };
+    // A tap on the city-wide lines carries no parcel number: no parcel there means no card.
+    const nothing = () => {
+      if (seq !== parcelSeq.current) return;
+      setPicked((p) => (p?.layer === 'parcels' ? null : p));
+      clearHighlight(m);
+    };
     getJson<ParcelCardResponse>(`/api/map/parcel?lng=${ll.lng.toFixed(6)}&lat=${ll.lat.toFixed(6)}`).then(
-      (r) => (r.found ? settle({ ...r.properties, __src: r.city.length ? 'county+city' : 'county' }, r.geometry) : settle(fromLayer)),
+      (r) => (r.found ? settle({ ...r.properties, __src: r.city.length ? 'county+city' : 'county' }, r.geometry) : no ? settle(fromLayer) : nothing()),
       () => settle(fromLayer),
     );
   }, []);
@@ -680,6 +703,15 @@ export default function MapPage() {
         const hits = m.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: ids });
         const order = (f: MapGeoJSONFeature) => (f.layer.type === 'circle' ? 0 : f.layer.type === 'line' && !f.layer.id.includes('parcels') ? 1 : 2);
         const f = [...hits].sort((a, b) => order(a) - order(b))[0];
+        // Zoom 14 and 15 draw parcel lines with no shapes to tap: the parcel under the tap is looked
+        // up instead, ahead of the areas drawn under parcels (as at zoom 16), behind points and lines.
+        const tap = parcelTapRef.current;
+        const fKey = f?.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|circle)$/, '');
+        const under = !f || (order(f) === 2 && DRAW_ORDER.indexOf(fKey ?? '') < DRAW_ORDER.indexOf('parcels'));
+        if (tap.on && under && tapLooksUpParcel(m.getZoom(), tap.linesOk)) {
+          pickParcelRef.current(m, e.lngLat, {});
+          return;
+        }
         if (!f) return;
         const key = f.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|circle)$/, '');
         if (key === 'parcels') {
@@ -744,7 +776,7 @@ export default function MapPage() {
       }, 150);
     };
     const refresh = () => {
-      if (stopped || map.getZoom() < PARCEL_MIN_ZOOM) return;
+      if (stopped || map.getZoom() < tilesMinZoom(linesOk)) return;
       const b = map.getBounds();
       for (const [x, y] of tilesFor({ west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() })) {
         if (hasTile(x, y)) continue;
@@ -769,7 +801,31 @@ export default function MapPage() {
       clearTimeout(moveTimer);
       clearTimeout(mergeTimer);
     };
-  }, [ready, mapGen, catalog, on, parcelFallback]);
+  }, [ready, mapGen, catalog, on, parcelFallback, linesOk]);
+
+  // City-wide parcel lines: the level for the zoom (low at 12 to 13, mid at 14 to 15) is fetched
+  // once, when parcels are on and the map stops at that zoom. If a level cannot be loaded, the map
+  // goes back to the tiles alone from zoom 15.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !linesUrl || linesFailed || !on.has('parcels')) return;
+    let stopped = false;
+    const refresh = () => {
+      const level = levelFor(map.getZoom(), linesMinZoom);
+      if (stopped || !level) return;
+      void loadLines(linesUrl, level).then((fc) => {
+        if (stopped) return;
+        if (fc) setLines((cur) => (cur[level] === fc ? cur : { ...cur, [level]: fc }));
+        else setLinesFailed(true);
+      });
+    };
+    map.on('moveend', refresh);
+    refresh();
+    return () => {
+      stopped = true;
+      map.off('moveend', refresh);
+    };
+  }, [ready, mapGen, linesUrl, linesMinZoom, linesFailed, on]);
 
   // Draw: add sources and layers once per map instance, then toggle visibility.
   useEffect(() => {
@@ -909,9 +965,38 @@ export default function MapPage() {
       }
       const vis = on.has(key) || key === 'boundary' ? 'visible' : 'none';
       for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+      // With the city-wide lines, the tiles draw from zoom 16; without them, from zoom 15.
+      if (key === 'parcels') for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`]) if (map.getLayer(id)) map.setLayerZoomRange(id, linesOk ? FULL_ZOOM : (info.minZoom ?? 0), 24);
     }
+    drawLines(map, beforeFor);
     }
-  }, [ready, mapGen, catalog, data, on, dark, base]);
+    // The parcel lines below zoom 16: low up to zoom 14 (or 16 until mid arrives), mid from 14 to 16.
+    function drawLines(map: maplibregl.Map, beforeFor: (key: string) => string | undefined) {
+      const lc = parcelLine(dark);
+      for (const level of ['low', 'mid'] as const) {
+        const fc = lines[level];
+        const src = `vtp-plines-${level}`;
+        if (!fc) continue;
+        const min = level === 'low' ? linesMinZoom : MID_ZOOM;
+        const max = level === 'low' && lines.mid ? MID_ZOOM : FULL_ZOOM;
+        if (!map.getSource(src)) {
+          // Lines need no detail beyond the zoom they are drawn at: fewer tiles to cut.
+          map.addSource(src, { type: 'geojson', data: fc, maxzoom: level === 'low' ? 13 : 15, buffer: 16 });
+          const before = beforeFor('plines');
+          // A dark casing on imagery and dark maps; the light streets map takes the violet line alone.
+          if (dark) map.addLayer({ id: `${src}-casing`, type: 'line', source: src, minzoom: min, maxzoom: max, layout: { 'line-join': 'round' }, paint: { 'line-color': CASING.color, 'line-opacity': CASING.opacity, 'line-width': byZoom(PLINE_CASING) } }, before);
+          map.addLayer({ id: `${src}-line`, type: 'line', source: src, minzoom: min, maxzoom: max, layout: { 'line-join': 'round' }, paint: { 'line-color': lc, 'line-width': byZoom(PLINE_WIDTH), 'line-opacity': 0.9 } }, before);
+          // For measuring (scripts/perf map-perf): when this level first finishes drawing.
+          map.once('idle', () => performance.mark?.(`vtp-parcel-lines-${level}`));
+        }
+        for (const id of [`${src}-casing`, `${src}-line`]) {
+          if (!map.getLayer(id)) continue;
+          map.setLayoutProperty(id, 'visibility', on.has('parcels') ? 'visible' : 'none');
+          map.setLayerZoomRange(id, min, max);
+        }
+      }
+    }
+  }, [ready, mapGen, catalog, data, on, dark, base, lines, linesOk, linesMinZoom]);
 
   const results = useMemo(() => {
     const raw = q.trim().toLowerCase();
@@ -1050,16 +1135,21 @@ export default function MapPage() {
             {groups.map(([group, layers]) => (
               <div key={group} className="vc-map-group">
                 <p className="vc-panel-label">{group}</p>
-                {layers.map((l) => (
-                  <label key={l.key} className="vc-map-layer" data-dim={l.minZoom != null && zoom < l.minZoom && on.has(l.key)}>
+                {layers.map((l) => {
+                  // Parcels show from city view with the prebuilt lines, from zoom 15 without them.
+                  const minZ = l.key === 'parcels' && linesOk ? linesMinZoom : l.minZoom;
+                  const far = minZ != null && zoom < minZ && on.has(l.key);
+                  return (
+                  <label key={l.key} className="vc-map-layer" data-dim={far}>
                     <span className="vc-map-swatch" data-kind={LOOK[l.key]?.kind} style={{ background: lookOf(l.key, dark)?.color }} />
                     <span className="vc-map-lname">
                       {l.label}
-                      {l.minZoom != null && zoom < l.minZoom && on.has(l.key) && <em> · zoom in</em>}
+                      {far && <em> · zoom in</em>}
                     </span>
                     <input type="checkbox" className="vc-switch" checked={on.has(l.key)} onChange={() => toggle(l.key)} />
                   </label>
-                ))}
+                  );
+                })}
               </div>
             ))}
             <p className="vc-panel-note">From the city&apos;s public GIS. Parcel lines from Utah County GIS. No owner names are shown.</p>

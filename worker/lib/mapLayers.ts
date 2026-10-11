@@ -22,6 +22,10 @@ export interface MapLayerDef {
   tiles?: string;
   /** Credit shown on the map for tiled layers. */
   attribution?: string;
+  /** Prebuilt, generalized lines drawn below the tiles' zoom (parcels: GET <lines>?level=low|mid). */
+  lines?: string;
+  /** Zoom from which those lines are drawn. */
+  linesMinZoom?: number;
   /** Pages of 2,000 features (ArcGIS maxRecordCount). */
   pages?: number;
   /** Simplify geometry (map units, degrees) to keep big polygon layers light. */
@@ -72,6 +76,10 @@ export const MAP_LAYERS: MapLayerDef[] = [
     pages: 3,
     tiles: '/api/map/parcels/{z}/{x}/{y}.json',
     attribution: 'Parcels: Utah County GIS',
+    // Below zoom 16 the whole city's parcel lines come from a weekly prebuilt set (worker/lib/parcelLines.ts);
+    // minZoom is where the tiles start if that set is unavailable.
+    lines: '/api/map/parcel-lines',
+    linesMinZoom: 12,
     minZoom: 15,
   },
   { key: 'pdoverlay', label: 'Planned development overlay', group: 'Land', path: 'VNY_PLPZ_PD_Overlay_view/FeatureServer/10', fields: ['GRANTEE', 'ACRES'], geometry: 'polygon' },

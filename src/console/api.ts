@@ -202,4 +202,7 @@ export interface MapLayerInfo {
   /** Tiled layers only (parcels): zoom 16 GeoJSON tile URL template on the portal's origin, and map credit. */
   tiles?: string;
   attribution?: string | null;
+  /** Parcels: prebuilt city-wide lines (GET <lines>?level=low|mid) drawn from linesMinZoom up to the tiles' zoom. */
+  lines?: string;
+  linesMinZoom?: number | null;
 }

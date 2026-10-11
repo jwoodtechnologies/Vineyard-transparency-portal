@@ -129,9 +129,23 @@ def main(argv: list[str] | None = None) -> int:
             # Make room in the archive for priority records (see worker/admin/rebalance.ts). Plan reads only.
             print(json.dumps(api.post("/archive/rebalance", {"apply": cmd == "archive-apply", "limit": a.limit}), indent=2))
         elif cmd == "gis":
-            from . import gis
+            from . import gis, parcel_lines
 
-            print(json.dumps(gis.run(api, client)))
+            # The parcel lines for the city-wide map are rebuilt in the same weekly run, even if the
+            # city's GIS records fail (and the other way round).
+            try:
+                out = gis.run(api, client)
+            finally:
+                try:
+                    lines = parcel_lines.run(api, client)
+                except Exception as e:  # noqa: BLE001 - the map keeps last week's lines
+                    lines = {"error": str(e)[:300]}
+                    print(f"Parcel lines failed: {e}", flush=True)
+            print(json.dumps({**out, "parcel_lines": lines}))
+        elif cmd == "parcel-lines":
+            from . import parcel_lines
+
+            print(json.dumps(parcel_lines.run(api, client)))
         elif cmd == "retry-errors":
             print(json.dumps(api.post("/queue/retry-errors", {})))
         elif cmd == "index":

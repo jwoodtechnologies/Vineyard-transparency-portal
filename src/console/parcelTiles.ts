@@ -1,13 +1,13 @@
 /**
- * Utah County parcel outlines for /map, read as zoom 16 GeoJSON tiles from the portal's own API
- * (parcel number only). Tiles covering the view are fetched once each and kept for the visit; the
+ * Utah County parcel outlines for /map from zoom 16 in, read as zoom 16 GeoJSON tiles from the
+ * portal's own API (parcel number only). Below zoom 16 the city-wide lines are drawn (parcelLines.ts). Tiles covering the view are fetched once each and kept for the visit; the
  * map draws them as one source with each parcel once (a parcel crossing a tile edge comes back in
  * both tiles, whole).
  */
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
 
 export const PARCEL_Z = 16;
-/** Zoom from which outlines are drawn. */
+/** Zoom from which tiles are drawn when the city-wide lines are unavailable (parcelLines.ts; with them, 16). */
 export const PARCEL_MIN_ZOOM = 15;
 /** Same area the API serves (Vineyard and a margin); nothing outside it is asked for. */
 const AREA = { west: -111.82, south: 40.24, east: -111.66, north: 40.37 };

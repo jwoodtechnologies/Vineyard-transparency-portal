@@ -10,7 +10,7 @@ on:
         description: What to capture
         type: choice
         default: fixtures
-        options: [fixtures, crawl-log, ingest-log, archive-plan, perf]
+        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf]
       urls:
         description: Extra URLs to save (space separated, optional)
         default: ""
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: inputs.task != 'fixtures' && inputs.task != 'perf'
+        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf'
         with:
           python-version: "3.12"
           cache: pip
@@ -103,6 +103,13 @@ jobs:
             PERF=(node scripts/perf/perf.mjs --base https://vineyardportal.org --runs 3 --pw "$PW/node_modules/playwright/index.mjs")
             "${PERF[@]}" --out "$OUT/perf.json" > "$OUT/perf.txt" 2>&1 || echo "exit=$?" >> "$OUT/perf.txt"
             "${PERF[@]}" --desktop --out "$OUT/perf-desktop.json" > "$OUT/perf-desktop.txt" 2>&1 || echo "exit=$?" >> "$OUT/perf-desktop.txt"
+          elif [[ "$TASK" == "map-perf" ]]; then
+            # Parcel lines on /map at zoom 12 to 15 on the phone profile: bytes over the wire and time until drawn.
+            PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
+            (cd "$PW" && npm init -y > /dev/null && npm i -s playwright@1.56.1 && npx playwright install --with-deps chromium) > "$OUT/setup.txt" 2>&1 || true
+            for l in low mid; do curl -sS -o /dev/null --compressed -w "parcel-lines-$l %{http_code} %{size_download} bytes over the wire\n" "https://vineyardportal.org/api/map/parcel-lines?level=$l" >> "$OUT/map-perf.txt" 2>&1 || true; done
+            curl -sSI -H "accept-encoding: gzip" "https://vineyardportal.org/api/map/parcel-lines?level=low" > "$OUT/parcel-lines-headers.txt" 2>&1 || true
+            node scripts/perf/perf.mjs --base https://vineyardportal.org --map --runs 3 --pw "$PW/node_modules/playwright/index.mjs" --out "$OUT/map-perf.json" >> "$OUT/map-perf.txt" 2>&1 || echo "exit=$?" >> "$OUT/map-perf.txt"
           else
             sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > "$OUT/setup.txt" 2>&1 || true
             pip install -q -r requirements-ingest.txt >> "$OUT/setup.txt" 2>&1 || true
