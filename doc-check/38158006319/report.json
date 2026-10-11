@@ -1,0 +1,239 @@
+{
+  "base": "https://vineyardportal.org",
+  "seed": 1,
+  "at": "2026-10-11T17:04:23.157Z",
+  "links": {
+    "pages": [
+      {
+        "page": "/api/pages/construction",
+        "status": 200
+      },
+      {
+        "page": "/api/construction",
+        "status": 200
+      },
+      {
+        "page": "/api/budget",
+        "status": 200
+      },
+      {
+        "page": "/api/budget/archive",
+        "status": 200
+      },
+      {
+        "page": "/api/records/ordinances",
+        "status": 200
+      },
+      {
+        "page": "/api/records/resolutions",
+        "status": 200
+      },
+      {
+        "page": "/api/records/rda-resolutions",
+        "status": 200
+      },
+      {
+        "page": "/api/latest",
+        "status": 200
+      },
+      {
+        "page": "/api/coverage/summary",
+        "status": 200
+      }
+    ],
+    "checked": 399,
+    "dead": [],
+    "moved": []
+  },
+  "records": [
+    {
+      "id": "doc_750d956cc3d5a4a2",
+      "title": "04.14.26 Approved CC Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.039976232917409385,
+            "ink": 0.08648841354723708,
+            "samples": 84150
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_750d956cc3d5a4a2-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03945239089580288,
+            "ink": 0.0838771142200877,
+            "samples": 76624
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_750d956cc3d5a4a2-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_87aac14fa329d527",
+      "title": "9.8.26 APPROVED CC Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04341057635175282,
+            "ink": 0.09573380867498514,
+            "samples": 84150
+          },
+          "text": "NOTICE OF A REGULAR CITY COUNCIL MEETING September 8, 2026, at 6:00 PM Present: Mayor Zack Stratton Council Member Jacob Holdaway Council Member David Lauret Council Member Parker McCumber Council Member Jacob Wood Excused: Council Member Ezra Nair Staff Present:   Building Director Cris Johnson, Chief Deputy Holden Rockwell with the Utah County Sherrif’s Office, City Attorney Jesse Riddle City Manager Brian Voeks, City Recorder Robin Bond, Community Enrichment Director Brian Vawdrey, Deputy City Recorder Tony Lara, Deputy Mayor David Herring, Engineer Patrick James, Finance Director Evan Smith, Human Resource Specialist Heidi Jackman, Media Specialist Brailee Tyler, and Public Works Director/City Engineer Naseem Ghandour. Also Present:   Brent Gray, Emmeline McCummber, Trinity Ewing, Kim Cornelius, Karen Cornelius, Jane Pearce, David Pearce, and others who did not sign in or whose handwriting was illegible. AGENDA 1.   CALL TO ORDER Mayor Stratton called the meeting to order at 6:00 pm. 2.   INVOCATION AND PLEDGE OF ALLEGIANCE (BY INVITATION) Council Member Holdaway gave the invocation then led the Pledge of Allegiance. 3.   PUBLIC HEARING Planner Anthony Flether provided an overview of Senate Bill 284, adopted during the 2026 Utah Legislative Session, which requires municipalities to update land use regulations and development review processes. Key points included: •   Completion of a gap analysis comparing Vineyard City Code with state requirements. •   Development of a three-phase implementation strategy: 1.   Detached Accessory Dwelling Units (DADUs) 2.   General land use provisions and process updates",
+          "shot": "doc-check-shots/doc_87aac14fa329d527-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04379828774274379,
+            "ink": 0.09884631447066193,
+            "samples": 76624
+          },
+          "text": "NOTICE OF A REGULAR CITY COUNCIL MEETING September 8, 2026, at 6:00 PM Present: Mayor Zack Stratton Council Member Jacob Holdaway Council Member David Lauret Council Member Parker McCumber Council Member Jacob Wood Excused: Council Member Ezra Nair Staff Present:   Building Director Cris Johnson, Chief Deputy Holden Rockwell with the Utah County Sherrif’s Office, City Attorney Jesse Riddle City Manager Brian Voeks, City Recorder Robin Bond, Community Enrichment Director Brian Vawdrey, Deputy City Recorder Tony Lara, Deputy Mayor David Herring, Engineer Patrick James, Finance Director Evan Smith, Human Resource Specialist Heidi Jackman, Media Specialist Brailee Tyler, and Public Works Director/City Engineer Naseem Ghandour. Also Present:   Brent Gray, Emmeline McCummber, Trinity Ewing, Kim Cornelius, Karen Cornelius, Jane Pearce, David Pearce, and others who did not sign in or whose handwriting was illegible. AGENDA 1.   CALL TO ORDER Mayor Stratton called the meeting to order at 6:00 pm. 2.   INVOCATION AND PLEDGE OF ALLEGIANCE (BY INVITATION) Council Member Holdaway gave the invocation then led the Pledge of Allegiance. 3.   PUBLIC HEARING Planner Anthony Flether provided an overview of Senate Bill 284, adopted during the 2026 Utah Legislative Session, which requires municipalities to update land use regulations and development review processes. Key points included: •   Completion of a gap analysis comparing Vineyard City Code with state requirements. •   Development of a three-phase implementation strategy: 1.   Detached Accessory Dwelling Units (DADUs) 2.   General land use provisions and process updates",
+          "shot": "doc-check-shots/doc_87aac14fa329d527-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_713c63e87f03fa94",
+      "title": "Email Update 4 - August 21, 2026",
+      "archived": false,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": "proxied-original"
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.23479500891265598,
+            "ink": 0.586642899584076,
+            "samples": 84150
+          },
+          "text": "Update #4 | August 21, 2026 Vineyard Regional Trail Enhancements Lakeside Park and 400 South Upcoming Work Activities Crews have finished striping 400 South and the east entrance of Lakeside Park. Through the month of August, crews will continue to install traffic poles, traffic lights, and finish restoring landscaping. * Construction schedules are subject to change due to weather or other unforeseen circumstances. Center Street and Holdaway Road Upcoming Work Activities Crews have poured the sidewalk on the southside of Center Street and Holdaway Road.",
+          "shot": "doc-check-shots/doc_713c63e87f03fa94-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.24121685111714344,
+            "ink": 0.5850125287116308,
+            "samples": 76624
+          },
+          "text": "Update #4 | August 21, 2026 Vineyard Regional Trail Enhancements Lakeside Park and 400 South Upcoming Work Activities Crews have finished striping 400 South and the east entrance of Lakeside Park. Through the month of August, crews will continue to install traffic poles, traffic lights, and finish restoring landscaping. * Construction schedules are subject to change due to weather or other unforeseen circumstances. Center Street and Holdaway Road Upcoming Work Activities Crews have poured the sidewalk on the southside of Center Street and Holdaway Road.",
+          "shot": "doc-check-shots/doc_713c63e87f03fa94-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_f4ae1addeca92d54",
+      "title": "10.13.26 CC Agenda",
+      "archived": false,
+      "file": {
+        "ok": false,
+        "status": 302,
+        "type": null,
+        "frame": "DENY",
+        "via": "remote-only"
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.047569815805109925,
+            "ink": 0.07454545454545454,
+            "samples": 84150
+          },
+          "text": "Page 1 of 2; October 13, 2026, City Council Agenda NOTICE OF A REGULAR CITY COUNCIL MEETING October 13, 2026, at 6:00 PM PUBLIC NOTICE is hereby given that the Vineyard City Council will hold a regularly scheduled City Council meeting on Tuesday, October 13, 2026, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. AGENDA 1.   CALL TO ORDER 2.   INVOCATION AND PLEDGE OF ALLEGIANCE (BY INVITATION) 3.   PUBLIC COMMENTS (3 MINUTES PER PERSON) “Public Comments”   is defined as time set aside for citizens to express their views.   Public comments can be submitted ahead of time to   robinr@vineyardutah.gov . 4.   WORK SESSION 4.1 Discuss Short-Term Rentals (Ed Kennedy – 10 Minutes) 5.   CONSENT ITEMS 5.1.   Approval of the September 15, 2026, City Council Meeting Minutes 6.   APPOINTMENTS AND REMOVALS 6.1.   Appoint ARCH Commission Member (Brian Vawdreoy - 5 Minutes) 7.   BUSINESS ITEMS 7.1.   Approve RES 2026-40 - Awarding the Parking Enforcement Bid to EZ Park (5 Minutes) 7.2.   Approve RES 2026-41 Establishing the Vineyard Economic Development Partnership (VEDP) (5 Minutes) 7.3.   Approve ORD 2026-12 Renaming the Active Transportation Commission (ATC) as the Pedestrian Safety Commission (PSC) (5 Minutes) 7.4.   Membership in the North Utah County Aquifer Council (NUCAC) (5 Minutes) Consideration and approval of a resolution authorizing Vineyard City's membership in the North Utah County Aquifer Council (NUCAC), at an initial cost of $12,000 and approximately $6,000 annually thereafter.",
+          "shot": "doc-check-shots/doc_f4ae1addeca92d54-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.046982668615577365,
+            "ink": 0.07803038212570473,
+            "samples": 76624
+          },
+          "text": "Page 1 of 2; October 13, 2026, City Council Agenda NOTICE OF A REGULAR CITY COUNCIL MEETING October 13, 2026, at 6:00 PM PUBLIC NOTICE is hereby given that the Vineyard City Council will hold a regularly scheduled City Council meeting on Tuesday, October 13, 2026, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. AGENDA 1.   CALL TO ORDER 2.   INVOCATION AND PLEDGE OF ALLEGIANCE (BY INVITATION) 3.   PUBLIC COMMENTS (3 MINUTES PER PERSON) “Public Comments”   is defined as time set aside for citizens to express their views.   Public comments can be submitted ahead of time to   robinr@vineyardutah.gov . 4.   WORK SESSION 4.1 Discuss Short-Term Rentals (Ed Kennedy – 10 Minutes) 5.   CONSENT ITEMS 5.1.   Approval of the September 15, 2026, City Council Meeting Minutes 6.   APPOINTMENTS AND REMOVALS 6.1.   Appoint ARCH Commission Member (Brian Vawdreoy - 5 Minutes) 7.   BUSINESS ITEMS 7.1.   Approve RES 2026-40 - Awarding the Parking Enforcement Bid to EZ Park (5 Minutes) 7.2.   Approve RES 2026-41 Establishing the Vineyard Economic Development Partnership (VEDP) (5 Minutes) 7.3.   Approve ORD 2026-12 Renaming the Active Transportation Commission (ATC) as the Pedestrian Safety Commission (PSC) (5 Minutes) 7.4.   Membership in the North Utah County Aquifer Council (NUCAC) (5 Minutes) Consideration and approval of a resolution authorizing Vineyard City's membership in the North Utah County Aquifer Council (NUCAC), at an initial cost of $12,000 and approximately $6,000 annually thereafter.",
+          "shot": "doc-check-shots/doc_f4ae1addeca92d54-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    }
+  ],
+  "failed": 0
+}
