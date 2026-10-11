@@ -1,0 +1,183 @@
+/**
+ * Basemaps shared by /map and the Construction page's map, built so the streets map draws as soon
+ * as possible:
+ *  - the OpenFreeMap style and its tile index (TileJSON) are fetched at the same time, not one after
+ *    the other, and the tile index is written into the style so MapLibre makes no extra round trip;
+ *  - the result is kept for the session, so theme switches and revisits draw at once;
+ *  - every style has a background layer, and the map box uses the same color while loading, so
+ *    there is never a blank grey box.
+ * Satellite is Utah County's newest aerial imagery (3 and 6 inch photography), with the USGS
+ * imagery service as a fallback if the county service does not answer.
+ */
+import type * as maplibregl from 'maplibre-gl';
+
+export const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
+const OFM = 'https://tiles.openfreemap.org';
+const STREETS = (dark: boolean) => `${OFM}/styles/${dark ? 'dark' : 'positron'}`;
+/** The tile index both OpenFreeMap styles point at. */
+const OFM_TILEJSON = `${OFM}/planet`;
+
+/** Background colors of each basemap, used for the map box while it loads. */
+export const BASE_BG = { streetsLight: '#f2f3f0', streetsDark: '#0e0e10', satellite: '#1f2427', blankLight: '#ffffff', blankDark: '#0a0a0b' };
+export const streetsBg = (dark: boolean) => (dark ? BASE_BG.streetsDark : BASE_BG.streetsLight);
+
+const COUNTY_IMAGERY = 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=jpgpng&f=image';
+const USGS_IMAGERY = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
+const USGS_ATTR = '<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a>';
+
+/** Utah County aerials, with the USGS layer hidden underneath until it is needed (see watchSatellite). */
+export function satelliteStyle(): maplibregl.StyleSpecification {
+  return {
+    version: 8,
+    glyphs: GLYPHS,
+    sources: {
+      county: { type: 'raster', tiles: [COUNTY_IMAGERY], tileSize: 256, minzoom: 0, maxzoom: 20, attribution: 'Imagery: Utah County GIS' },
+      usgs: { type: 'raster', tiles: [USGS_IMAGERY], tileSize: 256, maxzoom: 16, attribution: USGS_ATTR },
+    },
+    layers: [
+      { id: 'sat-bg', type: 'background', paint: { 'background-color': BASE_BG.satellite } },
+      { id: 'sat-usgs', type: 'raster', source: 'usgs', layout: { visibility: 'none' } },
+      { id: 'sat-county', type: 'raster', source: 'county' },
+    ],
+  };
+}
+
+export function blankStyle(dark: boolean): maplibregl.StyleSpecification {
+  return { version: 8, glyphs: GLYPHS, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': dark ? BASE_BG.blankDark : BASE_BG.blankLight } }] };
+}
+
+/**
+ * If the county imagery service fails before any of its tiles has loaded, show the USGS imagery
+ * instead (same map, no reload). Call right after creating a map with satelliteStyle().
+ */
+export function watchSatellite(map: maplibregl.Map): void {
+  let ok = false;
+  let failures = 0;
+  map.on('sourcedata', (e) => {
+    if (e.sourceId === 'county' && (e as { tile?: unknown }).tile) ok = true;
+  });
+  map.on('error', (e) => {
+    const src = (e as { sourceId?: string }).sourceId;
+    if (ok || src !== 'county' || ++failures < 3) return;
+    ok = true; // switch once
+    try {
+      map.setLayoutProperty('sat-usgs', 'visibility', 'visible');
+      map.setLayoutProperty('sat-county', 'visibility', 'none');
+    } catch {
+      /* style replaced meanwhile */
+    }
+  });
+}
+
+type Json = Record<string, unknown>;
+const styles = new Map<string, Promise<maplibregl.StyleSpecification>>();
+const tileJsons = new Map<string, Promise<Json | null>>();
+
+function getJsonWithin(url: string, ms: number): Promise<Json> {
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const t = setTimeout(() => ctl?.abort(), ms);
+  return fetch(url, { signal: ctl?.signal, credentials: 'omit' })
+    .then((r) => {
+      if (!r.ok) throw new Error(`${url}: ${r.status}`);
+      return r.json() as Promise<Json>;
+    })
+    .finally(() => clearTimeout(t));
+}
+
+function tileJson(url: string): Promise<Json | null> {
+  let p = tileJsons.get(url);
+  if (!p) {
+    p = getJsonWithin(url, 10000).catch(() => {
+      tileJsons.delete(url);
+      return null;
+    });
+    tileJsons.set(url, p);
+  }
+  return p;
+}
+
+/**
+ * The OpenFreeMap streets style with its tile index written in. Rejects if the style cannot be
+ * loaded within 10 seconds (callers then draw on a plain background).
+ */
+export function streetsStyle(dark: boolean): Promise<maplibregl.StyleSpecification> {
+  const url = STREETS(dark);
+  let p = styles.get(url);
+  if (p) return p;
+  // Both requests leave at once; the style names the tile index, which is almost always this one.
+  void tileJson(OFM_TILEJSON);
+  p = getJsonWithin(url, 10000)
+    .then(async (style) => {
+      const sources = (style.sources ?? {}) as Record<string, Json>;
+      await Promise.all(
+        Object.entries(sources).map(async ([id, src]) => {
+          if (typeof src.url !== 'string' || src.tiles) return;
+          const tj = await tileJson(src.url);
+          if (!tj || !Array.isArray(tj.tiles)) return; // MapLibre fetches it itself
+          const { url: _u, ...rest } = src;
+          void _u;
+          // Same merge MapLibre does when it reads the tile index itself: the index's values win.
+          sources[id] = { ...rest, ...pick(tj, ['minzoom', 'maxzoom', 'bounds', 'scheme', 'attribution', 'encoding']), tiles: tj.tiles };
+        }),
+      );
+      return style as unknown as maplibregl.StyleSpecification;
+    })
+    .catch((e: unknown) => {
+      styles.delete(url);
+      throw e;
+    });
+  styles.set(url, p);
+  return p;
+}
+
+function pick(o: Json, keys: string[]): Json {
+  const out: Json = {};
+  for (const k of keys) if (o[k] !== undefined && o[k] !== null) out[k] = o[k];
+  return out;
+}
+
+/**
+ * Calls `done` once the basemap has drawn its first screen of tiles (or the map is idle, or 15
+ * seconds have passed, so a loading notice never stays up for good). Returns a cancel function.
+ */
+export function whenBasePainted(map: maplibregl.Map, done: () => void): () => void {
+  let fired = false;
+  let baseIds: string[] = [];
+  const finish = () => {
+    if (fired) return;
+    fired = true;
+    clearTimeout(cap);
+    map.off('idle', finish);
+    map.off('sourcedata', onData);
+    done();
+  };
+  const loadedAll = () =>
+    baseIds.every((id) => {
+      try {
+        return map.isSourceLoaded(id);
+      } catch {
+        return true;
+      }
+    });
+  const onData = (e: maplibregl.MapSourceDataEvent) => {
+    if (!baseIds.length || !e.tile || !baseIds.includes(e.sourceId)) return;
+    if (loadedAll()) finish();
+  };
+  const cap = setTimeout(finish, 15000);
+  const start = () => {
+    // Sources present when the style loads are the basemap's; overlays are added later.
+    const style = map.getStyle();
+    baseIds = Object.keys(style?.sources ?? {}).filter((id) => !id.startsWith('vtp-') && id !== 'plans');
+    if (!baseIds.length) finish();
+  };
+  if (map.isStyleLoaded()) start();
+  else map.once('style.load', start);
+  map.on('sourcedata', onData);
+  map.on('idle', finish);
+  return () => {
+    fired = true;
+    clearTimeout(cap);
+    map.off('idle', finish);
+    map.off('sourcedata', onData);
+  };
+}

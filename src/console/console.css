@@ -3026,6 +3026,43 @@ html.vc-locked .vc-landing {
   gap: 0.5rem;
   margin-top: 1rem;
 }
+/* small notice over the map until the basemap has drawn (also while switching to satellite) */
+.vc-map-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.85rem 0.42rem 0.7rem;
+  border-radius: 999px;
+  background: var(--vc-surface);
+  border: 1px solid var(--vc-line-2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--vc-ink-2);
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: vc-fade 0.2s ease both;
+}
+.dark .vc-map-loading { background: rgba(20, 20, 23, 0.88); }
+.vc-map-loading-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  opacity: 0.7;
+  animation: vc-ptr-spin 0.85s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vc-map-loading-dot { animation: none; }
+}
 .vc-map-toast {
   position: absolute;
   left: 50%;
@@ -4334,8 +4371,27 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 }
 
 .vc-cp-mapsec { margin-top: 0.2rem; scroll-margin-top: 4.5rem; }
-.vc-cp-map { position: relative; height: 330px; border-radius: 18px; overflow: hidden; border: 1px solid var(--vc-line-2); background: var(--vc-bg-2); }
+/* the streets basemap's own background, so the box never shows as a blank grey area while loading */
+.vc-cp-map { position: relative; height: 330px; border-radius: 18px; overflow: hidden; border: 1px solid var(--vc-line-2); background: #f2f3f0; }
+.dark .vc-cp-map { background: #0e0e10; }
 .vc-cp-map .vc-cp-map-canvas, .vc-cp-map .vc-cp-map-wait { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* while the map code itself downloads: the same notice the map shows until its tiles draw */
+.vc-cp-map .vc-cp-map-wait::after {
+  content: 'Loading map';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.42rem 0.85rem;
+  border-radius: 999px;
+  background: var(--vc-surface);
+  border: 1px solid var(--vc-line-2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  color: var(--vc-ink-2);
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
 .vc-cp-pin {
   display: grid;
   place-items: center;

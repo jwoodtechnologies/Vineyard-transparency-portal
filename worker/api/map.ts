@@ -5,18 +5,19 @@
  * services for GeoJSON with an allowlisted set of fields (no parcel owner names or mailing
  * addresses, no private business licenses) and exact, unsimplified shapes, then streams the body straight through with long
  * edge caching, so the Worker does almost no CPU work and the city's servers see one request per
- * layer page per cache period, not one per visitor.
+ * layer page per cache period, not one per visitor. Utah County's parcel boundaries come through
+ * as image tiles of the boundary line layer alone (no fields, no owner names).
  */
 import type { Env } from '../env';
 import { HttpError, json, notFound } from '../lib/http';
 import { budgetForFeature } from '../lib/capitalPlan';
-import { BASE, byKey, MAP_LAYERS, type MapLayerDef } from '../lib/mapLayers';
+import { BASE, byKey, MAP_LAYERS, parcelTileUrl, type MapLayerDef } from '../lib/mapLayers';
 
 export { MAP_LAYERS, type MapLayerDef };
 
 /** Public catalog of layers (no upstream URLs needed by the client). */
 export function listMapLayers(): Response {
-  const layers = MAP_LAYERS.map(({ key, label, group, geometry, pages, on, minZoom }) => ({ key, label, group, geometry, pages: pages ?? 1, on: Boolean(on), minZoom: minZoom ?? null }));
+  const layers = MAP_LAYERS.map(({ key, label, group, geometry, pages, on, minZoom, tiles, attribution }) => ({ key, label, group, geometry, pages: pages ?? 1, on: Boolean(on), minZoom: minZoom ?? null, ...(tiles ? { tiles, attribution: attribution ?? null } : {}) }));
   return json({ layers, source: { name: 'Vineyard City Public GIS', url: 'https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb' } }, { headers: { 'cache-control': 'public, max-age=3600' } });
 }
 
@@ -40,7 +41,8 @@ export function upstreamUrl(layer: MapLayerDef, page: number): string {
 /** GET /api/map/layers/:key?page=0 → GeoJSON FeatureCollection, cached for 12 hours. */
 export async function getMapLayer(_env: Env, key: string, url: URL): Promise<Response> {
   const layer = byKey.get(key);
-  if (!layer) throw notFound('Unknown map layer.');
+  // Raster layers (the county parcel lines) are image tiles only: never queried for features.
+  if (!layer || layer.geometry === 'raster' || !layer.path) throw notFound('Unknown map layer.');
   const page = Math.max(0, Math.min((layer.pages ?? 1) - 1, Number(url.searchParams.get('page') ?? 0) || 0));
   const upstream = await fetch(upstreamUrl(layer, page), {
     headers: { accept: 'application/geo+json, application/json', 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)' },
@@ -63,6 +65,34 @@ export async function getMapLayer(_env: Env, key: string, url: URL): Promise<Res
     headers: {
       'content-type': 'application/geo+json; charset=utf-8',
       'cache-control': 'public, max-age=43200, stale-while-revalidate=86400',
+      'x-content-type-options': 'nosniff',
+    },
+  });
+}
+
+/**
+ * GET /api/map/tiles/parcels/:z/:x/:y.png → one image tile of Utah County's parcel boundary lines,
+ * cached for a day. Only images pass through: an ArcGIS error (or anything else that is not a
+ * picture) is refused, so no feature data or owner names can ever be relayed.
+ */
+export async function getParcelTile(z: string, x: string, yPng: string): Promise<Response> {
+  const m = /^(\d{1,7})\.png$/.exec(yPng);
+  const url = m && /^\d{1,2}$/.test(z) && /^\d{1,7}$/.test(x) ? parcelTileUrl(Number(z), Number(x), Number(m[1])) : null;
+  if (!url) throw notFound('No parcel tile here.');
+  const upstream = await fetch(url, {
+    headers: { accept: 'image/png,image/*', 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)' },
+    cf: { cacheTtl: 86400, cacheEverything: true },
+  } as RequestInit);
+  const type = upstream.headers.get('content-type') ?? '';
+  if (!upstream.ok || !upstream.body || !/^image\/png\b/i.test(type)) {
+    void upstream.body?.cancel();
+    throw new HttpError(502, 'backend_unavailable', 'The county parcel map did not respond. Try again shortly.');
+  }
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      'content-type': 'image/png',
+      'cache-control': 'public, max-age=86400, stale-while-revalidate=604800',
       'x-content-type-options': 'nosniff',
     },
   });
