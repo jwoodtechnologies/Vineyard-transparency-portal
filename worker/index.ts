@@ -25,6 +25,7 @@ import { getPerson, getPersonPhoto, listPeople } from './api/people';
 import { handleVotes } from './api/votes';
 import { listBoards } from './api/boards';
 import { getConstruction, getPageSource } from './api/construction';
+import { getProjectDetail } from './api/projects';
 import { runFrequent, runHourly } from './cron';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
@@ -111,6 +112,9 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     case 'construction':
       if (!b) return getConstruction(env);
       break;
+    case 'projects':
+      if (b === 'detail' && !c) return getProjectDetail(env, url);
+      break;
     case 'pages':
       // The stored copy of a watched city page, exactly as read (text/plain, never rendered).
       if (b && /^[a-z]{2,20}$/.test(b) && c === 'source' && parts.length === 3) return getPageSource(env, b);
@@ -150,7 +154,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
  * and POST /api/ask, admin, health and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|map\/layers(\/[a-z]+)?|map\/tiles\/parcels\/\d+\/\d+\/\d+\.png|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|projects\/detail|map\/layers(\/[a-z]+)?|map\/tiles\/parcels\/\d+\/\d+\/\d+\.png|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
 
 async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '');

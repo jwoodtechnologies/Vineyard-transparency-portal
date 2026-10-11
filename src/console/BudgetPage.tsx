@@ -20,6 +20,7 @@ import { Donut, Numbers, Split, type Slice } from './BudgetCharts';
 import SalesTaxTab, { SalesTaxSources } from './SalesTaxTab';
 import { Frame } from './Chrome';
 import { useJson } from './api';
+import { ProjectDetail } from './ProjectDetail';
 import { money, pct, share, short, swatch, treemap, type Budget, type BudgetLine, type Project } from './budget';
 
 type Tab = 'spend' | 'revenue' | 'sales' | 'projects' | 'past';
@@ -190,6 +191,14 @@ function ProjectsTab({ b }: { b: Budget }) {
   const narrow = useNarrow();
   const [fund, setFund] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const toggle = (k: string) =>
+    setOpen((cur) => {
+      const next = new Set(cur);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
   const W = 100;
   const H = narrow ? 100 : 46;
   const totals = useMemo(() => {
@@ -296,7 +305,11 @@ function ProjectsTab({ b }: { b: Budget }) {
               <Link to={docHref(b.docs.slides, p.page)}>
                 Budget slide {p.page} (PDF) <ArrowUpRight size={11} />
               </Link>
+              <button type="button" className="vc-bud-proj-more" aria-expanded={open.has(`${p.fund}|${p.name}`)} onClick={() => toggle(`${p.fund}|${p.name}`)}>
+                {open.has(`${p.fund}|${p.name}`) ? 'Hide votes and records' : 'Votes and records'}
+              </button>
             </div>
+            {open.has(`${p.fund}|${p.name}`) && <ProjectDetail project={{ fund: p.fund, name: p.name }} budget="none" />}
           </li>
         ))}
       </ul>

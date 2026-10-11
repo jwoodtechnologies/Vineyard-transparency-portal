@@ -15,6 +15,7 @@ import { Frame } from './Chrome';
 import { DocLink } from './DocLink';
 import { useJson } from './api';
 import { CitySnapshot } from './CitySnapshot';
+import { ProjectDetail } from './ProjectDetail';
 import type { MapFocus } from './ConstructionMap';
 import {
   ALSO_FUNDED,
@@ -22,7 +23,6 @@ import {
   CITY_PAGE,
   STAGES,
   millions,
-  money,
   plansFrom,
   type Category,
   type Plan,
@@ -96,15 +96,6 @@ function PlanRow({ p, years, open, onToggle, onShow }: { p: Plan; years: number[
                 </dd>
               </div>
             )}
-            {p.budget != null && (
-              <div>
-                <dt>Fiscal 2027 budget</dt>
-                <dd>
-                  {money(p.budget)}
-                  {p.source ? `, ${p.source}` : ''}
-                </dd>
-              </div>
-            )}
             {p.location && p.location.toLowerCase() !== p.gis.toLowerCase() && (
               <div>
                 <dt>Where</dt>
@@ -124,6 +115,7 @@ function PlanRow({ p, years, open, onToggle, onShow }: { p: Plan; years: number[
               </div>
             )}
           </dl>
+          <ProjectDetail project={{ gis: p.gis }} />
           {p.bounds && (
             <button type="button" className="vc-secondary vc-cp-row-map" onClick={() => onShow(p)}>
               <MapPin size={15} strokeWidth={1.9} /> Show on map
