@@ -1,0 +1,145 @@
+{
+  "base": "https://vineyardportal.org",
+  "seed": 3,
+  "at": "2026-10-11T21:37:07.907Z",
+  "links": {
+    "pages": [
+      {
+        "page": "/api/pages/construction",
+        "status": 200
+      },
+      {
+        "page": "/api/construction",
+        "status": 200
+      },
+      {
+        "page": "/api/budget",
+        "status": 200
+      },
+      {
+        "page": "/api/budget/archive",
+        "status": 200
+      },
+      {
+        "page": "/api/records/ordinances",
+        "status": 200
+      },
+      {
+        "page": "/api/records/resolutions",
+        "status": 200
+      },
+      {
+        "page": "/api/records/rda-resolutions",
+        "status": 200
+      },
+      {
+        "page": "/api/latest",
+        "status": 200
+      },
+      {
+        "page": "/api/coverage/summary",
+        "status": 200
+      }
+    ],
+    "checked": 399,
+    "dead": [],
+    "moved": []
+  },
+  "records": [
+    {
+      "id": "doc_750d956cc3d5a4a2",
+      "title": "04.14.26 Approved CC Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.039976232917409385,
+            "ink": 0.08648841354723708,
+            "samples": 84150
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_750d956cc3d5a4a2-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.024724367861622763,
+            "ink": 0.11038489469862019,
+            "samples": 30294
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_750d956cc3d5a4a2-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_87aac14fa329d527",
+      "title": "9.8.26 APPROVED CC Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04341057635175282,
+            "ink": 0.09573380867498514,
+            "samples": 84150
+          },
+          "text": "NOTICE OF A REGULAR CITY COUNCIL MEETING September 8, 2026, at 6:00 PM Present: Mayor Zack Stratton Council Member Jacob Holdaway Council Member David Lauret Council Member Parker McCumber Council Member Jacob Wood Excused: Council Member Ezra Nair Staff Present:   Building Director Cris Johnson, Chief Deputy Holden Rockwell with the Utah County Sherrif’s Office, City Attorney Jesse Riddle City Manager Brian Voeks, City Recorder Robin Bond, Community Enrichment Director Brian Vawdrey, Deputy City Recorder Tony Lara, Deputy Mayor David Herring, Engineer Patrick James, Finance Director Evan Smith, Human Resource Specialist Heidi Jackman, Media Specialist Brailee Tyler, and Public Works Director/City Engineer Naseem Ghandour. Also Present:   Brent Gray, Emmeline McCummber, Trinity Ewing, Kim Cornelius, Karen Cornelius, Jane Pearce, David Pearce, and others who did not sign in or whose handwriting was illegible. AGENDA 1.   CALL TO ORDER Mayor Stratton called the meeting to order at 6:00 pm. 2.   INVOCATION AND PLEDGE OF ALLEGIANCE (BY INVITATION) Council Member Holdaway gave the invocation then led the Pledge of Allegiance. 3.   PUBLIC HEARING Planner Anthony Flether provided an overview of Senate Bill 284, adopted during the 2026 Utah Legislative Session, which requires municipalities to update land use regulations and development review processes. Key points included: •   Completion of a gap analysis comparing Vineyard City Code with state requirements. •   Development of a three-phase implementation strategy: 1.   Detached Accessory Dwelling Units (DADUs) 2.   General land use provisions and process updates",
+          "shot": "doc-check-shots/doc_87aac14fa329d527-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.0481283422459893,
+            "ink": 0.11913250148544266,
+            "samples": 30294
+          },
+          "text": "NOTICE OF A REGULAR CITY COUNCIL MEETING September 8, 2026, at 6:00 PM Present: Mayor Zack Stratton Council Member Jacob Holdaway Council Member David Lauret Council Member Parker McCumber Council Member Jacob Wood Excused: Council Member Ezra Nair Staff Present:   Building Director Cris Johnson, Chief Deputy Holden Rockwell with the Utah County Sherrif’s Office, City Attorney Jesse Riddle City Manager Brian Voeks, City Recorder Robin Bond, Community Enrichment Director Brian Vawdrey, Deputy City Recorder Tony Lara, Deputy Mayor David Herring, Engineer Patrick James, Finance Director Evan Smith, Human Resource Specialist Heidi Jackman, Media Specialist Brailee Tyler, and Public Works Director/City Engineer Naseem Ghandour. Also Present:   Brent Gray, Emmeline McCummber, Trinity Ewing, Kim Cornelius, Karen Cornelius, Jane Pearce, David Pearce, and others who did not sign in or whose handwriting was illegible. AGENDA 1.   CALL TO ORDER Mayor Stratton called the meeting to order at 6:00 pm. 2.   INVOCATION AND PLEDGE OF ALLEGIANCE (BY INVITATION) Council Member Holdaway gave the invocation then led the Pledge of Allegiance. 3.   PUBLIC HEARING Planner Anthony Flether provided an overview of Senate Bill 284, adopted during the 2026 Utah Legislative Session, which requires municipalities to update land use regulations and development review processes. Key points included: •   Completion of a gap analysis comparing Vineyard City Code with state requirements. •   Development of a three-phase implementation strategy: 1.   Detached Accessory Dwelling Units (DADUs) 2.   General land use provisions and process updates",
+          "shot": "doc-check-shots/doc_87aac14fa329d527-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    }
+  ],
+  "failed": 0
+}
