@@ -437,7 +437,7 @@ authentication_required | blocked | unknown`, `lastCheckedAt`, `lastSuccessfulCh
 ### GET /api/stats
 
 `ArchiveStatistics`: `documentsIndexed`, `pagesIndexed`, `meetingsIndexed`, `earliestRecordDate`,
-`latestRecordDate`, `archiveLastUpdatedAt`, `sourcesMonitored`, `sourcesHealthy`, `ocrPendingCount`,
+`latestRecordDate`, `archiveLastUpdatedAt`, `sourcesMonitored`, `sourcesHealthy`, `ocrPendingCount`.
 All numbers are computed from the index, never estimated.
 
 ### GET /api/suggestions
