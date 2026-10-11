@@ -1,0 +1,23 @@
+[04:36:52] Discovering sources from the live transparency portal…
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/runner/work/Vineyard-transparency-portal/Vineyard-transparency-portal/ingest/__main__.py", line 149, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/runner/work/Vineyard-transparency-portal/Vineyard-transparency-portal/ingest/__main__.py", line 102, in main
+    c = crawl(api, client, run_id, set(a.source) if a.source else None, a.manifest, a.since)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/Vineyard-transparency-portal/Vineyard-transparency-portal/ingest/pipeline.py", line 84, in crawl
+    manifest = discover(client, follow_depth=1)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/Vineyard-transparency-portal/Vineyard-transparency-portal/ingest/discover.py", line 82, in discover
+    html, final = client.get_text(SEED_URL)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/Vineyard-transparency-portal/Vineyard-transparency-portal/ingest/http.py", line 149, in get_text
+    r = self.request("GET", url, timeout=timeout)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/Vineyard-transparency-portal/Vineyard-transparency-portal/ingest/http.py", line 119, in request
+    raise RobotsDisallowed(url)
+ingest.http.RobotsDisallowed: https://www.vineyardutah.gov/transparency_portal/index.php
+exit=1
