@@ -13,7 +13,7 @@ import { Frame } from './Chrome';
 import { fresh, getJson, useJson } from './api';
 import { RECORD_CATEGORIES, categoryById } from './categories';
 import { DocLink } from './DocLink';
-import { TYPE_LABEL, formatDate } from './format';
+import { TYPE_LABEL, formatDate, sourceLabel } from './format';
 
 interface Row {
   id: string;
@@ -24,6 +24,7 @@ interface Row {
   year: number | null;
   governmentBodyName: string | null;
   mimeType: string | null;
+  sourceId: string | null;
   snippet?: string | null;
 }
 
@@ -36,7 +37,14 @@ interface Facets {
   years: Bucket[];
   documentTypes: Bucket[];
   governmentBodies: Bucket[];
+  sources?: Bucket[];
 }
+
+/** Collections added on the portal, offered as a filter once they hold records. */
+const COLLECTIONS: Array<{ id: string; label: string }> = [
+  { id: 'portal-staff', label: 'Added by portal staff' },
+  { id: 'resident-submitted', label: 'Resident submitted' },
+];
 
 const PAGE = 100;
 type Resp = { items: Array<Record<string, unknown>>; total?: number; totalCount?: number };
@@ -53,6 +61,7 @@ function rowsOf(r: Resp, searching: boolean): Row[] {
       year: typeof d.year === 'number' ? d.year : null,
       governmentBodyName: (d.governmentBodyName as string | null) ?? null,
       mimeType: (d.mimeType as string | null) ?? null,
+      sourceId: (d.sourceId as string | null) ?? null,
       snippet: ex ? ex.replace(/\s+/g, ' ').slice(0, 200) : null,
     };
   });
@@ -84,6 +93,7 @@ function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boo
                   <span className="vc-mdoc-main">
                     <span className="vc-mdoc-title">{d.title}</span>
                     <span className="vc-mdoc-meta">{[TYPE_LABEL[d.documentType as keyof typeof TYPE_LABEL] ?? 'Record', d.governmentBodyName, formatDate(d.date) ?? (d.year ? String(d.year) : null)].filter(Boolean).join(' · ')}</span>
+                    {sourceLabel(d.sourceId) && <span className="vc-source-label">{sourceLabel(d.sourceId)}</span>}
                     {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
                   </span>
                   <ChevronRight size={16} className="vc-mdoc-go" />
@@ -205,9 +215,10 @@ export default function RecordsPage() {
   const types = useMemo(() => typesKey.split(',').filter(Boolean), [typesKey]);
   const year = params.get('y') ?? '';
   const body = params.get('b') ?? '';
+  const from = COLLECTIONS.some((c) => c.id === params.get('f')) ? params.get('f')! : '';
   const sort = params.get('s') === 'old' ? 'date_asc' : params.get('s') === 'az' ? 'title' : 'date_desc';
   // Agendas & minutes with no type chosen and no search: the list is meetings, newest first.
-  const meetingMode = cat?.id === 'meetings' && !types.length && !q;
+  const meetingMode = cat?.id === 'meetings' && !types.length && !q && !from;
   const [draft, setDraft] = useState(q);
   const [pages, setPages] = useState(1);
   const facets = useJson<Facets>('/api/browse/facets');
@@ -219,13 +230,14 @@ export default function RecordsPage() {
     else if (!cat?.body) (cat?.types ?? []).forEach((t) => u.append('type', t.id));
     if (year) u.set('year', year);
     if (body || cat?.body) u.set('body', body || cat!.body!);
+    if (from) u.set('source', from);
     u.set('sort', sort);
     if (q) {
       u.set('q', q);
       u.set('match', 'all');
     }
     return u.toString();
-  }, [cat, types, year, body, sort, q]);
+  }, [cat, types, year, body, sort, q, from]);
   const key = `${query}|${pages}`;
   const [state, setState] = useState<{ key: string; rows: Row[]; total: number; status: 'done' | 'error' }>({ key: '', rows: [], total: 0, status: 'done' });
 
@@ -290,7 +302,9 @@ export default function RecordsPage() {
   const typeCount = new Map((facets.status === 'done' ? facets.data.documentTypes : []).map((b) => [b.value, b.count]));
   const years = facets.status === 'done' ? facets.data.years : [];
   const bodies = facets.status === 'done' ? facets.data.governmentBodies : [];
-  const filtered = Boolean(types.length || year || body || q);
+  const sourceCount = new Map((facets.status === 'done' ? (facets.data.sources ?? []) : []).map((b) => [b.value, b.count]));
+  const collections = COLLECTIONS.filter((c) => (sourceCount.get(c.id) ?? 0) > 0 || c.id === from);
+  const filtered = Boolean(types.length || year || body || q || from);
 
   return (
     <Frame>
@@ -372,6 +386,20 @@ export default function RecordsPage() {
               ))}
             </select>
           </label>
+          {collections.length > 0 && (
+            <label className="vc-rec-select">
+              <span>From</span>
+              <select value={from} onChange={(e) => update({ f: e.target.value || null })}>
+                <option value="">All sources</option>
+                {collections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                    {sourceCount.get(c.id) ? ` (${sourceCount.get(c.id)!.toLocaleString()})` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="vc-rec-select">
             <span>Sort</span>
             <select value={params.get('s') ?? ''} onChange={(e) => update({ s: e.target.value || null })}>
@@ -381,7 +409,7 @@ export default function RecordsPage() {
             </select>
           </label>
           {filtered && (
-            <button type="button" className="vc-rec-reset" onClick={() => { setDraft(''); update({ t: null, y: null, b: null, q: null, s: null }); }}>
+            <button type="button" className="vc-rec-reset" onClick={() => { setDraft(''); update({ t: null, y: null, b: null, q: null, s: null, f: null }); }}>
               Clear filters
             </button>
           )}

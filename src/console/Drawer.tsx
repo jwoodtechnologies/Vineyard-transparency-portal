@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, FileText, X } from 'lucide-react';
 import { docHref } from '@/lib/routes';
 import type { Preview } from './types';
-import { TYPE_LABEL, formatDate } from './format';
+import { TYPE_LABEL, formatDate, sourceLabel } from './format';
 import { Highlighted } from './Highlighted';
 
 export function Drawer({ preview, onClose }: { preview: Preview; onClose: () => void }) {
@@ -31,8 +31,9 @@ export function Drawer({ preview, onClose }: { preview: Preview; onClose: () => 
           meeting: preview.citation.meetingTitle,
           page: preview.citation.page,
           excerpt: preview.citation.excerpt,
-          original: preview.citation.originalUrl,
+          original: preview.citation.originalUrl && /^https?:\/\//i.test(preview.citation.originalUrl) ? preview.citation.originalUrl : null,
           label: `Source ${preview.citation.index}`,
+          source: preview.citation.sourceLabel ?? null,
         }
       : {
           id: preview.result.document.id,
@@ -45,6 +46,7 @@ export function Drawer({ preview, onClose }: { preview: Preview; onClose: () => 
           excerpt: preview.result.excerpts[0] ?? null,
           original: null,
           label: 'Record',
+          source: sourceLabel(preview.result.document.sourceId),
         };
 
   return (
@@ -61,6 +63,7 @@ export function Drawer({ preview, onClose }: { preview: Preview; onClose: () => 
         </div>
         <div className="vc-drawer-body">
           <span className="vc-type">{TYPE_LABEL[v.type] ?? 'Record'}</span>
+          {v.source && <p className="vc-source-label">{v.source}</p>}
           <h2 id="vc-drawer-title" className="vc-drawer-title">
             {v.title}
           </h2>

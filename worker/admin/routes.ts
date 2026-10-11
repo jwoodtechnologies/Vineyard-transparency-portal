@@ -833,7 +833,7 @@ async function putArchive(env: Env, request: Request, sha: string, url: URL, bud
  * the outcome on every document with that content hash. Used by the ingest API and the Worker's
  * own five-minute sync.
  */
-export async function storeArchive(env: Env, sha: string, body: ReadableStream | ArrayBuffer | null, size: number, ext: string, contentType: string, budget: Budget): Promise<Json> {
+export async function storeArchive(env: Env, sha: string, body: ReadableStream | ArrayBuffer | null, size: number, ext: string, contentType: string, budget: Budget, opts: { always?: boolean } = {}): Promise<Json> {
   const storage = storageFor(env.ARCHIVE);
   if (!storage.available) return { status: 'unavailable', message: 'No archive bucket is bound.' };
   const maxObject = intVar(env.ARCHIVE_MAX_OBJECT_BYTES, 25 * 1024 * 1024);
@@ -853,7 +853,7 @@ export async function storeArchive(env: Env, sha: string, body: ReadableStream |
 
   // Archive policy: only priority records get a stored copy; everything else stays a link to the city's copy.
   const candidates = await db.prepare("SELECT document_type, title FROM documents WHERE sha256 = ? AND archive_status != 'archived'").bind(sha).all<{ document_type: string; title: string }>();
-  if ((candidates.results ?? []).length && !(candidates.results ?? []).some((c) => shouldArchive(c.document_type, c.title))) {
+  if (!opts.always && (candidates.results ?? []).length && !(candidates.results ?? []).some((c) => shouldArchive(c.document_type, c.title))) {
     const r = await markDocs('link_only', false).run();
     await budget.record(Number(r.meta?.rows_written ?? 0));
     return { status: 'link_only' };

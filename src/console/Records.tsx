@@ -5,7 +5,7 @@ import { Archive, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { DocumentType, FacetBucket, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { docHref } from '@/lib/routes';
 import type { Turn } from './types';
-import { TYPE_LABEL, formatDate } from './format';
+import { TYPE_LABEL, formatDate, sourceLabel } from './format';
 import { Highlighted } from './Highlighted';
 import { useWide } from './useWide';
 
@@ -92,17 +92,21 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
   const type = f.documentTypes?.[0] ?? null;
   const year = f.years?.[0] != null ? String(f.years[0]) : null;
   const body = f.governmentBodyIds?.[0] ?? null;
-  const active = Boolean(type || year || body);
+  const from = f.sourceIds?.[0] ?? null;
+  // Records added on the portal are a collection of their own, offered as a filter when present.
+  const fromOptions = (facets?.sources ?? []).filter((b) => b.value === 'portal-staff' || b.value === 'resident-submitted').map((b) => ({ ...b, label: b.value === 'resident-submitted' ? 'Resident submitted' : 'Added by portal staff' }));
+  const active = Boolean(type || year || body || from);
 
   const items = (r?.items ?? []).filter((i) => !exclude?.has(i.document.id));
   if (turn.recordsStatus === 'idle') return null;
   if (turn.recordsStatus === 'done' && r && r.total === 0 && !active) return null;
 
-  const set = (next: Partial<{ type: string | null; year: string | null; body: string | null }>) => {
+  const set = (next: Partial<{ type: string | null; year: string | null; body: string | null; from: string | null }>) => {
     const t = next.type !== undefined ? next.type : type;
     const y = next.year !== undefined ? next.year : year;
     const b = next.body !== undefined ? next.body : body;
-    onFilters({ ...(t ? { documentTypes: [t as DocumentType] } : {}), ...(y ? { years: [Number(y)] } : {}), ...(b ? { governmentBodyIds: [b] } : {}) }, turn.sort);
+    const src = next.from !== undefined ? next.from : from;
+    onFilters({ ...(t ? { documentTypes: [t as DocumentType] } : {}), ...(y ? { years: [Number(y)] } : {}), ...(b ? { governmentBodyIds: [b] } : {}), ...(src ? { sourceIds: [src] } : {}) }, turn.sort);
   };
 
   return (
@@ -115,6 +119,7 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
           <FilterMenu label="Type" value={type} options={facets?.documentTypes ?? []} onPick={(v) => set({ type: v })} />
           <FilterMenu label="Year" value={year} options={facets?.years ?? []} onPick={(v) => set({ year: v })} />
           <FilterMenu label="Body" value={body} options={facets?.governmentBodies ?? []} onPick={(v) => set({ body: v })} />
+          <FilterMenu label="From" value={from} options={fromOptions} onPick={(v) => set({ from: v })} />
           <FilterMenu label="Sort" value={turn.sort === 'relevance' ? null : turn.sort} options={SORTS.slice(1)} showCounts={false} onPick={(v) => onFilters(turn.filters, (v ?? 'relevance') as SearchSort)} />
           {active && (
             <button type="button" className="vc-chip vc-chip-clear" onClick={() => onFilters({}, turn.sort)}>
@@ -172,6 +177,7 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
                   )}
                 </div>
                 <h3 className="vc-result-title">{d.title}</h3>
+                {sourceLabel(d.sourceId) && <p className="vc-source-label">{sourceLabel(d.sourceId)}</p>}
                 {ex && (
                   <p className="vc-excerpt">
                     <Highlighted text={ex.text} ranges={ex.highlights} />
@@ -180,9 +186,11 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
                 <div className="vc-result-foot">
                   {ex?.page != null && <span className="vc-tag">Page {ex.page}</span>}
                   {d.pageCount != null && <span className="vc-tag">{d.pageCount} pages</span>}
-                  <span className="vc-tag">
-                    <Archive size={11} strokeWidth={2} /> Archived
-                  </span>
+                  {!sourceLabel(d.sourceId) && (
+                    <span className="vc-tag">
+                      <Archive size={11} strokeWidth={2} /> Archived
+                    </span>
+                  )}
                 </div>
               </Link>
             );

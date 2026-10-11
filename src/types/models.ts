@@ -46,6 +46,10 @@ export type DocumentType =
   | 'transcript'
   | 'recording'
   | 'municipal_code'
+  | 'project'
+  | 'note'
+  | 'web_link'
+  | 'resident_submission'
   | 'other';
 
 export type CategoryId =
@@ -65,6 +69,7 @@ export type CategoryId =
   | 'reports_studies'
   | 'procurement'
   | 'maps'
+  | 'resident_submissions'
   | 'other';
 
 export interface Category {
@@ -426,6 +431,8 @@ export interface Citation {
   excerpt: SourceExcerpt;
   archiveUrl: string | null;
   originalUrl: string | null;
+  /** "Resident submitted. Not a city record." or "Added by portal staff" for records added on the portal. */
+  sourceLabel?: string | null;
   isDemo?: boolean;
 }
 

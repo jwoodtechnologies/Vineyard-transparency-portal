@@ -29,6 +29,7 @@ import { topicsFor } from './topics';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { isConstructionNowQuestion, serviceAnswer } from './serviceAnswers';
 import { constructionAnswer } from './constructionAnswer';
+import { citationLabel, withoutResidentFor } from './submissions';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
@@ -714,6 +715,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     topicNotes = '';
     question = lock.question;
   }
+  // Resident submissions never inform answers about votes, the budget, meetings or construction.
+  hits = withoutResidentFor(hits, retrievalText, Boolean(focus || agendaLock) || voteIds.size > 0 || roadIds.size > 0);
   question = `${question}\n(${timeNote(todayUT, frame)}${topicNotes ? ` ${topicNotes}` : ''}${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
@@ -844,6 +847,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
         excerpt: excerptFor(h, loose.words),
         archiveUrl: x.archive_status === 'archived' && x.archive_key ? `/api/documents/${h.documentId}/file` : null,
         originalUrl: x.original_url == null ? null : String(x.original_url),
+        sourceLabel: citationLabel(h.sourceId),
       };
     });
 

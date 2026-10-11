@@ -5,7 +5,7 @@ import { archiveUrlFor, toDocument, toDocumentSummary, toGovernmentBody, toMeeti
 import { RELATIONSHIP_MAP, typesForCategories } from '../lib/taxonomy';
 import { clampInt, parseJsonObject, toBool } from '../lib/util';
 import { SearchRepository } from '../search/SearchRepository';
-import { storageFor, isArchiveKey, type RangeRequest } from '../storage/StorageProvider';
+import { storageFor, isArchiveKey, isResidentKey, type RangeRequest } from '../storage/StorageProvider';
 
 /** Catalog-side WHERE clause for the shared filter vocabulary (alias `doc`). */
 export function catalogFilterSql(f: SearchFilters): { sql: string; params: unknown[] } {
@@ -313,7 +313,13 @@ export async function getDocumentFile(env: Env, request: Request, id: string, ur
   const mime = String(row.mime_type ?? 'application/octet-stream');
   const fileName = sanitizeFileName(String(row.original_filename ?? ''), `${docId}`);
   const headers: Record<string, string> = { ...baseHeaders };
-  if (/^text\/html|application\/xhtml/i.test(mime)) {
+  if (isResidentKey(key)) {
+    // Files added by residents: only the type found from the file's own bytes, shown inline, and sandboxed.
+    headers['content-type'] = /^(application\/pdf|image\/png|image\/jpeg)$/.test(mime) ? mime : 'application/octet-stream';
+    headers['content-disposition'] = `${headers['content-type'] === 'application/octet-stream' ? 'attachment' : 'inline'}; filename="${fileName}"`;
+    headers['content-security-policy'] = "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'";
+    headers['x-content-type-options'] = 'nosniff';
+  } else if (/^text\/html|application\/xhtml/i.test(mime)) {
     headers['content-type'] = 'application/octet-stream';
     headers['content-disposition'] = `attachment; filename="${fileName}"`;
     headers['content-security-policy'] = 'sandbox';

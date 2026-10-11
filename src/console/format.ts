@@ -27,8 +27,19 @@ export const TYPE_LABEL: Record<DocumentType, string> = {
   transcript: 'Transcript',
   recording: 'Recording',
   municipal_code: 'Municipal code',
+  project: 'Project',
+  note: 'Note',
+  web_link: 'Link',
+  resident_submission: 'Resident submission',
   other: 'Record',
 };
+
+/** Records added on the portal carry a label wherever they are shown; city records carry none. */
+export const RESIDENT_LABEL = 'Resident submitted. Not a city record.';
+export const STAFF_LABEL = 'Added by portal staff';
+export function sourceLabel(sourceId: string | null | undefined): string | null {
+  return sourceId === 'resident-submitted' ? RESIDENT_LABEL : sourceId === 'portal-staff' ? STAFF_LABEL : null;
+}
 
 const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
