@@ -1,0 +1,12 @@
+User-agent: YandexBot
+Disallow: /public/
+Disallow: /apex/
+Disallow: /main_old/
+Disallow: /connect/wp-admin/
+
+User-agent: *
+Disallow: /main_old/
+Disallow: /connect/wp-admin/
+Disallow: /public/rss/
+Allow: /connect/wp-admin/admin-ajax.php 
+Sitemap: https://www.udot.utah.gov/sitemap.xml

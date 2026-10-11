@@ -1,0 +1,51 @@
+construction.html 403 118 https://www.vineyardutah.gov/government/construction_projects.php
+transparency.html 403 118 https://www.vineyardutah.gov/transparency_portal/index.php
+rda.html 403 118 https://www.vineyardutah.gov/government/redevelopment_agency/index.php
+agendas_notices.html 403 118 https://www.vineyardutah.gov/government/agenda_minutes___public_notice.php
+calendar.html 403 118 https://www.vineyardutah.gov/calendar.php
+revize_calendar.json 403 118 https://www.vineyardutah.gov/_assets_/plugins/revizeCalendar/calendar_data_handler.php?webspace=vineyard&relative_revize_url=//cms3.revize.com&protocol=https:
+cc_event_1706.json 200 3849 https://vineyardut.api.civicclerk.com/v1/Events/1706
+cc_event_1711.json 200 3129 https://vineyardut.api.civicclerk.com/v1/Events/1711
+cc_events_upcoming.json 200 50566 https://vineyardut.api.civicclerk.com/v1/Events?$filter=startDateTime%20ge%202026-09-20T00:00:00Z&$orderby=startDateTime
+pmn_index.html 200 11657 https://www.utah.gov/pmn/index.html
+pmn_sitemap.xml 404 685 https://www.utah.gov/pmn/sitemap.xml
+pmn_search_vineyard.html 200 12378 https://www.utah.gov/pmn/search.html?q=vineyard
+portal_stats.json 200 366 https://vineyardportal.org/api/stats
+portal_sources.json 200 5672 https://vineyardportal.org/api/sources
+portal_latest.json 200 8556 https://vineyardportal.org/api/latest
+portal_health.json 200 2049 https://vineyardportal.org/api/health
+portal_meetings_upcoming.json 200 31077 https://vineyardportal.org/api/meetings?upcoming=1&pageSize=50
+portal_meetings_2026.json 200 62120 https://vineyardportal.org/api/meetings?year=2026&pageSize=100
+portal_events.json 400 86 https://vineyardportal.org/api/events
+construction_browser_ua.html 403 520
+pmn_results_vineyard.html 200 28388
+pmn_notice_1.html 200 14995 https://www.utah.gov/pmn/sitemap/notice/1114505.html
+pmn_notice_2.html 200 16115 https://www.utah.gov/pmn/sitemap/notice/1114503.html
+pmn_notice_3.html 200 14661 https://www.utah.gov/pmn/sitemap/notice/1113215.html
+pmn_rss.html 404 760 https://www.utah.gov/pmn/rss.html
+extra_1 200 284 https://www.udot.utah.gov/robots.txt
+extra_2 200 3088 https://connect.udot.utah.gov/wp-json/wp/v2/search?search=vineyard&per_page=50
+extra_3 200 59380 https://connect.udot.utah.gov/?s=vineyard
+extra_4 200 207 https://data-uplan.opendata.arcgis.com/robots.txt
+extra_5 200 22231 https://data-uplan.opendata.arcgis.com/api/search/v1/collections/all/items?q=projects&limit=30
+extra_6 200 24 https://www.utahcounty.gov/robots.txt
+extra_7 200 27010 https://www.utahcounty.gov/Dept/treas/production-single-forms/tax-rates/TaxRates.asp
+extra_8 404 1245 https://maps200.utahcounty.gov/robots.txt
+extra_9 000 0 https://reporting.auditor.utah.gov/robots.txt
+extra_9 FAILED https://reporting.auditor.utah.gov/robots.txt
+extra_10 000 0 https://reporting.auditor.utah.gov/searchreports/s/
+extra_10 FAILED https://reporting.auditor.utah.gov/searchreports/s/
+extra_11 200 174 https://auditor.utah.gov/robots.txt
+extra_12 200 67 https://transparent.utah.gov/robots.txt
+extra_13 200 1419 https://transparent.utah.gov/
+extra_14 200 78 https://disclosures.utah.gov/robots.txt
+extra_15 200 13919 https://disclosures.utah.gov/
+extra_16 000 0 https://www.utahcountyvotes.gov/robots.txt
+extra_16 FAILED https://www.utahcountyvotes.gov/robots.txt
+extra_17 000 0 https://www.utahcountyvotes.gov/
+extra_17 FAILED https://www.utahcountyvotes.gov/
+extra_18 202 0 https://results.enr.clarityelections.com/robots.txt
+extra_19 404 0 https://electionresults.utah.gov/robots.txt
+extra_20 200 9684 https://electionresults.utah.gov/results/public/Utah
+extra_21 404 45482 https://connect.udot.utah.gov/terms-of-use/
+extra_22 200 15844 https://disclosures.utah.gov/Search/AdvancedSearch

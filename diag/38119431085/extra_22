@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head id="Head1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="cache-control" content="max-age=0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="msapplication-config" content="none" />
+
+    <title>
+    Lieutenant Governor's Office - Advanced Search
+</title>
+
+    <link type="text/css" rel="Stylesheet" href="/Content/Bootstrap/css/bootstrap_modified.css" />
+    <link type="text/css" rel="Stylesheet" href="/Content/jquery/blitzer/jquery-ui-1.8.20.custom.css" />
+    <link type="text/css" rel="Stylesheet" href="/Content/Site.css" />
+
+    
+
+    <!--[if lt IE 7]>
+    <style type="text/css">
+        #wrapper { height:100%; }
+        .gradient {filter: none;}
+    </style>
+    <![endif]-->
+    <style>
+        #LegendEliminated .dis-edit-region {
+            float: left;
+            width: 115px;
+            height: 25px;
+            margin-top: 0;
+        }
+
+        #LegendEliminated .dis-edit-region-value {
+            padding: 2px;
+        }
+
+        #LegendEliminated a.dis-edit-region-link, a.dis-edit-region-link:visited {
+            color: #999;
+            background-color: #ddd;
+        }
+    </style>
+    <!--BEGIN QUALTRICS WEBSITE FEEDBACK SNIPPET-->
+    <script type='text/javascript'>
+        (function () {
+            var g = function (e, h, f, g) {
+                this.get = function (a) { for (var a = a + "=", c = document.cookie.split(";"), b = 0, e = c.length; b < e; b++) { for (var d = c[b]; " " == d.charAt(0);)d = d.substring(1, d.length); if (0 == d.indexOf(a)) return d.substring(a.length, d.length) } return null };
+                this.set = function (a, c) { var b = "", b = new Date; b.setTime(b.getTime() + 6048E5); b = "; expires=" + b.toGMTString(); document.cookie = a + "=" + c + b + "; path=/; " };
+                this.check = function () { var a = this.get(f); if (a) a = a.split(":"); else if (100 != e) "v" == h && (e = Math.random() >= e / 100 ? 0 : 100), a = [h, e, 0], this.set(f, a.join(":")); else return !0; var c = a[1]; if (100 == c) return !0; switch (a[0]) { case "v": return !1; case "r": return c = a[2] % Math.floor(100 / c), a[2]++, this.set(f, a.join(":")), !c }return !0 };
+                this.go = function () { if (this.check()) { var a = document.createElement("script"); a.type = "text/javascript"; a.src = g; document.body && document.body.appendChild(a) } };
+                this.start = function () { var t = this; "complete" !== document.readyState ? window.addEventListener ? window.addEventListener("load", function () { t.go() }, !1) : window.attachEvent && window.attachEvent("onload", function () { t.go() }) : t.go() };
+            };
+            try { (new g(100, "r", "QSI_S_ZN_bPzG8VFyVvBeKxw", "https://znbpzg8vfyvvbekxw-utconcierge.siteintercept.qualtrics.com/SIE/?Q_ZID=ZN_bPzG8VFyVvBeKxw")).start() } catch (i) { }
+        })();
+    </script>
+    <div id='ZN_bPzG8VFyVvBeKxw'><!--DO NOT REMOVE-CONTENTS PLACED HERE--></div>
+    <!--END WEBSITE FEEDBACK SNIPPET-->
+</head>
+<body>
+    <div id="wrapper">
+        <div id="header">
+            <a href="/"><img src="/Content/Images/D_Logo.png" alt="State of Utah:" class="logo" /></a>
+            <img src="/Content/Images/Capital_Header.png" alt="State of Utah:" class="capital" />
+        </div>
+        <div id="main">
+            <div id="leftColumn">
+                <div id="nav"><ul>
+    <li><a class="highlight" href="/">HOME</a></li>
+    <li><a href="/Search/PublicSearch">PUBLIC SEARCH</a></li>
+    <li><a href="/Search/AdvancedSearch">ADVANCED SEARCH</a></li>
+    <li><a href="/Registration">CREATE ENTITY</a></li>
+    <li><a href="/Home/Contact">CONTACT</a></li>
+        <li><a href="/Help/Faqs">FAQS</a></li>
+            <li><a href="/Account/Register">NEW USER</a></li>
+        <li><a href="/Account/LogOn">LOG ON</a></li>
+</ul>
+ </div>
+                <ul class="dis-searchlist" id="iconLegend" style="display:none; position:absolute; top:450px; width: 150px; left:10px;">
+                    <li><strong>Folder Legend</strong></li>
+                    <li>
+                        <img src="/Content/Images/folder24.png      " alt="" style="vertical-align: middle;" />
+                        Active
+                    </li>
+                    <li>
+                        <img src="/Content/Images/folder24_gray.png " alt="" style="vertical-align: middle;" />
+                        No Activity
+                    </li>
+                    <li>
+                        <img src="/Content/Images/folder24_ac.png   " alt="" style="vertical-align: middle;" />
+                        Closed
+                    </li>
+                        <li id="LegendEliminated">
+                            <img src="/Content/Images/folder24_su.png   " alt="" style="vertical-align: middle;" />
+                            
+<p>
+	In Suspense</p>
+
+                        </li>
+                </ul>
+                
+
+                <div class="clear"></div>
+            </div>
+            <div id="rightColumn">
+                <div style="float:right;">
+                    
+                </div>
+                
+    <h2><img style="width:50px;" src="/Content/Images/search.png" alt="" /> Advanced Search</h2>
+
+                <div id="content">
+                    
+
+
+<form action="/Search/AdvancedSearch" method="post" onclick="Sys.Mvc.AsyncForm.handleClick(this, new Sys.UI.DomEvent(event));" onsubmit="Sys.Mvc.AsyncForm.handleSubmit(this, new Sys.UI.DomEvent(event), { insertionMode: Sys.Mvc.InsertionMode.replace, httpMethod: &#39;Post&#39;, loadingElementId: &#39;isLoading&#39;, updateTargetId: &#39;searchResults&#39;, url: &#39;/Search/AdvancedSearch/GetEntityReportList&#39; });">
+    <div class="searchBoxContainer">
+        <h3>Search All Entities - Advanced</h3>
+        <br />
+        <div class="dis-cell" style="width: 39%;">
+            <label for="Search">Search by name</label>
+            <input id="Search" name="Search" type="text" value="" />
+        </div>
+        <div class="dis-cell" style="width: 24%;">
+            <label for="EntityType">Entity Type/Contributions/Expenditures</label>
+            <select id="EntityType" name="EntityType"><option value=""></option>
+<option value="Contributions">Contributions</option>
+<option value="Expenditures">Expenditures</option>
+<option value="PCC">Candidates &amp; Office Holders</option>
+<option value="CORP">Corporation</option>
+<option value="ELECT">Electioneering</option>
+<option value="INDEXP">Independent Expenditures</option>
+<option value="LABOR">Labor Organizations</option>
+<option value="PAC">Political Action Committee</option>
+<option value="PIC">Political Issues Committee</option>
+<option value="PARTY">Political Party</option>
+</select>
+        </div>
+        <div class="dis-cell" style="width: 14%;">
+            <label for="ReportYear">Report Year</label>
+            <select id="ReportYear" name="ReportYear"><option value="2026">2026</option>
+<option value="2025">2025</option>
+<option value="2024">2024</option>
+<option value="2023">2023</option>
+<option value="2022">2022</option>
+<option value="2021">2021</option>
+<option value="2020">2020</option>
+<option value="2019">2019</option>
+<option value="2018">2018</option>
+<option value="2017">2017</option>
+<option value="2016">2016</option>
+<option value="2015">2015</option>
+<option value="2014">2014</option>
+<option value="2013">2013</option>
+<option value="2012">2012</option>
+<option value="2011">2011</option>
+<option value="2010">2010</option>
+<option value="2009">2009</option>
+<option value="2008">2008</option>
+<option value="2007">2007</option>
+<option value="2006">2006</option>
+<option value="2005">2005</option>
+<option value="2004">2004</option>
+<option value="2003">2003</option>
+<option value="2002">2002</option>
+<option value="2001">2001</option>
+<option value="2000">2000</option>
+<option value="1999">1999</option>
+<option value="1998">1998</option>
+</select>
+        </div>
+        <div class="dis-cell" style="width: 80px; padding-top: 33px;">
+            <input type="submit" value="Find" id="searchBtn" />
+        </div>
+        <div class="dis-clear"></div>
+            <div class="dis-cell" style="width: 160px; margin-top:-15px;">
+                <div style="float:left;margin-right:5px;">
+                    <label for="HideContributions">Hide Contributions</label>
+                </div>
+                <input id="HideContributions" name="HideContributions" type="checkbox" value="true" /><input name="HideContributions" type="hidden" value="false" />
+            </div>
+            <div class="dis-cell" style="width: 160px; margin-top:-15px;">
+                <div style="float:left;margin-right:5px;">
+                    <label for="HideExpenditures">Hide Expenditures</label>
+                </div>
+                <input id="HideExpenditures" name="HideExpenditures" type="checkbox" value="true" /><input name="HideExpenditures" type="hidden" value="false" />
+            </div>
+            <div class="dis-clear" style="margin-top:-35px;">    </div>
+        <input id="PageNumber" name="PageNumber" type="hidden" value="1" />
+    </div>
+    <div style="height:45px; margin-top:-10px;">
+        <div id="isLoading" class="dis-cell" style="width: 50%; display: none; vertical-align: middle;">
+            <img src="/Content/Images/ajax-loader-small.gif" alt="loader" /><span>Loading...</span>
+        </div>
+    </div>
+
+<p>
+	Are you looking for all transactions for candidates? Political parties? Political action committees?<br />
+	<span style="font-size: 12.8px; font-family: arial, sans-serif;">This&nbsp;</span><a data-saferedirecturl="https://www.google.com/url?hl=en&amp;q=http://www.disclosures.utah.gov/Search/AdvancedSearch&amp;source=gmail&amp;ust=1473868518109000&amp;usg=AFQjCNEP6jXh1QrPclbi1UxX-TRNEsO-Iw" href="http://www.disclosures.utah.gov/Search/AdvancedSearch" style="font-size: 12.8px; font-family: arial, sans-serif; color: rgb(17, 85, 204);" target="_blank"><span class="il">Advanced</span>&nbsp;<span class="il">Search</span></a><span style="font-size: 12.8px; font-family: arial, sans-serif;">&nbsp;page&nbsp;</span><span style="font-size: 12.8px; font-family: arial, sans-serif;">is your best resource. This allows you to download all&nbsp;report&nbsp;data for a type of entity for a given year.</span></p>
+<div style="font-family: arial, sans-serif; font-size: 12.8px;">
+	<span style="font-size: 12.8px;">Please follow these steps:</span></div>
+<div style="font-family: arial, sans-serif; font-size: 12.8px;">
+	<ul>
+		<li style="margin-left: 15px;">
+			<span style="font-size: 12.8px;">Select an Entity Type</span></li>
+		<li style="margin-left: 15px;">
+			<span style="font-size: 12.8px;">Select a&nbsp;Report&nbsp;Year</span></li>
+		<li style="margin-left: 15px;">
+			<span style="font-size: 12.8px;">Click Find</span></li>
+		<li style="margin-left: 15px;">
+			<span style="font-size: 12.8px;">In the top row of results, click the year under the far right column --&nbsp;&quot;Download Data by Year&quot;</span></li>
+	</ul>
+</div>
+
+    <div id="searchResults">Please use the search fields above and click "Find" to list entities.</div>
+</form>
+
+
+
+                </div>
+            </div>
+            <div class="divClear"></div>
+        </div>
+        <div id="footer">
+            <div class="center">
+                <div id="footerRight">
+                    <ul>
+                        <li><a target="_blank" href="http://www.utah.gov/governor/">Governor</a></li>
+                        <li><a target="_blank" href="http://www.utah.gov/ltgovernor/">Lt. Governor</a></li>
+                        <li><a target="_blank" href="http://elections.utah.gov/">Elections</a></li>
+                        <li><a target="_blank" href="http://www.utah.gov/">Utah.gov</a></li>
+                    </ul>
+                </div>
+                <div class="clear"></div>
+            </div>
+            <div id="build">last updated: 10/11/2026, server: Production.206, version: 4.4.0 </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+    <script src="/Scripts/jquery.validate.js"></script>
+    <script src="/Scripts/jquery.validate.unobtrusive.min.js"></script>
+    <script type="text/javascript" src="/Scripts/MicrosoftAjax.js"></script>
+    <script type="text/javascript" src="/Scripts/MicrosoftMvcAjax.js"></script>
+    
+    <script type="text/javascript">
+        $(this).ready(function () {
+            $("#iconLegend").show();
+        });
+        function setPage(pageNumber) {
+            $("#PageNumber").val(pageNumber);
+            $("#searchBtn").click();
+        }
+    </script>
+
+    <!-- BEGIN GOOGLE ANALYTICS CODE -->
+<script type="text/javascript">
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-52048446-1', 'utah.gov');
+  ga('send', 'pageview');
+</script>
+<!-- END GOOGLE ANALYTICS CODE -->
+
+    <script type="text/javascript">
+        var surveyCookie = getCookie("survey");
+        if (surveyCookie != "") {
+            $("a.survey").css("background-color", "#FFFFFF")
+            $("a.survey").css("color", "#CCCCCC")
+        }
+        else {
+            $(".survey").animate({ backgroundColor: '#FFFFFF', color: '#C52F27' }, 1500,
+                function () {
+                    $(".survey").animate({ backgroundColor: "#C52F27", color: '#FFFFFF' }, 1500,
+                        function () {
+                            $(".survey").animate({ backgroundColor: '#FFFFFF', color: '#C52F27' }, 1000,
+                                function () { $(".survey").animate({ backgroundColor: "#C52F27", color: '#FFFFFF' }, 1000) })
+                        })
+                });
+        }
+        $(".survey").click(function () {
+            $("a.survey").css("background-color", "#FFFFFF")
+            $("a.survey").css("color", "#CCCCCC")
+            surveyCookie = "true";
+            if (surveyCookie != "" && surveyCookie != null) {
+                setCookie("survey", surveyCookie, 365);
+            }
+        })
+        function setCookie(cname, cvalue, exdays) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+            var expires = "expires=" + d.toUTCString();
+            document.cookie = cname + "=" + cvalue + "; " + expires;
+        }
+        function getCookie(cname) {
+            var name = cname + "=";
+            var ca = document.cookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        }
+    </script>
+</body>
+</html>

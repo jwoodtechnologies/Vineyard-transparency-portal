@@ -1,0 +1,570 @@
+
+<!DOCTYPE html>
+<html dir="ltr" lang="en-US">
+<head>
+<!-- head.inc -->
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="author" content="Utah County Government" />
+
+<!-- PostHog tag  -->
+    <script>
+            !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+            posthog.init('phc_mh3n1bBRqY4f5Vn6XlGc16xRCUuHAQybqN7dx2vR8ZP',{api_host:'https://us.i.posthog.com', defaults:'2025-11-30'})
+        </script>
+
+<style>
+  .img-left-noborder-notopmargin {
+    float: left;
+    margin: 0px 10px 0px 0px;
+  }
+  .img-left-noborder-topmargin {
+    float: left;
+    margin: 3px 10px 0px 0px;
+  }
+  .img-left-border-notopmargin {
+    float: left;
+    margin: 0px 10px 0px 0px;
+    border: solid 1px rgb(150, 150, 150);
+  }
+  .img-left-border-topmargin {
+    float: left;
+    margin: 3px 10px 0px 0px;
+    border: solid 1px rgb(150, 150, 150);
+  }
+  .img-right-noborder-notopmargin {
+    float: right;
+    margin: 0px 0px 0px 10px;
+  }
+  .img-right-noborder-topmargin {
+    float: right;
+    margin: 3px 0px 0px 10px;
+  }
+  .img-right-border-notopmargin {
+    float: right;
+    margin: 0px 0px 0px 10px;
+    border: solid 1px rgb(150, 150, 150);
+  }
+  .img-right-border-topmargin {
+    float: right;
+    margin: 3px 0px 0px 10px;
+    border: solid 1px rgb(150, 150, 150);
+  }
+  .container {
+    margin-right: auto;
+    margin-left: auto;
+  }
+  .unstyled-link {
+        text-decoration: none;
+        color: inherit;
+        padding: 0;
+        margin: 0;
+        border: none;
+        background: none;
+        font-weight: normal;
+    }
+  .top-links {
+    height: 10px;
+  }
+</style>
+
+<style>
+        @font-face {
+            font-family: 'EB Garamond';
+            src: url('https://fonts.gstatic.com/s/ebgaramond/v27/SlGUmQSNjdsmc35JDF1K5GR1SDk.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+</style>
+
+
+<!-- Stylesheets
+============================================= -->
+<link
+  href="https://fonts.googleapis.com/css?family=Lato:300,400,400italic,600,700|Raleway:300,400,500,600,700|Crete+Round:400italic"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="/apps/LeenaCanvas/Package-HTML/HTML/css/bootstrap.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="/apps/LeenaCanvas/Package-HTML/HTML/style.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="/apps/LeenaCanvas/Package-HTML/HTML/css/swiper.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="/apps/LeenaCanvas/Package-HTML/HTML/css/dark.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="/apps/LeenaCanvas/Package-HTML/HTML/css/font-icons.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="/apps/LeenaCanvas/Package-HTML/HTML/css/animate.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="/apps/LeenaCanvas/Package-HTML/HTML/css/magnific-popup.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<link
+  href="/apps/LeenaCanvas/Package-HTML/HTML/css/responsive.css"
+  rel="stylesheet"
+  type="text/css"
+/>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Utah County Treasurer - Tax Rates">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<!-- Document Title
+	============================================= -->
+	<title>Tax Rates | Utah County Treasurer</title>
+</head>
+
+<body class="stretched">
+
+	<!-- Document Wrapper
+	============================================= -->
+<div id="wrapper" class="clearfix">
+    <!-- header.inc -->
+<div
+  id="top-bar"
+  class="hidden-xs"
+  style="background-color: #1e293b; border-bottom-width: 0px"
+>
+  <div class="container nobottommargin">
+    <div class="col_half nobottommargin">
+      <p style="color: white" class="nobottommargin">
+        <strong>An Official Website of Utah County Government</strong>
+      </p>
+    </div>
+    <div class="col_half col_last fright nobottommargin">
+      <!-- Top Links
+          ============================================= -->
+      <div class="top-links">
+        <ul>
+          <li>
+            <a href="tel:8018518255" style="color: white">
+              <i class="icon-phone3"></i>
+              801-851-8255
+            </a>
+          </li>
+
+          <li style="border-left-width: 0px">
+            <a href="mailto:treasurer@utahcounty.gov" style="color: white">
+              <i class="icon-envelope2"></i>
+              Utah County Treasurer
+            </a>
+          </li>
+        </ul>
+      </div>
+      <!-- .top-links end -->
+    </div>
+  </div>
+</div>
+<!-- #top-bar end -->
+
+<div style="background-color: white; height: fit-content">
+  <div class="container">
+    <div
+      style="display: flex; justify-content: space-between; align-items: center"
+    >
+      <div style="display: flex; justify-content: start; align-items: center" >
+        <a href="index.asp">
+          <img
+            alt="Utah County Logo"
+            src="../shared-assets/transparent.png"
+            style="height: 60px; width: auto; padding: 10px"
+          />
+        </a>
+        <div >|</div>
+        <a href="https://treasurer.utahcounty.gov" class="unstyled-link">
+          <div style="font-feature-settings: normal; font-variation-settings: normal; color: inherit; padding-top: 15px; padding-bottom: 15px; padding-left: 15px; font-family: var(--font-eb-garamond,EB Garamond),EB Garamond,ui-serif,Georgia,Cambria; font-size:x-large; line-height: 2rem; margin-bottom: .25rem;">Treasurer</div>
+        </a>
+      </div>
+      <nav>
+        <a
+          class="btn btn-success btn-md"
+          type="button"
+          href="javascript:history.back()"
+          style="display: inline-block"
+        >
+          <i class="icon-arrow-left"></i>
+          <b class="hidden-xs">Go back to previous page</b>
+        </a>
+      </nav>
+    </div>
+  </div>
+</div>
+
+		<!-- Page Title
+		============================================= -->
+		<section id="page-title">
+        <div class="container clearfix">
+				<h1>View Utah County Tax Rates</h1>
+				<span></span>
+		</div>
+		</section>
+		<!-- #page-title end -->
+		<!-- Content
+		============================================= -->
+		<section id="content">
+			<div class="content-wrap">
+  				<div class="container clearfix"><br><br>
+
+					
+					<h2>Please use the options below to search for your tax rates by district or year:</h2>
+
+					<div class="col_full panel panel-default col_first nobottommargin ">
+						<div class="panel-heading" style="background-color: rgba(165, 165, 165, 0.233)">
+						<h2 class="panel-title">Search by District :</h2>
+						</div>
+					<div class="panel-body" style="padding: 0 20px">
+			<p></p>
+      <form name="f1" action="taxratesdistyrresults.asp" method="get"> 
+        <div class="col_one_third">
+        <label for="serialform-year">Year: </label>
+			  <select name="serialform-year" class="sm-form-control" id="serialform-year" >
+			    
+			    
+			    <option value="2027">2027</option>
+			    
+			    <option value="2026">2026</option>
+			    
+			    <option value="2025">2025</option>
+			    
+			    <option value="2024">2024</option>
+			    
+			    <option value="2023">2023</option>
+			    
+			    <option value="2022">2022</option>
+			    
+			    <option value="2021">2021</option>
+			    
+			    <option value="2020">2020</option>
+			    
+			    <option value="2019">2019</option>
+			    
+			    <option value="2018">2018</option>
+			    
+			    <option value="2017">2017</option>
+			    
+			    <option value="2016">2016</option>
+			    
+			    <option value="2015">2015</option>
+			    
+			    <option value="2014">2014</option>
+			    
+			    <option value="2013">2013</option>
+			    
+			    <option value="2012">2012</option>
+			    
+			    <option value="2011">2011</option>
+			    
+			    <option value="2010">2010</option>
+			    
+			    <option value="2009">2009</option>
+			    
+			    <option value="2008">2008</option>
+			    
+			    <option value="2007">2007</option>
+			    
+			    <option value="2006">2006</option>
+			    
+              </select>
+              </div>
+              <div class="col_one_third">
+									<label for="serialform-district">District:</label>
+									
+									<select id="serialform-district" name="serialform-district" class="sm-form-control" required >
+									  <option value="">-- Select One --</option>
+									  
+                                      <option value="40">ALPINE CITY - TD 40</option>
+                                                                              
+                                      <option value="30">ALPINE SCHOOL DIST SA 6-7-8 - TD 30</option>
+                                                                              
+                                      <option value="35">ALPINE SCHOOL DIST SA 6-8-9 - TD 35</option>
+                                                                              
+                                      <option value="60">AMERICAN FORK CITY - TD 60</option>
+                                                                              
+                                      <option value="160">BENJAMIN CEMETERY S/A 6-7-8 - TD 160</option>
+                                                                              
+                                      <option value="165">BENJAMIN CEMETERY S/A 6-8-9 - TD 165</option>
+                                                                              
+                                      <option value="34">BLUFFDALE CITY W/SVSD - TD 34</option>
+                                                                              
+                                      <option value="50">CEDAR FORT CITY - TD 50</option>
+                                                                              
+                                      <option value="21">CEDAR HILLS CITY - TD 21</option>
+                                                                              
+                                      <option value="17">DRAPER CITY - TD 17</option>
+                                                                              
+                                      <option value="14">DRAPER CITY W/SVSD - TD 14</option>
+                                                                              
+                                      <option value="13">DRAPER W/SVSD & JVWC - TD 13</option>
+                                                                              
+                                      <option value="19">DRAPER W/TR RIDGE, JVWC & SVSD - TD 19</option>
+                                                                              
+                                      <option value="18">DRAPER W/TRAV RIDGE & JVWC - TD 18</option>
+                                                                              
+                                      <option value="38">EAGLE MOUNTAIN - TD 38</option>
+                                                                              
+                                      <option value="53">EAGLE MOUNTAIN W/POLE CANYON DIST - TD 53</option>
+                                                                              
+                                      <option value="181">ELKRIDGE CITY - TD 181</option>
+                                                                              
+                                      <option value="56">FAIRFIELD TOWN - TD 56</option>
+                                                                              
+                                      <option value="55">FAIRFIELD TOWN - TD 55</option>
+                                                                              
+                                      <option value="200">GENOLA CITY - TD 200</option>
+                                                                              
+                                      <option value="210">GOSHEN CITY - TD 210</option>
+                                                                              
+                                      <option value="45">HIGHLAND CITY - TD 45</option>
+                                                                              
+                                      <option value="10">LEHI CITY - TD 10</option>
+                                                                              
+                                      <option value="11">LEHI CITY W/O NUCW - TD 11</option>
+                                                                              
+                                      <option value="80">LINDON CITY - TD 80</option>
+                                                                              
+                                      <option value="85">LINDON CITY W/WATER CONS - TD 85</option>
+                                                                              
+                                      <option value="140">MAPLETON CITY - TD 140</option>
+                                                                              
+                                      <option value="120">NEBO SCHOOL DIST S/A 6-7-8 - TD 120</option>
+                                                                              
+                                      <option value="125">NEBO SCHOOL DIST S/A 6-8-9 - TD 125</option>
+                                                                              
+                                      <option value="25">NORTH UT CO WT CON S/A 6-8-9 - TD 25</option>
+                                                                              
+                                      <option value="20">NORTH UT CO WT CONS S/A 6-7-8 - TD 20</option>
+                                                                              
+                                      <option value="90">OREM CITY - TD 90</option>
+                                                                              
+                                      <option value="91">OREM CITY IN PROVO SCH DIST - TD 91</option>
+                                                                              
+                                      <option value="170">PAYSON CITY - TD 170</option>
+                                                                              
+                                      <option value="70">PLEASANT GROVE CITY - TD 70</option>
+                                                                              
+                                      <option value="71">PLEASANT GROVE CITY W/O NUCWCD - TD 71</option>
+                                                                              
+                                      <option value="110">PROVO CITY - TD 110</option>
+                                                                              
+                                      <option value="108">PROVO CITY IN ALPINE SCH DIST - TD 108</option>
+                                                                              
+                                      <option value="112">PROVO CITY IN NEBO SCH DIST - TD 112</option>
+                                                                              
+                                      <option value="107">PROVO CYN F&W SA 6-8-9 - TD 107</option>
+                                                                              
+                                      <option value="180">SALEM CITY - TD 180</option>
+                                                                              
+                                      <option value="179">SALEM W/BENJAMIN CEMETERY - TD 179</option>
+                                                                              
+                                      <option value="190">SANTAQUIN CITY - TD 190</option>
+                                                                              
+                                      <option value="39">SARATOGA SPRINGS - TD 39</option>
+                                                                              
+                                      <option value="42">SARATOGA SPRINGS W/NUCWCD - TD 42</option>
+                                                                              
+                                      <option value="155">SOLDIER SUMMIT S/A 6-8 - TD 155</option>
+                                                                              
+                                      <option value="150">SPANISH FORK CITY - TD 150</option>
+                                                                              
+                                      <option value="151">SPANISH FORK W/SPRV DRAIN DIST - TD 151</option>
+                                                                              
+                                      <option value="130">SPRINGVILLE CITY - TD 130</option>
+                                                                              
+                                      <option value="131">SPRINGVILLE W/SPRV DRAIN DIST - TD 131</option>
+                                                                              
+                                      <option value="95">VINEYARD CITY - TD 95</option>
+                                                                              
+                                      <option value="96">VINEYARD CITY / WITH WATER - TD 96</option>
+                                                                              
+                                      <option value="182">WOODLAND HILLS - TD 182</option>
+                                                                              
+                         </select>
+					   </div>
+                                
+                       
+
+					   <div class="col_full">
+									<button class="button button-3d nomargin" type="submit" id="serialform-submit" name="serialform-submit" value="submit">Search</button>
+					   </div>
+						<br>
+                     </form>
+					</div>
+					</div>
+
+					<div class="col_full panel panel-default col_first nobottommargin">
+						<div class="panel-heading" style="background-color: rgba(165, 165, 165, 0.233)">
+						<h2 class="panel-title">Search By Year :</h2>
+						</div>
+					<div class="panel-body" style="padding: 0 20px">
+					  <p></p>
+						 <form action="taxratesyrresults.asp" method="get"> 
+                     	<div class="col_one_third">
+                      		<label for="yearform-year">Year: </label>
+									
+									<select id="yearform-year" name="yearform-year" class="sm-form-control">
+										
+                                      <option value="2026">2026</option>
+                                      
+                                      <option value="2025">2025</option>
+                                      
+                                      <option value="2024">2024</option>
+                                      
+                                      <option value="2023">2023</option>
+                                      
+                                      <option value="2022">2022</option>
+                                      
+                                      <option value="2021">2021</option>
+                                      
+                                      <option value="2020">2020</option>
+                                      
+                                      <option value="2019">2019</option>
+                                      
+                                      <option value="2018">2018</option>
+                                      
+                                      <option value="2017">2017</option>
+                                      
+                                      <option value="2016">2016</option>
+                                      
+                                      <option value="2015">2015</option>
+                                      
+                                      <option value="2014">2014</option>
+                                      
+                                      <option value="2013">2013</option>
+                                      
+                                      <option value="2012">2012</option>
+                                      
+                                      <option value="2011">2011</option>
+                                      
+                                      <option value="2010">2010</option>
+                                      
+                                      <option value="2009">2009</option>
+                                      
+                                      <option value="2008">2008</option>
+                                      
+                                      <option value="2007">2007</option>
+                                      
+                                      <option value="2006">2006</option>
+                                      
+                                      <option value="2005">2005</option>
+                                      
+                                      <option value="2004">2004</option>
+                                      
+                                      <option value="2003">2003</option>
+                                      
+                                      <option value="2002">2002</option>
+                                      
+                                      <option value="2001">2001</option>
+                                      
+                                      <option value="2000">2000</option>
+                                      
+                                      <option value="1999">1999</option>
+                                      
+                                      <option value="1998">1998</option>
+                                      
+                                      <option value="1997">1997</option>
+                                      
+                                      <option value="1996">1996</option>
+                                      
+                                      <option value="1995">1995</option>
+                                      
+                                      <option value="1994">1994</option>
+                                      
+                                      <option value="1993">1993</option>
+                                      
+                                      <option value="1992">1992</option>
+                                      
+                                      <option value="1991">1991</option>
+                                      
+                                      <option value="1990">1990</option>
+                                      
+                                      <option value="1989">1989</option>
+                                      
+                                      <option value="1988">1988</option>
+                                      
+                                      <option value="1987">1987</option>
+                                      
+                                      <option value="1986">1986</option>
+                                      
+                                      <option value="1985">1985</option>
+                                      
+                                      <option value="1984">1984</option>
+                                      
+									</select>
+                       </div>
+                        <div class="col_full">
+									<button class="button button-3d nomargin" type="submit" id="yearform-submit" name="yearform-submit" value="submit">Search</button>
+					   </div>
+						<br>
+                       </form>
+
+				   
+					</div>
+					</div>
+
+					
+
+			  </div>
+			</div>
+		</section>
+		<!-- #content end -->
+
+	<!-- footer.inc -->
+<footer class="dark" id="footer">
+  <div id="copyrights">
+    <div class="container clearfix">
+      <div class="col_half">
+        Copyrights © 2022 All Rights Reserved by Utah County Treasurer
+        <br />
+        <div class="copyright-links">
+          <a href="../../disclaimer.html">Terms of Use</a>
+          /
+          <a href="../../disclaimer.html">Privacy Policy</a>
+        </div>
+      </div>
+      <div class="col_half col_last tright">
+        <div class="fright clearfix"></div>
+        <a href="mailto:treasurer@utahcounty.gov" style="color: #808080">
+          <i class="icon-envelope2"></i>
+          Utah County Treasurer
+          <span class="middot">·</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- footer-scripts.inc -->
+<div class="icon-angle-up" id="gotoTop"></div>
+<script
+  src="/apps/LeenaCanvas/Package-HTML/HTML/js/jquery.js"
+  type="text/javascript"
+></script>
+<script
+  src="/apps/LeenaCanvas/Package-HTML/HTML/js/plugins.js"
+  type="text/javascript"
+></script>
+<script
+  src="/apps/LeenaCanvas/Package-HTML/HTML/js/functions.js"
+  type="text/javascript"
+></script>
+
+</body>
+	</html>
