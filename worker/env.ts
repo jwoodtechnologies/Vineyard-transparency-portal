@@ -16,6 +16,8 @@ export interface Env {
   ARCHIVE?: R2Bucket;
   /** Workers AI binding (optional: Ask falls back to search without it). */
   AI?: Ai;
+  /** The deployed Worker version (wrangler.jsonc version_metadata): its id keys every cached API copy to the build. */
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
 
   /** Comma-separated shard numbers that are searched, e.g. "0" or "0,1". */
   SEARCH_SHARDS?: string;

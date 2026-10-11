@@ -9,12 +9,14 @@
  *
  * Each payload is built once per data version (worker/lib/dataVersion.ts) and stored in page_cache: the
  * five-minute check rebuilds the default payloads right after it changes data, so a request is one row
- * read (and usually an edge cache hit with no D1 read at all). A stored payload from an older version is
- * served at once while the new one is built in the background.
+ * read (and usually an edge cache hit with no D1 read at all). A stored payload from an older data version
+ * of the same build is served at once while the new one is built in the background; one from an earlier
+ * deploy is rebuilt before it is served.
  */
 import type { Env } from '../env';
 import { badRequest, json } from '../lib/http';
 import { dataVersion, readPage, writePage } from '../lib/dataVersion';
+import { buildId } from '../lib/edgeCache';
 import { listMeetings } from './misc';
 import { listPeople } from './people';
 import { commissionAttendance, handleVotes, meetingMinutes, PC, queryMotions, SCOPE_BODIES } from './votes';
@@ -158,21 +160,24 @@ const building = new Map<string, Promise<string>>();
  */
 async function servePage(env: Env, ctx: ExecutionContext | null, key: string, build: (version: number, prior: string | null) => Promise<unknown>): Promise<Response> {
   const version = await dataVersion(env);
-  const stored = await readPage(env, key);
+  const thisBuild = buildId(env);
+  const found = await readPage(env, key);
+  // A payload built by an earlier deploy is never served: its shape or its reading of the records may have changed.
+  const stored = found && found.build === thisBuild ? found : null;
   const rebuild = () => {
     const running = building.get(key);
     if (running) return running;
     const p = build(version, stored?.body ?? null)
       .then(async (payload) => {
         const text = JSON.stringify(payload);
-        await writePage(env, key, version, text).catch(() => undefined);
+        await writePage(env, key, version, text, thisBuild).catch(() => undefined);
         return text;
       })
       .finally(() => building.delete(key));
     building.set(key, p);
     return p;
   };
-  const headers = { 'x-data-version': String(version) };
+  const headers = { 'x-data-version': String(version), 'x-build': thisBuild };
   if (stored && stored.version === version) return respond(stored.body, headers);
   if (stored && ctx) {
     ctx.waitUntil(rebuild().catch(() => undefined));
@@ -211,16 +216,18 @@ export async function handlePages(env: Env, url: URL, name: string, ctx: Executi
 /** After the data changes: rebuild the default payloads so the next reader gets them with one row read. */
 export async function rebuildPages(env: Env, kinds: VotesKind[] = ['council', 'planning', 'rda'], construction = false): Promise<Record<string, number>> {
   const version = await dataVersion(env);
+  const build = buildId(env);
   const out: Record<string, number> = {};
   for (const kind of kinds) {
     const key = pageKey(`votes-${kind}`, null);
-    const prior = parsePrior<VotesPage>((await readPage(env, key))?.body ?? null);
+    const stored = await readPage(env, key);
+    const prior = parsePrior<VotesPage>(stored && stored.build === build ? stored.body : null);
     const page = await buildVotesPage(env, kind, null, version, prior);
-    await writePage(env, key, version, JSON.stringify(page));
+    await writePage(env, key, version, JSON.stringify(page), build);
     out[kind] = page.motions.items.length;
   }
   if (construction) {
-    await writePage(env, 'construction', version, JSON.stringify(await buildConstructionPage(env, version)));
+    await writePage(env, 'construction', version, JSON.stringify(await buildConstructionPage(env, version)), build);
     out.construction = 1;
   }
   return out;

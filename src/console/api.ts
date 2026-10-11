@@ -1,13 +1,19 @@
 /** Small typed readers for the portal API used by the console screens. */
 import { useEffect, useState } from 'react';
 
+/** Replaced with the build id by vite.config.ts (define); undefined under the test runner. */
+declare const __VTP_BUILD__: string | undefined;
+
+/** This build's id (vite.config.ts), or "dev" where it is not defined (tests). */
+export const BUILD: string = typeof __VTP_BUILD__ === 'string' && __VTP_BUILD__ ? __VTP_BUILD__ : 'dev';
+
 /**
- * Adds a marker that changes every five minutes, so no browser or network cache can hand back a
- * list older than that, whatever cache time it was stored with.
+ * Adds a marker that changes every five minutes and with every build, so no browser or network cache can
+ * hand back a list older than that, or one fetched by an earlier build, whatever cache time it was stored with.
  */
-export function fresh(url: string): string {
+export function fresh(url: string, build = BUILD): string {
   if (!url.startsWith('/api/')) return url;
-  return `${url}${url.includes('?') ? '&' : '?'}_=${Math.floor(Date.now() / 300_000)}`;
+  return `${url}${url.includes('?') ? '&' : '?'}_=${Math.floor(Date.now() / 300_000)}.${build}`;
 }
 
 /** The request public/theme-init.js started for the page being opened, used once. */
@@ -40,6 +46,45 @@ const MAX_ENTRY = 350_000;
 const MAX_ENTRIES = 40;
 const PREFIX = 'vtp:api:';
 const memory = new Map<string, { at: number; data: unknown; text: string | null }>();
+const BUILD_KEY = `${PREFIX}build`;
+
+const deviceStorage = (): Storage | null => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * A new build discards every API copy kept on this device (memory and localStorage), so a page never draws
+ * from data an earlier build fetched or shaped. Returns true when it discarded them.
+ */
+export function resetForBuild(build: string = BUILD, store: Storage | null = deviceStorage()): boolean {
+  let kept: string | null;
+  try {
+    kept = store?.getItem(BUILD_KEY) ?? null;
+  } catch {
+    kept = null;
+  }
+  if (store && kept === build) return false;
+  memory.clear();
+  try {
+    if (store) {
+      const keys: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && k.startsWith(PREFIX)) keys.push(k);
+      }
+      for (const k of keys) store.removeItem(k);
+      store.setItem(BUILD_KEY, build);
+    }
+  } catch {
+    /* storage unavailable: nothing kept to discard */
+  }
+  return true;
+}
+resetForBuild();
 
 function storageIndex(): string[] {
   try {

@@ -3,6 +3,12 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
+/**
+ * One id per build: the commit (when CI provides it) and the build time. Short, URL safe. The client compares it
+ * with the id its kept API copies were stored under, and the early request in public/theme-init.js carries it.
+ */
+const BUILD_ID = `${(process.env.GITHUB_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? '').slice(0, 8) || 'local'}-${Date.now().toString(36)}`;
+
 /** Each route's screen module (the same table as src/app/router.tsx and public/theme-init.js). */
 const SCREENS: Record<string, string> = {
   console: 'ConsolePage',
@@ -64,7 +70,8 @@ function fastStart(): Plugin {
           }
           routes[screen] = [...own, ...css].map((f) => `/${f}`);
         }
-        const head = `<script type="application/json" id="vtp-routes">${JSON.stringify(routes)}</script>`;
+        // The build id, for public/theme-init.js (its early data request carries it, like src/console/api.ts).
+        const head = `<meta name="vtp-build" content="${BUILD_ID}" />\n    <script type="application/json" id="vtp-routes">${JSON.stringify(routes)}</script>`;
         return html.replace('<script src="/theme-init.js"></script>', `${head}\n    <script src="/theme-init.js"></script>`);
       },
     },
@@ -73,6 +80,8 @@ function fastStart(): Plugin {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), fastStart()],
+  // The client's own build id (src/console/api.ts): a new build discards the API copies kept on the device.
+  define: { __VTP_BUILD__: JSON.stringify(BUILD_ID) },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

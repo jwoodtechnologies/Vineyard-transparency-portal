@@ -18,8 +18,12 @@ async function ensureTables(env: Env): Promise<void> {
   if (tableReady) return;
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('CREATE TABLE IF NOT EXISTS data_version (id INTEGER PRIMARY KEY CHECK (id = 1), v INTEGER NOT NULL, changed_at TEXT NOT NULL)'),
-    env.CATALOG_DB.prepare('CREATE TABLE IF NOT EXISTS page_cache (key TEXT PRIMARY KEY, version INTEGER NOT NULL, built_at TEXT NOT NULL, body TEXT NOT NULL)'),
+    env.CATALOG_DB.prepare('CREATE TABLE IF NOT EXISTS page_cache (key TEXT PRIMARY KEY, version INTEGER NOT NULL, built_at TEXT NOT NULL, body TEXT NOT NULL, build TEXT)'),
   ]);
+  // Tables made before payloads were keyed to the build gain the column (an error means it is already there).
+  await env.CATALOG_DB.prepare('ALTER TABLE page_cache ADD COLUMN build TEXT')
+    .run()
+    .catch(() => undefined);
   tableReady = true;
 }
 
@@ -71,22 +75,26 @@ export interface StoredPage {
   version: number;
   builtAt: string;
   body: string;
+  /** The Worker build that computed it (worker/lib/edgeCache.ts buildId); null for a payload stored before builds were recorded. */
+  build: string | null;
 }
 
 /** A stored page payload (one row read), or null. */
 export async function readPage(env: Env, key: string): Promise<StoredPage | null> {
   try {
-    const row = await env.CATALOG_DB.prepare('SELECT version, built_at, body FROM page_cache WHERE key = ?').bind(key).first<{ version: number; built_at: string; body: string }>();
-    return row ? { version: Number(row.version), builtAt: row.built_at, body: row.body } : null;
+    const row = await env.CATALOG_DB.prepare('SELECT version, built_at, body, build FROM page_cache WHERE key = ?').bind(key).first<{ version: number; built_at: string; body: string; build: string | null }>();
+    return row ? { version: Number(row.version), builtAt: row.built_at, body: row.body, build: row.build ?? null } : null;
   } catch {
     return null;
   }
 }
 
-/** Stores a page payload for a data version (one row write). */
-export async function writePage(env: Env, key: string, version: number, body: string): Promise<void> {
+/** Stores a page payload for a data version and build (one row write). */
+export async function writePage(env: Env, key: string, version: number, body: string, build: string | null = null): Promise<void> {
   await ensureTables(env);
-  await env.CATALOG_DB.prepare('INSERT INTO page_cache (key, version, built_at, body) VALUES (?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET version = excluded.version, built_at = excluded.built_at, body = excluded.body')
-    .bind(key, version, new Date().toISOString(), body)
+  await env.CATALOG_DB.prepare(
+    'INSERT INTO page_cache (key, version, built_at, body, build) VALUES (?, ?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET version = excluded.version, built_at = excluded.built_at, body = excluded.body, build = excluded.build',
+  )
+    .bind(key, version, new Date().toISOString(), body, build)
     .run();
 }

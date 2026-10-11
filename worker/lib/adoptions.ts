@@ -24,6 +24,8 @@ export interface MotionRow {
 }
 
 export interface Adoption {
+  /** The adopting motion's id (its roll call is read by it). */
+  id: string | null;
   kind: NumberedKind;
   number: string;
   date: string | null;
@@ -36,7 +38,11 @@ export interface Adoption {
   consent: boolean;
 }
 
-const NUM = /\b(ordinance|ord|resolution|res)\b\.?\s*(?:no\.?\s*|number\s*|#\s*)?(?:rda[-\s]?|u-?)?((?:19|20)\d{2})\s*-?\s*(\d{1,3})([A-Z]?)\b/gi;
+/**
+ * "Ordinance 2026-10", "Ordinance 2026 - 10", "Ordinance No. 2026-10", "Adopt Ordinance 202601", "Ord. 26-10",
+ * "Resolution RDA-2026-03", "Resolution u202604". A two digit year needs its hyphen ("Ord. 26-10").
+ */
+const NUM = /\b(ordinance|ord|resolution|res)\b\.?\s*(?:no\.?\s*|number\s*|#\s*)?(?:rda[-\s]?|u-?)?(?:((?:19|20)\d{2})\s*-?\s*|(\d{2})\s*-\s*)(\d{1,3})([A-Z]?)\b/gi;
 const ADOPTS = /\b(adopt\w*|approv\w*|aprove\w*|pass\w*|enact\w*)\b/i;
 const NOT_ADOPTING = /\b(continu\w*|table[sd]?|tabling|postpone\w*|strike|struck|den(y|ied|ial)|reconsider\w*|recommend\w*|forward\w*|remand\w*|reject\w*)\b/i;
 
@@ -53,10 +59,10 @@ export function motionNumbers(text: string, body: string | null, year: number | 
   for (const m of text.replace(/[\u2012-\u2015]/g, '-').matchAll(NUM)) {
     const kind = kindFor(m[1], body);
     if (!kind) continue;
-    const y = Number(m[2]);
+    const y = m[2] ? Number(m[2]) : 2000 + Number(m[3]);
     // A number years away from the meeting is a misread (or a measure only cited), never this meeting's adoption.
     if (year && Math.abs(y - year) > 1) continue;
-    const number = normalizeNumber(m[2], m[3], m[4]);
+    const number = normalizeNumber(y, m[4], m[5]);
     if (!out.some((x) => x.kind === kind && x.number === number)) out.push({ kind, number });
   }
   return out;
@@ -67,7 +73,7 @@ export function adoptionsFrom(row: MotionRow): Adoption[] {
   const text = (row.motion ?? '').replace(/\s+/g, ' ').trim();
   if (!text || !ADOPTS.test(text) || NOT_ADOPTING.test(text)) return [];
   const year = row.meeting_date ? Number(row.meeting_date.slice(0, 4)) : null;
-  const base = { date: row.meeting_date, motion: text, tally: row.tally ?? null, unanimous: Number(row.unanimous ?? 0) === 1, documentId: row.document_id, page: row.page ?? null };
+  const base = { id: row.id ?? null, date: row.meeting_date, motion: text, tally: row.tally ?? null, unanimous: Number(row.unanimous ?? 0) === 1, documentId: row.document_id, page: row.page ?? null };
   const own = motionNumbers(text, row.body_id, year).map((n) => ({ ...n, ...base, consent: false }));
   if (own.length || !/consent/i.test(text) || !row.items) return own;
   let items: string[];
