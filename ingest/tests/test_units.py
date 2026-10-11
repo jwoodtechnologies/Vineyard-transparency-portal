@@ -131,3 +131,14 @@ class TaxYearNotSetTest(unittest.TestCase):
 
         self.assertFalse(rates_set({"lines": [("VINE", "VINEYARD", "0.0000000"), ("CNTY", "UTAH COUNTY", "0.0000000")]}))
         self.assertTrue(rates_set({"lines": [("VINE", "VINEYARD", "0.0034600")]}))
+
+
+class EventAddressTests(__import__("unittest").TestCase):
+    """October 2026 accuracy audit: CivicClerk's second address line was dropped (events 1706, 1710, 1660)."""
+
+    def test_second_line_kept(self):
+        from ingest.adapters.civicclerk import event_address
+
+        self.assertEqual(event_address({"address1": "City Council Chambers", "address2": "125 South Main Street", "city": "Vineyard", "state": "UT"}), "City Council Chambers, 125 South Main Street, Vineyard, UT")
+        self.assertEqual(event_address({"address1": "707 E Mill Road, ", "address2": "HBA Building Suite 202,", "city": "Vineyard", "state": "UT"}), "707 E Mill Road, HBA Building Suite 202, Vineyard, UT")
+        self.assertIsNone(event_address({}))

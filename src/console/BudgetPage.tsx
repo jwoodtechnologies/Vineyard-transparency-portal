@@ -91,9 +91,9 @@ const REVENUE_NOTES: Record<string, string> = {
   sales: 'The local sales tax, the transportation tax and the RAP (recreation, arts and parks) tax.',
   transfers: 'Money moved in from the Redevelopment Agency and the Capital Projects Fund.',
   fees: 'Fees collected for building permits, plan reviews, inspections and business licenses.',
-  fines: 'Fines and sanitation (trash) charges.',
+  fines: 'Sanitation (trash) charges and fines.',
   state: 'Money from other governments: grants and Class B and C road funds.',
-  other: 'Franchise fees, recreation fees, rents, donations, interest and smaller items.',
+  other: 'Franchise fees, interest earnings, recreation fees, rents, donations and smaller items.',
 };
 
 function SpendTab({ b }: { b: Budget }) {

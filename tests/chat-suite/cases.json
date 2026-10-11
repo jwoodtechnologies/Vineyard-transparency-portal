@@ -248,6 +248,41 @@
     "meetings-api": {
       "api": "/api/meetings?body=<body>&pageSize=40",
       "title": "Meeting calendar from the city's meeting portal (checked live by the runner)"
+    },
+    "budget-book-p4-misc": {
+      "documentId": "doc_2c248c52cbadfa22",
+      "page": 4,
+      "title": "FY 27 Final Budget, General Fund revenue",
+      "quote": "Fines & Forfeitures | Interest Earnings | ... FY27: 261,472 | 500 | 815,000"
+    },
+    "budget-slides-p2": {
+      "documentId": "doc_4d69a97b95e87bea",
+      "page": 2,
+      "title": "FY 27 Final Budget Slides, General Fund revenue",
+      "quote": "Interest Income : Fines : $815,000 $500"
+    },
+    "cc-min-2026-04-14-p3": {
+      "documentId": "doc_750d956cc3d5a4a2",
+      "page": 3,
+      "title": "City Council minutes, April 14, 2026",
+      "quote": "Motion: Council Member Nair motioned, in honor of Council Member McCumber's new son, that Council Member Parker McCumber should be Mayor Pro Tem. Second: Council Member Wood. ... Motion passed 5-0."
+    },
+    "rda-min-2026-06-09-p3": {
+      "documentId": "doc_aa7cce8288e53fef",
+      "page": 3,
+      "title": "Redevelopment Agency minutes, June 9, 2026",
+      "quote": "Motion: Board Member Lauret.motioned toapprove the hiring of Jared Tamez as an RDA adyisor. Board Member Wood seconded the motion. ... Motion Passed 4-1."
+    },
+    "cc-min-2026-09-15-p4": {
+      "documentId": "doc_5f867130115b8be0",
+      "page": 4,
+      "title": "Special City Council minutes, September 15, 2026",
+      "quote": "Motion: Council Member Wood motioned to approve the First Amendment to the Holdaway agreement with the discussed changes. ... Abstained: Council Member Holdaway. Motion Passed 4-0."
+    },
+    "cc-event-1660": {
+      "url": "https://vineyardut.api.civicclerk.com/v1/Events/1660",
+      "title": "CivicClerk event 1660, Joint Meeting - City Council and Orem City, November 17, 2026, 12:30",
+      "quote": "address1 \"City Council Conference Room, \", address2 \" 56 N State Street\", city \"Orem\""
     }
   },
   "cases": [
@@ -1955,6 +1990,106 @@
           "expect": {
             "engine": "budget-data"
           }
+        }
+      ]
+    },
+    {
+      "id": "budget-interest-revenue",
+      "category": "budget",
+      "question": "How much interest revenue is in the budget?",
+      "mustContain": [
+        {
+          "text": "$815,000",
+          "source": "budget-book-p4-misc"
+        }
+      ],
+      "mustNotContain": [
+        {
+          "regex": "Interest: \\$500(?![,\\d])",
+          "why": "audit 2026-10: interest and fines were swapped"
+        }
+      ],
+      "expect": {
+        "engine": "budget-data"
+      }
+    },
+    {
+      "id": "budget-fines-revenue",
+      "category": "budget",
+      "question": "How much do fines bring in?",
+      "mustContain": [
+        {
+          "regex": "\\$500(?![,\\d])",
+          "source": "budget-slides-p2"
+        }
+      ],
+      "mustNotContain": [
+        "$815,000"
+      ],
+      "expect": {
+        "engine": "budget-data"
+      }
+    },
+    {
+      "id": "votes-mayor-pro-tem-2026-04-14",
+      "category": "votes-member",
+      "tier": "model",
+      "question": "Who seconded the motion on April 14, 2026 to make Parker McCumber Mayor Pro Tem?",
+      "mustContain": [
+        {
+          "text": "Wood",
+          "source": "cc-min-2026-04-14-p3"
+        }
+      ]
+    },
+    {
+      "id": "votes-rda-tamez-mover",
+      "category": "votes-member",
+      "tier": "model",
+      "question": "Who made the motion to hire Jared Tamez as an RDA advisor?",
+      "mustContain": [
+        {
+          "text": "Lauret",
+          "source": "rda-min-2026-06-09-p3"
+        },
+        {
+          "regex": "4\\s*(-|to)\\s*1",
+          "source": "rda-min-2026-06-09-p3"
+        }
+      ]
+    },
+    {
+      "id": "votes-holdaway-fields-amendment",
+      "category": "votes-member",
+      "tier": "model",
+      "question": "How did the council vote on the First Amendment to the Holdaway Fields development agreement?",
+      "mustContain": [
+        {
+          "regex": "4\\s*(-|to)\\s*0",
+          "source": "cc-min-2026-09-15-p4"
+        },
+        {
+          "regex": "Holdaway[^.]{0,40}abstain|abstain[^.]{0,60}Holdaway",
+          "flags": "i",
+          "source": "cc-min-2026-09-15-p4"
+        }
+      ],
+      "mustNotContain": [
+        {
+          "regex": "\\b5\\s*(-|to)\\s*0\\b"
+        }
+      ]
+    },
+    {
+      "id": "meetings-orem-joint-place",
+      "category": "meetings",
+      "tier": "model",
+      "question": "Where is the joint City Council meeting with Orem City on November 17, 2026?",
+      "mustContain": [
+        {
+          "text": "56 N State Street",
+          "until": "2026-11-17",
+          "source": "cc-event-1660"
         }
       ]
     }
