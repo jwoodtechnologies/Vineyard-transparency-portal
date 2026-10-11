@@ -1,7 +1,9 @@
 /**
  * /map : Vineyard's own map. City GIS layers (capital projects, zoning, future land use, parcels,
  * subdivisions, roads, parks, schools, businesses) served through the portal's API, drawn with
- * MapLibre on free OpenFreeMap basemaps. Click anything for details; search any road or project.
+ * MapLibre on free OpenFreeMap streets and Utah County aerial imagery. Click anything for details;
+ * search any road or project. The basemap draws first; city layers are fetched in parallel and added
+ * as they arrive, never holding the map back.
  */
 import '@fontsource-variable/inter';
 import './console.css';
@@ -19,6 +21,7 @@ import { ChevronDown, Crosshair, Layers, MessageSquare, Search, X } from 'lucide
 import { useTheme } from '@/hooks/useTheme';
 import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
+import { BASE_BG, blankStyle, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
 
@@ -27,22 +30,19 @@ const BASES: Array<{ id: Base; label: string }> = [
   { id: 'streets', label: 'Streets' },
   { id: 'satellite', label: 'Satellite' },
 ];
-const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
 const USGS = (svc: string) => `https://basemap.nationalmap.gov/arcgis/rest/services/${svc}/MapServer/tile/{z}/{y}/{x}`;
 const USGS_ATTR = '<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a>';
 
-/** Free basemaps only: OpenFreeMap streets, USGS imagery and topo (public domain), AWS open elevation tiles. */
-function styleFor(base: Base, dark: boolean): string | maplibregl.StyleSpecification {
-  if (base === 'streets') return dark ? 'https://tiles.openfreemap.org/styles/dark' : 'https://tiles.openfreemap.org/styles/positron';
-  if (base === 'blank') return { version: 8, glyphs: GLYPHS, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': dark ? '#0a0a0b' : '#ffffff' } }] };
-  if (base === 'satellite')
-    return {
-      version: 8,
-      glyphs: GLYPHS,
-      sources: { img: { type: 'raster', tiles: [USGS('USGSImageryOnly')], tileSize: 256, maxzoom: 16, attribution: USGS_ATTR } },
-      layers: [{ id: 'img', type: 'raster', source: 'img' }],
-    };
-  return {
+/**
+ * Free basemaps only: OpenFreeMap streets (fetched once per visit, see mapBase), Utah County aerial
+ * imagery, USGS topo (public domain) and AWS open elevation tiles. Never rejects: if the streets
+ * style cannot be reached the map draws on a plain background.
+ */
+function styleFor(base: Base, dark: boolean): Promise<maplibregl.StyleSpecification> {
+  if (base === 'streets') return streetsStyle(dark).catch(() => blankStyle(dark));
+  if (base === 'blank') return Promise.resolve(blankStyle(dark));
+  if (base === 'satellite') return Promise.resolve(satelliteStyle());
+  return Promise.resolve({
     version: 8,
     glyphs: GLYPHS,
     sources: {
@@ -51,10 +51,18 @@ function styleFor(base: Base, dark: boolean): string | maplibregl.StyleSpecifica
       shade: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 14, encoding: 'terrarium' },
     },
     layers: [
+      { id: 'bg', type: 'background', paint: { 'background-color': dark ? BASE_BG.blankDark : '#eef0ea' } },
       { id: 'topo', type: 'raster', source: 'topo', paint: dark ? { 'raster-brightness-max': 0.7, 'raster-saturation': -0.3 } : {} },
       { id: 'hill', type: 'hillshade', source: 'shade', paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#2b2b30' } },
     ],
-  };
+  });
+}
+
+/** The color the map box shows while a basemap loads: the basemap's own background. */
+function bgFor(base: Base, dark: boolean): string {
+  if (base === 'streets') return streetsBg(dark);
+  if (base === 'satellite') return BASE_BG.satellite;
+  return dark ? BASE_BG.blankDark : BASE_BG.blankLight;
 }
 
 const readBase = (v: string | null): Base | null => (v === 'streets' || v === 'satellite' ? v : null);
@@ -288,12 +296,13 @@ interface Picked {
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
-const DATA_VERSION = 5;
+const DATA_VERSION = 6;
 const loaded = new Map<string, Promise<FC>>();
 /** Maps whose style has finished loading (tiles may still be streaming; layers can be added). */
 const styleReady = new WeakSet<maplibregl.Map>();
-function loadLayer(info: MapLayerInfo): Promise<FC> {
-  let p = loaded.get(info.key);
+function loadLayer(info: Pick<MapLayerInfo, 'key' | 'pages'>): Promise<FC> {
+  const id = `${info.key}:${info.pages}`;
+  let p = loaded.get(id);
   if (!p) {
     p = Promise.all(Array.from({ length: info.pages }, (_, i) => getJson<FC>(`/api/map/layers/${info.key}?page=${i}&v=${DATA_VERSION}`)))
       .then((pages) => {
@@ -302,10 +311,10 @@ function loadLayer(info: MapLayerInfo): Promise<FC> {
         return { ...fc, features: fc.features.map((f) => ({ ...f, properties: { ...f.properties, __label: titleWords(String(f.properties?.FULLNAME ?? '')) } })) };
       })
       .catch((e) => {
-        loaded.delete(info.key);
+        loaded.delete(id);
         throw e;
       });
-    loaded.set(info.key, p);
+    loaded.set(id, p);
   }
   return p;
 }
@@ -321,6 +330,8 @@ const norm = (t: string) =>
     .filter(Boolean)
     .map((w) => WORD[w] ?? w)
     .join(' ');
+/** Layers drawn from image tiles, never fetched as GeoJSON. */
+const RASTER = new Set(['parcels']);
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda', 'ura'];
 const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
 
@@ -459,6 +470,8 @@ export default function MapPage() {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
+  // False until the basemap has drawn its first screen: a small "Loading map" notice shows meanwhile.
+  const [painted, setPainted] = useState(false);
   const [catalog, setCatalog] = useState<MapLayerInfo[] | null>(null);
   const [on, setOn] = useState<Set<string>>(() => {
     const s = new Set((params.get('layers') ?? '').split(',').filter(Boolean));
@@ -528,8 +541,10 @@ export default function MapPage() {
     document.title = 'Map | Vineyard Transparency Portal';
   }, []);
 
-  // Layer catalog, then the default layers (or the ones named in the address).
+  // Layer catalog, then the default layers (or the ones named in the address). The city boundary
+  // and any layers named in the address start loading now, alongside the catalog, not after it.
   useEffect(() => {
+    for (const key of ['boundary', ...on]) if (LOOK[key] && !RASTER.has(key)) loadLayer({ key, pages: 1 }).catch(() => undefined);
     getJson<{ layers: MapLayerInfo[] }>(`/api/map/layers?v=${DATA_VERSION}`).then(
       (j) => {
         setCatalog(j.layers);
@@ -537,55 +552,73 @@ export default function MapPage() {
       },
       () => setError('The city map layers could not be loaded. Try again shortly.'),
     );
+    // Only the layers named when the page opened are fetched early.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Map instance, re-styled when the theme changes.
+  // Map instance, re-made when the theme or basemap changes. The style is ready at once for
+  // satellite and plain maps, and after one fetch (kept for the visit) for streets.
   useEffect(() => {
     if (!box.current) return;
-    const point = pointRef.current;
-    const map = new maplibregl.Map({ container: box.current, style: styleFor(base, resolved === 'dark'), maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 19, minZoom: 10 });
-    if (point) {
-      const marker = new maplibregl.Marker({ color: '#f59f00' }).setLngLat([point.lng, point.lat]).addTo(map);
-      if (point.label) {
-        marker.getElement().setAttribute('aria-label', point.label);
-        marker.getElement().setAttribute('title', point.label);
+    let map: maplibregl.Map | null = null;
+    let stopWatch = () => {};
+    let cancelled = false;
+    const isDark = resolved === 'dark';
+    const create = (style: maplibregl.StyleSpecification) => {
+      if (cancelled || !box.current) return;
+      const point = pointRef.current;
+      const m = new maplibregl.Map({ container: box.current, style, maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 19, minZoom: 10 });
+      map = m;
+      stopWatch = whenBasePainted(m, () => setPainted(true));
+      if (base === 'satellite') watchSatellite(m);
+      if (point) {
+        const marker = new maplibregl.Marker({ color: '#f59f00' }).setLngLat([point.lng, point.lat]).addTo(m);
+        if (point.label) {
+          marker.getElement().setAttribute('aria-label', point.label);
+          marker.getElement().setAttribute('title', point.label);
+        }
       }
-    }
-    map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Data: <a href="https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb" target="_blank" rel="noopener">Vineyard City Public GIS</a>' }), 'bottom-right');
-    map.addControl(new maplibregl.NavigationControl({ showCompass: base === 'terrain', visualizePitch: true }), 'bottom-right');
-    // If the basemap service is unreachable, keep the city layers working on a plain background.
-    let fellBack = false;
-    map.on('error', () => {
-      if (fellBack || styleReady.has(map)) return;
-      fellBack = true;
-      setTimeout(() => map.setStyle(styleFor('blank', resolved === 'dark') as maplibregl.StyleSpecification, { diff: false }), 0);
-    });
-    map.on('style.load', () => {
-      styleReady.add(map);
-      if (base === 'terrain' && map.getSource('dem')) {
-        map.setTerrain({ source: 'dem', exaggeration: 1.6 });
-      }
-      setReady(true);
-      readyRef.current = true;
-      setTimeout(() => applyRef.current(), 0);
-    });
-    // One click handler for every layer: the topmost feature under the pointer wins.
-    map.on('click', (e) => {
-      if (window.innerWidth <= 820) setPanel(false);
-      const ids = (map.getStyle().layers ?? []).map((l) => l.id).filter((id) => /^vtp-(?!pick|boundary|mask)[a-z]+-(fill|line|circle)$/.test(id) && map.getLayoutProperty(id, 'visibility') !== 'none');
-      const hits = map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: ids });
-      const order = (f: MapGeoJSONFeature) => (f.layer.type === 'circle' ? 0 : f.layer.type === 'line' && !f.layer.id.includes('parcels') ? 1 : 2);
-      const f = [...hits].sort((a, b) => order(a) - order(b))[0];
-      if (!f) return;
-      const key = f.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|circle)$/, '');
-      setPicked({ layer: key, label: labelsRef.current.get(key) ?? '', name: nameOf(key, f.properties ?? {}), props: f.properties ?? {} });
-      highlight(map, f);
-    });
-    map.on('zoomend', () => setZoom(map.getZoom()));
-    mapRef.current = map;
+      m.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Data: <a href="https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb" target="_blank" rel="noopener">Vineyard City Public GIS</a>' }), 'bottom-right');
+      m.addControl(new maplibregl.NavigationControl({ showCompass: base === 'terrain', visualizePitch: true }), 'bottom-right');
+      // If the basemap fails before its style is ready, keep the city layers working on a plain background.
+      let fellBack = false;
+      m.on('error', () => {
+        if (fellBack || styleReady.has(m)) return;
+        fellBack = true;
+        setTimeout(() => m.setStyle(blankStyle(isDark), { diff: false }), 0);
+      });
+      m.on('style.load', () => {
+        styleReady.add(m);
+        if (base === 'terrain' && m.getSource('dem')) {
+          m.setTerrain({ source: 'dem', exaggeration: 1.6 });
+        }
+        setReady(true);
+        readyRef.current = true;
+        setTimeout(() => applyRef.current(), 0);
+      });
+      // One click handler for every layer: the topmost feature under the pointer wins.
+      m.on('click', (e) => {
+        if (window.innerWidth <= 820) setPanel(false);
+        const ids = (m.getStyle().layers ?? []).map((l) => l.id).filter((id) => /^vtp-(?!pick|boundary|mask)[a-z]+-(fill|line|circle)$/.test(id) && m.getLayoutProperty(id, 'visibility') !== 'none');
+        const hits = m.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: ids });
+        const order = (f: MapGeoJSONFeature) => (f.layer.type === 'circle' ? 0 : f.layer.type === 'line' && !f.layer.id.includes('parcels') ? 1 : 2);
+        const f = [...hits].sort((a, b) => order(a) - order(b))[0];
+        if (!f) return;
+        const key = f.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|circle)$/, '');
+        setPicked({ layer: key, label: labelsRef.current.get(key) ?? '', name: nameOf(key, f.properties ?? {}), props: f.properties ?? {} });
+        highlight(m, f);
+      });
+      m.on('zoomend', () => setZoom(m.getZoom()));
+      mapRef.current = m;
+    };
+    void styleFor(base, isDark).then(create);
     return () => {
+      cancelled = true;
+      stopWatch();
       setReady(false);
-      map.remove();
+      setPainted(false);
+      readyRef.current = false;
+      (map as maplibregl.Map | null)?.remove();
       mapRef.current = null;
     };
   }, [resolved, base]);
@@ -593,7 +626,7 @@ export default function MapPage() {
   // Fetch data for layers that are switched on (and the searchable ones, for the search box).
   useEffect(() => {
     if (!catalog) return;
-    const want = catalog.filter((l) => on.has(l.key) || SEARCHABLE.includes(l.key) || l.key === 'boundary');
+    const want = catalog.filter((l) => l.geometry !== 'raster' && (on.has(l.key) || SEARCHABLE.includes(l.key) || l.key === 'boundary'));
     for (const l of want) {
       if (data[l.key]) continue;
       loadLayer(l).then(
@@ -622,8 +655,23 @@ export default function MapPage() {
       const fc = data[key];
       const info = catalog.find((l) => l.key === key);
       const look = LOOK[key];
-      if (!fc || !info || !look) continue;
       const src = `vtp-${key}`;
+      // Image tile layers (county parcel lines): added only once switched on, so no tiles load before.
+      if (info?.geometry === 'raster' && info.tiles) {
+        if (!map.getSource(src) && on.has(key)) {
+          const tiles = info.tiles.startsWith('/') ? `${window.location.origin}${info.tiles}` : info.tiles;
+          map.addSource(src, { type: 'raster', tiles: [tiles], tileSize: 256, minzoom: info.minZoom ?? 0, maxzoom: 20, attribution: info.attribution ?? undefined });
+          // Under the city edge, its mask and the street and point layers, whatever was switched on first.
+          const later = DRAW_ORDER.slice(DRAW_ORDER.indexOf(key) + 1);
+          const before = (map.getStyle().layers ?? []).find((l) => l.id === 'vtp-mask-fill' || l.id.startsWith('vtp-pick') || later.some((k) => l.id.startsWith(`vtp-${k}-`)))?.id;
+          // The county draws dark lines; on dark maps and imagery they are shown light (brightness inverted).
+          const paint = dark ? { 'raster-opacity': 0.8, 'raster-brightness-min': 1, 'raster-brightness-max': 0, 'raster-fade-duration': 150 } : { 'raster-opacity': 0.75, 'raster-fade-duration': 150 };
+          map.addLayer({ id: `${src}-raster`, type: 'raster', source: src, minzoom: info.minZoom ?? 0, paint }, before);
+        }
+        if (map.getLayer(`${src}-raster`)) map.setLayoutProperty(`${src}-raster`, 'visibility', on.has(key) ? 'visible' : 'none');
+        continue;
+      }
+      if (!fc || !info || !look) continue;
       if (key === 'boundary' && !map.getSource(src) && !focusRef.current && !pointRef.current) {
         const b = boundsOf(fc.features);
         const pad = typeof window !== 'undefined' && window.innerWidth > 820 ? { top: 90, bottom: 30, left: 300, right: 30 } : 20;
@@ -778,7 +826,13 @@ export default function MapPage() {
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
       <div className="vc-map-wrap" data-panel={panel}>
-        <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" />
+        <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
+        {!painted && (
+          <div className="vc-map-loading" role="status">
+            <span className="vc-map-loading-dot" aria-hidden="true" />
+            Loading map
+          </div>
+        )}
 
         <div className="vc-map-top">
           <div className="vc-map-search">
@@ -858,13 +912,13 @@ export default function MapPage() {
                 ))}
               </div>
             ))}
-            <p className="vc-panel-note">From the city&apos;s public GIS. Parcel owner names are not shown.</p>
+            <p className="vc-panel-note">From the city&apos;s public GIS. Parcel lines from Utah County GIS. No owner names are shown.</p>
           </aside>
         )}
 
         {!panel && !picked && (() => {
           // Every layer on the map, in drawing order: one swatch, or one per value for color-coded layers.
-          const shown = DRAW_ORDER.filter((k) => on.has(k) && data[k]).reverse();
+          const shown = DRAW_ORDER.filter((k) => on.has(k) && (data[k] || catalog?.some((l) => l.key === k && l.geometry === 'raster'))).reverse();
           if (!shown.length) return null;
           const name = (k: string) => catalog?.find((l) => l.key === k)?.label ?? k;
           return (

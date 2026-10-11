@@ -1,14 +1,16 @@
 /**
  * The Construction page's small map: numbered pins for work the city has posted notices about, and the
  * funded capital projects shaded by stage. Loaded only when the page asks for it (MapLibre is the
- * heavy part), and moved by the cards on the page ("Show on map").
+ * heavy part), and moved by the cards on the page ("Show on map"). The streets basemap draws first;
+ * project shapes are added when they arrive and never hold the map back.
  */
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as maplibregl from 'maplibre-gl';
 import type { LngLatBoundsLike } from 'maplibre-gl';
 import type { FeatureCollection, Geometry } from 'geojson';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { blankStyle, streetsBg, streetsStyle, whenBasePainted } from './mapBase';
 import { STAGES, STAGE_COLOR, type ActiveProject, type Stage } from './construction';
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -59,69 +61,85 @@ export default function ConstructionMap({ plans, active, dark, focus, selected, 
     cb.current = { onPlan, onActive };
   }, [onPlan, onActive]);
 
+  // The page passes a new `active` array on every render; only a real change in the pins may
+  // rebuild the map (rebuilding is what made the map blank out and redraw while the page loaded).
+  const activeKey = useMemo(() => JSON.stringify(active.map((p) => [p.id, p.n, p.title, p.sites.map((s) => [s.lon, s.lat, s.label])])), [active]);
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+  const [painted, setPainted] = useState(false);
+
   // Create the map once; the page remounts this component when the theme changes.
   useEffect(() => {
     if (!box.current) return;
-    const map = new maplibregl.Map({
-      container: box.current,
-      style: dark ? 'https://tiles.openfreemap.org/styles/dark' : 'https://tiles.openfreemap.org/styles/positron',
-      bounds: VINEYARD,
-      fitBoundsOptions: { padding: 12 },
-      attributionControl: { compact: true },
-      cooperativeGestures: true,
-      maxZoom: 18,
-      minZoom: 11,
-    });
-    mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    let map: maplibregl.Map | null = null;
+    let markers: maplibregl.Marker[] = [];
+    let stopWatch = () => {};
+    let cancelled = false;
 
-    const markers = active.flatMap((p) =>
-      p.sites.map((s) => {
-        const el = pin(p.n, `${p.title}: ${s.label}`);
-        el.addEventListener('click', () => cb.current.onActive(p.id));
-        return new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([s.lon, s.lat]).addTo(map);
-      }),
-    );
-
-    // If the basemap cannot be reached, still draw the pins and project areas on a plain background.
-    let plain = false;
-    map.on('error', () => {
-      if (loaded.current || plain) return;
-      plain = true;
-      map.setStyle({ version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': dark ? '#16161a' : '#eef0f2' } }] });
-    });
-
-    map.on('load', () => {
-      loaded.current = true;
-      const k = dark ? 'dark' : 'light';
-      const color = [...(['match', ['get', 'Project_Phase']] as unknown[]), ...STAGES.flatMap((s: Stage) => [s, STAGE_COLOR[s][k]]), STAGE_COLOR.Planning[k]] as unknown as maplibregl.ExpressionSpecification;
-      map.addSource('plans', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } as FeatureCollection });
-      map.addLayer({ id: 'plans-fill', type: 'fill', source: 'plans', paint: { 'fill-color': color, 'fill-opacity': dark ? 0.55 : 0.5 } });
-      map.addLayer({ id: 'plans-line', type: 'line', source: 'plans', paint: { 'line-color': color, 'line-width': 1.6, 'line-opacity': 0.95 } });
-      map.addLayer({
-        id: 'plans-sel',
-        type: 'line',
-        source: 'plans',
-        filter: ['==', ['get', 'Project_Name'], chosen.current ?? ''],
-        paint: { 'line-color': dark ? '#ffffff' : '#0b0b0d', 'line-width': 3.2 },
+    const create = (style: maplibregl.StyleSpecification) => {
+      if (cancelled || !box.current) return;
+      const m = new maplibregl.Map({
+        container: box.current,
+        style,
+        bounds: VINEYARD,
+        fitBoundsOptions: { padding: 12 },
+        attributionControl: { compact: true },
+        cooperativeGestures: true,
+        maxZoom: 18,
+        minZoom: 11,
       });
-      map.on('click', 'plans-fill', (e) => {
-        const name = e.features?.[0]?.properties?.Project_Name;
-        if (typeof name === 'string') cb.current.onPlan(name);
+      map = m;
+      mapRef.current = m;
+      stopWatch = whenBasePainted(m, () => setPainted(true));
+      m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+      markers = activeRef.current.flatMap((p) =>
+        p.sites.map((s) => {
+          const el = pin(p.n, `${p.title}: ${s.label}`);
+          el.addEventListener('click', () => cb.current.onActive(p.id));
+          return new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([s.lon, s.lat]).addTo(m);
+        }),
+      );
+
+      m.on('load', () => {
+        loaded.current = true;
+        const k = dark ? 'dark' : 'light';
+        const color = [...(['match', ['get', 'Project_Phase']] as unknown[]), ...STAGES.flatMap((s: Stage) => [s, STAGE_COLOR[s][k]]), STAGE_COLOR.Planning[k]] as unknown as maplibregl.ExpressionSpecification;
+        m.addSource('plans', { type: 'geojson', data: (pending.current ?? { type: 'FeatureCollection', features: [] }) as FeatureCollection });
+        m.addLayer({ id: 'plans-fill', type: 'fill', source: 'plans', paint: { 'fill-color': color, 'fill-opacity': dark ? 0.55 : 0.5 } });
+        m.addLayer({ id: 'plans-line', type: 'line', source: 'plans', paint: { 'line-color': color, 'line-width': 1.6, 'line-opacity': 0.95 } });
+        m.addLayer({
+          id: 'plans-sel',
+          type: 'line',
+          source: 'plans',
+          filter: ['==', ['get', 'Project_Name'], chosen.current ?? ''],
+          paint: { 'line-color': dark ? '#ffffff' : '#0b0b0d', 'line-width': 3.2 },
+        });
+        m.on('click', 'plans-fill', (e) => {
+          const name = e.features?.[0]?.properties?.Project_Name;
+          if (typeof name === 'string') cb.current.onPlan(name);
+        });
+        m.on('mouseenter', 'plans-fill', () => (m.getCanvas().style.cursor = 'pointer'));
+        m.on('mouseleave', 'plans-fill', () => (m.getCanvas().style.cursor = ''));
       });
-      map.on('mouseenter', 'plans-fill', () => (map.getCanvas().style.cursor = 'pointer'));
-      map.on('mouseleave', 'plans-fill', () => (map.getCanvas().style.cursor = ''));
-      const src = map.getSource('plans') as maplibregl.GeoJSONSource | undefined;
-      if (src && pending.current) src.setData(pending.current as FeatureCollection);
-    });
+    };
+
+    // The style (fetched once per visit, with its tile index in parallel) or, if the basemap cannot
+    // be reached, a plain background so the project areas still draw.
+    streetsStyle(dark).then(create, () => create(blankStyle(dark)));
 
     return () => {
-      markers.forEach((m) => m.remove());
-      map.remove();
+      cancelled = true;
+      stopWatch();
+      setPainted(false);
+      markers.forEach((mk) => mk.remove());
+      (map as maplibregl.Map | null)?.remove();
       mapRef.current = null;
       loaded.current = false;
     };
-  }, [active, dark]);
+  }, [activeKey, dark]);
 
   useEffect(() => {
     pending.current = plans;
@@ -145,6 +163,16 @@ export default function ConstructionMap({ plans, active, dark, focus, selected, 
     else mapRef.current.fitBounds(focus.bounds as LngLatBoundsLike, { padding: 48, maxZoom: 16.5, duration: 700 });
   }, [focus]);
 
-  return <div ref={box} className="vc-cp-map-canvas" role="region" aria-label="Map of construction in Vineyard" />;
+  return (
+    <>
+      <div ref={box} className="vc-cp-map-canvas" role="region" aria-label="Map of construction in Vineyard" style={{ background: streetsBg(dark) }} />
+      {!painted && (
+        <div className="vc-map-loading" role="status">
+          <span className="vc-map-loading-dot" aria-hidden="true" />
+          Loading map
+        </div>
+      )}
+    </>
+  );
 }
 
