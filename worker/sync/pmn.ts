@@ -16,6 +16,7 @@ export { parsePmnResults, type PmnNotice };
 
 export const PMN_SOURCE = 'utah-pmn-vineyard';
 const ENTITY = 'Vineyard';
+const sumChanges = (results: D1Result[]): number => results.reduce((t, r) => t + Number(r.meta?.rows_written ?? 0), 0);
 
 function cookieHeader(res: Response): string {
   const h = res.headers as Headers & { getSetCookie?: () => string[] };
@@ -122,6 +123,34 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
       `DELETE FROM meetings WHERE id LIKE 'mtg_pmn_%' AND EXISTS (SELECT 1 FROM meetings m2 WHERE m2.id LIKE 'mtg_cc_%' AND m2.meeting_date = meetings.meeting_date AND m2.government_body_id = meetings.government_body_id)`,
     ),
   ]);
+
+  // Notices read before their meeting existed: attach the notice page and its files to the meeting,
+  // and fill the meeting's agenda and packet links when nothing else supplied them.
+  const links: D1PreparedStatement[] = [];
+  for (const n of notices) {
+    const mtg = meetingFor.get(n.id);
+    if (!mtg) continue;
+    const body = bodyFor(n.publicBody);
+    const urls = JSON.stringify([n.url, ...n.attachments.map((f) => f.url)]);
+    links.push(
+      env.CATALOG_DB.prepare(`UPDATE documents SET meeting_id = ?, government_body_id = coalesce(government_body_id, ?) WHERE meeting_id IS NULL AND source_id = ? AND original_url IN (SELECT value FROM json_each(?))`).bind(
+        mtg.id,
+        body?.id ?? null,
+        PMN_SOURCE,
+        urls,
+      ),
+    );
+    if (!mtg.hasAgenda)
+      links.push(
+        env.CATALOG_DB.prepare(`UPDATE meetings SET agenda_document_id = (SELECT id FROM documents WHERE source_id = ? AND original_url = ? LIMIT 1) WHERE id = ? AND agenda_document_id IS NULL`).bind(PMN_SOURCE, n.url, mtg.id),
+      );
+    const packet = n.attachments.find((f) => /packet/i.test(f.name));
+    if (packet && !mtg.hasPacket)
+      links.push(
+        env.CATALOG_DB.prepare(`UPDATE meetings SET packet_document_id = (SELECT id FROM documents WHERE source_id = ? AND original_url = ? LIMIT 1) WHERE id = ? AND packet_document_id IS NULL`).bind(PMN_SOURCE, packet.url, mtg.id),
+      );
+  }
+  if (links.length) await budget.record(sumChanges(await env.CATALOG_DB.batch(links)));
 
   const items: Record<string, unknown>[] = [];
   for (const n of notices) {
