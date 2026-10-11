@@ -42,7 +42,7 @@ import { LATEST_ACTION_Q, SCOPE_FROM, councilName, currentCouncil, motionEvidenc
 import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
-import { BODY_LABEL, longDay, meetingFollowUp, meetingVotesIntent, meetingVotesText, type MeetingVotesIntent } from './meetingVotes';
+import { BODY_LABEL, longDay, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, type MeetingVotesIntent } from './meetingVotes';
 import { isOffTopic, OFF_TOPIC_REPLY } from './offTopic';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
@@ -494,7 +494,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
           const mine = r.items.map((m) => m.votes.find((v) => v.member === member || v.member === last)?.vote).filter(Boolean) as string[];
           const n = (k: string) => mine.filter((v) => v === k).length;
           const other = mine.length - n('yes') - n('no');
-          text = `${member} has ${mine.length} recorded ${mine.length === 1 ? 'vote' : 'votes'} on policy items in the minutes posted since January 2026: ${n('yes')} yes and ${n('no')} no${other ? `, plus ${other} abstained, recused or absent` : ''}. ${recent} Open a vote to see the full roll call.`;
+          const mayor = staff.find((p) => /\bmayor\b/i.test(p.role) && !/deputy/i.test(p.role))?.name ?? null;
+          text = `${memberTitle(member, 'city-council', mayor)} has ${mine.length} recorded ${mine.length === 1 ? 'vote' : 'votes'} on policy items in the minutes posted since January 2026: ${n('yes')} yes and ${n('no')} no${other ? `, plus ${other} abstained, recused or absent` : ''}. ${recent} Open a vote to see the full roll call.`;
         } else {
           text = `The City Council and RDA board have ${r.total} recorded policy ${r.total === 1 ? 'vote' : 'votes'} across ${meetings} meetings in the minutes posted since January 2026. ${recent} Each card shows how every member voted, and the full record is one tap away.`;
         }
