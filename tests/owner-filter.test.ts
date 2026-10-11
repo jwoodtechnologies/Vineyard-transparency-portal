@@ -382,3 +382,11 @@ describe('owner filter diagnostics (scripts/owner-filter)', () => {
     expect(u.searchParams.get('resultOffset')).toBe('2000');
   });
 });
+
+describe('shown names are tidy', () => {
+  it('drops stray punctuation at the ends of a county name', async () => {
+    const { classifyOwner } = await import('../worker/lib/ownerFilter');
+    const r = classifyOwner("TOWN OF VINEYARD'");
+    expect(r.show && r.name).toBe('TOWN OF VINEYARD');
+  });
+});

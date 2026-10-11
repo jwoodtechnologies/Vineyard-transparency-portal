@@ -275,7 +275,7 @@ export function classifyOwner(raw: unknown): OwnerClass {
       if (!entity && ws.some(nameLike)) return { show: false, reason: 'comma-name' };
     }
   }
-  return { show: true, name: text, kind: kind ?? 'business' };
+  return { show: true, name: text.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9.)]+$/g, ''), kind: kind ?? 'business' };
 }
 
 export type PropertyClass = 'residential' | 'other' | 'unknown';
