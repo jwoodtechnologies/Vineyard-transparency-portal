@@ -41,6 +41,6 @@ exceed one database, so `SearchRepository` supports `SEARCH_DB_0 … SEARCH_DB_7
 
 ## Semantic search
 
-`SemanticSearchProvider` exists and is disabled. Vectorize is intentionally not used in this phase
+Vector search is not used. Vectorize is intentionally not used in this phase
 (chunk-level vectors for this corpus do not fit the zero-cost constraint). A future provider can be
 fused with FTS results by reciprocal rank fusion without API changes.

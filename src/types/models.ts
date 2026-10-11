@@ -1,7 +1,7 @@
 /**
  * Core domain models for the Vineyard Transparency Portal.
  *
- * These types are the contract between the frontend and any backend (mock, REST API,
+ * These types are the contract between the frontend and any backend (REST API,
  * Cloudflare Worker, SQLite, PostgreSQL…). See docs/DATA_MODEL.md and docs/API_CONTRACT.md.
  *
  * Conventions:
@@ -9,7 +9,6 @@
  *    `*At` fields are full timestamps (UTC).
  *  - All text originating from archived documents is UNTRUSTED and must be rendered as text,
  *    never as HTML, and never interpreted as instructions.
- *  - `isDemo` is true for built-in mock data. Demo records must never be presented as real records.
  */
 
 export type ISODate = string;
@@ -141,7 +140,6 @@ export interface SourceRegistryEntry {
   documentCount?: number | null;
   /** When the newest record from this source was first seen (documents.first_seen_at). */
   lastNewRecordAt?: ISODateTime | null;
-  isDemo?: boolean;
 }
 
 /** Provenance of a specific document from a specific source. A document can have many. */
@@ -177,7 +175,6 @@ export interface GovernmentBody {
   documentCount: number | null;
   firstRecordDate: ISODate | null;
   lastRecordDate: ISODate | null;
-  isDemo?: boolean;
 }
 
 export type MeetingType = 'regular' | 'special' | 'work_session' | 'emergency' | 'hearing' | 'other';
@@ -236,7 +233,6 @@ export interface Meeting {
   media: MeetingMedia[];
   agendaItems: AgendaItem[];
   sourceIds: string[];
-  isDemo?: boolean;
 }
 
 export type MeetingSummary = Omit<Meeting, 'agendaItems' | 'media'> & {
@@ -295,7 +291,6 @@ export interface Document extends RecordLabels {
   categories: CategoryId[];
   currency: RecordCurrency;
   currentVersion: number;
-  isDemo?: boolean;
 }
 
 export type DocumentSummary = Pick<
@@ -316,7 +311,6 @@ export type DocumentSummary = Pick<
   | 'fileSize'
   | 'categories'
   | 'currency'
-  | 'isDemo'
 > & { description: string | null } & RecordLabels;
 
 /**
@@ -448,7 +442,6 @@ export interface Citation {
   originalUrl: string | null;
   /** "Resident submitted. Not a city record." or "Added by portal staff" for records added on the portal. */
   sourceLabel?: string | null;
-  isDemo?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -586,12 +579,11 @@ export interface AskResponse {
   suggestedFollowUps: string[];
   /** Search fallback results (always present for search_only / ai_unavailable / partial). */
   searchResults?: SearchResult[];
-  /** Human-readable note shown alongside the answer (e.g. demo notice, AI unavailable). */
+  /** Human-readable note shown alongside the answer (e.g. AI unavailable). */
   notice?: string | null;
   generatedAt: ISODateTime;
-  /** Identifier of the answering engine. e.g. "demo-extractive" or a model name. */
+  /** Identifier of the answering engine. e.g. "budget-data" or a model name. */
   engine: string;
-  isDemo?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -608,8 +600,6 @@ export interface ArchiveStatistics {
   sourcesMonitored: number;
   sourcesHealthy: number | null;
   ocrPendingCount: number | null;
-  /** True when these numbers describe demo data. The UI must label them. */
-  isDemo: boolean;
 }
 
 export interface SuggestedQuery {
@@ -651,7 +641,6 @@ export interface Topic {
   kind: 'project' | 'program' | 'street' | 'place' | 'organization' | 'topic';
   description: string;
   documentCount: number;
-  isDemo?: boolean;
 }
 
 export interface TopicDetail extends Topic {
@@ -684,7 +673,6 @@ export interface CodeNode {
   children: CodeNode[];
   sourceUrl: string | null;
   sourceId: string;
-  isDemo?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -742,7 +730,7 @@ export interface IssueReportReceipt {
 
 export interface HealthStatus {
   status: 'ok' | 'degraded' | 'backend_not_connected' | 'offline';
-  mode: 'mock' | 'api';
+  mode: 'api';
   search: boolean;
   ai: boolean;
   checkedAt: ISODateTime;

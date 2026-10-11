@@ -84,7 +84,6 @@ export async function handleStats(env: Env): Promise<Response> {
     sourcesMonitored: Number(sources?.n ?? 0),
     sourcesHealthy: sources?.healthy == null ? null : Number(sources.healthy),
     ocrPendingCount: Number(docs?.ocr ?? 0),
-    isDemo: false,
     documentsArchived: Number(docs?.archived ?? 0),
     documentsQuotaDeferred: Number(docs?.deferred ?? 0),
     lastSuccessfulCrawlAt: crawl?.at ?? null,

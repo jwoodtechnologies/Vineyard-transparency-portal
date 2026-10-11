@@ -52,7 +52,7 @@ export interface RequestOptions {
  * Implementation: ProductionApiAdapter, the REST contract in docs/API_CONTRACT.md.
  */
 export interface DataAdapter {
-  readonly mode: 'mock' | 'api';
+  readonly mode: 'api';
 
   health(opts?: RequestOptions): Promise<HealthStatus>;
 

@@ -20,7 +20,7 @@ the rules the data must follow.
    string). Topics, timelines and search facets must never be built around a private individual.
 6. **Untrusted text.** All text from archived documents is untrusted data: rendered as text, never as
    HTML, never treated as instructions (see [SECURITY.md](SECURITY.md)).
-7. **Demo data is labeled.** Built-in mock records set `isDemo: true` and must be presented as demo.
+7. **Resident items are labeled.** Records from `resident-submitted` always carry "Resident submitted. Not a city record." and never feed vote, budget or meeting answers.
 
 Conventions: `date` fields are `YYYY-MM-DD` calendar dates (America/Denver); `*At` fields are UTC
 ISO-8601 timestamps.

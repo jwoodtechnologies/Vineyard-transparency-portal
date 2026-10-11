@@ -79,7 +79,6 @@ export const AskService = {
       notice: AI_UNAVAILABLE_MESSAGE,
       generatedAt: new Date().toISOString(),
       engine: 'search-fallback',
-      isDemo: adapter.mode === 'mock',
     };
   },
 };
