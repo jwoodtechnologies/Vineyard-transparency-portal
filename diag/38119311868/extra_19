@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Vineyard Transparency Portal</title>
+    <meta
+      name="description"
+      content="Search Vineyard, Utah public records. Ask a question, search the archive, and see the records behind every answer. An independent public-records project."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#1f4fcf" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0f1c" media="(prefers-color-scheme: dark)" />
+    <meta property="og:title" content="Vineyard Transparency Portal" />
+    <meta property="og:description" content="Search the public record. Ask a question about Vineyard and see the records behind the answer." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <script src="/theme-init.js"></script>
+    <script type="module" crossorigin src="/assets/index-B6JoemEM.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/jsx-runtime-D3jfb0Ew.js">
+    <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-l7s7T33I.js">
+    <link rel="modulepreload" crossorigin href="/assets/Chrome-Cm31nA2O.js">
+    <link rel="modulepreload" crossorigin href="/assets/api-b0pdmzlk.js">
+    <link rel="modulepreload" crossorigin href="/assets/people-B4xZLZin.js">
+    <link rel="stylesheet" crossorigin href="/assets/Chrome-DhlesI5_.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-Blz2YZbe.css">
+  </head>
+  <body>
+    <noscript>
+      <p style="padding: 1rem; font-family: system-ui">
+        The Vineyard Transparency Portal needs JavaScript to search the archive.
+      </p>
+    </noscript>
+    <div id="root"></div>
+  </body>
+</html>
