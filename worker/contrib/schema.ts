@@ -26,7 +26,8 @@ export const CONTRIB_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS resident_submissions (
     id TEXT PRIMARY KEY, document_id TEXT, kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT, url TEXT, status_text TEXT, location TEXT,
     file_key TEXT, file_name TEXT, mime TEXT, file_size INTEGER, sha256 TEXT, ip_hash TEXT NOT NULL, day TEXT NOT NULL,
-    reports INTEGER NOT NULL DEFAULT 0, index_status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, hidden_at TEXT, removed_at TEXT)`,
+    reports INTEGER NOT NULL DEFAULT 0, index_status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, hidden_at TEXT, removed_at TEXT,
+    status TEXT NOT NULL DEFAULT 'approved')`,
   'CREATE INDEX IF NOT EXISTS idx_resident_day ON resident_submissions(day)',
   'CREATE INDEX IF NOT EXISTS idx_resident_document ON resident_submissions(document_id)',
   `CREATE TABLE IF NOT EXISTS resident_reports (
@@ -53,6 +54,11 @@ export function ensureContribTables(env: Env): Promise<void> {
     // Passkeys belong to an account (existing ones are the owner's).
     await db
       .prepare('ALTER TABLE panel_passkeys ADD COLUMN account_id INTEGER')
+      .run()
+      .catch(() => undefined);
+    // Resident submissions wait for the owner's approval (rows from before that are approved).
+    await db
+      .prepare("ALTER TABLE resident_submissions ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'")
       .run()
       .catch(() => undefined);
     await syncOwnerAccount(env);

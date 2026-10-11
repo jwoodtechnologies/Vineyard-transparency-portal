@@ -39,7 +39,7 @@ each hour is the hourly tick.
 | `ci.yml` | Typecheck, lint, tests, build, Python tests | Every push | Actions |
 
 Run by hand (`workflow_dispatch`): `diagnostics.yml` (fixtures, logs, perf timings to the
-`diagnostics` branch), `add-e2e.yml` (end to end check of the Add page; removes its own test item),
+`diagnostics` branch), `add-e2e.yml` (end to end check of the submit page: pending, approval, reports; removes its own test item),
 `backfill.yml` (parallel indexing of the whole archive), and `ingest.yml` with any command
 (`run`, `crawl`, `migrate`, `archive-plan`, `archive-apply`, and others).
 

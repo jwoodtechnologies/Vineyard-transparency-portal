@@ -94,7 +94,15 @@ export function RecordsHome() {
           </Link>
         ))}
       </div>
-      <RssLink href="/feeds/records.xml" title="Newest records feed (RSS)" />
+      {/* Quiet links, not menu rows: residents can submit a record (reviewed first); Sources lists every system read. */}
+      <RssLink href="/feeds/records.xml" title="Newest records feed (RSS)">
+        <Link to="/add" className="vc-rss">
+          Submit a public record
+        </Link>
+        <Link to="/sources" className="vc-rss">
+          Sources
+        </Link>
+      </RssLink>
     </Frame>
   );
 }

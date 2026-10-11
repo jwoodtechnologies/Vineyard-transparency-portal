@@ -44,7 +44,7 @@ export function isArchiveKey(key: string): boolean {
   return /^documents\/[0-9a-f]{2}\/[0-9a-f]{64}\.[a-z0-9]{1,8}$/.test(key) || isResidentKey(key);
 }
 
-/** Files residents add on the public "Add to the record" page: a separate prefix with its own storage budget. */
+/** Files residents send on the public "Submit a public record" page (pending or approved): a separate prefix with its own storage budget. */
 export function isResidentKey(key: string): boolean {
   return /^resident\/sub_[0-9a-f]{16}\.(pdf|png|jpg)$/.test(key);
 }

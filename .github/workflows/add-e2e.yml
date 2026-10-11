@@ -1,7 +1,9 @@
-name: Add page end to end check
+name: Submit page end to end check
 
-# Adds a test note on the public Add page, checks it is searchable with the resident label,
-# reports it from two runners (two people), checks it is hidden, then removes and deletes it.
+# Submits a test note on the public Submit a public record page, checks it is pending and not in
+# search, approves it through the admin route (test-prefixed items only), checks it is searchable
+# with the resident label, reports it from two runners (two people), checks it is hidden, then
+# removes and deletes it.
 on:
   workflow_dispatch:
 
@@ -18,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
+      sub: ${{ steps.run.outputs.sub }}
       doc: ${{ steps.run.outputs.doc }}
       ip: ${{ steps.ip.outputs.ip }}
     steps:
@@ -33,7 +36,8 @@ jobs:
 
   second:
     needs: submit
-    if: always() && needs.submit.outputs.doc != ''
+    # Runs whenever a test item was stored, so a failed run still deletes it.
+    if: always() && needs.submit.outputs.sub != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -46,4 +50,4 @@ jobs:
         run: |
           now=$(curl -s https://api.ipify.org)
           if [[ "$now" == "${{ needs.submit.outputs.ip }}" ]]; then echo "Same address as the first runner" | tee -a "$GITHUB_STEP_SUMMARY"; else echo "Different address from the first runner" | tee -a "$GITHUB_STEP_SUMMARY"; fi
-      - run: python -m ingest.e2e_add second "${{ needs.submit.outputs.doc }}"
+      - run: python -m ingest.e2e_add second "${{ needs.submit.outputs.sub }}"

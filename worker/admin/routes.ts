@@ -8,7 +8,7 @@
  *  - R2: uploads are refused (archive_status = quota_deferred) when stored bytes + the new object
  *    would exceed ARCHIVE_STORAGE_HARD_STOP_BYTES, or when one object exceeds ARCHIVE_MAX_OBJECT_BYTES.
  */
-import { e2eCleanup, e2eState } from '../contrib/resident';
+import { e2eApprove, e2eCleanup, e2eState } from '../contrib/resident';
 import catalogSql from '../../migrations/catalog/0001_catalog.sql';
 import searchSql from '../../migrations/search/0001_search.sql';
 import type { Env } from '../env';
@@ -1051,9 +1051,12 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
     const body = await readJson<{ people?: PersonInput[]; asOf?: string }>(request, 512 * 1024);
     return upsertPeople(env, body.people ?? [], /^\d{4}-\d{2}-\d{2}$/.test(String(body.asOf)) ? String(body.asOf) : nowIso().slice(0, 10));
   }
-  // End to end test of the public Add page (only items titled with the test prefix).
-  if (path === '/resident/e2e/state' && method === 'GET') return json(await e2eState(env, url.searchParams.get('documentId')));
-  if (path === '/resident/e2e/cleanup' && method === 'POST') return json(await e2eCleanup(env, (await readJson<Json>(request, 4096)).documentId));
+  // End to end test of the public submit page (only items titled with the test prefix). An item is
+  // named by its submission id (id) or, once approved, its record id (documentId).
+  const e2eRef = (o: Record<string, unknown>) => o.id ?? o.documentId;
+  if (path === '/resident/e2e/state' && method === 'GET') return json(await e2eState(env, e2eRef(Object.fromEntries(url.searchParams))));
+  if (path === '/resident/e2e/approve' && method === 'POST') return json(await e2eApprove(env, e2eRef(await readJson<Record<string, unknown>>(request, 4096))));
+  if (path === '/resident/e2e/cleanup' && method === 'POST') return json(await e2eCleanup(env, e2eRef(await readJson<Record<string, unknown>>(request, 4096))));
   if (path === '/quota' && method === 'GET') return quota(env);
   if (path === '/verify' && method === 'GET') return verify(env);
   if (path === '/queue' && method === 'GET') return listQueue(env, url);
