@@ -53,6 +53,8 @@ const RATES: Array<[RegExp, number, number]> = [
   [/llama-3\.1-8b-instruct(?!-fp8)/, 25608, 75147],
   [/gpt-oss-120b/, 31818, 68182],
   [/gpt-oss-20b/, 18182, 27273],
+  [/granite-4\.0-h-micro/, 1542, 10158],
+  [/llama-3\.2-1b-instruct/, 2457, 18252],
   [/bge-reranker-base/, 283, 0],
 ];
 const UNKNOWN: [number, number] = [70000, 140000];

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Chat regression suite for POST /api/ask (scripts/chat-suite/run.mjs). Every expected fact names its source: a document id and page read through the live API on October 11, 2026 (/api/documents/<id>/text, /api/votes, /api/meetings, /api/people, /api/construction, captured by the Diagnostics workflow runs 38131489865 and 38131647112 on the diagnostics branch), or a portal data record when the fact has no document (directory, meeting calendar, GIS map, construction page). Items with kind 'behavior' check how the answer is built, not a fact. Items with 'until' are only checked up to that date (Utah time); time-dependent answers are checked against live data with 'live'. Cases added October 11, 2026 read the live API through Diagnostics run 38152760553 (October 11, 2026) (votes, records indexes, meetings, people, fee schedule search). Every answer must open a portal page and never dead-end (\"couldn't find\", \"unavailable\", \"unable to\", \"I don't know\"); off-topic and small talk are the only answers without a source.",
+  "about": "Chat regression suite for POST /api/ask (scripts/chat-suite/run.mjs). Every expected fact names its source: a document id and page read through the live API on October 11, 2026 (/api/documents/<id>/text, /api/votes, /api/meetings, /api/people, /api/construction, captured by the Diagnostics workflow runs 38131489865 and 38131647112 on the diagnostics branch), or a portal data record when the fact has no document (directory, meeting calendar, GIS map, construction page). Items with kind 'behavior' check how the answer is built, not a fact. Items with 'until' are only checked up to that date (Utah time); time-dependent answers are checked against live data with 'live'. Cases added October 11, 2026 read the live API through Diagnostics run 38152760553 (October 11, 2026) (votes, records indexes, meetings, people, fee schedule search). Every answer must open a portal page and never dead-end (\"couldn't find\", \"unavailable\", \"unable to\", \"I don't know\"); off-topic and small talk are the only answers without a source. Cases in category 'tone' (added October 11, 2026, questions written for the suite, none taken from residents' chats) grade tone and helpfulness with 'tone' (scripts/chat-suite/lib.mjs toneChecks): no records-disclaimer opener, not only record quotes, an explanation sentence when the question asks why or what something means ('tone.explain'), and never the paused line while /api/health reports AI healthy and the tests bucket unspent.",
   "officials": {
     "people": [
       {
@@ -3546,6 +3546,450 @@
       "category": "elections",
       "tier": "model",
       "question": "Who ran for city council in 2025?"
+    },
+    {
+      "id": "tone-overpass-railroad",
+      "category": "tone",
+      "tier": "model",
+      "question": "Is the city building an overpass over the railroad tracks?",
+      "tone": true,
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-rda-why-it-matters",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is the RDA and why does it matter?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-what-is-redevelopment-agency",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is a redevelopment agency?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-budget-amendment",
+      "category": "tone",
+      "tier": "model",
+      "question": "How does a budget amendment work?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-speak-at-meeting",
+      "category": "tone",
+      "tier": "model",
+      "question": "How do I speak at a city council meeting?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-public-hearing",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is a public hearing?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-planning-commission-role",
+      "category": "tone",
+      "tier": "model",
+      "question": "What does the planning commission do?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-tax-increment",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is tax increment financing?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-general-plan-why",
+      "category": "tone",
+      "tier": "model",
+      "question": "Why do cities have a general plan?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-consent-agenda",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is a consent agenda?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-ordinance-vs-resolution",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is the difference between an ordinance and a resolution?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-city-manager-role",
+      "category": "tone",
+      "tier": "model",
+      "question": "What does a city manager do?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-tax-rate-how-set",
+      "category": "tone",
+      "tier": "model",
+      "question": "How does a city set its property tax rate?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-truth-in-taxation",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is a truth in taxation hearing?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-development-agreement",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is a development agreement?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-why-holdaway-amendment",
+      "category": "tone",
+      "tier": "model",
+      "question": "Why did the council approve the Holdaway Fields development agreement amendment?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-why-six-member-council",
+      "category": "tone",
+      "tier": "model",
+      "question": "Why did Vineyard change to a six-member council?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-why-bond-repealed",
+      "category": "tone",
+      "tier": "model",
+      "question": "Why was the city center bond repealed?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-why-rda-captures-increment",
+      "category": "tone",
+      "tier": "model",
+      "question": "Why does the Redevelopment Agency capture tax increment from the Geneva area?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-why-stormwater-ordinance",
+      "category": "tone",
+      "tier": "model",
+      "question": "Why did the city adopt a stormwater management ordinance?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-why-400-south-signal",
+      "category": "tone",
+      "tier": "model",
+      "question": "Why is a traffic signal going in on 400 South?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-geneva-ura-residents",
+      "category": "tone",
+      "tier": "model",
+      "question": "What does the Geneva urban renewal area mean for residents?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-general-plan-vineyard",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is the Vineyard general plan and why does it matter?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-follow-upcoming-decisions",
+      "category": "tone",
+      "tier": "model",
+      "question": "How can I find out what the council will decide at its next meeting?",
+      "tone": true,
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-comment-on-rezoning",
+      "category": "tone",
+      "tier": "model",
+      "question": "Can residents comment on a rezoning before it is approved?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-after-commission-recommends",
+      "category": "tone",
+      "tier": "model",
+      "question": "What happens after the planning commission recommends something?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-road-funding",
+      "category": "tone",
+      "tier": "model",
+      "question": "How does the city pay for road projects?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-impact-fees",
+      "category": "tone",
+      "tier": "model",
+      "question": "What is an impact fee and why does Vineyard charge them?",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-active-transportation",
+      "category": "tone",
+      "tier": "model",
+      "question": "Explain what the Active Transportation Commission works on.",
+      "tone": {
+        "explain": true
+      },
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
+    },
+    {
+      "id": "tone-geneva-steel-site",
+      "category": "tone",
+      "tier": "model",
+      "question": "What should I know about the redevelopment of the old Geneva Steel site?",
+      "tone": true,
+      "mustNotContain": [
+        {
+          "regex": "^\\s*(The records|According to|Based on the records|The records closest)",
+          "flags": "i"
+        }
+      ]
     }
   ]
 }

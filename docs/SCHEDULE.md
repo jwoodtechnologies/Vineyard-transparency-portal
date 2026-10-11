@@ -38,7 +38,7 @@ each hour is the hourly tick.
 | `ingest.yml` (`backup`) | Catalog backup to R2 | Sundays 11:07 UTC | Actions |
 | `ci.yml` | Typecheck, lint, tests, build, Python tests | Every push | Actions |
 | `chat-suite.yml` (push) | POST /api/ask on the live site: the 132 cases answered by code, with no model call and no follow-up rewrite | Every push to main, after the deploy is live | Actions; `suite/<run id>/` on the `diagnostics` branch |
-| `chat-suite.yml` (daily) | POST /api/ask: every deterministic case plus one of 3 groups of model cases (all 20 every 3 days) | Daily 22:53 UTC (4:53 PM Mountain in summer, 3:53 PM in winter) | Actions; `diagnostics` branch; Watchdog issue when it fails |
+| `chat-suite.yml` (daily) | POST /api/ask: every deterministic case plus one of 7 groups of model cases (all 50 once a week) | Daily 22:53 UTC (4:53 PM Mountain in summer, 3:53 PM in winter) | Actions; `diagnostics` branch; Watchdog issue when it fails |
 | `doc-check.yml` | Document viewer on phone and desktop for a sample of records | Daily 10:23 UTC | Actions; Watchdog issue when it fails |
 | `watchdog.yml` | GET /api/health/jobs and the newest chat suite, document check and ingest runs | Hourly at minute 41, and after each chat suite or document check run | GitHub issues labeled `watchdog` |
 

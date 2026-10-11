@@ -14,7 +14,7 @@ import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSor
 import { SearchService } from '@/services';
 import { askStream } from './askStream';
 import { Composer } from './Composer';
-import { AnswerBody, AsOf, ClarifyChoices, FollowUps, Sources } from './Answer';
+import { AnswerBody, AsOf, ClarifyChoices, FollowUps, MatchingRecords, Sources } from './Answer';
 import { Records } from './Records';
 import { AnswerActions } from './AnswerActions';
 import { QuickLinks } from './QuickLinks';
@@ -463,6 +463,7 @@ export default function ConsolePage() {
                 {t.answer.event && <EventCard event={t.answer.event} />}
                 {t.answer.series && <SeriesPanel series={t.answer.series} />}
                 {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} />}
+                {t.answer.mode !== 'conversation' && <MatchingRecords answer={t.answer} />}
                 <QuickLinks answer={t.answer} />
                 <div className="vc-answer-foot">
                   <AnswerActions answer={t.answer} />

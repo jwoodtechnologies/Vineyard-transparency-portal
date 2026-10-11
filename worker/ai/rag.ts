@@ -7,12 +7,12 @@
  * If Workers AI is missing, disabled, over the daily budget, or failing, the response is a
  * search-only result with the fixed notice below and the site keeps working.
  */
-import { meteredRun } from './meter';
+import { meteredRun, spenderOf } from './meter';
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, DocumentType, SearchFilters } from '../../src/types/models';
 import { ensurePeopleTable } from '../api/people';
-import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, dropRestatement, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, LITE_AI_MODEL, LITE_MAX_SOURCES, LITE_MAX_TOKENS, modelChain, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, dropRestatement, finishedSentences, generalQuestion, needsCitation, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -48,6 +48,7 @@ import { officialRoster, TERM_FROM, titleOfficials } from './officials';
 import { isOffTopic, OFF_TOPIC_REPLY } from './offTopic';
 import { bodyClarify, CONTACT_Q, docLookupIntent, feeIntent, lastMeetingIntent, monthClarify, itemWords, monthVotesIntent, motionSearchWords, personClarify, recordLookupIntent, resolveFollowUp, suggestFollowUps } from './lookups';
 import { routeFor } from './quotes';
+import { relevantRecords } from './fallback';
 import { bodiesOnDate, clarifyResponse, codeResponse, docLookupResponse, feeResponse, lastVotesDate, quotesResponse, recordLookupResponse, recordsAnswer, routeResponse } from './lookupAnswers';
 import { BUDGET_AMENDED } from '../lib/budgetData';
 
@@ -76,6 +77,11 @@ export function aiConfigured(env: Env): boolean {
 
 export function aiBreakerOpen(): boolean {
   return Date.now() < breakerUntil;
+}
+
+/** Closes the quota breaker (tests: each case starts with AI answers running). */
+export function resetAiBreaker(): void {
+  breakerUntil = 0;
 }
 
 function stripControl(s: string): string {
@@ -198,18 +204,41 @@ async function priorRecordHits(repo: SearchRepository, retrieve: (text: string, 
   return lists.flat();
 }
 
-async function bumpQuota(env: Env, field: 'ai_requests' | 'ai_failures'): Promise<void> {
-  await env.CATALOG_DB.prepare(
-    `INSERT INTO quota_usage (day, ${field}, updated_at) VALUES (?, 1, ?) ON CONFLICT(day) DO UPDATE SET ${field} = ${field} + 1, updated_at = excluded.updated_at`,
-  )
-    .bind(utcDay(), nowIso())
-    .run();
+/**
+ * The daily request counters this request counts against: the chat suite (AI_SPENDER=tests) has its
+ * own columns, so suite runs never use up the residents' answers or their share of the larger model.
+ */
+export function quotaField(env: { AI_SPENDER?: string }, field: 'ai_requests' | 'ai_failures'): string {
+  return spenderOf(env) === 'tests' ? `${field}_tests` : field;
 }
 
-/** Answers used today, or null when the daily allowance is spent. */
+/** Runs a quota_usage statement, adding the suite's counter columns first if this database lacks them. */
+async function withSuiteColumns<T>(env: Env, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (!/no such column|has no column/i.test(String((e as Error)?.message ?? e))) throw e;
+    for (const col of ['ai_requests_tests', 'ai_failures_tests']) await env.CATALOG_DB.prepare(`ALTER TABLE quota_usage ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`).run().catch(() => undefined);
+    return fn();
+  }
+}
+
+async function bumpQuota(env: Env, which: 'ai_requests' | 'ai_failures'): Promise<void> {
+  const field = quotaField(env, which);
+  await withSuiteColumns(env, () =>
+    env.CATALOG_DB.prepare(
+      `INSERT INTO quota_usage (day, ${field}, updated_at) VALUES (?, 1, ?) ON CONFLICT(day) DO UPDATE SET ${field} = ${field} + 1, updated_at = excluded.updated_at`,
+    )
+      .bind(utcDay(), nowIso())
+      .run(),
+  );
+}
+
+/** Answers used today by this request's spender, or null when the daily allowance is spent. */
 async function aiBudgetLeft(env: Env): Promise<number | null> {
-  const row = await env.CATALOG_DB.prepare('SELECT ai_requests FROM quota_usage WHERE day = ?').bind(utcDay()).first<{ ai_requests: number }>();
-  const used = Number(row?.ai_requests ?? 0);
+  const field = quotaField(env, 'ai_requests');
+  const row = await withSuiteColumns(env, () => env.CATALOG_DB.prepare(`SELECT ${field} AS n FROM quota_usage WHERE day = ?`).bind(utcDay()).first<{ n: number }>());
+  const used = Number(row?.n ?? 0);
   return used < intVar(env.AI_MAX_REQUESTS_PER_DAY, 120) ? used : null;
 }
 
@@ -238,15 +267,20 @@ async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: numb
   return text;
 }
 
-/** Tries the larger model first (while today's share lasts), then the small one. */
-async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number; useBig?: boolean } = {}): Promise<{ text: string; engine: string }> {
+/**
+ * Tries the larger model first (while today's share lasts) or the small one, then the lite model: a
+ * cheaper Workers AI model given fewer sources (`lite` messages), so an answer can still be written
+ * when the first model errors or the day's Neurons are nearly spent. Only when every model fails does
+ * Ask fall back to the plain line with record cards.
+ */
+async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number; useBig?: boolean; lite?: Msg[] } = {}): Promise<{ text: string; engine: string }> {
   const primary = env.AI_MODEL && env.AI_MODEL !== FALLBACK_AI_MODEL ? env.AI_MODEL : DEFAULT_AI_MODEL;
-  // The larger model, then the small one; a small-model answer gets one retry. A retry runs only after an error.
-  const models = opts.useBig === false ? [FALLBACK_AI_MODEL, FALLBACK_AI_MODEL] : [primary, FALLBACK_AI_MODEL];
+  const models = modelChain(primary, opts.useBig !== false, env.AI_LITE_MODEL || LITE_AI_MODEL);
   let last: unknown = null;
   for (const [i, model] of models.entries()) {
+    const isLite = i === models.length - 1 && i > 0;
     try {
-      const text = await runOnce(env, model, messages, opts.maxTokens ?? MAX_TOKENS, opts.temperature ?? 0);
+      const text = await runOnce(env, model, isLite && opts.lite ? opts.lite : messages, isLite ? LITE_MAX_TOKENS : (opts.maxTokens ?? MAX_TOKENS), opts.temperature ?? 0);
       const note = i > 0 && last ? ` (after ${String(last instanceof Error ? last.message : last).slice(0, 120)})` : '';
       return { text, engine: model + note };
     } catch (e) {
@@ -702,7 +736,7 @@ export function undatedRates<T extends { segments: Array<{ text: string; citatio
 
 type Prepared =
   | { kind: 'final'; response: AskResponse }
-  | { kind: 'model'; messages: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
+  | { kind: 'model'; messages: Msg[]; lite: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
 
 /**
  * Everything up to the model call, with independent reads run in parallel. Returns either a final
@@ -1371,6 +1405,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const follow = !agendaLock && !dated && (aiFollow ?? retrievalText !== body.question);
   const prior = follow ? (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) : [];
   const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(question, evidence, follow ? history : []) }];
+  // The lite model reads the strongest sources only: fewer tokens, so it fits when the day's Neurons run low.
+  const lite: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior.slice(-2), { role: 'user', content: buildUserMessage(question, evidence.slice(0, LITE_MAX_SOURCES), follow ? history : []) }];
 
   const fail = async (e: unknown): Promise<AskResponse> => {
     const msg = e instanceof Error ? e.message : String(e);
@@ -1397,15 +1433,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     return { text: `The ${name} record has its agenda, packet, minutes and video.`, section: { path: `/meetings/${row.id}`, label: `Open the ${name}`, hint: 'Agenda, packet, minutes and video' } };
   };
 
-  /** No checked answer from the model: the closest records quoted, else the meeting or portal page that holds it. */
+  /** No checked answer from the model: one plain line with the matching records as cards, and the meeting or portal page that holds it. */
   const noAnswer = async (why: string): Promise<AskResponse> => {
     const named = await namedMeeting().catch(() => null);
     const pool = [...evidence, ...hits];
     const context = follow ? (history[history.length - 1] ?? '') : '';
-    const q = await quotesResponse(env, base, `${body.question} ${context}`.trim(), pool, staff, `record-quotes (${why})`, undefined, priorIds).catch(() => null);
-    if (q) return named ? ({ ...q, section: named.section } as AskResponse) : q;
-    if (named) return codeResponse(base, `route (${why})`, [{ segments: [{ text: named.text, citations: [] }] }], { section: named.section, relatedDocuments: await closestDocs(pool) });
-    return routeResponse(env, base, body.question, `route (${why})`, pool);
+    const r = await recordsAnswer(env, base, body.question, pool, staff, why, context, { boost: priorIds });
+    if (!named) return r;
+    // A named meeting with no matching record: its page has the agenda, packet, minutes and video.
+    if (!r.relatedDocuments.length) return codeResponse(base, `route (${why})`, [{ segments: [{ text: named.text, citations: [] }] }], { section: named.section });
+    return { ...r, section: named.section } as AskResponse;
   };
 
   const finish = async (raw: string, engine?: string): Promise<AskResponse> => {
@@ -1420,8 +1457,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     // A current rate never stands without its year: a sentence giving one with no year or date is removed.
     if (currentValue) grounded.paragraphs = undatedRates(grounded.paragraphs);
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
-    // Nothing the model wrote could be tied to a source: the records quoted, never an unchecked answer.
-    if (!seg.used.size) return noAnswer(`no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 200)}`);
+    // A general question ("What is an RDA?") may be answered from general knowledge alone, in at least
+    // two sentences that state no Vineyard fact, with the matching records as cards under it.
+    const general = !seg.used.size && generalQuestion(body.question) && seg.paragraphs.flatMap((p) => p.segments).filter((x) => !x.citations.length && !needsCitation(x.text)).length >= 2;
+    // Otherwise nothing the model wrote could be tied to a source: a plain line with record cards, never an unchecked answer.
+    if (!seg.used.size && !general) return noAnswer(`no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 200)}`);
 
     // Renumber cited sources 1..k in order of first use.
     const order = [...seg.used].sort((a, b) => a - b);
@@ -1470,8 +1510,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const citedBody = minutesCite ? (docs.get(minutesCite.documentId)?.governmentBodyId ?? null) : null;
     const followBody: MeetingBody | null = citedBody === 'city-council' || citedBody === 'redevelopment-agency' || citedBody === 'planning-commission' ? citedBody : null;
     const suggested = minutesCite && followBody ? suggestFollowUps({ engine: 'votes-meeting', meeting: { date: String(minutesCite.date).slice(0, 10), body: followBody } }).filter((f) => !/meeting before/.test(f)) : [];
-    const relatedDocuments = [...docs.values()].filter((d) => !citedDocs.has(d.id)).slice(0, 5);
-    const partial = seg.dropped > 0 || seg.insufficient || grounded.removed > 0;
+    const relevantIds = general ? new Set(relevantRecords(body.question, hits).map((h) => h.documentId)) : null;
+    const relatedDocuments = [...docs.values()].filter((d) => !citedDocs.has(d.id) && (!relevantIds || relevantIds.has(d.id))).slice(0, 5);
+    const partial = general || seg.dropped > 0 || seg.insufficient || grounded.removed > 0;
     const answer = paragraphs.map((p) => p.segments.map((s) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ')).join('\n\n');
 
     return {
@@ -1483,7 +1524,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       relatedDocuments,
       suggestedFollowUps: suggested,
       notice: null,
-      engine: `${engine ?? env.AI_MODEL ?? DEFAULT_AI_MODEL}${ranked ? ' + rerank' : ''}${plan ? ' + plan' : ''}`,
+      // A general answer cites no record: the portal page that holds the subject goes with it.
+      ...(general ? { section: routeFor(body.question).section } : {}),
+      engine: `${engine ?? env.AI_MODEL ?? DEFAULT_AI_MODEL}${ranked ? ' + rerank' : ''}${plan ? ' + plan' : ''}${general ? ' + general' : ''}`,
       ...((body as { debug?: boolean }).debug ? { draft: raw, plan, evidence: evidence.map((h, i) => `[${i + 1}] ${h.title} | ${h.documentDate ?? h.year ?? ''} | p${h.pageStart ?? ''}`) } : {}),
     };
   };
@@ -1506,7 +1549,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
         return { ...r, answer: `${text}\n\n${r.answer}`, paragraphs: [{ segments: [{ text, citations: [] }] }, ...(r.paragraphs ?? [])], event: lock.schedule.event } as AskResponse;
       }
     : datedFinish;
-  return { kind: 'model', messages, useBig: budgetOk < intVar(env.AI_BIG_PER_DAY, BIG_MODEL_PER_DAY), finish: lockFinish, fail };
+  return { kind: 'model', messages, lite, useBig: budgetOk < intVar(env.AI_BIG_PER_DAY, BIG_MODEL_PER_DAY), finish: lockFinish, fail };
 }
 
 const SSE_HEADERS = {
@@ -1541,7 +1584,7 @@ function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract
       let engine = FALLBACK_AI_MODEL;
       if (prep.useBig) {
         // The larger model reasons before it writes, so its answer is sent whole once ready.
-        const r = await callModel(env, prep.messages, { useBig: true });
+        const r = await callModel(env, prep.messages, { useBig: true, lite: prep.lite });
         raw = r.text;
         engine = r.engine;
         if (!/NO_RECORD/.test(raw)) await send('delta', { t: raw });
@@ -1554,9 +1597,9 @@ function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract
           });
           if (!raw.trim()) throw new Error('Empty AI response');
         } catch (e) {
-          // Nothing shown yet: one more try on the small model, whole (about 40 Neurons, only after an error).
+          // Nothing shown yet: one more try on the small model, then the lite one, whole (only after an error).
           if (streamed) throw e;
-          const r = await callModel(env, prep.messages, { useBig: false });
+          const r = await callModel(env, prep.messages, { useBig: false, lite: prep.lite });
           raw = r.text;
           engine = `${r.engine} (retry after ${String(e instanceof Error ? e.message : e).slice(0, 80)})`;
           if (!/NO_RECORD/.test(raw)) await send('delta', { t: raw });
@@ -1673,7 +1716,7 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   if (wantsStream) return streamAnswer(env, ctx, prep, attach);
   let out: { text: string; engine: string };
   try {
-    out = await callModel(env, prep.messages, { useBig: prep.useBig });
+    out = await callModel(env, prep.messages, { useBig: prep.useBig, lite: prep.lite });
   } catch (e) {
     return respond(attach(await prep.fail(e)));
   }

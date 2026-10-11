@@ -27,6 +27,8 @@ export interface Env {
   SEARCH_SHARD_MAX_BYTES?: string;
   AI_ENABLED?: string;
   AI_MODEL?: string;
+  /** The cheaper model tried last, with fewer sources, before Ask falls back to record cards. */
+  AI_LITE_MODEL?: string;
   AI_MAX_REQUESTS_PER_DAY?: string;
   /** Answers per day from the larger model before the small one takes over. */
   AI_BIG_PER_DAY?: string;

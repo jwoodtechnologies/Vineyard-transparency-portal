@@ -9,12 +9,12 @@
 #   - push to main: after the new deploy is live, only the 132 cases answered by code with no model call
 #     and no follow-up rewrite: 0 Neurons. Pushes never spend the bucket, however many there are.
 #   - schedule: once a day at 22:53 UTC (4:53 PM Mountain in summer, 3:53 PM in winter): every
-#     deterministic case plus one of 3 groups of model cases (by UTC day), each group sized to fit the
-#     bucket at worst case cost, so all 20 model cases run every 3 days: about 590 to 670 Neurons
-#     (worst 870 to 990). Kept late in the UTC day because the Worker's per-day answer counters (larger
-#     model answers, AI_MAX_REQUESTS_PER_DAY) are not split by spender: a run just after the reset would
-#     take the day's first larger-model answers ahead of residents. The bucket is still whole at 22:53
-#     because pushes spend nothing, and the run (about 25 minutes) ends before the reset.
+#     deterministic case plus one of 7 groups of model cases (by UTC day), each group sized to fit the
+#     bucket at worst case cost, so all 50 model cases (30 of them tone cases) run once a week: about 430 to 670 Neurons
+#     (worst 630 to 990). The Worker's per-day answer counters (larger model answers,
+#     AI_MAX_REQUESTS_PER_DAY) are split by spender too (quota_usage ai_requests_tests), so the run never
+#     takes residents' larger-model answers. The bucket is still whole at 22:53 because pushes spend
+#     nothing, and the run (about 30 minutes) ends before the reset.
 #   - workflow_dispatch: full=true is the same as the scheduled run and spends the same bucket (a second
 #     full run on a day gets only what is left, and runs fewer model cases); full=false is the push subset.
 # The runner reads what is left of the bucket from GET /api/health (aiNeurons.tests) and refuses to start

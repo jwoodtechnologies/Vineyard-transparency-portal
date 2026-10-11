@@ -1,6 +1,6 @@
 import { Check, CircleAlert, CornerDownRight, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { AnswerParagraph, Citation } from '@/types/models';
+import type { AnswerParagraph, Citation, DocumentSummary } from '@/types/models';
 import { docHref } from '@/lib/routes';
 import type { ConsoleAnswer } from './types';
 import { TYPE_LABEL, formatDate } from './format';
@@ -30,6 +30,33 @@ export function Sources({ citations }: { citations: Citation[]; onCite?: (c: Cit
             <span className="vc-source-title">{c.documentTitle}</span>
             {c.sourceLabel && <span className="vc-source-label">{c.sourceLabel}</span>}
             <span className="vc-source-meta">{[formatDate(c.date), c.page ? `Page ${c.page}` : null].filter(Boolean).join(' · ')}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The records that best match the question, as cards, for an answer written without a model (AI
+ * paused or nothing answered directly). Shown only when the answer cites nothing itself.
+ */
+export function MatchingRecords({ answer }: { answer: { citations: Citation[]; relatedDocuments?: DocumentSummary[] } }) {
+  const docs = answer.relatedDocuments ?? [];
+  if (answer.citations.length || !docs.length) return null;
+  return (
+    <section aria-label="Matching records" className="vc-sources-block">
+      <p className="vc-label">
+        Matching records <span className="vc-label-count">{docs.length}</span>
+      </p>
+      <div className="vc-sources">
+        {docs.map((d, i) => (
+          <Link key={d.id} to={docHref({ id: d.id })} className="vc-source" style={{ animationDelay: `${i * 60}ms` }}>
+            <span className="vc-source-top">
+              <span>{TYPE_LABEL[d.documentType] ?? 'Record'}</span>
+            </span>
+            <span className="vc-source-title">{d.title}</span>
+            <span className="vc-source-meta">{[formatDate(d.date), d.governmentBodyName].filter(Boolean).join(' · ')}</span>
           </Link>
         ))}
       </div>

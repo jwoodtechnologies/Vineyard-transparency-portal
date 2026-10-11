@@ -1,7 +1,7 @@
 /**
  * The code-written answers of lookups.ts and quotes.ts, read from the catalog: numbered records,
  * a meeting's documents, the last meeting with recorded votes, the fee schedule page for a fee, and
- * the closest records quoted when the model cannot answer. Every value comes from a record; every
+ * the plain line with matching record cards when no model can answer. Every value comes from a record; every
  * answer cites the record at its page and opens a page inside the portal.
  */
 import type { Env } from '../env';
@@ -13,7 +13,8 @@ import { recordIndex } from '../api/records';
 import { citationLabel } from './submissions';
 import { BODY_LABEL, longDay, type MeetingBody } from './meetingVotes';
 import { DOC_LABEL, latestMinutesDate, minutesOf, recordLookupText, suggestFollowUps, type DocLookup, type IndexRow, type RecordLookup } from './lookups';
-import { pickQuotes, plainRecordText, QUOTES_LEAD, quoteLine, routeFor, sentenceScore, recordSentences, type Quote } from './quotes';
+import { pickQuotes, plainRecordText, QUOTES_LEAD, questionWords, quoteLine, routeFor, sentenceScore, recordSentences, type Quote } from './quotes';
+import { noModelLine, noModelReason, relevanceFloor, relevantRecords } from './fallback';
 import { officialRoster, titleOfficials } from './officials';
 import type { StaffPerson } from './contacts';
 
@@ -66,12 +67,14 @@ export function codeResponse(base: Base, engine: string, paragraphs: AnswerParag
 /* ---------------------------------------------------------------------------------------------- */
 
 /**
- * The closest records quoted, as the answer: a short lead, then for each of the top records its title,
- * date, body and page with the matching sentences in its own words, each citing (and opening) that page.
- * Null when no record holds a sentence that matches the question.
+ * A meeting's own records quoted, as the answer: a short lead, then for each of the top records its
+ * title, date, body and page with the matching sentences in its own words, each citing (and opening)
+ * that page. Used only where the records are already scoped to what was asked (one dated meeting), and
+ * even then a record is quoted only when it holds enough of the question's words (relevanceFloor).
+ * Null when no record holds such a sentence.
  */
 export async function quotesResponse(env: Env, base: Base, question: string, hits: ChunkHit[], staff: StaffPerson[], engine: string, lead = QUOTES_LEAD, boost?: Set<string>): Promise<AskResponse | null> {
-  const quotes = pickQuotes(question, hits, { boost });
+  const quotes = pickQuotes(question, hits, { boost, min: relevanceFloor(questionWords(question).length) });
   if (!quotes.length) return null;
   const rows = await docRows(env, quotes.map((q) => q.hit.documentId));
   const roster = officialRoster(staff);
@@ -82,11 +85,11 @@ export async function quotesResponse(env: Env, base: Base, question: string, hit
   const items = quotes.map((q: Quote<ChunkHit>, i) => ({ text: titleOfficials(quoteLine(q), roster, [q.hit.documentDate]), citations: [i + 1] }));
   const paragraphs: AnswerParagraph[] = [{ segments: [{ text: lead, citations: [] }] }, { segments: items, list: true }];
   const shown = new Set(quotes.map((q) => q.hit.documentId));
-  const related = await closest(env, hits.filter((h) => !shown.has(h.documentId)));
+  const related = await closest(env, relevantRecords(question, hits.filter((h) => !shown.has(h.documentId))));
   return codeResponse(base, engine, paragraphs, { citations, relatedDocuments: related });
 }
 
-async function closest(env: Env, hits: ChunkHit[]): Promise<DocumentSummary[]> {
+async function closest(env: Env, hits: Array<{ documentId: string }>): Promise<DocumentSummary[]> {
   const ids = [...new Set(hits.map((h) => h.documentId))].slice(0, 4);
   if (!ids.length) return [];
   const { summariesByIds } = await import('../api/documents');
@@ -94,16 +97,29 @@ async function closest(env: Env, hits: ChunkHit[]): Promise<DocumentSummary[]> {
   return ids.map((id) => found.get(id)).filter((d): d is DocumentSummary => Boolean(d));
 }
 
-/** The portal page that holds what was asked, as the answer, with the closest records under it. */
+/** The portal page that holds what was asked, as the answer, with the records that match it (if any) under it. */
 export async function routeResponse(env: Env, base: Base, question: string, engine: string, hits: ChunkHit[] = []): Promise<AskResponse> {
   const r = routeFor(question);
-  return codeResponse(base, engine, [{ segments: [{ text: r.text, citations: [] }] }], { section: r.section, relatedDocuments: await closest(env, hits) });
+  return codeResponse(base, engine, [{ segments: [{ text: r.text, citations: [] }] }], { section: r.section, relatedDocuments: await closest(env, relevantRecords(question, hits)) });
 }
 
-/** Quotes when a record holds a matching sentence, else the route: never a dead end. */
-export async function recordsAnswer(env: Env, base: Base, question: string, hits: ChunkHit[], staff: StaffPerson[], why: string, context = ''): Promise<AskResponse> {
-  // A follow-up's own words are few ("is there a cap?"): the earlier question's words are matched too.
-  return (await quotesResponse(env, base, `${question} ${context}`.trim(), hits, staff, `record-quotes (${why})`).catch(() => null)) ?? routeResponse(env, base, question, `route (${why})`, hits);
+/**
+ * No model answer (AI paused at the daily cap, off, failed, or nothing it wrote passed the source
+ * check): one plain line, then the best matching records as cards and the portal page that holds
+ * what was asked. Never record quotes as the answer, and never a record that only shares a word.
+ */
+export async function recordsAnswer(env: Env, base: Base, question: string, hits: ChunkHit[], _staff: StaffPerson[], why: string, context = '', opts: { boost?: Set<string>; now?: Date } = {}): Promise<AskResponse> {
+  const now = opts.now ?? new Date();
+  // A follow-up's own words are few ("is there a cap?"): the earlier question's words are matched too,
+  // and the records the previous answer relied on come first.
+  const matched = relevantRecords(`${question} ${context}`.trim(), hits, 4, opts.boost);
+  const related = await closest(env, matched);
+  const reason = noModelReason(why);
+  const route = routeFor(question);
+  const line = noModelLine(reason, related.length > 0, now);
+  // With no record to show, the page that holds the subject says where to look.
+  const text = related.length || reason === 'failed' ? line : `${line} ${route.text}`;
+  return codeResponse(base, `records (${why})`, [{ segments: [{ text, citations: [] }] }], { section: route.section, relatedDocuments: related });
 }
 
 /* ---------------------------------------------------------------------------------------------- */

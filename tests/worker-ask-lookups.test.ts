@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { testEnv } from './helpers/d1';
-import { handleAsk, budgetParagraphs, RAG_SYSTEM_PROMPT, standsAlone } from '../worker/ai/rag';
+import { handleAsk, budgetParagraphs, quotaField, RAG_SYSTEM_PROMPT, resetAiBreaker, standsAlone } from '../worker/ai/rag';
 import { SearchRepository } from '../worker/search/SearchRepository';
 import { bodyClarify, docLookupIntent, feeIntent, lastMeetingIntent, personClarify, recordLookupIntent, resolveFollowUp, suggestFollowUps } from '../worker/ai/lookups';
 import { DEAD_END, pickQuotes, recordSentences, routeFor } from '../worker/ai/quotes';
@@ -223,26 +223,66 @@ describe('a short clarifying question instead of a guess', () => {
 });
 
 describe('no dead ends', () => {
-  it('quotes the closest records, with pages, when AI is not configured', async () => {
+  it('says AI answers are off in one plain line and shows the matching record as a card, never quotes', async () => {
     const env = await seed();
     const r = await ask(env as unknown as Env, { question: 'When is the splash pad at Grove Park open?' });
-    expect(r.engine).toMatch(/^record-quotes/);
-    expect(r.answer.startsWith('The records closest to your question:')).toBe(true);
-    expect(r.answer).toContain('Memorial Day through Labor Day');
-    expect(r.citations[0]).toMatchObject({ documentId: 'doc_8f_parks', page: 1 });
+    expect(r.engine).toMatch(/^records \(AI not configured\)/);
+    expect(r.answer).toBe('AI answers are off right now. Here are the best matching records.');
+    expect(r.citations).toEqual([]);
+    expect(r.relatedDocuments.map((d) => d.id)).toEqual(['doc_8f_parks']);
     expect(r.answer).not.toMatch(DEAD_END);
-    expect(r.paragraphs[1].list).toBe(true);
+    expect(r.section?.path).toBeTruthy();
   });
 
-  it('quotes the records when the model finds no record or none of its sentences pass the source check', async () => {
+  it('says AI answers are paused until the daily reset when no model can run, with record cards', async () => {
+    const env = await seed();
+    const capped = { run: async () => { throw new Error('4006: daily neuron cap reached (7999 of 8000)'); } };
+    const r = await ask({ ...env, AI: capped } as unknown as Env, { question: 'When is the splash pad at Grove Park open?' });
+    expect(r.engine).toMatch(/^records \(/);
+    expect(r.answer).toMatch(/^AI answers are paused until (5|6) PM Mountain\. Here are the best matching records\.$/);
+    expect(r.answer).not.toContain('The records closest');
+    expect(r.relatedDocuments.map((d) => d.id)).toEqual(['doc_8f_parks']);
+    expect(r.answer).not.toMatch(DEAD_END);
+    resetAiBreaker();
+  });
+
+  it('tries the lite model when the main model fails, and answers from it', async () => {
+    const env = await seed();
+    const tried: string[] = [];
+    const base = ai(() => 'The splash pad at Grove Park is open from Memorial Day through Labor Day each summer [1].');
+    const flaky = {
+      run: async (model: string, input: Record<string, unknown>) => {
+        if (Array.isArray(input.messages)) tried.push(model);
+        if (Array.isArray(input.messages) && !/granite/.test(model) && String((input.messages as Array<{ content: string }>)[0]?.content ?? '').startsWith(RAG_SYSTEM_PROMPT.slice(0, 60))) throw new Error('AI timeout');
+        return base.run(model, input);
+      },
+    };
+    const r = await ask({ ...env, AI: flaky } as unknown as Env, { question: 'When is the splash pad at Grove Park open?' });
+    expect(r.engine).toMatch(/granite-4\.0-h-micro/);
+    expect(r.answer).toContain('Memorial Day through Labor Day');
+    expect(r.citations[0]).toMatchObject({ documentId: 'doc_8f_parks' });
+    expect(tried.some((m) => /granite/.test(m))).toBe(true);
+  });
+
+  it('shows one plain line with record cards when the model finds no record or none of its sentences pass the source check', async () => {
     const env = await seed();
     for (const write of [() => 'NO_RECORD', () => 'The splash pad costs $900 a day to open [1].']) {
       const r = await ask({ ...env, AI: ai(write) } as unknown as Env, { question: 'When is the splash pad at Grove Park open?' });
-      expect(r.engine).toMatch(/^record-quotes/);
-      expect(r.answer).toContain('Memorial Day through Labor Day');
+      expect(r.engine).toMatch(/^records \(/);
+      expect(r.answer).toBe('Nothing in the archive answers that directly. These records come closest.');
+      expect(r.relatedDocuments.map((d) => d.id)).toContain('doc_8f_parks');
       expect(r.answer).not.toContain('$900');
       expect(r.answer).not.toMatch(DEAD_END);
     }
+  });
+
+  it('answers a general civic question from general knowledge when no sentence needs a source', async () => {
+    const env = await seed();
+    const write = () => 'A splash pad is a play area where water sprays from the ground instead of filling a pool. It is meant for small children to cool off without standing water, so it needs no lifeguard.';
+    const r = await ask({ ...env, AI: ai(write) } as unknown as Env, { question: 'What is a splash pad?' });
+    expect(r.engine).toMatch(/\+ general$/);
+    expect(r.answer).toContain('play area where water sprays');
+    expect(r.citations).toEqual([]);
   });
 
   it('routes to the portal page that holds it when nothing matches', async () => {
@@ -463,5 +503,14 @@ describe('clarifying questions, month counts, minutes and motions read from the 
     expect(r.engine).toBe('votes-meeting');
     expect(r.answer).toContain('2026-2027 Budget');
     expect(r.answer).toContain('Voting No: Council Member Nair.');
+  });
+});
+
+describe('suite requests count apart from residents', () => {
+  it('uses the tests columns for the chat suite', () => {
+    expect(quotaField({}, 'ai_requests')).toBe('ai_requests');
+    expect(quotaField({ AI_SPENDER: 'public' }, 'ai_failures')).toBe('ai_failures');
+    expect(quotaField({ AI_SPENDER: 'tests' }, 'ai_requests')).toBe('ai_requests_tests');
+    expect(quotaField({ AI_SPENDER: 'tests' }, 'ai_failures')).toBe('ai_failures_tests');
   });
 });

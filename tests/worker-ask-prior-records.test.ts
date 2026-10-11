@@ -23,6 +23,14 @@ async function seed() {
   // The meter adds this column once per isolate; each test here has a fresh database.
   env.CATALOG_DB.db.exec("ALTER TABLE quota_usage ADD COLUMN ai_neurons REAL NOT NULL DEFAULT 0");
   const repo = new SearchRepository(env);
+  // The budget page's catalog row, so the fallback can show it as a card.
+  const now = '2026-10-11T00:00:00Z';
+  env.CATALOG_DB.db
+    .prepare(
+      `INSERT INTO documents (id, slug, title, document_type, document_date, year, government_body_id, government_body_name, meeting_id, source_id, created_at, updated_at, first_seen_at, last_seen_at)
+       VALUES (?, ?, ?, 'resolution', '2010-04-28', 2010, 'redevelopment-agency', 'Redevelopment Agency', NULL, 'vineyard-city', ?, ?, ?, ?)`,
+    )
+    .run('doc_6a0c9a6544266140', 'doc_6a0c9a6544266140', URA_TITLE, now, now, now, now);
   const doc = (id: string, title: string, date: string) => ({ documentId: id, title, documentType: 'resolution', documentNumber: null, documentDate: date, year: Number(date.slice(0, 4)), governmentBodyId: 'redevelopment-agency', sourceId: 'vineyard-city', meetingId: null, categories: [], currency: 'historical' });
   await repo.replaceDocument(0, doc('doc_6a0c9a6544266140', URA_TITLE, '2010-04-28'), [
     { id: 'doc_6a0c9a6544266140:5', pageStart: 5, pageEnd: 5, sectionTitle: null, text: 'PROJECT AREA DESCRIPTION The project area covers the former Geneva Steel site.' },
@@ -74,12 +82,13 @@ describe('a follow-up reads the records the previous answer cited', () => {
   it('still removes a figure no record states, and the fallback carries the closest records as cards', async () => {
     const env = await seed();
     const r = await ask({ ...env, AI: ai(() => 'The Redevelopment Agency has a cap of $900 million on the tax increment [1].') } as unknown as Env, { question: 'Is there a cap on what it can collect?', conversation: convo });
-    // No dead end: the closest record is quoted in its own words, at its page.
-    expect(r.answer.startsWith('The records closest to your question:')).toBe(true);
+    // No dead end and no quote dump: one plain line, with the closest record as a card.
+    expect(r.engine).toMatch(/^records \(/);
+    expect(r.answer).toBe('Nothing in the archive answers that directly. These records come closest.');
     expect(r.answer).not.toContain('$900 million');
     expect(r.answer).not.toMatch(/couldn't find|unavailable|unable to/i);
-    expect(r.citations.map((c) => c.documentId)).toContain('doc_6a0c9a6544266140');
-    expect(r.citations.every((c) => c.page != null)).toBe(true);
+    expect(r.citations).toEqual([]);
+    expect(r.relatedDocuments.map((d) => d.id)).toContain('doc_6a0c9a6544266140');
   });
 
   it('scores a passage by the previous answer figures it holds, then the follow-up words', () => {

@@ -23,6 +23,8 @@ export interface TurnSpec {
   };
   live?: { nextMeeting?: string; construction?: string };
   checks?: { portalLink?: boolean; titles?: boolean; why?: string };
+  /** Grade tone and helpfulness (lib.mjs toneChecks); `explain` requires an explanation sentence. */
+  tone?: boolean | { explain?: boolean };
   elliptical?: boolean;
   /** A follow-up that names its own subject with a code path: no rewrite model call. */
   standalone?: boolean;
@@ -50,6 +52,8 @@ export interface EvalContext {
   today: string;
   live?: Partial<LiveData>;
   officials: Officials;
+  /** GET /api/health: ai, and aiNeurons.tests { used, cap } (a spent bucket allows the paused line). */
+  health?: { ai?: boolean | null; aiNeurons?: unknown } | null;
 }
 
 export interface Estimate {
@@ -112,6 +116,11 @@ export const DEAD_END: RegExp;
 export function globalChecks(r: AskLike | null, checks?: TurnSpec['checks'], officials?: Officials): string[];
 export function nextMeetingDates(items: Array<Record<string, unknown>>, today: string): string[];
 export function constructionLines(glance: { rows: Array<Record<string, string>> } | null | undefined, filter?: string): string[];
+export const RECORDS_DISCLAIMER: RegExp;
+export const PAUSED_LINE: RegExp;
+export const EXPLAINS: RegExp;
+export function quotedShare(answer: string): number;
+export function toneChecks(spec: TurnSpec, r: AskLike | null, ctx?: Partial<EvalContext>): string[];
 export function evalTurn(spec: TurnSpec, r: AskLike | null, ctx: EvalContext): string[];
 export function ask(fetchFn: FetchLike, base: string, body: Record<string, unknown>, opts?: { sleep?: (ms: number) => Promise<void>; timeoutMs?: number }): Promise<AskLike>;
 export function loadLive(fetchFn: FetchLike, base: string, cases: SuiteCase[]): Promise<LiveData>;

@@ -1,8 +1,8 @@
 /**
- * Answers written by code from the records themselves, for when the model cannot answer (down, over
- * the daily Neuron cap, timed out, or none of its sentences passed the source check) and for lookups
- * that never need it. Nothing here is invented: an answer is the exact sentences a record prints,
- * quoted with its title, date and page, and each quote opens the record at that page.
+ * Record quotes written by code from the records themselves, for lookups scoped to one meeting's
+ * records (never as the fallback when the model cannot answer: that is one plain line with record
+ * cards, see fallback.ts). Nothing here is invented: a quote is the exact sentences a record prints,
+ * with its title, date and page, and each quote opens the record at that page.
  *
  * When there is nothing to quote, `routeFor` names the part of the portal that holds what was asked
  * (meetings of that body, voting records, the budget, the map, the directory, the records search),

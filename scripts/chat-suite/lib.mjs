@@ -10,8 +10,9 @@
  *     night?") first runs the conversation rewrite (qwen3-30b, ~1.4k character prompt, 200 tokens out): ~11;
  *   - a model answer runs the search plan (qwen3-30b, 220 tokens out: ~9), the reranker over up to 90
  *     passages (bge-reranker-base: ~11) and the answer (qwen3-30b, 6.4k character system prompt plus up to
- *     15.5k characters of sources, 900 tokens out: ~56): ~76, rounded to 80. When qwen fails and the
- *     llama-3.1-8b-fp8 fallback also runs, add ~40 (worst case 120).
+ *     15.5k characters of sources, 900 tokens out: ~56; with the October 11, 2026 voice prompt, 7.9k
+ *     characters, ~59): ~79, rounded to 80. When qwen fails, the lite model (granite-4.0-h-micro, five
+ *     sources, 380 tokens out) adds ~11; the stream path's llama-3.1-8b-fp8 adds ~42. Worst case 120.
  *
  * Every request carries `x-vtp-suite: 1` (SUITE_HEADER), so the Worker bills it to the tests bucket
  * (worker/ai/meter.ts): 1,000 Neurons a UTC day, apart from the 9,000 residents get. When the bucket is
@@ -52,7 +53,7 @@ export function longDate(iso) {
 /** Every case as a list of turns, with its tier ("model" when any turn needs the answer model). */
 export function normalizeCases(data) {
   return data.cases.map((c) => {
-    const turns = c.turns ?? [{ question: c.question, mustContain: c.mustContain, mustNotContain: c.mustNotContain, expect: c.expect, live: c.live, checks: c.checks, elliptical: c.elliptical, standalone: c.standalone, needsRewrite: c.needsRewrite }];
+    const turns = c.turns ?? [{ question: c.question, mustContain: c.mustContain, mustNotContain: c.mustNotContain, expect: c.expect, live: c.live, checks: c.checks, tone: c.tone, elliptical: c.elliptical, standalone: c.standalone, needsRewrite: c.needsRewrite }];
     const model = turns.map((t) => t.ai === 'model' || (c.tier === 'model' && t.ai !== 'none'));
     const tier = model.some(Boolean) ? 'model' : 'deterministic';
     return { id: c.id, category: c.category, tier, conversation: c.conversation ?? [], turns: turns.map((t, i) => ({ ...t, model: model[i] })) };
@@ -277,6 +278,53 @@ export function constructionLines(glance, filter = 'all') {
     .map((r) => [pick(r, /project/i) || String(Object.values(r)[0] ?? ''), pick(r, /location/i)].filter(Boolean).join(', '));
 }
 
+/* ------------------------------------------------------------------------------------------------ */
+/* Tone and helpfulness                                                                             */
+/* ------------------------------------------------------------------------------------------------ */
+
+/** An answer that opens by talking about the records instead of answering. */
+export const RECORDS_DISCLAIMER = /^\s*(the records\b|according to\b|based on (the )?(provided |available )?(records|sources|documents)\b|the records closest\b|from the records\b|the (provided |available |retrieved )?(sources|documents|excerpts) (show|indicate|say)\b)/i;
+/** The line Ask shows when no model can run. */
+export const PAUSED_LINE = /\bAI answers are (paused|off)\b/;
+/** A sentence that explains: a reason, a purpose, a definition or how something works. */
+export const EXPLAINS = /\b(because|since the|so that|so the|so it|so residents|which means|this means|that means|meaning|in order to|the reason|the purpose|purpose of|is meant to|are meant to|is used to|are used to|is designed to|refers to|stands for|in general|generally|typically|usually|helps?|allows?|lets|enables?|pays? for|to (pay|fund|help|keep|make|let|protect|give|encourage|attract|reduce|improve|plan|guide|decide|review|recommend))\b|\b(is|are) (a|an) [a-z]+/i;
+
+/** Share of an answer's characters inside quotation marks (a record quote dump scores high). */
+export function quotedShare(answer) {
+  const t = norm(answer);
+  if (!t.trim()) return 0;
+  const inside = [...t.matchAll(/"[^"]{12,}"/g)].reduce((n, m) => n + m[0].length, 0);
+  return inside / t.length;
+}
+
+/** The tests bucket is spent today (GET /api/health aiNeurons.tests), so a paused line is expected. */
+function bucketSpent(health) {
+  const t = health?.aiNeurons?.tests;
+  return Boolean(t && Number(t.used) >= Number(t.cap));
+}
+
+/**
+ * Tone and helpfulness of one answer (a turn with `tone`): it must not open with a records disclaimer,
+ * must not be only record quotes, must explain when the question asks why or what something means
+ * (`tone.explain`), and must not be the paused line while AI is healthy.
+ */
+export function toneChecks(spec, r, ctx = {}) {
+  const tone = spec.tone === true ? {} : spec.tone;
+  if (!tone) return [];
+  const fails = [];
+  const answer = norm(r?.answer ?? '').trim();
+  const engine = String(r?.engine ?? '');
+  if (RECORDS_DISCLAIMER.test(answer)) fails.push(`opens with a records disclaimer: "${answer.slice(0, 40)}"`);
+  if (/^record-quotes\b/.test(engine) || /The records closest to your question/.test(answer) || quotedShare(answer) > 0.5) fails.push('answer is only record quotes');
+  const healthy = ctx.health?.ai === true && !bucketSpent(ctx.health);
+  if (healthy && PAUSED_LINE.test(answer)) fails.push('paused line while AI is healthy');
+  if (tone.explain) {
+    const sentences = answer.split(/(?<=[.!?])\s+/).filter((x) => /[a-z]{3,}/i.test(x));
+    if (sentences.length < 2 || !sentences.some((x) => EXPLAINS.test(x))) fails.push('dodges a why or what-does-it-mean question: no explanation sentence');
+  }
+  return fails;
+}
+
 /** Failures for one answer against its turn spec. ctx: { today, live: { meetings: {body: items}, construction }, officials }. */
 export function evalTurn(spec, r, ctx) {
   const fails = [];
@@ -322,7 +370,7 @@ export function evalTurn(spec, r, ctx) {
       for (const line of constructionLines(c.glance, live.construction)) if (!answer.includes(norm(line))) fails.push(`construction answer lacks "${line}"`);
     }
   }
-  return [...fails, ...globalChecks(r, spec.checks ?? {}, ctx.officials)];
+  return [...fails, ...toneChecks(spec, r, ctx), ...globalChecks(r, spec.checks ?? {}, ctx.officials)];
 }
 
 /* ------------------------------------------------------------------------------------------------ */
@@ -396,7 +444,7 @@ export async function runSuite({ base, cases, officials, fetchFn = fetch, sleep 
   const today = utahToday(now);
   const health = await getJson(fetchFn, `${base}/api/health`).catch((e) => ({ error: String(e?.message ?? e) }));
   const live = await loadLive(fetchFn, base, cases);
-  const ctx = { today, live, officials };
+  const ctx = { today, live, officials, health };
   const results = [];
   let first = true;
   for (const c of cases) {

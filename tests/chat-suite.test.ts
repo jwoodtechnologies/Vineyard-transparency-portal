@@ -92,11 +92,11 @@ describe('cases.json', () => {
     expect(det.reduce((n, c) => n + caseCost(c, true), 0)).toBeLessThan(TESTS_CAP / 4);
   });
 
-  it('covers every model case within a few days, once each', () => {
+  it('covers every model case within a week, once each', () => {
     const groups = modelGroups(cases);
     const model = cases.filter((c) => c.tier === 'model');
     expect(groups.flat().map((c) => c.id).sort()).toEqual(model.map((c) => c.id).sort());
-    expect(groups.length).toBeLessThanOrEqual(4);
+    expect(groups.length).toBeLessThanOrEqual(7);
     const seen = new Set<string>();
     for (let seed = 0; seed < groups.length; seed++) for (const c of selectCases(cases, { mode: 'full', seed, budget: TESTS_CAP })) if (c.tier === 'model') seen.add(c.id);
     expect(seen.size).toBe(model.length);
