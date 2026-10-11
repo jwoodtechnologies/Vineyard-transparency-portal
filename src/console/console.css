@@ -4785,13 +4785,13 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
   .vc-bud-proj-meta a[href],
   .vc-bud-fine a[href],
   .maplibregl-ctrl-attrib a[href],
-  li > a[href],
+  li > a[href]:not(.vc-topic):not([class*='card']),
   .vc-latest-more,
   .vc-pd a[href],
   .vc-snap a[href] {
     min-height: 44px;
   }
-  li > a[href],
+  li > a[href]:not(.vc-topic):not([class*='card']),
   .vc-latest-more,
   .vc-pd a[href],
   .vc-snap a[href],
@@ -5034,8 +5034,7 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-idx-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: var(--vc-fs-xs); color: var(--vc-muted); }
 .vc-idx-links { display: flex; flex-wrap: wrap; gap: 2px 16px; }
 .vc-idx-link { display: inline-flex; align-items: center; min-height: 32px; font-size: var(--vc-fs-sm); font-weight: 600; color: var(--vc-accent); text-decoration: none; }
-@media (max-width: 560px) { .vc-idx-row { grid-template-columns: 1fr; } .vc-topics { grid-template-columns: 1fr 1fr; } .vc-topic { padding: 12px; } .vc-topic-label { font-size: var(--vc-fs-ui); } }
-@media (max-width: 340px) { .vc-topics { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .vc-idx-row { grid-template-columns: 1fr; } .vc-topics { grid-template-columns: 1fr; gap: 8px; } .vc-topic { padding: 12px 14px; grid-template-rows: auto auto; } .vc-topic-label { font-size: var(--vc-fs-ui); hyphens: manual; } .vc-topic-newest { padding-top: 2px; } }
 /* Voting charts: the full desktop width (up to 1200 px), titles at most three lines (the whole title shows
    when the row is opened, and on hover), member columns narrow, equal and aligned, the tally compact. */
 .vc-page[data-wide='sheet'] {
@@ -5285,8 +5284,19 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
   border: 0;
   margin: 0;
 }
-.vc-map-wrap.vtp-fs .vc-map-top { top: max(0.75rem, env(safe-area-inset-top)); }
-.vtp-fs .maplibregl-ctrl-top-right { padding-top: env(safe-area-inset-top); padding-right: env(safe-area-inset-right); }
+/* The status bar, notch or Dynamic Island sits over the top of the screen, and Safari can report no safe
+   area for it: a dark strip at least 60 px tall keeps the search bar and buttons below it on every phone. */
+.vc-map-wrap.vtp-fs,
+.vc-cp-map.vtp-fs {
+  box-sizing: border-box;
+  border-top: max(env(safe-area-inset-top), 60px) solid #0b0b0d;
+  background: #0b0b0d;
+}
+@media (pointer: fine) {
+  .vc-map-wrap.vtp-fs,
+  .vc-cp-map.vtp-fs { border-top-width: env(safe-area-inset-top); }
+}
+.vtp-fs .maplibregl-ctrl-top-right { padding-right: env(safe-area-inset-right); }
 .vtp-fs .maplibregl-ctrl-bottom-right { padding-bottom: env(safe-area-inset-bottom); padding-right: env(safe-area-inset-right); }
 .vtp-fs .maplibregl-ctrl-bottom-left { padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); }
 html.vtp-fs-lock,

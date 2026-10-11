@@ -8,6 +8,7 @@
  * In both, a history entry is added on the way in, so the phone's back button closes full screen
  * instead of leaving the page; Escape closes it too. The map is resized on the way in and out.
  */
+import { isAppleTouch } from '@/lib/appleTouch';
 import type * as maplibregl from 'maplibre-gl';
 
 const SVG = (paths: string) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
@@ -22,6 +23,7 @@ const fsElement = () => document.fullscreenElement ?? (document as FsDocument).w
 
 /** Whether this browser can show an element full screen (false on iPhone Safari). */
 export function canElementFullscreen(el: HTMLElement): boolean {
+  if (isAppleTouch(navigator.userAgent, navigator.maxTouchPoints ?? 0)) return false;
   const d = document as FsDocument;
   return Boolean((d.fullscreenEnabled || d.webkitFullscreenEnabled) && (el.requestFullscreen || (el as FsElement).webkitRequestFullscreen));
 }

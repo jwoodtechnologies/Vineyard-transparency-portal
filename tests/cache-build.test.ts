@@ -123,3 +123,13 @@ describe('client copies', () => {
     expect(read('vite.config.ts')).toMatch(/<meta name="vtp-build"/);
   });
 });
+
+describe('map full screen on Apple touch devices', () => {
+  it('uses its own full screen box on iPhone and iPad, never Safari full screen', async () => {
+    const { isAppleTouch } = await import('../src/lib/appleTouch');
+    expect(isAppleTouch('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15', 5)).toBe(true);
+    expect(isAppleTouch('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15', 5)).toBe(true);
+    expect(isAppleTouch('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15', 0)).toBe(false);
+    expect(isAppleTouch('Mozilla/5.0 (Linux; Android 14) Chrome/141.0 Mobile', 5)).toBe(false);
+  });
+});
