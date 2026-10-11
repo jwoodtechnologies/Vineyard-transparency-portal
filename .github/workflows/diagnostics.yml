@@ -83,7 +83,7 @@ jobs:
             for u in "https://vineyardportal.org/" "https://vineyardportal.org/votes" "https://vineyardportal.org/theme-init.js" "https://vineyardportal.org/api/records/ordinances?year=2026"; do
               echo "== $u" >> "$OUT/portal_headers.txt"; curl -sSI --max-time 30 "$u" >> "$OUT/portal_headers.txt" 2>&1 || true
             done
-            A=$(curl -sS --max-time 30 https://vineyardportal.org/ | grep -oE '/assets/[^"]+\.js' | head -1)
+            A=$(curl -sS --max-time 30 https://vineyardportal.org/ | grep -oE '/assets/[^"]+\.js' | head -1 || true)
             if [[ -n "$A" ]]; then echo "== $A" >> "$OUT/portal_headers.txt"; curl -sSI --max-time 30 "https://vineyardportal.org$A" >> "$OUT/portal_headers.txt" 2>&1 || true; fi
             # Utah Public Notice Website: entity search for Vineyard (POST form with a CSRF token).
             J="$RUNNER_TEMP/pmn.cookies"
