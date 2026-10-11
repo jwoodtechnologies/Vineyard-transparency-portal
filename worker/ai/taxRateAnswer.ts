@@ -191,6 +191,11 @@ export async function newerRateRecord(env: Env): Promise<NewerRateRecord | null>
       const chunks = await repo.documentChunks(Number(row.search_shard), row.id).catch(() => []);
       found = rateInText(chunks, county);
     }
+    // A year the county lists before setting rates prints zeros: never quote a zero rate.
+    if (found && !(Number(found.rate) > 0)) {
+      if (county) continue;
+      found = null;
+    }
     return { id: row.id, title: row.title, date: row.document_date ?? `tax year ${taxYear}`, documentType: row.document_type, fiscalYear, rate: found?.rate ?? null, page: found?.page ?? null };
   }
   return null;

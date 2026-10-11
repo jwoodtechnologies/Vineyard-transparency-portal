@@ -1013,6 +1013,23 @@ async function pruneGis(env: Env, body: Json): Promise<Response> {
   return json({ ok: true, removed: stale.length });
 }
 
+/** Withdraws county tax rate records for years the county lists before setting rates (all zeros). */
+async function withdrawTaxYears(env: Env, body: Json): Promise<Response> {
+  const years = (Array.isArray(body.years) ? body.years : []).map(Number).filter((y) => Number.isInteger(y) && y >= 2000 && y <= 2100).slice(0, 5);
+  const db = env.CATALOG_DB;
+  const repo = new SearchRepository(env);
+  let removed = 0;
+  for (const y of years) {
+    const rows = await db.prepare("SELECT id, search_shard FROM documents WHERE source_id = 'utah-county-tax-rates' AND document_type = 'tax_rate' AND title = ?").bind(`Utah County tax rates ${y}, Vineyard tax areas`).all<{ id: string; search_shard: number | null }>();
+    for (const e of rows.results ?? []) {
+      await db.batch([db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id)]);
+      if (e.search_shard != null && repo.activeShards.includes(e.search_shard)) await repo.removeDocument(e.search_shard, e.id).catch(() => 0);
+      removed++;
+    }
+  }
+  return json({ ok: true, removed });
+}
+
 export async function handleAdmin(env: Env, request: Request, url: URL): Promise<Response> {
   await requireIngestAuth(request, env);
   const path = url.pathname.replace(/^\/api\/admin/, '');
@@ -1063,6 +1080,7 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   if (path === '/queue/retry-errors') return retryErrors(env, budget);
   if (path === '/documents') return upsertDocument(env, body, budget);
   if (path === '/gis/prune') return pruneGis(env, body);
+  if (path === '/tax-rates/withdraw') return withdrawTaxYears(env, body);
   if (path === '/document-sources/availability') return sourceAvailability(env, body, budget);
   if (path === '/errors') return errors(env, body, budget);
   if (path === '/optimize') return optimize(env, budget);

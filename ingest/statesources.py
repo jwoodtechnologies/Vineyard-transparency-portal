@@ -153,6 +153,11 @@ def parse_tax_rates(page: str) -> dict | None:
     return {"district": int(head.group(1)), "year": int(head.group(2)), "lines": lines, "total": total}
 
 
+def rates_set(table: dict) -> bool:
+    """False for a year the county lists before setting it (every rate printed as zero)."""
+    return any(float(rate) > 0 for _, _, rate in table["lines"])
+
+
 def tax_url(year: int, district: int) -> str:
     return f"{TAX_BASE}taxratesdistyrresults.asp?{urlencode({'serialform-year': year, 'serialform-district': district})}"
 
@@ -204,6 +209,7 @@ def build_tax_records(client: PoliteClient, today: date | None = None) -> list[d
     if older:
         plan.append((older[today.toordinal() % len(older)], [d for d in (95, 96) if d in names] or sorted(names)[:2]))
     records: list[dict] = []
+    unset: list[int] = []
     for year, ids in plan:
         tables: list[tuple[str, dict]] = []
         for did in ids:
@@ -211,9 +217,11 @@ def build_tax_records(client: PoliteClient, today: date | None = None) -> list[d
             if page is None:
                 page, _ = client.get_text(tax_url(year, did))
             t = parse_tax_rates(page)
-            if t and t["year"] == year and t["district"] == did:
+            if t and t["year"] == year and t["district"] == did and rates_set(t):
                 tables.append((names[did], t))
         if not tables:
+            # Not set yet (all zeros) or not published: no record, and any stored one is withdrawn.
+            unset.append(year)
             continue
         records.append({
             "key": f"{TAX_SOURCE}:{year}",
@@ -225,6 +233,7 @@ def build_tax_records(client: PoliteClient, today: date | None = None) -> list[d
             "body": "Utah County Treasurer",
             "text": tax_record_text(year, tables, today.isoformat()),
         })
+    build_tax_records.unset = unset  # type: ignore[attr-defined]
     return records
 
 
@@ -464,6 +473,10 @@ def run(api: PortalApi, client: PoliteClient, enqueue, only: set[str] | None = N
         try:
             recs = build_tax_records(client)
             changed = sum(post_text_record(api, TAX_SOURCE, r) for r in recs)
+            unset = getattr(build_tax_records, "unset", [])
+            if unset:
+                res = api.post("/tax-rates/withdraw", {"years": unset})
+                log(f"Utah County tax rates: years not set yet {unset}, withdrawn {res.get('removed', 0)}")
             log(f"Utah County tax rates: {len(recs)} year records, {changed} new or changed")
             statuses.append(_status(TAX_SOURCE, None) if recs else {"id": TAX_SOURCE, "status": "changed", "message": "No rate tables found on the page."})
         except (HttpFailure, RobotsDisallowed, ValueError) as e:

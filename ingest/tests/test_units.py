@@ -123,3 +123,11 @@ class UnconfirmedCopyTest(unittest.TestCase):
         self.assertFalse(unconfirmed_copy("Active Transportation Commission Meeting 12-09-2025", "2025-12-09", False, 0))
         self.assertFalse(unconfirmed_copy("Active Transportation Commission Meeting 12-09-2025", "2026-12-08", True, 0))
         self.assertFalse(unconfirmed_copy("City Council", "2026-12-08", False, 0))
+
+
+class TaxYearNotSetTest(unittest.TestCase):
+    def test_all_zero_table_is_not_set(self):
+        from ingest.statesources import rates_set
+
+        self.assertFalse(rates_set({"lines": [("VINE", "VINEYARD", "0.0000000"), ("CNTY", "UTAH COUNTY", "0.0000000")]}))
+        self.assertTrue(rates_set({"lines": [("VINE", "VINEYARD", "0.0034600")]}))
