@@ -3,14 +3,13 @@
  * link. Items show right away in their own collection, labelled "Resident submitted. Not a city
  * record." Everything is plain text.
  */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { FileUp, FolderKanban, Link2, StickyNote } from 'lucide-react';
 import { Frame } from './Chrome';
 import { RESIDENT_LABEL } from './format';
+import { setHead } from '@/lib/head';
 
 type Kind = 'file' | 'project' | 'note' | 'link';
 const KINDS: Array<{ id: Kind; label: string; Icon: typeof FileUp }> = [
@@ -41,7 +40,7 @@ export default function AddPage() {
   const picker = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    document.title = 'Add to the record | Vineyard Transparency Portal';
+    setHead('Add to the record');
     let live = true;
     fetch('/api/add/status', { cache: 'no-store' })
       .then((r) => r.json() as Promise<{ open?: boolean }>)

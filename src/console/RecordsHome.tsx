@@ -11,6 +11,8 @@ import { Frame } from './Chrome';
 import { RssLink } from './RssLink';
 import { useJson } from './api';
 import { formatDate } from './format';
+import { setHead } from '@/lib/head';
+import { ErrorNote } from './ErrorNote';
 
 interface TopicCount {
   id: string;
@@ -30,7 +32,7 @@ export function RecordsHome() {
   const navigate = useNavigate();
   const [draft, setDraft] = useState('');
   useEffect(() => {
-    document.title = 'Records | Vineyard Transparency Portal';
+    setHead('Records');
   }, []);
   const topics = load.status === 'done' ? load.data.topics : [];
   const indexes = topics.filter((t) => t.index);
@@ -54,13 +56,19 @@ export function RecordsHome() {
       </form>
 
       {load.status === 'loading' && (
-        <div className="vc-skeleton" aria-hidden="true">
-          <span style={{ width: '94%' }} />
-          <span style={{ width: '82%' }} />
-          <span style={{ width: '88%' }} />
-        </div>
+        // Card-shaped placeholders in the same grid, so the links below do not move when the topics arrive.
+        <ul className="vc-topics" aria-hidden="true">
+          {Array.from({ length: 12 }, (_, i) => (
+            <li key={i}>
+              <div className="vc-topic vc-topic-wait vc-skeleton">
+                <span style={{ width: '62%' }} />
+                <span style={{ width: '84%' }} />
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
-      {load.status === 'error' && <div className="vc-empty">The record topics could not be loaded. Try again in a moment.</div>}
+      {load.status === 'error' && <ErrorNote>The record topics could not be loaded.</ErrorNote>}
       {topics.length > 0 && (
         <ul className="vc-topics">
           {topics.map((t) => (

@@ -1,6 +1,7 @@
 /** The meeting card under a "when is the next meeting" answer: date, time, place and links. */
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, CalendarPlus, MapPin } from 'lucide-react';
+import { formatWeekdayDate, normalizeDatesInText } from '@/lib/dates';
 
 export interface AnswerEvent {
   title: string;
@@ -44,27 +45,27 @@ export function EventCard({ event }: { event: AnswerEvent }) {
   const date = new Date(`${d}T12:00:00Z`);
   const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }).toUpperCase();
   const day = date.getUTCDate();
-  const weekday = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+  const weekday = formatWeekdayDate(d);
   let time = '';
   if (!event.allDay && t) {
     const [h, m] = t.split(':').map(Number);
     time = `${((h + 11) % 12) + 1}:${pad(m)} ${h < 12 ? 'am' : 'pm'}`;
   }
   return (
-    <div className="vc-event">
-      <div className="vc-event-date" aria-hidden="true">
-        <span className="vc-event-month">{month}</span>
-        <span className="vc-event-day">{day}</span>
+    <div className="vc-aevent">
+      <div className="vc-aevent-date" aria-hidden="true">
+        <span className="vc-aevent-month">{month}</span>
+        <span className="vc-aevent-day">{day}</span>
       </div>
-      <div className="vc-event-main">
-        <span className="vc-event-title">{event.title}</span>
-        <span className="vc-event-when">{[weekday, time].filter(Boolean).join(' · ')}</span>
+      <div className="vc-aevent-main">
+        <span className="vc-aevent-title">{normalizeDatesInText(event.title)}</span>
+        <span className="vc-aevent-when">{[weekday, time].filter(Boolean).join(' · ')}</span>
         {event.location && (
-          <a className="vc-event-where" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer">
+          <a className="vc-aevent-where" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer">
             <MapPin size={13} /> {event.location}
           </a>
         )}
-        <span className="vc-event-actions">
+        <span className="vc-aevent-actions">
           <a className="vc-chip" href={icsHref(event)} download="vineyard-meeting.ics">
             <CalendarPlus size={13} /> Add to calendar
           </a>

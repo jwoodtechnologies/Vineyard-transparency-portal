@@ -2,7 +2,7 @@
  * One city service, inside the portal: the city's own page for it (from the archive) to read here,
  * and the official form or portal to finish it when something has to be filed with the city.
  */
-import './console.css';
+import './styles';
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowUpRight, FileText } from 'lucide-react';

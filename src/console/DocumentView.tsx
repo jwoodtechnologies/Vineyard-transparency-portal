@@ -1,7 +1,5 @@
 /** /documents/:documentId : one record, shown in the same quiet frame as the rest of the portal. */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, CalendarDays, Download, Expand, Flag, Layers, MessageSquare, Printer, Share2, X } from 'lucide-react';
@@ -15,6 +13,7 @@ import { useMeetingDocs } from './meetingDocs';
 import { DocLink } from './DocLink';
 import { labelsOf } from './recordLabels';
 import { STATUS_LABEL } from '@/lib/recordTitle';
+import { setHead } from '@/lib/head';
 
 const PdfViewer = lazy(() => import('@/components/documents/PdfViewer'));
 
@@ -243,7 +242,7 @@ export default function DocumentView() {
   const fileUrl = doc ? (doc.archiveUrl ?? (doc.mimeType === 'application/pdf' ? `/api/documents/${encodeURIComponent(doc.id)}/file` : null)) : null;
 
   useEffect(() => {
-    if (doc) document.title = `${doc.title} | Vineyard Transparency Portal`;
+    if (doc) setHead(doc.title, [labelsOf(doc).type, doc.governmentBodyName, formatDate(doc.date)].filter(Boolean).join(', ') + '. A Vineyard, Utah public record with its source document and full text.');
   }, [doc]);
 
   const setPage = (p: number) => {
@@ -310,15 +309,20 @@ export default function DocumentView() {
           </p>
         )}
         {label && <p className="vc-source-label vc-doc-source">{label}</p>}
+        <p className="vc-print-only vc-print-src">
+          {original || fileUrl ? <>Source document: {original ?? `${window.location.origin}${fileUrl}`}<br /></> : null}
+          This page: {`${window.location.origin}${window.location.pathname}`}
+        </p>
         <div className="vc-mtg-actions">
           {doc.meeting && (
             <Link to={meetingHref(doc.meeting)} className="vc-secondary">
               <CalendarDays size={15} strokeWidth={1.8} /> {doc.meeting.title}, {formatDate(doc.meeting.date)}
             </Link>
           )}
-          {doc.meeting && siblings.docs.length > 1 && (
-            <button type="button" className="vc-secondary vc-meeting-docs-btn" onClick={() => setShowMeeting(true)}>
-              <Layers size={15} strokeWidth={1.8} /> Everything from this meeting <span className="vc-count">{siblings.docs.length}</span>
+          {doc.meeting && (siblings.status === 'loading' || siblings.docs.length > 1) && (
+            // Shown (disabled) while the meeting's records load, so the buttons and the reader below do not move.
+            <button type="button" className="vc-secondary vc-meeting-docs-btn" onClick={() => setShowMeeting(true)} disabled={siblings.status === 'loading'}>
+              <Layers size={15} strokeWidth={1.8} /> Everything from this meeting <span className="vc-count">{siblings.status === 'loading' ? '\u00a0\u00a0' : siblings.docs.length}</span>
             </button>
           )}
           {(doc.archiveUrl || doc.mimeType === 'application/pdf') && (

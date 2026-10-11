@@ -5,8 +5,7 @@
  * search any road or project. The basemap draws first; city layers are fetched in parallel and added
  * as they arrive, never holding the map back.
  */
-import '@fontsource-variable/inter';
-import './console.css';
+import './styles';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource, LngLatBoundsLike, MapGeoJSONFeature } from 'maplibre-gl';
@@ -24,6 +23,8 @@ import { getJson, type MapLayerInfo } from './api';
 import { ProjectDetail } from './ProjectDetail';
 import { BASE_BG, blankStyle, byZoom, CASING, firstLabelLayer, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
 import { hasTile, loadedTileCount, loadTile, mergedParcels, PARCEL_MIN_ZOOM, tilesFor } from './parcelTiles';
+import { formatDate } from '@/lib/dates';
+import { setHead } from '@/lib/head';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
 
@@ -243,7 +244,7 @@ function fmt(key: string, v: unknown): string | null {
   // A zero acreage, value or year built in the parcel records means not recorded.
   if ((key === 'ACREAGE' || key === 'MKT_CUR_VALUE' || key === 'GLA_WEIGHTED_YRBLT' || key === 'planned_construction_year') && Number(v) === 0) return null;
   if ((key === 'FY27_Budget' || key === 'Total_Budget' || key === 'total_taxable' || key === 'MKT_CUR_VALUE') && Number.isFinite(Number(v))) return `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
-  if ((key === 'OrdinanceDate' || key === 'LASTUPDATE') && Number.isFinite(Number(v)) && Number(v) > 1e11) return new Date(Number(v)).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  if ((key === 'OrdinanceDate' || key === 'LASTUPDATE') && Number.isFinite(Number(v)) && Number(v) > 1e11) return formatDate(new Date(Number(v)).toISOString());
   // City fiscal years run July to June: fiscal 2026 is July 2025 to June 2026.
   if (key === 'Construction_Fiscal' && /^\d{4}$/.test(String(v))) return `Fiscal year ${v} (July ${Number(v) - 1} to June ${v})`;
   if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
@@ -587,7 +588,7 @@ export default function MapPage() {
 
 
   useEffect(() => {
-    document.title = 'Map | Vineyard Transparency Portal';
+    setHead('Map');
   }, []);
 
   // Layer catalog, then the default layers (or the ones named in the address). The city boundary

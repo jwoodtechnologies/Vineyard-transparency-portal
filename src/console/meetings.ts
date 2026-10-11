@@ -4,6 +4,7 @@ import type { GovernmentBody, MeetingSummary } from '@/types/models';
 import { BrowseService, MeetingService } from '@/services';
 import { fresh } from './api';
 import { type PortalEvent } from './calendarMerge';
+import { formatMonthYear, formatWeekdayDate } from '@/lib/dates';
 
 export * from './calendarMerge';
 
@@ -82,14 +83,12 @@ export function formatTime(t: string | null): string | null {
   return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')} ${suffix}`;
 }
 
-const LONG = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-const DAY_MONTH = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
-const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 const utc = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`);
 
-export const longDate = (iso: string) => LONG.format(utc(iso));
-export const dayMonth = (iso: string) => DAY_MONTH.format(utc(iso));
-export const monthLabel = (ym: string) => MONTH.format(utc(`${ym}-01`));
+/** "Tue, Oct 13, 2026": meetings are calendar items, so their dates carry the weekday. */
+export const longDate = (iso: string) => formatWeekdayDate(iso);
+export const dayMonth = (iso: string) => formatWeekdayDate(iso);
+export const monthLabel = (ym: string) => formatMonthYear(ym);
 export const dayNumber = (iso: string) => Number(iso.slice(8, 10));
 export const monthShort = (iso: string) => new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(utc(iso));
 export const weekdayShort = (iso: string) => new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(utc(iso));

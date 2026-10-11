@@ -2,7 +2,7 @@
  * Sources: every public system the portal reads, what it covers, when it was last checked and when
  * a new record last arrived from it. One edge-cached request (/api/sources).
  */
-import './console.css';
+import './styles';
 import { ExternalLink } from 'lucide-react';
 import { Frame } from './Chrome';
 import { useJson } from './api';
@@ -10,6 +10,7 @@ import { formatDate } from './format';
 import type { SourceRegistryEntry } from '@/types/models';
 import { MAP_ONLY, sourceRows } from './sources';
 import { Link } from 'react-router-dom';
+import { ErrorNote } from './ErrorNote';
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Working',
@@ -26,7 +27,7 @@ function SourceCard({ s }: { s: SourceRegistryEntry }) {
   const checked = formatDate(s.health?.lastCheckedAt ?? s.lastChecked);
   const newest = formatDate(s.lastNewRecordAt ?? null);
   return (
-    <section className="vc-board vc-source">
+    <section className="vc-board">
       <div className="vc-board-head" style={{ cursor: 'default' }}>
         <span className="vc-board-title">
           <span className="vc-board-name">{s.name}</span>
@@ -86,7 +87,8 @@ export default function SourcesPage() {
           <span style={{ width: '76%' }} />
         </div>
       )}
-      {(load.status === 'error' || (load.status === 'done' && !rows.length)) && <div className="vc-empty">Sources could not load just now.</div>}
+      {load.status === 'error' && <ErrorNote>The sources could not be loaded.</ErrorNote>}
+      {load.status === 'done' && !rows.length && <div className="vc-empty">No sources are listed yet.</div>}
       <div className="vc-boards">
         {rows.map((s) => (
           <SourceCard key={s.id} s={s} />

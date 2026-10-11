@@ -3,9 +3,7 @@
  * (?c=meetings), then narrows by record type, year, meeting body and search. All matching records
  * load as you scroll, newest first, grouped by month.
  */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, ChevronRight, FileText, Search, X } from 'lucide-react';
@@ -21,6 +19,9 @@ import type { RecordStatus } from '@/lib/recordTitle';
 import { labelsOf } from './recordLabels';
 import { RecordChips } from './RecordChips';
 import { RecordsHome } from './RecordsHome';
+import { setHead } from '@/lib/head';
+import { ErrorNote } from './ErrorNote';
+import { normalizeDatesInText } from '@/lib/dates';
 
 interface Row {
   id: string;
@@ -185,7 +186,7 @@ function HeldMeetings({ year, body, oldest }: { year: string; body: string; olde
                     <CalendarDays size={15} strokeWidth={1.8} />
                   </span>
                   <span className="vc-mdoc-main">
-                    <span className="vc-mdoc-title">{m.title}</span>
+                    <span className="vc-mdoc-title">{normalizeDatesInText(m.title)}</span>
                     <span className="vc-mdoc-meta">
                       {[formatDate(m.date), m.governmentBodyName, (m.docTypes ?? []).map((t) => DOC_LABEL[t]).filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                     </span>
@@ -281,7 +282,7 @@ function RecordsList() {
   const [state, setState] = useState<{ key: string; rows: Row[]; total: number; status: 'done' | 'error'; facets?: ChipFacets }>({ key: '', rows: [], total: 0, status: 'done' });
 
   useEffect(() => {
-    document.title = `${topic?.label ?? cat?.label ?? 'All records'} | Vineyard Transparency Portal`;
+    setHead(`${topic?.label ?? cat?.label ?? 'All records'}`);
   }, [cat, topic]);
 
   useEffect(() => {
@@ -499,7 +500,7 @@ function RecordsList() {
           <span style={{ width: '88%' }} />
         </div>
       ) : state.status === 'error' ? (
-        <div className="vc-empty">These records could not be loaded. Try again in a moment.</div>
+        <ErrorNote>These records could not be loaded.</ErrorNote>
       ) : state.rows.length === 0 ? (
         cat?.topics && !filtered ? null : <div className="vc-empty">No records match these filters.</div>
       ) : (

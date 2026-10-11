@@ -1,7 +1,5 @@
 /** /people (directory) and /people/:slug (profile with recorded votes and records). */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowUpRight, FileText, MessageSquare, Search, Vote } from 'lucide-react';
@@ -11,6 +9,7 @@ import { TYPE_LABEL, formatDate } from './format';
 import { PersonCard, PersonPhoto } from './PersonCard';
 import { DocLink } from './DocLink';
 import { usePeople, type Person, type PersonDetail, type PersonRecord } from './people';
+import { setHead } from '@/lib/head';
 
 function RecordRows({ rows }: { rows: PersonRecord[] }) {
   return (
@@ -37,7 +36,7 @@ function RecordRows({ rows }: { rows: PersonRecord[] }) {
 function Profile({ slug }: { slug: string }) {
   const res = useJson<PersonDetail>(`/api/people/${encodeURIComponent(slug)}`);
   useEffect(() => {
-    if (res.status === 'done') document.title = `${res.data.person.name} | Vineyard Transparency Portal`;
+    if (res.status === 'done') setHead(`${res.data.person.name}`);
   }, [res]);
   if (res.status === 'loading') return <div className="vc-skeleton" aria-hidden="true"><span style={{ width: '60%' }} /><span style={{ width: '80%' }} /></div>;
   if (res.status === 'error') return <div className="vc-empty">That person is not in the city directory.</div>;
@@ -93,7 +92,7 @@ function Directory() {
   const people = usePeople();
   const [q, setQ] = useState('');
   useEffect(() => {
-    document.title = 'People | Vineyard Transparency Portal';
+    setHead('People');
   }, []);
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase();

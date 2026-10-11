@@ -1,7 +1,5 @@
 /** /meetings/:meetingId : one meeting, its documents, video, and what is on the agenda. */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowUpRight, Clock, FileText, MapPin, MessageSquare, Video } from 'lucide-react';
@@ -12,6 +10,8 @@ import { agendaOutline, formatTime, longDate, statusLabel, todayIso, toneOf, typ
 import { DocLink } from './DocLink';
 import { MeetingDocList } from './MeetingDocs';
 import { useDraftMinutes, useMeetingDocs } from './meetingDocs';
+import { setHead } from '@/lib/head';
+import { normalizeDatesInText } from '@/lib/dates';
 
 type Load<T> = { status: 'loading' } | { status: 'error' } | { status: 'done'; data: T };
 
@@ -76,7 +76,7 @@ export default function MeetingPage() {
   const draft = useDraftMinutes(meeting ?? { date: today, governmentBodyName: null, minutesDocumentId: null }, Boolean(meeting && meeting.date < today && /council|redevelopment|planning commission/i.test(meeting.governmentBodyName ?? '')));
 
   useEffect(() => {
-    if (meeting) document.title = `${meeting.title}, ${longDate(meeting.date)} | Vineyard Transparency Portal`;
+    if (meeting) setHead(`${meeting.title}, ${longDate(meeting.date)}`, `${meeting.governmentBodyName ?? 'Vineyard'} meeting on ${longDate(meeting.date)}: agenda, minutes, packet and votes.`);
   }, [meeting]);
 
   if (load.status === 'error') {
@@ -119,7 +119,7 @@ export default function MeetingPage() {
           <span className="vc-body-dot" /> {meeting.governmentBodyName ?? 'Public meeting'}
           {status && <span className="vc-status-tag" data-kind={status.toLowerCase()}>{status}</span>}
         </p>
-        <h1 className="vc-page-title">{meeting.title}</h1>
+        <h1 className="vc-page-title">{normalizeDatesInText(meeting.title)}</h1>
         <div className="vc-mtg-facts">
           <span>{longDate(meeting.date)}</span>
           {formatTime(meeting.startTime) && (
@@ -158,6 +158,17 @@ export default function MeetingPage() {
         </Link>
       </div>
 
+      {records.status === 'loading' && (meeting.agendaDocumentId || meeting.packetDocumentId || meeting.minutesDocumentId) && (
+        // The meeting's records arrive a moment after the meeting: their place is held so the agenda below stays put.
+        <section className="vc-sched-group" aria-hidden="true">
+          <p className="vc-label">Every record from this meeting</p>
+          <div className="vc-skeleton" style={{ minHeight: `${Math.max(3, [meeting.agendaDocumentId, meeting.packetDocumentId, meeting.minutesDocumentId].filter(Boolean).length + 1) * 4.5}rem`, alignContent: 'start' }}>
+            <span style={{ width: '70%' }} />
+            <span style={{ width: '62%' }} />
+            <span style={{ width: '76%' }} />
+          </div>
+        </section>
+      )}
       {records.docs.length > 0 && (
         <section className="vc-sched-group">
           <p className="vc-label">

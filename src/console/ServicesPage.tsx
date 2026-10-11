@@ -1,19 +1,18 @@
 /** /services: every city form, portal, report and service the city links, as buttons by group. */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, ChevronDown, ChevronRight, ClipboardList, CreditCard, Map as MapIcon, Phone, Search } from 'lucide-react';
 import { Frame } from './Chrome';
 import { Link } from 'react-router-dom';
 import { DIRECTORY, DIRECTORY_GROUPS } from './directory';
+import { setHead } from '@/lib/head';
 
 const ICON = { form: ClipboardList, pay: CreditCard, call: Phone, mail: Phone, page: ArrowUpRight, map: MapIcon } as const;
 
 export default function ServicesPage() {
   const [q, setQ] = useState('');
   useEffect(() => {
-    document.title = 'City services | Vineyard Transparency Portal';
+    setHead('City services');
   }, []);
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase();

@@ -8,9 +8,7 @@
  *   Past budgets   every budget, audit and budget resolution in the archive, by fiscal year, with search
  * The numbers come from GET /api/budget, which is keyed in from the adopted budget book and slides.
  */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, FileText } from 'lucide-react';
@@ -24,10 +22,12 @@ import { CsvButton } from './CsvButton';
 import { csvName } from './csv';
 import { ProjectDetail } from './ProjectDetail';
 import { money, pct, short, swatch, treemap, type Budget, type BudgetLine, type Project } from './budget';
+import { formatDate } from '@/lib/dates';
+import { setHead } from '@/lib/head';
+import { ErrorNote } from './ErrorNote';
 
-/** "2026-08-25" as "August 25, 2026". */
-const LONG = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-const longDay = (iso: string) => LONG.format(new Date(`${iso.slice(0, 10)}T00:00:00Z`));
+/** "2026-08-25" as "Aug 25, 2026". */
+const longDay = (iso: string) => formatDate(iso);
 
 type Tab = 'spend' | 'revenue' | 'sales' | 'projects' | 'past';
 const TABS: Array<{ id: Tab; label: string }> = [
@@ -349,7 +349,7 @@ export default function BudgetPage() {
   const tab: Tab = TABS.some((t) => t.id === raw) ? (raw as Tab) : 'spend';
 
   useEffect(() => {
-    document.title = 'Budget | Vineyard Transparency Portal';
+    setHead('Budget');
   }, []);
 
   const b = load.status === 'done' ? load.data : null;
@@ -377,7 +377,7 @@ export default function BudgetPage() {
           <span style={{ width: '85%' }} />
         </div>
       )}
-      {load.status === 'error' && <div className="vc-empty">The budget could not be loaded right now. Try again in a moment.</div>}
+      {load.status === 'error' && <ErrorNote>The budget could not be loaded.</ErrorNote>}
 
       {b && (
         <div className="vc-bud">

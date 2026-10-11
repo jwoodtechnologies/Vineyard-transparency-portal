@@ -6,8 +6,10 @@ import { ChevronRight, Mail, Phone, UserRound } from 'lucide-react';
 import { roleLine, type Person } from './people';
 
 export function PersonPhoto({ person, size = 56 }: { person: Person; size?: number }) {
-  return person.photo ? (
-    <img className="vc-person-photo" src={person.photo} alt={`Photo of ${person.name}`} width={size} height={size} loading="lazy" style={{ width: size, height: size }} />
+  // A photo that fails to load falls back to the plain mark, never a broken image.
+  const [failed, setFailed] = useState(false);
+  return person.photo && !failed ? (
+    <img className="vc-person-photo" src={person.photo} alt={`Photo of ${person.name}`} width={size} height={size} loading="lazy" style={{ width: size, height: size }} onError={() => setFailed(true)} />
   ) : (
     <span className="vc-person-photo vc-person-noimg" style={{ width: size, height: size }} aria-hidden="true">
       <UserRound size={size * 0.45} strokeWidth={1.6} />

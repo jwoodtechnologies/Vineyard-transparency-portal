@@ -10,6 +10,7 @@ import { useJson } from './api';
 import { docHref } from './files';
 import { TYPE_LABEL, formatDate } from './format';
 import { cleanTitle, fiscalYearOf } from './budget';
+import { ErrorNote } from './ErrorNote';
 
 interface Archive {
   items: DocumentSummary[];
@@ -108,7 +109,7 @@ export default function BudgetArchive() {
           <span style={{ width: '80%' }} />
         </div>
       )}
-      {load.status === 'error' && <div className="vc-empty">The past budgets could not be loaded right now. Try again in a moment.</div>}
+      {load.status === 'error' && <ErrorNote>The past budgets could not be loaded.</ErrorNote>}
 
       {load.status === 'done' && (
         <>

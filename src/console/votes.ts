@@ -1,5 +1,6 @@
 /** Voting records: shapes from /api/votes and how a member's name is shown. */
 import { usePeople, type Person } from './people';
+import { formatMonthDay } from '@/lib/dates';
 
 export interface VoteRow {
   member: string;
@@ -621,7 +622,8 @@ export function seatLabel(seat: Seat): string {
 
 // ------------------------------------------------------------------------------------------ the year's meetings
 
-const shortDay = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+// The sheet is labeled with its year, so the packet date is month and day (docs/DESIGN.md).
+const shortDay = (iso: string) => formatMonthDay(iso);
 
 /**
  * Every meeting of a body this year, for a page that lists them all (the Planning Commission):

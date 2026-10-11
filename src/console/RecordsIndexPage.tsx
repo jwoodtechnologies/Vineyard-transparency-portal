@@ -3,15 +3,15 @@
  * year, with its title, adoption date and tally from the minutes, and links to the record and the
  * minutes page. One edge-cached call per index (GET /api/records/<index>?year=).
  */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { Frame } from './Chrome';
 import { useJson } from './api';
 import { DocLink } from './DocLink';
 import { formatDate } from './format';
+import { setHead } from '@/lib/head';
+import { ErrorNote } from './ErrorNote';
 
 interface IndexRow {
   number: string;
@@ -42,7 +42,7 @@ const KINDS: Record<string, { title: string; word: string; topic: string; every:
 /** The vote as the minutes record it, or that no motion for it is in the archive. */
 function voteLabel(r: IndexRow): string | null {
   if (r.state === 'missing') return null;
-  if (r.tally) return `Vote ${r.tally}`;
+  if (r.tally) return `Vote ${r.tally.replace(/^(\d+)\s*-\s*(\d+)/, '$1 to $2')}`;
   if (r.unanimous) return 'Unanimous';
   if (r.vote === 'carried' || (r.vote === undefined && r.minutes)) return 'Carried';
   return 'Vote not in the archive';
@@ -55,7 +55,7 @@ export default function RecordsIndexPage() {
   const year = params.get('year') ?? '';
   const load = useJson<RecordIndex>(kind ? `/api/records/${index}${/^\d{4}$/.test(year) ? `?year=${year}` : ''}` : null);
   useEffect(() => {
-    if (kind) document.title = `${kind.title} by number | Vineyard Transparency Portal`;
+    if (kind) setHead(`${kind.title} by number`);
   }, [kind]);
   if (!kind) return <Navigate to="/records" replace />;
   const data = load.status === 'done' ? load.data : null;
@@ -95,7 +95,7 @@ export default function RecordsIndexPage() {
           <span style={{ width: '82%' }} />
         </div>
       )}
-      {load.status === 'error' && <div className="vc-empty">This index could not be loaded. Try again in a moment.</div>}
+      {load.status === 'error' && <ErrorNote>This index could not be loaded.</ErrorNote>}
       {data && data.rows.length === 0 && <div className="vc-empty">No numbered {kind.title.toLowerCase()} are in the archive yet.</div>}
       {data && data.rows.length > 0 && (
         <>

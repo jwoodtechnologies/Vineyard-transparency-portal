@@ -3,9 +3,7 @@
  * Recent city construction notices as dated timelines, a map of the work, and every project in the
  * adopted fiscal 2027 budget with its stage and schedule.
  */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { FeatureCollection, Geometry } from 'geojson';
@@ -30,6 +28,8 @@ import {
   type Plan,
   type PlanProps,
 } from './construction';
+import { setHead } from '@/lib/head';
+import { ErrorNote } from './ErrorNote';
 
 const ConstructionMap = lazy(() => import('./ConstructionMap'));
 
@@ -150,7 +150,7 @@ export default function ConstructionPage() {
   const mapBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = 'Construction projects | Vineyard Transparency Portal';
+    setHead('Construction projects');
   }, []);
 
   const years = useMemo(() => {
@@ -252,7 +252,23 @@ export default function ConstructionPage() {
         </div>
       </section>
 
-      <CitySnapshot cityPage={CITY_PAGE} data={snapshot} />
+      {pageLoad.status === 'loading' ? (
+        // The city's table arrives with the page data: its place is held so the sections below do not jump.
+        <section className="vc-latest-sec" aria-hidden="true">
+          <div className="vc-latest-sec-head">
+            <h2>City construction page</h2>
+          </div>
+          <div className="vc-skeleton vc-snap-wait">
+            <span style={{ width: '40%' }} />
+            <span style={{ width: '96%' }} />
+            <span style={{ width: '90%' }} />
+            <span style={{ width: '94%' }} />
+            <span style={{ width: '86%' }} />
+          </div>
+        </section>
+      ) : (
+        <CitySnapshot cityPage={CITY_PAGE} data={snapshot} />
+      )}
 
       <section className="vc-latest-sec">
         <div className="vc-latest-sec-head">
@@ -261,8 +277,15 @@ export default function ConstructionPage() {
             Budget details
           </Link>
         </div>
-        {load.status === 'loading' && <p className="vc-cp-lede">Loading the city&apos;s project list.</p>}
-        {load.status === 'error' && <p className="vc-cp-lede">The city&apos;s project list did not load. Reload to try again.</p>}
+        {load.status === 'loading' && (
+          <div className="vc-skeleton" aria-hidden="true">
+            <span style={{ width: '58%' }} />
+            <span style={{ width: '92%' }} />
+            <span style={{ width: '84%' }} />
+            <span style={{ width: '88%' }} />
+          </div>
+        )}
+        {load.status === 'error' && <ErrorNote>The city&apos;s project list could not be loaded.</ErrorNote>}
         {plans.length > 0 && (
           <>
             <p className="vc-cp-lede">

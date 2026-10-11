@@ -41,7 +41,14 @@ function VoteBlock({ v }: { v: ProjectVote }) {
  */
 export function ProjectDetail({ project, budget = 'full' }: { project: ProjectRef; budget?: 'full' | 'source' | 'none' }) {
   const load = useJson<ProjectDetailData>(projectDetailUrl(project));
-  if (load.status === 'loading') return <p className="vc-pd-wait">Loading project records.</p>;
+  if (load.status === 'loading')
+    return (
+      <div className="vc-skeleton" aria-hidden="true">
+        <span style={{ width: '70%' }} />
+        <span style={{ width: '90%' }} />
+        <span style={{ width: '55%' }} />
+      </div>
+    );
   if (load.status === 'error') return null;
   const d = load.data;
   const b = d.budget;
