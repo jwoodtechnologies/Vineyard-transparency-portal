@@ -17,12 +17,9 @@ records and cites them. If AI is unavailable, the archive still works as a full 
 
 ## Status
 
-**Phase 1 — frontend & platform architecture: complete.** The whole application runs today on a
-clearly labeled demo dataset (`VITE_DATA_MODE=mock`). The production backend (Phase 2) plugs in
-through the REST contract in [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) by configuration alone.
-
-The source-discovery crawler is implemented (`npm run discover-sources`) but has **not yet been run
-against the live seed**. No discovery counts are published until it has been.
+The application reads the archive API served by the Cloudflare Worker in `worker/`, through the
+REST contract in [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md). Records are collected by the Python
+ingest in `ingest/` ([`docs/INGESTION.md`](docs/INGESTION.md)).
 
 ## Features
 
@@ -48,7 +45,7 @@ against the live seed**. No discovery counts are published until it has been.
 
 ```bash
 npm install
-npm run dev            # http://localhost:5173 (demo data)
+npm run dev            # http://localhost:5173 (reads /api)
 ```
 
 | Command | Purpose |
@@ -58,24 +55,19 @@ npm run dev            # http://localhost:5173 (demo data)
 | `npm run preview` | Serve the production build |
 | `npm run typecheck` / `npm run lint` / `npm test` | Checks (Vitest) |
 | `npm run check` | All of the above |
-| `npm run generate-demo-files` | Regenerate the watermarked demo PDFs + checksum manifest |
 | `npm run cf:dev` / `npm run cf:deploy` | Run / deploy on Cloudflare Workers ([guide](docs/CLOUDFLARE_DEPLOYMENT.md)) |
 
-### Archive tooling (Phase 2 pipeline)
+### Archive tooling (Python ingest)
 
 | Command | Purpose |
 | --- | --- |
-| `npm run discover-sources` | Crawl the primary seed and classify public-record systems and documents |
-| `npm run discover-documents` | Run source adapters to list candidate documents |
-| `npm run ingest` | Download → hash → dedupe → store → extract text → chunk |
-| `npm run reindex` | Build the full-text (and optional semantic) index |
-| `npm run validate-archive` | Verify checksums, chunk links, and provenance |
-| `npm run source-health` | Check every registered source's health |
+| `npm run ingest` | Run the Python ingest (`python3 -m ingest ingest`) |
+| `npm run test:ingest` | Python ingest tests |
 
 The primary discovery seed is
-**https://www.vineyardutah.gov/transparency_portal/index.php** — see
-[`docs/SOURCE_DISCOVERY.md`](docs/SOURCE_DISCOVERY.md) and [`config/source-seeds.json`](config/source-seeds.json).
-These commands need outbound network access to the government hosts.
+**https://www.vineyardutah.gov/transparency_portal/index.php**. See
+[`docs/INGESTION.md`](docs/INGESTION.md). These commands need outbound network access to the
+government hosts.
 
 ## Configuration
 
@@ -83,7 +75,6 @@ Copy `.env.example` to `.env`:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `VITE_DATA_MODE` | `mock` | `mock` = bundled demo data; `api` = Phase 2 backend |
 | `VITE_API_BASE_URL` | *(empty)* | API origin; empty = same-origin `/api` via the Cloudflare Worker |
 | `VITE_API_TIMEOUT_MS` | `20000` | Request timeout |
 
@@ -101,18 +92,17 @@ API gateway Worker. Every dependency is free and open source, and no paid SaaS i
 ```
 src/
   types/models.ts          Domain models (Document, DocumentChunk, Meeting, Citation, AskResponse…)
-  data/adapters/           DataAdapter interface, MockDataAdapter, ProductionApiAdapter, errors
-  data/mock/               Demo dataset, demo search engine, demo extractive Ask engine
+  data/adapters/           DataAdapter interface, ProductionApiAdapter, errors
   services/                AskService (circuit breaker), Search/Document/Meeting/Browse/Source/Statistics/Report
-  pages/                   Route screens
-  components/              UI: ask, documents (PDF/text viewers), search, meetings, timeline, archive, layout, ui
+  console/                 Route screens and their components (routes in app/router.tsx)
+  components/              Shared UI: PDF viewer, buttons, skeletons
   lib/                     Safety, text/highlighting, local storage, URL state, formatting
 worker/index.ts            Cloudflare Worker: SPA assets + /api gateway
-scripts/                   Discovery, ingestion, indexing, validation, health, demo-file generation
-config/                    source-seeds.json, RAG system prompt
+ingest/                    Python ingest (crawl, download, extract, index)
+config/                    RAG system prompt
 docs/                      Architecture, API contract, data model, indexing, discovery, adapters, RAG, security, deployment
 tests/                     Vitest suites
-public/                    _headers (CSP, caching), demo-files/, theme-init.js, favicon
+public/                    _headers (CSP, caching), theme-init.js, favicon
 ```
 
 ## Documentation

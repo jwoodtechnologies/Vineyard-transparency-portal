@@ -49,9 +49,7 @@ export interface RequestOptions {
  * Backend-neutral data access contract. React components never talk to a database or HTTP
  * directly — they call services, which call the active adapter.
  *
- * Implementations:
- *  - MockDataAdapter: in-memory, clearly labeled demo data (VITE_DATA_MODE=mock)
- *  - ProductionApiAdapter: REST contract in docs/API_CONTRACT.md (VITE_DATA_MODE=api)
+ * Implementation: ProductionApiAdapter, the REST contract in docs/API_CONTRACT.md.
  */
 export interface DataAdapter {
   readonly mode: 'mock' | 'api';

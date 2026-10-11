@@ -3962,7 +3962,7 @@ html.vc-locked .vc-landing {
 .vc-att2-who span { font-size: 0.74rem; color: var(--vc-accent); font-weight: 600; }
 .vc-att2-marks { display: flex; flex-wrap: wrap; gap: 6px; }
 .vc-att2-mark { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px; font-size: 0.74rem; text-decoration: none; background: var(--vc-bg-2); color: var(--vc-muted); }
-.vc-att2-mark[data-here='true'] { background: rgba(47, 158, 68, 0.12); color: #237032; }
+.vc-att2-mark[data-here='true'] { background: color-mix(in srgb, var(--vc-ink) 8%, transparent); color: var(--vc-ink); }
 .vc-att2-mark i { font-style: normal; font-weight: 700; }
 .vc-att2-total { font-weight: 700; font-size: 0.9rem; color: var(--vc-ink); }
 @media (max-width: 560px) { .vc-att2-row { grid-template-columns: 1fr auto; } .vc-att2-marks { grid-column: 1 / -1; } }
@@ -4242,12 +4242,10 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 .vc-sh-date-m small { font-size: 0.62rem; font-weight: 500; color: var(--vc-muted); }
 .vc-sh-status-m { white-space: nowrap; padding: 1px 6px; border-radius: 2px; font-size: 0.58rem; font-weight: 600; line-height: 1.5; color: var(--vc-ink-2); }
 .vc-sh-status-m[data-status='none'], .vc-sh-status-m[data-status='pending'] { color: var(--vc-muted); font-weight: 500; }
-.vc-sh-status-m[data-status='passed'], .vc-sh-status[data-status='passed'], .vc-sh-note[data-tone='good'] { background: rgba(47, 158, 68, 0.2); color: #14562a; }
-.vc-sh-status-m[data-status='failed'], .vc-sh-status[data-status='failed'], .vc-sh-status-m[data-status='denied'], .vc-sh-status[data-status='denied'] { background: rgba(214, 69, 65, 0.2); color: #8a1d17; }
-.vc-sh-status-m[data-status='continued'], .vc-sh-status-m[data-status='tabled'], .vc-sh-status-m[data-status='removed'], .vc-sh-status[data-status='continued'], .vc-sh-status[data-status='tabled'], .vc-sh-status[data-status='removed'] { background: rgba(236, 178, 40, 0.28); color: #6b4c05; }
-.dark .vc .vc-sh-status-m[data-status='passed'], .dark .vc .vc-sh-status[data-status='passed'], .dark .vc .vc-sh-note[data-tone='good'] { background: rgba(47, 158, 68, 0.3); color: #9be3ae; }
-.dark .vc .vc-sh-status-m[data-status='failed'], .dark .vc .vc-sh-status[data-status='failed'], .dark .vc .vc-sh-status-m[data-status='denied'], .dark .vc .vc-sh-status[data-status='denied'] { background: rgba(214, 69, 65, 0.3); color: #f7a6a1; }
-.dark .vc .vc-sh-status-m[data-status='continued'], .dark .vc .vc-sh-status-m[data-status='tabled'], .dark .vc .vc-sh-status-m[data-status='removed'], .dark .vc .vc-sh-status[data-status='continued'], .dark .vc .vc-sh-status[data-status='tabled'], .dark .vc .vc-sh-status[data-status='removed'] { background: rgba(236, 178, 40, 0.28); color: #f4d27f; }
+/* Motion status cells stay neutral (grays only): the word carries the meaning, never a color. */
+.vc-sh-status-m[data-status='passed'], .vc-sh-status[data-status='passed'], .vc-sh-note[data-tone='good'] { background: color-mix(in srgb, var(--vc-ink) 8%, transparent); color: var(--vc-ink); }
+.vc-sh-status-m[data-status='failed'], .vc-sh-status[data-status='failed'], .vc-sh-status-m[data-status='denied'], .vc-sh-status[data-status='denied'] { background: color-mix(in srgb, var(--vc-ink) 14%, transparent); color: var(--vc-ink); }
+.vc-sh-status-m[data-status='continued'], .vc-sh-status-m[data-status='tabled'], .vc-sh-status-m[data-status='removed'], .vc-sh-status[data-status='continued'], .vc-sh-status[data-status='tabled'], .vc-sh-status[data-status='removed'] { background: color-mix(in srgb, var(--vc-ink) 4%, transparent); color: var(--vc-ink-2); }
 .vc-sh-status { width: 1%; padding: 0 10px; border-left: 1px solid var(--vc-line); font-size: 0.7rem; font-weight: 600; text-align: center; white-space: nowrap; color: var(--vc-ink-2); }
 .vc-sh-status[data-status='none'], .vc-sh-status[data-status='pending'] { font-weight: 500; color: var(--vc-muted); }
 .vc-sh-table tbody[data-pending='true'] .vc-sh-title { color: var(--vc-muted); }

@@ -11,10 +11,6 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-/demo-files/*
-  Cache-Control: public, max-age=3600
-  Content-Disposition: inline
-
 /index.html
   Cache-Control: no-cache
 

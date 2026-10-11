@@ -3,16 +3,10 @@ import type { DataAdapter } from './DataAdapter';
 
 let adapterPromise: Promise<DataAdapter> | null = null;
 
-/**
- * Returns the active data adapter. The mock adapter (and its demo dataset) is loaded lazily so a
- * production (`api`) build never ships demo records in its main bundle.
- */
+/** Returns the active data adapter: the production API, loaded lazily. */
 export function getAdapter(): Promise<DataAdapter> {
   if (!adapterPromise) {
-    adapterPromise =
-      config.dataMode === 'api'
-        ? import('./ProductionApiAdapter').then((m) => new m.ProductionApiAdapter(config.apiBaseUrl, config.apiTimeoutMs))
-        : import('./MockDataAdapter').then((m) => new m.MockDataAdapter());
+    adapterPromise = import('./ProductionApiAdapter').then((m) => new m.ProductionApiAdapter(config.apiBaseUrl, config.apiTimeoutMs));
   }
   return adapterPromise;
 }

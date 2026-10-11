@@ -1,5 +1,7 @@
 # Source Discovery
 
+> The TypeScript pipeline in `scripts/` that this page describes has been removed. Records are now collected by the Python ingest in `ingest/`; see [INGESTION.md](INGESTION.md). File paths and `npm run` commands below are historical.
+
 ## Primary source seed
 
 > **`https://www.vineyardutah.gov/transparency_portal/index.php`**

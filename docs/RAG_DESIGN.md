@@ -134,10 +134,3 @@ Frontend (`src/services/AskService.ts`): when `/api/ask` fails with `ai_unavaila
 seconds (default 300) — it stops calling `/api/ask` during that period and answers with
 `/api/search` results (`retrievalStatus: "ai_unavailable"`, engine `search-fallback`), so an
 exhausted API is not hammered and users still get records.
-
-## Demo mode
-
-With `VITE_DATA_MODE=mock` the frontend uses the deterministic **`demo-extractive`** engine
-(`src/data/mock/askEngine.ts`): no language model; it answers only by quoting sentences from
-retrieved demo chunks with a citation on each, uses the same refusal and partial wording, and labels
-every answer as demo. It demonstrates the grounding contract the production service must meet.
