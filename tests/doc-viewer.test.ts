@@ -4,6 +4,7 @@ import { evaluate, plan, type Run } from '../scripts/watchdog/lib.mjs';
 import { fileKind, fileRoute, PROXY_HOSTS } from '../src/lib/documentFile';
 import { viewerMode } from '../src/components/documents/viewerMode';
 import { outputScale } from '../src/components/documents/pdfAssets';
+import { nativeFragment, pageCssWidth, zoomStep } from '../src/components/documents/zoom';
 
 const CHROME_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1';
@@ -24,6 +25,30 @@ describe('viewer per device', () => {
     expect(outputScale(390, 505, 3)).toBe(3);
     expect(outputScale(2000, 2600, 3) * Math.sqrt(2000 * 2600)).toBeLessThanOrEqual(Math.sqrt(16_000_000) + 1);
     expect(outputScale(800, 1000, 1)).toBe(1);
+  });
+});
+
+describe('zoom', () => {
+  it('steps through the zoom levels from the percent on screen', () => {
+    expect(zoomStep(75, 1)).toBe(80);
+    expect(zoomStep(119, -1)).toBe(110);
+    expect(zoomStep(42, 1)).toBe(50);
+    expect(zoomStep(25, -1)).toBe(25);
+    expect(zoomStep(300, 1, 300)).toBe(300);
+  });
+
+  it('shows most of the first page on a computer, fits the width on a phone', () => {
+    // 1280 by 720: a letter page (816 px at 100%) drawn at 75%, not the full 974 px width.
+    expect(pageCssWidth({ mode: 'auto' }, 974, 816, 11 / 8.5, 720)).toBe(612);
+    expect(pageCssWidth({ mode: 'auto' }, 340, 816, 11 / 8.5, 844)).toBe(340);
+    expect(pageCssWidth({ mode: 'width' }, 974, 816, 11 / 8.5, 720)).toBe(974);
+    expect(pageCssWidth({ mode: 'pct', pct: 150 }, 974, 816, 11 / 8.5, 720)).toBe(1224);
+  });
+
+  it('asks the browser viewer for the page and zoom, without its toolbar', () => {
+    expect(nativeFragment(3, { mode: 'auto' }, 75)).toBe('page=3&zoom=75&toolbar=0&navpanes=0');
+    expect(nativeFragment(1, { mode: 'width' }, 75)).toBe('page=1&zoom=page-width&view=FitH&toolbar=0&navpanes=0');
+    expect(nativeFragment(2, { mode: 'pct', pct: 125 }, 75)).toBe('page=2&zoom=125&toolbar=0&navpanes=0');
   });
 });
 

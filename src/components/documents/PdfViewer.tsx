@@ -6,6 +6,7 @@ import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { stem } from '@/lib/text';
 import { outputScale, pdfDocumentOptions } from './pdfAssets';
+import { pageCssWidth, PX_PER_PT, type Zoom } from './zoom';
 import './pdf-text-layer.css';
 import './viewer.css';
 
@@ -15,8 +16,9 @@ export interface PdfViewerProps {
   url: string;
   /** Scroll to this page whenever `seq` changes (a page asked for in the address, the page box or the arrows). */
   goto: { page: number; seq: number };
-  /** 1 fits the page to the width. */
-  zoom: number;
+  zoom: Zoom;
+  /** The percent on screen (of the page's actual size) and the percent that fits the width, as they change. */
+  onScale?: (pct: number, fitPct: number) => void;
   highlight?: string[];
   title: string;
   onReady: (pageCount: number) => void;
@@ -29,14 +31,31 @@ const MAX_PAGE_WIDTH = 980;
 const NEAR = '1500px 0px';
 
 /**
+ * Scrolls the page to the top of the screen, below the toolbar (its scroll-margin-top). Not scrollIntoView: the
+ * pages box scrolls sideways (a zoomed page), and Chrome then lines up that box instead of the page, under the toolbar.
+ */
+function landOn(el: HTMLElement | undefined) {
+  if (!el) return;
+  const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+  let box: HTMLElement | null = el.parentElement;
+  while (box && !(/(auto|scroll)/.test(getComputedStyle(box).overflowY) && box.scrollHeight > box.clientHeight + 1)) box = box.parentElement;
+  const top = el.getBoundingClientRect().top - margin;
+  if (box) box.scrollTop += top - box.getBoundingClientRect().top;
+  else window.scrollTo({ top: window.scrollY + top });
+}
+
+/**
  * Every page of a PDF, one under the other, drawn with pdf.js where the browser cannot show the PDF itself
  * (phones and tablets): sharp at the screen's pixel density, with a transparent, selectable text layer and
  * search words marked. Pages are drawn as they come near the screen. The PDF is untrusted: nothing in it runs.
  */
-export default function PdfViewer({ url, goto, zoom, highlight = [], title, onReady, onVisiblePage, onError }: PdfViewerProps) {
+export default function PdfViewer({ url, goto, zoom, highlight = [], title, onReady, onVisiblePage, onError, onScale }: PdfViewerProps) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [ratios, setRatios] = useState<Record<number, number>>({});
   const [width, setWidth] = useState(0);
+  const [vh, setVh] = useState(() => window.innerHeight);
+  /** Page 1 at 100%, in CSS px. */
+  const [pageWidth, setPageWidth] = useState(612 * PX_PER_PT);
   const [near, setNear] = useState<Set<number>>(() => new Set([1]));
   const wrap = useRef<HTMLDivElement>(null);
   const pageEls = useRef(new Map<number, HTMLDivElement>());
@@ -44,9 +63,9 @@ export default function PdfViewer({ url, goto, zoom, highlight = [], title, onRe
   const pending = useRef<number | null>(null);
   const reported = useRef(0);
   const hitsKey = highlight.join('|');
-  const cbs = useRef({ onReady, onVisiblePage, onError });
+  const cbs = useRef({ onReady, onVisiblePage, onError, onScale });
   useLayoutEffect(() => {
-    cbs.current = { onReady, onVisiblePage, onError };
+    cbs.current = { onReady, onVisiblePage, onError, onScale };
   });
 
   // Load the document.
@@ -60,6 +79,7 @@ export default function PdfViewer({ url, goto, zoom, highlight = [], title, onRe
         const v = first.getViewport({ scale: 1 });
         if (cancelled) return;
         setRatios({ 1: v.height / v.width });
+        setPageWidth(v.width * PX_PER_PT);
         setDoc(d);
         cbs.current.onReady(d.numPages);
       },
@@ -79,7 +99,12 @@ export default function PdfViewer({ url, goto, zoom, highlight = [], title, onRe
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => setWidth(Math.floor(entry.contentRect.width)));
     ro.observe(el);
-    return () => ro.disconnect();
+    const onResize = () => setVh(window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
 
   // Which pages are near the screen.
@@ -152,8 +177,12 @@ export default function PdfViewer({ url, goto, zoom, highlight = [], title, onRe
 
   const count = doc?.numPages ?? 0;
   const fit = Math.max(200, Math.min(width, MAX_PAGE_WIDTH));
-  const cssWidth = Math.round(fit * zoom);
   const defaultRatio = ratios[1] ?? 11 / 8.5;
+  const cssWidth = pageCssWidth(zoom, fit, pageWidth, defaultRatio, vh);
+
+  useEffect(() => {
+    if (doc && width) cbs.current.onScale?.((cssWidth / pageWidth) * 100, (fit / pageWidth) * 100);
+  }, [doc, width, cssWidth, fit, pageWidth]);
 
   // Go to a page: the address (?page=N), the page box or the arrows. Page 1 never scrolls past the header.
   useEffect(() => {
@@ -162,14 +191,14 @@ export default function PdfViewer({ url, goto, zoom, highlight = [], title, onRe
     if (goto.seq === 0 && n === 1) return;
     pending.current = n;
     reported.current = n;
-    pageEls.current.get(n)?.scrollIntoView({ block: 'start' });
+    landOn(pageEls.current.get(n));
     cbs.current.onVisiblePage(n);
   }, [doc, width, goto.page, goto.seq]);
 
   const onDrawn = useCallback((n: number) => {
     // Pages above the target may have changed height once drawn: land on the target again.
     if (pending.current === n) {
-      pageEls.current.get(n)?.scrollIntoView({ block: 'start' });
+      landOn(pageEls.current.get(n));
       pending.current = null;
     }
   }, []);
@@ -179,7 +208,7 @@ export default function PdfViewer({ url, goto, zoom, highlight = [], title, onRe
   return (
     <div ref={wrap} className="vc-pdf-pages" aria-label={title}>
       {!doc && (
-        <div className="vc-pdf-page vc-pdf-loading" style={{ width: fit, height: Math.round(fit * defaultRatio) }} role="status" aria-label="Loading the PDF">
+        <div className="vc-pdf-page vc-pdf-loading" style={{ width: cssWidth, height: Math.round(cssWidth * defaultRatio) }} role="status" aria-label="Loading the PDF">
           <span className="vc-pdf-shimmer" />
         </div>
       )}

@@ -1,7 +1,9 @@
 # Document check (scripts/doc-check/run.mjs) against the live site, nightly: every record id linked from the
 # construction, budget, index, latest and coverage pages must open, and 25 random PDFs (most with an archived
 # copy, some without) must show a readable first page at phone (390 px) and desktop (1440 px) size in Chromium:
-# not blank, dark text present, a styled toolbar, and page text that matches the record's own text.
+# not blank, dark text present, a styled toolbar (with zoom out, zoom in, fit width and the zoom percent; 44 px
+# on the phone), page text that matches the record's own text, and on desktop the PDF frame asks for the page and zoom
+# with the browser viewer's toolbar hidden (#page=N&zoom=P&toolbar=0&navpanes=0).
 # Read only. A failure fails the job; the watchdog (watchdog.yml) then opens an issue labeled watchdog.
 name: Document check
 

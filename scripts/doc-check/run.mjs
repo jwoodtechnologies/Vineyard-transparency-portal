@@ -10,9 +10,11 @@
  * 2. Viewer: `--count` random PDFs (about three in four with an archived copy, the rest without) opened at
  *    phone (390 px) and desktop (1440 px) size in Chromium. The portal's own pdf.js pages are checked (the
  *    browser's built-in viewer cannot be read by a script; its file route is checked instead: a PDF, framable
- *    by the portal). Fails when the first page is blank, its contrast is low (too few dark pixels), the
- *    toolbar is unstyled, the page text does not match the record's own text (page 1 of /api/documents/:id/text),
- *    or a file the portal can serve shows "Open the PDF" instead.
+ *    by the portal, and the frame's address must ask for the page and zoom with the viewer's own toolbar hidden:
+ *    #page=N&zoom=P&toolbar=0&navpanes=0). Fails when the first page is blank, its contrast is low (too few dark
+ *    pixels), the toolbar is unstyled or lacks zoom out, zoom in, fit width or the zoom percent (44 px on a
+ *    phone), the page text does not match the record's own text (page 1 of /api/documents/:id/text), or a file
+ *    the portal can serve shows "Open the PDF" instead.
  * Writes a JSON report and a Markdown summary ($GITHUB_STEP_SUMMARY) and exits 1 on any failure.
  */
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -129,7 +131,9 @@ async function view(browser, doc, phone) {
       out,
       await page.evaluate(() => {
         const bar = document.querySelector('.vc-vbar');
-        const btn = bar?.querySelector('.vc-vbtn');
+        // Buttons hidden at this width (the page arrows on a phone) do not count.
+        const shown = (el) => el.getBoundingClientRect().width > 0;
+        const btn = [...(bar?.querySelectorAll('.vc-vbtn') ?? [])].find(shown);
         const input = bar?.querySelector('input');
         let toolbar = { styled: false, why: 'no toolbar' };
         if (bar && btn) {
@@ -137,7 +141,23 @@ async function view(browser, doc, phone) {
           const r = bar.getBoundingClientRect();
           const bh = btn.getBoundingClientRect().height;
           const iw = input ? input.getBoundingClientRect().width : 0;
-          const why = [b.display !== 'flex' && `display ${b.display}`, r.height > 90 && `${Math.round(r.height)} px tall`, bh < 28 && `buttons ${Math.round(bh)} px`, input && iw > 120 && `page box ${Math.round(iw)} px wide`].filter(Boolean);
+          // With a PDF shown: zoom out, zoom in and fit width, each shown; on a touch screen 44 px or more.
+          const touch = matchMedia('(pointer: coarse)').matches;
+          const pdf = Boolean(document.querySelector('.vc-pdf-pages, .vc-pdf-frame'));
+          const zoom = (pdf ? ['Zoom out', 'Zoom in', 'Fit width'] : []).map((name) => [name, [...bar.querySelectorAll('button')].find((e) => shown(e) && (e.getAttribute('aria-label') ?? '').startsWith(name))]);
+          const missing = zoom.filter(([, e]) => !e).map(([name]) => name);
+          const small = touch ? zoom.filter(([, e]) => e && Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) < 43.5).map(([name]) => name) : [];
+          const pct = [...bar.querySelectorAll('.vc-vbar-pct')].find(shown)?.textContent?.trim() ?? '';
+          const why = [
+            b.display !== 'flex' && `display ${b.display}`,
+            r.height > 90 && `${Math.round(r.height)} px tall`,
+            bh < 28 && `buttons ${Math.round(bh)} px`,
+            input && iw > 120 && `page box ${Math.round(iw)} px wide`,
+            missing.length && `no ${missing.join(', ')}`,
+            small.length && `${small.join(', ')} under 44 px`,
+            pdf && !/^(\d+%|Fit)$/.test(pct) && 'no zoom percent',
+            r.right > window.innerWidth + 1 && 'wider than the screen',
+          ].filter(Boolean);
           toolbar = { styled: why.length === 0, why: why.join(', ') };
         }
         const p1 = document.querySelector('.vc-pdf-page[data-page="1"]');
@@ -174,6 +194,24 @@ async function view(browser, doc, phone) {
   return out;
 }
 
+/** 2d. The browser's own viewer (desktop): the frame asks it for the page and zoom and to hide its own toolbar. */
+async function nativeFrame(browser, doc) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await ctx.newPage();
+  try {
+    await page.goto(`${BASE}/documents/${doc.id}?viewer=native&page=2`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    const src = await page.waitForSelector('iframe.vc-pdf-frame', { timeout: 30000 }).then((f) => f.getAttribute('src'), () => null);
+    if (!src) return ['desktop: no PDF frame'];
+    const parts = (src.split('#')[1] ?? '').split('&');
+    const want = ['page=2', 'zoom=', 'toolbar=0', 'navpanes=0'].filter((p) => !parts.some((x) => (p.endsWith('=') ? x.startsWith(p) : x === p)));
+    return want.length ? [`desktop: PDF frame address lacks ${want.join(', ')} (${src})`] : [];
+  } catch (e) {
+    return [`desktop: PDF frame: ${String(e).slice(0, 120)}`];
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function main() {
   if (!args.pw) throw new Error('--pw <path to playwright index.mjs> is required');
   mkdirSync(SHOTS, { recursive: true });
@@ -195,6 +233,7 @@ async function main() {
       views[phone ? 'phone' : 'desktop'] = { ...v, problems: judge(v, apiText, servable || file.ok) };
       problems.push(...views[phone ? 'phone' : 'desktop'].problems.map((p) => `${phone ? 'phone' : 'desktop'}: ${p}`));
     }
+    if (servable && (doc.pageCount ?? 2) >= 2) problems.push(...(await nativeFrame(browser, doc)));
     records.push({ id: doc.id, title: doc.title, archived: servable, file, views, problems });
     console.log(`${problems.length ? 'FAIL' : 'ok  '} ${doc.id} ${doc.title.slice(0, 60)}${problems.length ? `\n     ${problems.join('\n     ')}` : ''}`);
   }

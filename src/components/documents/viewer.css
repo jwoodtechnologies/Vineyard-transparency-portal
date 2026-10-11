@@ -107,8 +107,13 @@
   font-variant-numeric: tabular-nums;
 }
 .vc .vc-vbar-pct {
-  min-width: 3.4rem;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.2rem;
   height: var(--vc-h-icon);
+  padding: 0 4px;
   border: 0;
   border-radius: var(--vc-radius-sm);
   background: transparent;
@@ -116,17 +121,37 @@
   font: inherit;
   font-size: var(--vc-fs-sm);
   font-variant-numeric: tabular-nums;
+}
+.vc button.vc-vbar-pct {
+  background: var(--vc-bg-2);
+  color: var(--vc-ink);
+  font-weight: 560;
   cursor: pointer;
 }
-.vc-vbar-show-sm {
+.vc .vc-vbtn[aria-pressed='true'] {
+  background: var(--vc-bg-2);
+}
+.vc-vbar-show-sm,
+.vc .vc-vbar-show-sm {
   display: none;
+}
+/* Tablets and narrow windows: icons only (each keeps its name as a label and a tooltip). */
+@media (max-width: 1023px) {
+  .vc-vbar-hide-md,
+  .vc-vbar-end .vc-vbtn:not(.vc-vbar-exit) > span {
+    display: none;
+  }
 }
 @media (max-width: 719px) {
   .vc-vbar-show-sm {
     display: inline;
   }
+  .vc .vc-vbar-pct.vc-vbar-show-sm {
+    display: inline-flex;
+  }
   .vc-vbar-hide-sm,
-  .vc .vc-vbtn.vc-vbar-hide-sm {
+  .vc .vc-vbtn.vc-vbar-hide-sm,
+  .vc .vc-vbar-pct.vc-vbar-hide-sm {
     display: none;
   }
   .vc-vbar {
@@ -135,6 +160,29 @@
   }
   .vc .vc-vbtn {
     padding: 0 6px;
+  }
+}
+/* Phones: the page box without the arrows (pages scroll), and no Open (Download opens the file on a phone). */
+@media (max-width: 479px) {
+  .vc .vc-vbtn.vc-vbar-hide-xs {
+    display: none;
+  }
+  .vc .vc-vbar-page input {
+    width: 2.75rem;
+  }
+  .vc .vc-vbar-pct {
+    min-width: 3rem;
+  }
+}
+/* Touch screens: every toolbar control is at least 44 by 44 px. */
+@media (pointer: coarse) {
+  .vc .vc-vbtn,
+  .vc .vc-vbar-pct {
+    min-width: 44px;
+    height: 44px;
+  }
+  .vc .vc-vbar-page input {
+    height: 44px;
   }
 }
 
@@ -152,7 +200,8 @@
 .vc-pdf-pages {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* Pages center with auto margins: a page zoomed wider than the screen scrolls sideways from its left edge. */
+  align-items: flex-start;
   gap: var(--vc-sp-3);
   overflow-x: auto;
   padding: var(--vc-sp-3) var(--vc-sp-2);
@@ -167,6 +216,7 @@
 .vc-pdf-page {
   position: relative;
   flex: none;
+  margin-inline: auto;
   max-width: none;
   overflow: hidden;
   background: #ffffff;
@@ -316,34 +366,68 @@
   }
 }
 
-/* The record page header stays short so the first page shows without scrolling: one row of actions,
-   swiped sideways on a phone instead of wrapping into a tall block. */
+/* The record page header stays short so most of the first page shows without scrolling (1280 by 720 and up):
+   Back, the facts and the file name on one line, a smaller title, one row of actions (swiped sideways when
+   they do not fit, never wrapped into a tall block). */
 .vc {
   --vc-topbar-h: 65px;
+}
+.vc-page:has(> .vc-doc-head) {
+  padding-top: var(--vc-sp-2);
+}
+.vc .vc-doc-head {
+  margin: 0 0 var(--vc-sp-3);
+}
+.vc-doc-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--vc-sp-4);
+}
+.vc .vc-doc-top .vc-back {
+  margin: 0;
+}
+.vc .vc-doc-top :is(.vc-doc-facts, .vc-doc-filed, .vc-doc-source) {
+  margin: 0;
+}
+.vc .vc-doc-head .vc-page-title {
+  margin: var(--vc-sp-1) 0 var(--vc-sp-3);
+  font-size: clamp(1.5rem, 2.6vw, 1.875rem);
+  line-height: 1.15;
+}
+.vc .vc-doc-actions {
+  flex-wrap: nowrap;
+  margin: -2px;
+  padding: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.vc .vc-doc-actions::-webkit-scrollbar {
+  display: none;
+}
+.vc .vc-doc-actions > * {
+  flex: none;
+}
+.vc .vc-doc-actions > :is(.vc-primary, .vc-secondary) {
+  height: var(--vc-h-icon);
+  padding: 0 0.9rem;
+  font-size: var(--vc-fs-ui);
+}
+@media (pointer: coarse) {
+  .vc .vc-doc-actions > :is(.vc-primary, .vc-secondary) {
+    height: 44px;
+  }
 }
 @media (max-width: 640px) {
   .vc {
     --vc-topbar-h: 57px;
   }
-  .vc .vc-doc-head {
-    margin: var(--vc-sp-3) 0 var(--vc-sp-4);
-  }
   .vc .vc-doc-head .vc-page-title {
-    margin-bottom: var(--vc-sp-3);
-    font-size: 1.6rem;
+    font-size: 1.5rem;
   }
   .vc .vc-doc-actions {
-    flex-wrap: nowrap;
     margin: 0 calc(-1 * var(--vc-sp-4));
     padding: 2px var(--vc-sp-4);
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .vc .vc-doc-actions::-webkit-scrollbar {
-    display: none;
-  }
-  .vc .vc-doc-actions > * {
-    flex: none;
   }
 }

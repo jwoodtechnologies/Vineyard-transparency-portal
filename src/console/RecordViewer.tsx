@@ -8,21 +8,25 @@
  *   (its first bytes must be a PDF) before a viewer is drawn.
  *
  * Images are shown as they are. Word files, spreadsheets and other files are offered as a download (nothing is
- * converted), with the text the archive read from them below. One toolbar for all: page, zoom (pdf.js), download,
- * print, open in a new tab and full screen. src/components/documents/viewerMode.ts picks the viewer.
+ * converted), with the text the archive read from them below. One toolbar for all: page, zoom (out, in, fit width),
+ * download, print, open in a new tab and full screen. The browser's own viewer is told to hide its toolbar
+ * (toolbar=0, Chrome and Edge) and takes the page and zoom from the frame's address (#page=N&zoom=P).
+ * src/components/documents/viewerMode.ts picks the viewer; src/components/documents/zoom.ts holds the zoom.
  */
 import '@/components/documents/viewer.css';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { ArrowUpRight, ChevronLeft, ChevronRight, Download, Expand, FileText, Minus, Plus, Printer, X } from 'lucide-react';
+import { ArrowUpRight, ChevronLeft, ChevronRight, Download, Expand, FileText, MoveHorizontal, Printer, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { DocumentDetail, DocumentPageText } from '@/types/models';
 import { DocumentService } from '@/services';
 import { fileKind, fileRoute, FILE_KIND_LABEL, type FileKind } from '@/lib/documentFile';
 import { viewerMode, isPhoneOrTablet, type ViewerMode } from '@/components/documents/viewerMode';
 import { probePdf } from '@/components/documents/probe';
+import { AUTO_MIN_PCT, CHROME_PX, LETTER, nativeFragment, zoomStep, type Zoom } from '@/components/documents/zoom';
 
 const PdfViewer = lazy(() => import('@/components/documents/PdfViewer'));
 
-const ZOOMS = [0.75, 1, 1.25, 1.5, 2, 2.5];
+/** Phones and tablets stop at 300%: a few pages that large already fill the memory Safari allows for drawing. */
+const maxZoom = () => (isPhoneOrTablet(navigator) ? 300 : 400);
 
 const safeHttp = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u) ? u : null);
 
@@ -147,7 +151,7 @@ function useFullScreen(shell: RefObject<HTMLDivElement | null>) {
 interface BarProps {
   title: string;
   page?: { current: number; count: number | null; go: (n: number) => void };
-  zoom?: { index: number; set: (i: number) => void };
+  zoom?: { pct: number | null; fitted: boolean; out: () => void; in: () => void; fit: () => void; min: boolean; max: boolean };
   download?: string | null;
   print?: (() => void) | null;
   open?: string | null;
@@ -171,7 +175,7 @@ function ViewerBar({ title, page, zoom, download, print, open, full, onFull, onE
       {full && <span className="vc-vbar-title vc-vbar-hide-sm">{title}</span>}
       {page && (
         <div className="vc-vbar-group">
-          <button type="button" className="vc-vbtn" aria-label="Previous page" title="Previous page" onClick={() => page.go(page.current - 1)} disabled={page.current <= 1}>
+          <button type="button" className="vc-vbtn vc-vbar-hide-xs" aria-label="Previous page" title="Previous page" onClick={() => page.go(page.current - 1)} disabled={page.current <= 1}>
             <ChevronLeft size={18} strokeWidth={2} />
           </button>
           <form
@@ -194,21 +198,29 @@ function ViewerBar({ title, page, zoom, download, print, open, full, onFull, onE
             />
             {page.count ? <span>of {page.count}</span> : null}
           </form>
-          <button type="button" className="vc-vbtn" aria-label="Next page" title="Next page" onClick={() => page.go(page.current + 1)} disabled={page.count != null && page.current >= page.count}>
+          <button type="button" className="vc-vbtn vc-vbar-hide-xs" aria-label="Next page" title="Next page" onClick={() => page.go(page.current + 1)} disabled={page.count != null && page.current >= page.count}>
             <ChevronRight size={18} strokeWidth={2} />
           </button>
         </div>
       )}
       {zoom && (
         <div className="vc-vbar-group vc-vbar-zoom">
-          <button type="button" className="vc-vbtn" aria-label="Zoom out" title="Zoom out" onClick={() => zoom.set(Math.max(0, zoom.index - 1))} disabled={zoom.index === 0}>
-            <Minus size={16} strokeWidth={2} />
+          <button type="button" className="vc-vbtn" aria-label="Zoom out" title="Zoom out" onClick={zoom.out} disabled={zoom.min}>
+            <ZoomOut size={18} strokeWidth={1.9} />
           </button>
-          <button type="button" className="vc-vbar-pct" title="Fit to width" onClick={() => zoom.set(1)}>
-            {Math.round(ZOOMS[zoom.index] * 100)}%
+          {/* The percent on screen. On a phone it is also the fit width button (no room for both). */}
+          <span className="vc-vbar-pct vc-vbar-hide-sm" aria-live="polite" aria-label={zoom.pct ? `Zoom ${zoom.pct}%` : 'Zoom: fit width'}>
+            {zoom.pct ? `${zoom.pct}%` : 'Fit'}
+          </span>
+          <button type="button" className="vc-vbar-pct vc-vbar-show-sm" aria-label={`Fit width (zoom ${zoom.pct ? `${zoom.pct}%` : 'fit width'})`} title="Fit width" onClick={zoom.fit}>
+            {zoom.pct ? `${zoom.pct}%` : 'Fit'}
           </button>
-          <button type="button" className="vc-vbtn" aria-label="Zoom in" title="Zoom in" onClick={() => zoom.set(Math.min(ZOOMS.length - 1, zoom.index + 1))} disabled={zoom.index === ZOOMS.length - 1}>
-            <Plus size={16} strokeWidth={2} />
+          <button type="button" className="vc-vbtn" aria-label="Zoom in" title="Zoom in" onClick={zoom.in} disabled={zoom.max}>
+            <ZoomIn size={18} strokeWidth={1.9} />
+          </button>
+          <button type="button" className="vc-vbtn vc-vbar-hide-sm" aria-label="Fit width" title="Fit width" aria-pressed={zoom.fitted} onClick={zoom.fit}>
+            <MoveHorizontal size={17} strokeWidth={1.9} />
+            <span className="vc-vbar-hide-md">Fit width</span>
           </button>
         </div>
       )}
@@ -226,7 +238,7 @@ function ViewerBar({ title, page, zoom, download, print, open, full, onFull, onE
           </button>
         )}
         {open && (
-          <a className="vc-vbtn" href={open} target="_blank" rel="noopener noreferrer" aria-label="Open in a new tab" title="Open in a new tab">
+          <a className={`vc-vbtn${zoom ? ' vc-vbar-hide-xs' : ''}`} href={open} target="_blank" rel="noopener noreferrer" aria-label="Open in a new tab" title="Open in a new tab">
             <ArrowUpRight size={17} strokeWidth={1.9} />
             <span className="vc-vbar-hide-sm">Open</span>
           </a>
@@ -261,6 +273,33 @@ function FileCard({ kind, href, label, note }: { kind: FileKind; href: string | 
       )}
     </div>
   );
+}
+
+/**
+ * The viewer's width and the screen's height (the browser's own viewer: its zoom is worked out from them), now
+ * and as first measured (the first view keeps its zoom when the window is resized: no reload of the frame).
+ */
+function useShellSize(shell: RefObject<HTMLDivElement | null>) {
+  const [size, setSize] = useState({ width: 0, height: 0, firstWidth: 0, firstHeight: 0 });
+  useEffect(() => {
+    const el = shell.current;
+    if (!el) return;
+    const update = () =>
+      setSize((s) => {
+        const width = el.clientWidth;
+        const height = window.innerHeight;
+        if (s.width === width && s.height === height) return s;
+        return s.firstWidth ? { ...s, width, height } : { width, height, firstWidth: width, firstHeight: height };
+      });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [shell]);
+  return size;
 }
 
 type Source = { status: 'checking' } | { status: 'ready'; url: string; sameOrigin: boolean } | { status: 'none' };
@@ -312,7 +351,11 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
   const [source, fallback] = usePdfSource(doc, fileUrl, kind === 'pdf');
   const mode: ViewerMode = source.status === 'ready' && !source.sameOrigin ? 'pdfjs' : viewerMode(navigator, override);
   const [count, setCount] = useState<number | null>(doc.pageCount ?? null);
-  const [zoomIndex, setZoomIndex] = useState(1);
+  const [zoom, setZoomState] = useState<Zoom>({ mode: 'auto' });
+  /** pdf.js: the percent on screen and the percent that fits the width, as drawn. */
+  const [scale, setScale] = useState<{ pct: number; fit: number } | null>(null);
+  const onScale = useCallback((pct: number, fit: number) => setScale((s) => (s && Math.abs(s.pct - pct) < 0.05 && Math.abs(s.fit - fit) < 0.05 ? s : { pct, fit })), []);
+  const shellSize = useShellSize(shell);
   const [goto, setGoto] = useState({ page, seq: 0 });
   const [nativePage, setNativePage] = useState(page);
   const [imageFailed, setImageFailed] = useState(false);
@@ -332,9 +375,29 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
     const target = pageNow.current;
     setTimeout(() => setGoto((g) => ({ page: target, seq: g.seq + 1 })), 60);
   };
-  const setZoom = (i: number) => {
-    setZoomIndex(i);
-    setGoto((g) => ({ page, seq: g.seq + 1 }));
+  // The browser's own viewer: the percent is worked out here, for a letter page (it does not say the page size).
+  const fitPct = (w: number) => (Math.max(200, w - 40) / LETTER.width) * 100;
+  const nativeFit = fitPct(shellSize.width);
+  const wholePagePct = (Math.max(200, shellSize.firstHeight - CHROME_PX) / LETTER.ratio / LETTER.width) * 100;
+  const nativeAuto = Math.round(Math.min(fitPct(shellSize.firstWidth), Math.max(AUTO_MIN_PCT, wholePagePct)));
+  const nativePct = zoom.mode === 'pct' ? zoom.pct : zoom.mode === 'auto' ? nativeAuto : null;
+  // Zoom keeps the page on screen: pdf.js lands on it again, the frame opens at it.
+  const setZoom = (z: Zoom) => {
+    setZoomState(z);
+    if (mode === 'pdfjs') setGoto((g) => ({ page, seq: g.seq + 1 }));
+  };
+  const zoomBar = (pct: number | null, fitPct: number): NonNullable<BarProps['zoom']> => {
+    const now = pct ?? fitPct;
+    const max = maxZoom();
+    return {
+      pct: pct == null ? null : Math.round(pct),
+      fitted: zoom.mode === 'width' || (pct != null && Math.abs(pct - fitPct) < 0.5),
+      out: () => setZoom({ mode: 'pct', pct: zoomStep(now, -1, max) }),
+      in: () => setZoom({ mode: 'pct', pct: zoomStep(now, 1, max) }),
+      fit: () => setZoom({ mode: 'width' }),
+      min: now <= 25.5,
+      max: now >= max - 0.5,
+    };
   };
 
   let body: ReactNode;
@@ -364,15 +427,18 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
       );
       bar = { download: null, open: original };
     } else if (mode === 'native') {
+      const fragment = nativeFragment(nativePage, zoom, nativeAuto);
       body = (
-        <iframe
-          key={`${source.url}#${nativePage}`}
-          className="vc-pdf-frame"
-          title={doc.title}
-          src={`${source.url}#page=${nativePage}&view=FitH&navpanes=0`}
-        />
+        // Drawn once the viewer's width is known, so the first zoom is right and the frame loads once.
+        shellSize.firstWidth ? <iframe key={`${source.url}#${fragment}`} className="vc-pdf-frame" title={doc.title} src={`${source.url}#${fragment}`} /> : <div className="vc-pdf-frame" />
       );
-      bar = { page: { current: nativePage, count, go }, download: source.url, print: () => printPdf(source.url), open: `${source.url}#page=${nativePage}` };
+      bar = {
+        page: { current: nativePage, count, go },
+        zoom: zoomBar(nativePct, nativeFit),
+        download: source.url,
+        print: () => printPdf(source.url),
+        open: `${source.url}#page=${nativePage}`,
+      };
     } else {
       body = (
         <Suspense
@@ -387,7 +453,8 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
           <PdfViewer
             url={source.url}
             goto={goto}
-            zoom={ZOOMS[zoomIndex]}
+            zoom={zoom}
+            onScale={onScale}
             highlight={highlight}
             title={doc.title}
             onReady={setCount}
@@ -398,7 +465,7 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
       );
       bar = {
         page: { current: page, count, go },
-        zoom: isPhoneOrTablet(navigator) ? undefined : { index: zoomIndex, set: setZoom },
+        zoom: zoomBar(scale?.pct ?? null, scale?.fit ?? 100),
         download: source.sameOrigin ? source.url : downloadable,
         print: source.sameOrigin ? () => printPdf(source.url) : null,
         open: source.url,

@@ -161,30 +161,33 @@ export default function DocumentView() {
 
   return (
     <Frame wide>
-      <BackButton fallback="/records" />
+      {/* Short, so most of the first page shows under it: Back, the facts and the file name on one line, the title, one row of actions. */}
       <header className="vc-doc-head">
-        <p className="vc-doc-facts">
-          {facts.map((f, i) => (
-            <span key={i}>{f}</span>
-          ))}
-        </p>
-        <h1 className="vc-page-title">{lb.title}</h1>
-        {(lb.status || filedAs || doc.adoption?.date) && (
-          <p className="vc-doc-filed">
-            {lb.status && (
-              <span className="vc-rchip" data-status={lb.status}>
-                {STATUS_LABEL[lb.status]}
-              </span>
-            )}
-            {doc.adoption?.date && (
-              <DocLink id={doc.adoption.minutesDocumentId} page={doc.adoption.page} className="vc-doc-adopted">
-                Adopted {formatDate(doc.adoption.date)}, minutes{doc.adoption.page ? ` page ${doc.adoption.page}` : ''}
-              </DocLink>
-            )}
-            {filedAs && <span className="vc-doc-file">File name: {filedAs}</span>}
+        <div className="vc-doc-top">
+          <BackButton fallback="/records" />
+          <p className="vc-doc-facts">
+            {facts.map((f, i) => (
+              <span key={i}>{f}</span>
+            ))}
           </p>
-        )}
-        {label && <p className="vc-source-label vc-doc-source">{label}</p>}
+          {(lb.status || filedAs || doc.adoption?.date) && (
+            <p className="vc-doc-filed">
+              {lb.status && (
+                <span className="vc-rchip" data-status={lb.status}>
+                  {STATUS_LABEL[lb.status]}
+                </span>
+              )}
+              {doc.adoption?.date && (
+                <DocLink id={doc.adoption.minutesDocumentId} page={doc.adoption.page} className="vc-doc-adopted">
+                  Adopted {formatDate(doc.adoption.date)}, minutes{doc.adoption.page ? ` page ${doc.adoption.page}` : ''}
+                </DocLink>
+              )}
+              {filedAs && <span className="vc-doc-file">File name: {filedAs}</span>}
+            </p>
+          )}
+          {label && <p className="vc-source-label vc-doc-source">{label}</p>}
+        </div>
+        <h1 className="vc-page-title">{lb.title}</h1>
         <p className="vc-print-only vc-print-src">
           {original || fileUrl ? <>Source document: {original ?? `${window.location.origin}${fileUrl}`}<br /></> : null}
           This page: {`${window.location.origin}${window.location.pathname}`}
