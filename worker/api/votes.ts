@@ -270,16 +270,28 @@ export interface Commissioner {
  * the website still lists who have not sat this year are left out. Chair and alternates as the
  * minutes or the website label them.
  */
-/** Website listings known to be out of date: Natalie Harbin was replaced by Daria Evans (2026). */
-// Source: NOT TRACED - verify. The listing being overridden is the city's Board & Commission Members page,
-// https://www.vineyardutah.gov/government/board___commission_members.php (as read October 1, 2026, when this was added).
-// No record of the replacement itself is cited; the May 6, 2026 Planning Commission minutes, as quoted in
-// tests/worker-votes.test.ts, list Daria Evans as present (document id and page not recorded). Check the council minutes or agenda for her appointment.
-const REPLACED = new Set(['natalie harbin']);
-/** Roles the sources do not print: Graden Ostler is an alternate. */
-// Source: NOT TRACED - verify. By its own comment no source prints this role; it was added October 1, 2026 with
-// no record named. Check the Planning Commission minutes for 2026 and the Board & Commission Members page above.
-const ROLE_OVERRIDES: Record<string, string> = { ostler: 'Alternate' };
+/**
+ * Website listings that the 2026 records show are out of date. The listing is the city's Board & Commission Members
+ * page, https://www.vineyardutah.gov/government/board___commission_members.php (the archive's copy as read October 5,
+ * 2026 is doc_079bc34d0f7ba1da; the page itself refuses the portal's runners with 403). The same sources are listed
+ * with PC_SEATS in src/console/votes.ts.
+ * - Natalie Harbin: last at the November 5, 2025 meeting (minutes doc_ccd67fb92b4b6746 p. 1); at no 2026 meeting with
+ *   minutes (March 4, doc_87f4b9c0a818e65b p. 1; May 6, doc_92676662d170d22b p. 1). Daria Evans was appointed and
+ *   sworn in on March 24, 2026 (City Council minutes doc_965360a52383e70e p. 6, item 9.1); those minutes do not say
+ *   whose seat she filled.
+ * - Caden Rhoton: at no 2026 meeting with minutes; "RES 2026-16 Planning Commissioner Removal" (doc_fdf9cfd8eff4c237
+ *   p. 1) was in the March 24, 2026 council packet, and the August 18, 2026 council minutes (doc_70147d9eaf07e39b p. 1)
+ *   list him among Vineyard residents. The March 24 minutes record no vote on RES 2026-16.
+ */
+const REPLACED = new Set(['natalie harbin', 'caden rhoton']);
+/**
+ * Roles the 2026 minutes do not print.
+ * - Alternates: January 22, 2025 final minutes (doc_8581dd5de1cb765c p. 2), "Commissioners Fagg and Ostler are
+ *   alternates and can not be nominated." No later record found changes either seat.
+ * - Vice Chair: May 6, 2026 minutes (doc_92676662d170d22b p. 2), "Commissioner Nathan Steele would serve as Chair, and
+ *   Commissioner David Pearce would serve as Vice Chair."
+ */
+const ROLE_OVERRIDES: Record<string, string> = { ostler: 'Alternate', fagg: 'Alternate', pearce: 'Vice Chair', steele: 'Chair' };
 
 /**
  * A board as it sits now: the members its newest minutes this year list (with chair, vice chair and
@@ -309,7 +321,7 @@ export async function currentRoster(env: Env, body: string, siteNames: string[])
     for (const p of site) {
       const end = (p.term ?? '').match(/((?:19|20)\d{2})\s*$/);
       const termOk = !end || Number(end[1]) >= year;
-      if (!termOk || REPLACED.has(p.name.toLowerCase())) continue;
+      if (!termOk || (body === PC && REPLACED.has(p.name.toLowerCase()))) continue;
       const have = out.get(lastOf(p.name));
       // Only a body's own chair is "Chair" ("Library Board Chair"); "VYC Beautification Chair" keeps its title.
       const siteRole = /alternate/i.test(p.role) ? 'Alternate' : /^(?:[a-z]+ (?:board|commission) )?vice[- ]chair(?:person)?$/i.test(p.role) ? 'Vice Chair' : /^(?:[a-z]+ (?:board|commission) )?chair(?:person)?$/i.test(p.role) ? 'Chair' : /^member$/i.test(p.role) ? 'Commissioner' : p.role;
@@ -388,6 +400,8 @@ export interface MotionOut {
   items: string[];
   documentId: string;
   page: number | null;
+  /** The minutes' attendance list (names as printed), or null when the minutes have none. */
+  attendance: { present: string[]; absent: string[] } | null;
   votes: Array<{ member: string; vote: string }>;
 }
 
@@ -443,6 +457,20 @@ export async function queryMotions(env: Env, f: { all?: boolean; member?: string
     : { results: [] };
   const byMotion = new Map<string, Array<{ member: string; vote: string }>>();
   for (const v of votes.results ?? []) (byMotion.get(v.motion_id) ?? byMotion.set(v.motion_id, []).get(v.motion_id)!).push({ member: v.member, vote: v.vote });
+  // Who the minutes list as present and absent at the top (the attendance list), per set of minutes: an absent
+  // member is marked absent on that meeting's votes even when the motion's own roll call leaves them out.
+  const docIds = [...new Set(list.map((r) => String(r.document_id)))];
+  const att = docIds.length
+    ? await env.CATALOG_DB.prepare('SELECT document_id, member, status FROM meeting_attendance WHERE document_id IN (SELECT value FROM json_each(?))')
+        .bind(JSON.stringify(docIds))
+        .all<{ document_id: string; member: string; status: string }>()
+        .catch(() => ({ results: [] as Array<{ document_id: string; member: string; status: string }> }))
+    : { results: [] as Array<{ document_id: string; member: string; status: string }> };
+  const byDoc = new Map<string, { present: string[]; absent: string[] }>();
+  for (const a of att.results ?? []) {
+    const d = byDoc.get(a.document_id) ?? byDoc.set(a.document_id, { present: [], absent: [] }).get(a.document_id)!;
+    (a.status === 'absent' ? d.absent : d.present).push(a.member.replace(/^Mayor /, ''));
+  }
   const order = { yes: 0, no: 1, abstain: 2, recused: 3, absent: 4 } as Record<string, number>;
   const council = await officialsFor(env, f.body);
   // Members who sat this year and have since left (a resignation) still show in the votes they cast,
@@ -471,6 +499,7 @@ export async function queryMotions(env: Env, f: { all?: boolean; member?: string
       items: r.items ? (JSON.parse(String(r.items)) as string[]) : [],
       documentId: String(r.document_id),
       page: r.page == null ? null : Number(r.page),
+      attendance: byDoc.get(String(r.document_id)) ?? null,
       mover: named((r.mover as string | null) ?? null),
       seconder: named((r.seconder as string | null) ?? null),
       // "Unanimous" with no names in the minutes is not a roll call: no member is shown as voting.
