@@ -15,11 +15,12 @@ describe('budget framing', () => {
     expect(Math.round((taxes / GENERAL.revenueTotal) * 100)).toBe(56);
   });
 
-  it('tells the chat that the all-funds total is not tax revenue and to lead with the General Fund', () => {
+  it('tells the chat to give the General Fund and never a total of all funds', () => {
     const facts = budgetFacts();
     expect(facts).toContain('about 56 percent of General Fund revenue');
-    expect(facts).toContain('That total is not tax revenue');
-    expect(facts).toContain('lead with the General Fund');
+    expect(facts).toContain('Never add the funds together or state a total of all funds');
+    expect(facts).toContain('give the General Fund');
+    expect(facts).not.toContain('70,944,358');
   });
 
   it('does not ship the year-over-year framing notes the page no longer shows', () => {

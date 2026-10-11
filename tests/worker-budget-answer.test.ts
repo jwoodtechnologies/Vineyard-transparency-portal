@@ -27,7 +27,12 @@ describe('budget answers from budgetData.ts', () => {
     expect(text('How much revenue does property tax bring in?')).toContain('Property tax: $5,395,500 of General Fund revenue');
     expect(text('How much do fire inspection fees bring in for the budget?')).toContain('Fire inspection fees: $35,000');
     expect(text('How much do fire inspection fees bring in for the budget?')).not.toContain('Fire:');
-    expect(text('What is the total city budget?')).toContain('$70,944,358');
+    const total = text('What is the total city budget?');
+    expect(total).not.toContain('$70,944,358');
+    expect(total).not.toMatch(/\btotal of\b|\ball funds\b|\bnine city funds total\b/i);
+    expect(total).toContain('The General Fund, the city\'s everyday operating budget, is $17,258,772');
+    expect(total).toContain('presented by fund');
+    expect(total).toContain('Redevelopment Agency: $29,786,656.');
   });
 
   it('leaves questions the data cannot settle to the records search', () => {

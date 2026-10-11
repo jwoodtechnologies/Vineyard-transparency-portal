@@ -36,8 +36,9 @@ export interface Budget {
   label: string;
   adopted: string;
   amended: string;
+  /** The ordinance that adopted the amendment, e.g. "Ordinance 2026-10". */
+  amendmentOrdinance: string;
   docs: { book: string; slides: string; amendment: string; amendmentSummary: string; tentative: string };
-  allFundsTotal: number;
   funds: BudgetFund[];
   general: {
     revenueBeforeTransfers: number;

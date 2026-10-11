@@ -7,7 +7,7 @@
  * year, a comparison, a project, salaries) returns null and goes to the records search.
  * Pure: no Worker types.
  */
-import { ALL_FUNDS_TOTAL, BUDGET_ADOPTED, BUDGET_AMENDED, BUDGET_DOCS, BUDGET_FISCAL_YEAR, DEPARTMENTS, FUNDS, GENERAL, REVENUE, type BudgetFund, type BudgetLine, type RevenueLine } from '../lib/budgetData';
+import { BUDGET_ADOPTED, BUDGET_AMENDED, BUDGET_DOCS, BUDGET_FISCAL_YEAR, DEPARTMENTS, FUNDS, GENERAL, REVENUE, type BudgetFund, type BudgetLine, type RevenueLine } from '../lib/budgetData';
 import { topicWords } from './followup';
 
 export type BudgetIntent =
@@ -179,7 +179,7 @@ export function budgetAnswer(intent: BudgetIntent): BudgetAnswer {
       for (const d of intent.departments) s.push({ text: `${d.name}: ${usd(d.prior)}.`, docs: ['book'] });
     }
     if (intent.other || !intent.departments.length)
-      s.push({ text: `The portal's budget data has ${pfy} figures for General Fund departments only; its fund, revenue and total figures are for ${fy}.`, docs: [] });
+      s.push({ text: `The portal's budget data has ${pfy} figures for General Fund departments only; its fund and revenue figures are for ${fy}.`, docs: [] });
     s.push({ text: 'Every line is on the portal’s Budget page.', docs: [] });
     return { intent: intent.kind, sentences: s };
   }
@@ -189,9 +189,11 @@ export function budgetAnswer(intent: BudgetIntent): BudgetAnswer {
   } else if (intent.kind === 'amended') {
     s.push(amended ? { text: `The First Budget Amendment to the FY 27 budget, for ${fy}, is dated ${amended}.`, docs: ['amendment'] } : { text: 'The date of the budget amendment is not recorded in the portal’s budget data.', docs: [] });
   } else if (intent.kind === 'total') {
-    s.push({ text: `The nine city funds total ${usd(ALL_FUNDS_TOTAL)} in ${book}, for ${fy}.`, docs: ['book'] });
-    s.push({ text: 'That total adds separate funds such as water, sewer and the Redevelopment Agency, which run on their own charges and fees, so it is not tax revenue.', docs: [] });
-    s.push({ text: `General Fund spending, the everyday operating budget, is ${usd(GENERAL.amended.total)} after ${amend}.`, docs: ['amendment'] });
+    // Owner rule: never a total of all funds added together. The General Fund total, then each fund's
+    // own total as page 3 of the budget book lists it, never summed.
+    s.push({ text: `The General Fund, the city's everyday operating budget, is ${usd(GENERAL.amended.total)} of spending for ${fy}, after ${amend}.`, docs: ['amendment'] });
+    s.push({ text: `The city budget is presented by fund, and ${book} lists each fund's revenue and sources on page 3:`, docs: ['book'] });
+    for (const f of FUNDS) s.push({ text: `${f.name}: ${usd(f.total)}.`, docs: ['book'] });
   } else {
     if (intent.departments.length) {
       s.push({ text: `General Fund department budgets for ${fy}:`, docs: [] });
