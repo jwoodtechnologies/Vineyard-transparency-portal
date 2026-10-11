@@ -14,6 +14,8 @@ import { fresh, getJson, useJson } from './api';
 import { RECORD_CATEGORIES, categoryById } from './categories';
 import { DocLink } from './DocLink';
 import { TYPE_LABEL, formatDate, sourceLabel } from './format';
+import { RssLink } from './RssLink';
+import { ResultChips, type ChipFacets } from './ResultChips';
 
 interface Row {
   id: string;
@@ -210,7 +212,7 @@ export default function RecordsPage() {
   const q = (params.get('q') ?? '').trim();
   const typesKey = (params.get('t') ?? '')
     .split(',')
-    .filter((t) => cat?.types.some((x) => x.id === t))
+    .filter((t) => (cat ? cat.types.some((x) => x.id === t) : t in TYPE_LABEL))
     .join(',');
   const types = useMemo(() => typesKey.split(',').filter(Boolean), [typesKey]);
   const year = params.get('y') ?? '';
@@ -239,7 +241,7 @@ export default function RecordsPage() {
     return u.toString();
   }, [cat, types, year, body, sort, q, from]);
   const key = `${query}|${pages}`;
-  const [state, setState] = useState<{ key: string; rows: Row[]; total: number; status: 'done' | 'error' }>({ key: '', rows: [], total: 0, status: 'done' });
+  const [state, setState] = useState<{ key: string; rows: Row[]; total: number; status: 'done' | 'error'; facets?: ChipFacets }>({ key: '', rows: [], total: 0, status: 'done' });
 
   useEffect(() => {
     document.title = `${cat?.label ?? 'All records'} | Vineyard Transparency Portal`;
@@ -253,7 +255,7 @@ export default function RecordsPage() {
         if (!live) return;
         const seen = new Set<string>();
         const rows = list.flatMap((r) => rowsOf(r, Boolean(q))).filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
-        setState({ key, rows, total: Number(list[0]?.total ?? list[0]?.totalCount ?? rows.length), status: 'done' });
+        setState({ key, rows, total: Number(list[0]?.total ?? list[0]?.totalCount ?? rows.length), status: 'done', facets: (list[0] as { facets?: ChipFacets } | undefined)?.facets });
       },
       () => live && setState({ key, rows: [], total: 0, status: 'error' }),
     );
@@ -426,6 +428,16 @@ export default function RecordsPage() {
           {q ? ` matching “${q}”` : ''}
         </p>
       )}
+      {q && !loading && state.status === 'done' && state.facets && (
+        <ResultChips
+          facets={state.facets}
+          allowedTypes={cat ? cat.types.map((t) => t.id) : null}
+          type={types[0] ?? ''}
+          year={year}
+          body={body}
+          onPick={(patch) => update(patch)}
+        />
+      )}
 
       {loading && state.rows.length === 0 ? (
         <div className="vc-skeleton" aria-hidden="true">
@@ -452,6 +464,7 @@ export default function RecordsPage() {
       )}
 
       {!filtered && cat?.topics && !loading && state.status === 'done' && !more && <TopicRecords key={cat.id} topics={cat.topics} exclude={new Set(state.rows.map((r) => r.id))} />}
+      <RssLink href="/feeds/records.xml" title="Newest records feed (RSS)" />
     </Frame>
   );
 }

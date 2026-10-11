@@ -2,7 +2,8 @@
  * The private panel page. Self-contained (served only at PANEL_PREFIX, never part of the public site
  * bundle). All data is rendered with textContent, never as HTML.
  *
- * Owner: activity, adding records, every upload, resident submissions, people and invites.
+ * Owner: activity, adding records, every upload, resident submissions, people and invites, and the
+ * coverage check (what the archive is missing, with a CSV download).
  * Uploader: adding records and its own uploads. An invite link (PANEL_PREFIX/invite/<token>) opens
  * the join form, where the invitee picks a display name and creates a passkey.
  */
@@ -68,6 +69,8 @@ html.dark .seg button[aria-pressed=true]{background:rgba(255,255,255,.1)}
 .top-q .c{flex:none;min-width:30px;font-size:12px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
 .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .bar input[type=search]{width:260px;min-height:38px;border-radius:999px;font-size:14px}
+.bar select{width:auto;max-width:100%;min-height:38px;border-radius:999px;font-size:14px}
+.more:empty{display:none}
 .feed{list-style:none;margin:0;padding:0}
 .item{display:grid;grid-template-columns:78px 1fr auto;gap:16px;padding:16px 18px;border-top:1px solid var(--line);cursor:default}
 .item:first-child{border-top:0}
@@ -240,6 +243,23 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
       <div class="card"><ul class="feed" id="invList"></ul><div class="empty hidden" id="invEmpty">No invites in the last 30 days.</div></div>
       <h2 class="sub">Upload log</h2>
       <div class="card"><ul class="feed" id="auditList"></ul><div class="empty hidden" id="auditEmpty">Nothing logged yet.</div></div>
+    </div>
+
+    <div id="v-coverage" class="view hidden">
+      <div class="head"><h1>Coverage</h1><div class="rowacts"><button class="btn" id="covRefresh" type="button">Check now</button><button class="btn primary" id="covCsv" type="button">Download CSV</button></div></div>
+      <p class="hint" id="covWhen"></p>
+      <div class="stats" id="covStats"></div>
+      <h2 class="sub">Number gaps</h2>
+      <p class="hint">Ordinances, resolutions and RDA resolutions, per year: each number from 1 to the highest seen that no record or recorded motion names.</p>
+      <div class="card"><ul class="feed" id="covGaps"></ul><div class="empty hidden" id="covGapsEmpty">No gaps found.</div><div class="more" id="covGapsMore"></div></div>
+      <div class="bar"><h2 class="sub">Meetings missing files</h2><select id="covBody" aria-label="Body"></select></div>
+      <p class="hint">Held, not canceled, with no agenda, packet or minutes in the archive. Hearing notices are left out.</p>
+      <div class="card"><ul class="feed" id="covMeet"></ul><div class="empty hidden" id="covMeetEmpty">Every held meeting has its files.</div><div class="more" id="covMeetMore"></div></div>
+      <h2 class="sub">Records with no date</h2>
+      <div class="card"><ul class="feed" id="covUndated"></ul><div class="empty hidden" id="covUndatedEmpty">Every record has a date.</div><div class="more" id="covUndatedMore"></div></div>
+      <h2 class="sub">Records with no text</h2>
+      <p class="hint">Text not extracted, not indexed for search, or waiting for OCR.</p>
+      <div class="card"><ul class="feed" id="covNoText"></ul><div class="empty hidden" id="covNoTextEmpty">Every record has text.</div><div class="more" id="covNoTextMore"></div></div>
     </div>
   </section>
 </div>

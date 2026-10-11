@@ -18,6 +18,7 @@ import { processVotes } from './api/votes';
 import { track } from './sync/checks';
 import { runSync } from './sync/run';
 import { drainContribQueue } from './contrib/indexing';
+import { refreshCoverageIfStale } from './lib/coverage';
 
 const UA = { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org; public records archive)', accept: 'application/json, text/html;q=0.9' };
 
@@ -135,6 +136,8 @@ export async function runFrequent(env: Env, scheduledTime = Date.now()): Promise
   summary.votes = await track(env, 'votes', () => processVotes(env, 6_000, 20));
   // Big PDFs added on the portal: their full text (the title is searchable from the start).
   summary.portalUploads = await track(env, 'portal-uploads', () => drainContribQueue(env, budget, Date.now() + 60_000));
+  // The coverage check (owner panel) is recomputed once a day.
+  summary.coverage = await track(env, 'coverage', () => refreshCoverageIfStale(env));
   return summary;
 }
 

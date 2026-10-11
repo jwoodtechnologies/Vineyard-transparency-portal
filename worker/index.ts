@@ -31,6 +31,8 @@ import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
 import { logQuestion, who } from './panel/store';
 import { addFile, addForm, addStatus, reportSubmission } from './contrib/resident';
+import { coverageSummary } from './api/coverage';
+import { handleFeed } from './api/feeds';
 
 function id(segment: string | undefined): string {
   const value = decodeURIComponent(segment ?? '');
@@ -119,6 +121,9 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     case 'construction':
       if (!b) return getConstruction(env);
       break;
+    case 'coverage':
+      if (b === 'summary' && !c) return coverageSummary(env, url);
+      break;
     case 'projects':
       if (b === 'detail' && !c) return getProjectDetail(env, url);
       break;
@@ -162,7 +167,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
  * and POST /api/ask, admin, health and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats|coverage\/summary)$/;
 
 async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '');
@@ -208,6 +213,16 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
+    // RSS feeds (no accounts): /feeds/records.xml and /feeds/meetings.xml, edge cached 15 minutes.
+    if (url.pathname.startsWith('/feeds/')) {
+      try {
+        return await handleFeed(request, env, url, ctx);
+      } catch (e) {
+        if (e instanceof HttpError) return errorResponse(e);
+        console.error(JSON.stringify({ event: 'feed_error', path: url.pathname, message: e instanceof Error ? e.message : String(e) }));
+        return new Response('Feed unavailable.', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+      }
+    }
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
     try {

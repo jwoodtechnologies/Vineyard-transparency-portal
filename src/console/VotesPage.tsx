@@ -36,6 +36,9 @@ import {
   type SheetRow,
 } from './votes';
 import { usePeople } from './people';
+import { CsvButton } from './CsvButton';
+import { csvName } from './csv';
+import { voteCsvRows } from './voteCsv';
 
 interface Attendance {
   meetings: Array<{
@@ -572,6 +575,11 @@ function YearSection({
       {open && list.status === 'error' && <p className="vc-mo-note">This year could not load just now.</p>}
       {open && list.status === 'done' && !rows.length && <p className="vc-mo-note">No votes match.</p>}
       {open && rows.length > 0 && ready && <VoteSheet rows={rows} member={member} seats={seats} mayor={mayor} showBody={showBody} />}
+      {open && rows.length > 0 && ready && (
+        <div className="vc-csv-row">
+          <CsvButton filename={csvName('vineyard', commission ? 'planning-votes' : 'votes', year)} rows={() => voteCsvRows(rows, seats, mayor)} />
+        </div>
+      )}
     </section>
   );
 }

@@ -14,6 +14,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { Frame } from './Chrome';
 import { DocLink } from './DocLink';
 import { useJson } from './api';
+import { CsvButton } from './CsvButton';
+import { csvName } from './csv';
 import { CitySnapshot } from './CitySnapshot';
 import { ProjectDetail } from './ProjectDetail';
 import type { MapFocus } from './ConstructionMap';
@@ -275,6 +277,15 @@ export default function ConstructionPage() {
             <p className="vc-cp-fine">
               Stage and years: city project list (years only). Amounts: adopted FY27 budget, July 1, 2026 to June 30, 2027.
             </p>
+            <div className="vc-csv-row">
+              <CsvButton
+                filename={csvName('vineyard', 'construction', 'projects', 'fy2027')}
+                rows={() => [
+                  ['Project', 'Type', 'Stage', 'Start year', 'Finish year', 'Department', 'Location', 'FY27 budget', 'Funding source', 'Consultant'],
+                  ...plans.map((p) => [p.name, p.category, p.stage, p.start, p.finish, p.department, p.location, p.budget, p.source, p.consultant]),
+                ]}
+              />
+            </div>
           </>
         )}
 

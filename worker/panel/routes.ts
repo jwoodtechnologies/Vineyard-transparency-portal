@@ -23,6 +23,7 @@ import { archiveRoom } from '../contrib/indexing';
 import { plainLine } from '../lib/contrib';
 import { auditLog, listUploads, lookupMeetings, lookupProjects, staffDelete, staffEdit, staffFile, staffForm, type Me } from '../contrib/staff';
 import { hideSubmission, listSubmissions, removeSubmission, restoreSubmission, setSubmissionsOpen, submissionLog } from '../contrib/resident';
+import { coverage, refreshCoverage } from '../lib/coverage';
 
 export const PANEL_PREFIX = '/api/k/x79k82r8fjjz9ki9b3dpi2';
 export const INVITE_HOURS = 72;
@@ -426,6 +427,7 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     if (route === '/submissions/hide') return reply(await hideSubmission(env, b.id));
     if (route === '/submissions/restore') return reply(await restoreSubmission(env, b.id));
     if (route === '/submissions/switch') return reply(await setSubmissionsOpen(env, b.open === true));
+    if (route === '/coverage/refresh') return reply(await refreshCoverage(env));
     throw notFound('Unknown API route.');
   }
 
@@ -452,6 +454,7 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
   if (route === '/audit') return reply(await auditLog(env));
   if (route === '/submissions') return reply(await listSubmissions(env));
   if (route === '/submissions/log') return reply(await submissionLog(env));
+  if (route === '/coverage') return reply(await coverage(env));
 
   if (route === '/accounts') {
     const r = await db

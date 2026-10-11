@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Building2, CalendarDays, ClipboardList, FileText, HardHat, History, Landmark, Map as MapIcon, Moon, Newspaper, Scale, Sun, Users, Vote } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
+import { HeaderSearch } from './HeaderSearch';
 
 function useScrolled() {
   const [scrolled, setScrolled] = useState(() => typeof window !== 'undefined' && window.scrollY > 8);
@@ -77,7 +78,11 @@ export function SettingsMenu() {
   useEffect(() => {
     const onHistory = () => setOpen(false);
     window.addEventListener('vc:history-open', onHistory);
-    return () => window.removeEventListener('vc:history-open', onHistory);
+    window.addEventListener('vc:search-open', onHistory);
+    return () => {
+      window.removeEventListener('vc:history-open', onHistory);
+      window.removeEventListener('vc:search-open', onHistory);
+    };
   }, []);
 
   return (
@@ -179,6 +184,7 @@ export function TopBar({ onHome, onHistory, children }: TopBarProps) {
       </div>
       <nav className="vc-topbar-actions" aria-label="Main">
         {children}
+        <HeaderSearch />
         <SettingsMenu />
       </nav>
     </header>

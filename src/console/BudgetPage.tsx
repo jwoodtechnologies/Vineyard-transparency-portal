@@ -20,6 +20,8 @@ import { Donut, Numbers, Split, type Slice } from './BudgetCharts';
 import SalesTaxTab, { SalesTaxSources } from './SalesTaxTab';
 import { Frame } from './Chrome';
 import { useJson } from './api';
+import { CsvButton } from './CsvButton';
+import { csvName } from './csv';
 import { ProjectDetail } from './ProjectDetail';
 import { money, pct, share, short, swatch, treemap, type Budget, type BudgetLine, type Project } from './budget';
 
@@ -137,6 +139,12 @@ function SpendTab({ b }: { b: Budget }) {
           </tbody>
         </table>
       </Numbers>
+      <div className="vc-csv-row">
+        <CsvButton
+          filename={csvName('vineyard', 'budget', 'departments', `fy${b.fiscalYear}`)}
+          rows={() => [['Department', 'Adopted', 'Amended', 'Prior year'], ...all.map((l) => [l.name, l.adopted, l.amended, l.prior])]}
+        />
+      </div>
     </>
   );
 }
@@ -179,6 +187,9 @@ function RevenueTab({ b }: { b: Budget }) {
           </tbody>
         </table>
       </Numbers>
+      <div className="vc-csv-row">
+        <CsvButton filename={csvName('vineyard', 'budget', 'revenue', `fy${b.fiscalYear}`)} rows={() => [['Source', `FY${b.fiscalYear}`], ...lines.map((l) => [l.name, l.amount])]} />
+      </div>
     </>
   );
 }
@@ -318,6 +329,12 @@ function ProjectsTab({ b }: { b: Budget }) {
           Show all {shown.length} projects
         </button>
       )}
+      <div className="vc-csv-row">
+        <CsvButton
+          filename={csvName('vineyard', 'budget', 'projects', `fy${b.fiscalYear}`)}
+          rows={() => [['Project', 'Fund', 'Department', 'Amount', 'Budget slide page'], ...[...b.projects].sort((a, c) => c.amount - a.amount).map((p) => [p.name, nameOf(p.fund), p.dept, p.amount, p.page])]}
+        />
+      </div>
       <p className="vc-bud-fine">
         From the council&apos;s budget slides. <Link to="/map">See them on the map.</Link>
       </p>

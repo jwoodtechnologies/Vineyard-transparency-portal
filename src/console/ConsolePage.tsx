@@ -27,6 +27,7 @@ import { peopleIn, usePeople, type Person } from './people';
 import { MotionCard } from './VotesPage';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
+import { HeaderSearch } from './HeaderSearch';
 import { HistoryPanel } from './HistoryPanel';
 import { getChat, newChatId, saveChat, type SavedChat } from './history';
 import type { ConsoleAnswer, Preview, Turn } from './types';
@@ -344,7 +345,11 @@ export default function ConsolePage() {
   useEffect(() => {
     const onMenu = () => setHistoryOpen(false);
     window.addEventListener('vc:menu-open', onMenu);
-    return () => window.removeEventListener('vc:menu-open', onMenu);
+    window.addEventListener('vc:search-open', onMenu);
+    return () => {
+      window.removeEventListener('vc:menu-open', onMenu);
+      window.removeEventListener('vc:search-open', onMenu);
+    };
   }, []);
   const newChat = () => {
     reset();
@@ -363,6 +368,7 @@ export default function ConsolePage() {
             <History size={17} strokeWidth={1.8} />
           </button>
           <div className="vc-topbar-actions">
+            <HeaderSearch />
             <SettingsMenu />
           </div>
         </div>

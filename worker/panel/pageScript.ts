@@ -37,7 +37,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
   var TYPE_NAME = {}; TYPES.forEach(function(t){ TYPE_NAME[t[0]] = t[1]; });
 
   // ------------------------------------------------------------ navigation
-  var VIEWS = [['activity','Activity',true],['add','Add',false],['uploads','Uploads',false],['subs','Submissions',true],['people','People',true]];
+  var VIEWS = [['activity','Activity',true],['add','Add',false],['uploads','Uploads',false],['subs','Submissions',true],['people','People',true],['coverage','Coverage',true]];
   function buildNav(){
     var nav = $('nav'); nav.textContent = '';
     VIEWS.forEach(function(v){ if (v[2] && me.role !== 'owner') return; var b = el('button', null, v[1]); b.type = 'button'; b.dataset.v = v[0]; b.setAttribute('aria-pressed', 'false'); b.addEventListener('click', function(){ go(v[0]); }); nav.appendChild(b); });
@@ -52,6 +52,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
     if (v === 'uploads') loadUploads();
     if (v === 'subs') loadSubs();
     if (v === 'people') loadPeople();
+    if (v === 'coverage') loadCoverage();
   }
 
   // ------------------------------------------------------------ activity (owner)
@@ -329,6 +330,86 @@ export const PANEL_SCRIPT = String.raw`(function(){
   $('invForm').addEventListener('submit', function(e){ e.preventDefault(); $('invErr').textContent = '';
     post('/invites/create', { name: $('invName').value }).then(function(j){ $('invLink').value = location.origin + j.path; $('invBox').classList.remove('hidden'); $('invName').value = ''; loadPeople(); }, function(x){ $('invErr').textContent = x.message; }); });
   $('invCopy').addEventListener('click', function(){ var i = $('invLink'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(function(){ $('invCopy').textContent = 'Copied'; }, function(){ document.execCommand && document.execCommand('copy'); $('invCopy').textContent = 'Copied'; }); });
+
+  // ------------------------------------------------------------ coverage (owner)
+  var cov = null, covAll = {};
+  var SERIES = { ordinance: 'Ordinances', resolution: 'Resolutions', rda_resolution: 'RDA resolutions' };
+  var DOCS = { agenda: 'Agenda', packet: 'Packet', minutes: 'Minutes' };
+  function pad2(n){ return n < 10 ? '0' + n : String(n); }
+  function nums(year, list){ return list.map(function(n){ return year + '-' + pad2(n); }).join(', '); }
+  function siteLink(path, text){ var a = el('a', 'open', text); a.href = path; a.target = '_blank'; a.rel = 'noopener'; return a; }
+  function covList(id, rows, render){
+    var ul = $(id); ul.textContent = '';
+    var cap = covAll[id] ? rows.length : Math.min(rows.length, 200);
+    rows.slice(0, cap).forEach(function(r){ ul.appendChild(render(r)); });
+    $(id + 'Empty').classList.toggle('hidden', rows.length > 0);
+    var more = $(id + 'More'); more.textContent = '';
+    if (cap < rows.length) more.appendChild(btn('Show all ' + rows.length, '', function(){ covAll[id] = true; covList(id, rows, render); }));
+  }
+  function recRow(r){
+    var li = el('li', 'item'); var w = el('div', 'when'); w.appendChild(el('b', null, r.year == null ? 'No year' : r.year)); li.appendChild(w);
+    var main = el('div', 'main'); main.appendChild(el('div', null, r.title));
+    var meta = el('div', 'meta'); [TYPE_NAME[TYPE_OF[r.type]] || r.type, r.body, r.reason].forEach(function(t){ if (t) meta.appendChild(el('span', null, t)); });
+    meta.appendChild(siteLink('/documents/' + encodeURIComponent(r.id), 'Open')); main.appendChild(meta); li.appendChild(main); li.appendChild(el('span'));
+    return li;
+  }
+  function renderCoverage(){
+    var r = cov; if (!r) return;
+    $('covWhen').textContent = 'Checked ' + fFull.format(new Date(r.computedAt)) + ', ' + fTime.format(new Date(r.computedAt)) + '. Rechecked once a day.' + (r.undated.length < r.counts.undated || r.noText.length < r.counts.noText ? ' Long lists show the first ' + r.listLimit + '.' : '');
+    var box = $('covStats'); box.textContent = '';
+    stat(box, r.counts.sequenceGaps, 'Missing numbers', r.counts.motionOnly ? r.counts.motionOnly + ' named only in a motion' : null);
+    stat(box, r.counts.meetingsMissing, 'Meetings missing files');
+    stat(box, r.counts.undated, 'Records with no date');
+    stat(box, r.counts.noText, 'Records with no text');
+    var gaps = r.gaps.filter(function(g){ return g.missing.length || g.motionOnly.length; });
+    covList('covGaps', gaps, function(g){
+      var li = el('li', 'item'); var w = el('div', 'when'); w.appendChild(el('b', null, g.year)); li.appendChild(w);
+      var main = el('div', 'main'); main.appendChild(el('div', null, SERIES[g.series] || g.series));
+      var meta = el('div', 'meta');
+      if (g.missing.length) meta.appendChild(el('span', null, 'Missing: ' + nums(g.year, g.missing)));
+      if (g.motionOnly.length) meta.appendChild(el('span', null, 'Named only in a motion: ' + nums(g.year, g.motionOnly)));
+      meta.appendChild(el('span', null, 'Highest ' + g.year + '-' + pad2(g.highest) + ', ' + g.seen + ' seen'));
+      main.appendChild(meta); li.appendChild(main); li.appendChild(el('span', 'pill soft', g.missing.length));
+      return li;
+    });
+    var body = $('covBody').value;
+    var bodies = {}; r.meetings.forEach(function(m){ var k = m.bodyName || 'No body'; bodies[k] = (bodies[k] || 0) + 1; });
+    var sel = $('covBody'); sel.textContent = ''; var all = el('option', null, 'All bodies (' + r.meetings.length + ')'); all.value = ''; sel.appendChild(all);
+    Object.keys(bodies).sort().forEach(function(k){ var o = el('option', null, k + ' (' + bodies[k] + ')'); o.value = k; sel.appendChild(o); });
+    sel.value = bodies[body] ? body : '';
+    var meetings = r.meetings.filter(function(m){ return !sel.value || (m.bodyName || 'No body') === sel.value; });
+    covList('covMeet', meetings, function(m){
+      var li = el('li', 'item'); var w = el('div', 'when'); w.appendChild(el('b', null, fFull.format(new Date(m.date + 'T12:00:00Z')))); li.appendChild(w);
+      var main = el('div', 'main'); main.appendChild(el('div', null, m.title));
+      var meta = el('div', 'meta'); if (m.bodyName) meta.appendChild(el('span', null, m.bodyName)); meta.appendChild(el('span', null, 'Missing: ' + m.missing.map(function(d){ return DOCS[d] || d; }).join(', ')));
+      meta.appendChild(siteLink('/meetings/' + encodeURIComponent(m.id), 'Open')); main.appendChild(meta); li.appendChild(main); li.appendChild(el('span', 'pill soft', m.missing.length));
+      return li;
+    });
+    covList('covUndated', r.undated, recRow);
+    covList('covNoText', r.noText, recRow);
+  }
+  function loadCoverage(){
+    $('covWhen').textContent = 'Loading...';
+    api('/coverage').then(function(j){ cov = j; renderCoverage(); }).catch(function(x){ authFail(x); $('covWhen').textContent = x.message; });
+  }
+  $('covBody').addEventListener('change', function(){ covAll.covMeet = false; renderCoverage(); });
+  $('covRefresh').addEventListener('click', function(){ var b = $('covRefresh'); b.disabled = true; $('covWhen').textContent = 'Checking the archive...';
+    post('/coverage/refresh').then(function(j){ cov = j; renderCoverage(); }, function(x){ $('covWhen').textContent = x.message; }).then(function(){ b.disabled = false; }); });
+  function csvCell(v){ var t = v == null ? '' : String(v); return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }
+  $('covCsv').addEventListener('click', function(){
+    var r = cov; if (!r) return;
+    var rows = [['Section', 'Series or body', 'Year or date', 'Number or title', 'Detail', 'Record']];
+    r.gaps.forEach(function(g){
+      g.missing.forEach(function(n){ rows.push(['Missing number', SERIES[g.series] || g.series, g.year, g.year + '-' + pad2(n), g.motionOnly.indexOf(n) >= 0 ? '' : 'Not in the archive', '']); });
+      g.motionOnly.forEach(function(n){ rows.push(['Named only in a motion', SERIES[g.series] || g.series, g.year, g.year + '-' + pad2(n), 'No record of its own', '']); });
+    });
+    r.meetings.forEach(function(m){ rows.push(['Meeting missing files', m.bodyName || '', m.date, m.title, 'Missing: ' + m.missing.map(function(d){ return DOCS[d] || d; }).join(', '), location.origin + '/meetings/' + encodeURIComponent(m.id)]); });
+    r.undated.forEach(function(d){ rows.push(['No date', TYPE_NAME[TYPE_OF[d.type]] || d.type, d.year == null ? '' : d.year, d.title, d.body || '', location.origin + '/documents/' + encodeURIComponent(d.id)]); });
+    r.noText.forEach(function(d){ rows.push(['No text', TYPE_NAME[TYPE_OF[d.type]] || d.type, d.year == null ? '' : d.year, d.title, d.reason || '', location.origin + '/documents/' + encodeURIComponent(d.id)]); });
+    var text = '\ufeff' + rows.map(function(row){ return row.map(csvCell).join(','); }).join('\r\n') + '\r\n';
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })); a.download = 'vineyard-coverage-' + r.today + '.csv';
+    document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
 
   // ------------------------------------------------------------ passkeys sheet
   function openSheet(open){ $('sheet').classList.toggle('hidden', !open); $('sheetBg').classList.toggle('hidden', !open); if (open) loadKeys(); }

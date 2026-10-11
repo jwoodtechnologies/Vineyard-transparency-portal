@@ -8,6 +8,7 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { RssLink } from './RssLink';
 import { ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import type { MeetingSummary } from '@/types/models';
 import { Frame } from './Chrome';
@@ -478,6 +479,7 @@ export default function MeetingsPage() {
       {load.status === 'done' && view === 'calendar' && <Calendar items={shown} month={month} today={today} onMonth={(ym) => set({ month: ym === today.slice(0, 7) ? null : ym })} />}
       {load.status === 'done' && view === 'past' && <Past items={shown} today={today} />}
 
+      <RssLink href="/feeds/meetings.xml" title="Upcoming meetings feed (RSS)" />
       {social && <SocialSheet onClose={() => setSocial(false)} />}
     </Frame>
   );

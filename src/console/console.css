@@ -4761,3 +4761,141 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
   .vc-add-actions .vc-primary { flex: 1; }
 }
 .dark .vc-add-error { color: #ff9b8f; }
+
+/* ---------------------------------------------------------------- header search, result chips, CSV, RSS */
+.vc-hsearch {
+  position: relative;
+}
+.vc-hsearch-sheet {
+  position: fixed;
+  z-index: 70;
+  top: calc(env(safe-area-inset-top, 0px) + 3.7rem);
+  left: 1rem;
+  right: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0.6rem;
+  border-radius: 20px;
+  border: 1px solid var(--vc-line-2);
+  background: var(--vc-bg);
+  box-shadow: var(--vc-shadow);
+  animation: vc-pop 0.18s var(--vc-ease) both;
+}
+.dark .vc-hsearch-sheet {
+  background: #121214;
+}
+.vc-hsearch-form {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  height: 3rem;
+  padding: 0 0.4rem 0 1rem;
+  border: 1px solid var(--vc-line-2);
+  border-radius: 999px;
+  background: var(--vc-surface);
+  color: var(--vc-muted);
+}
+.vc-hsearch-form:focus-within {
+  border-color: color-mix(in srgb, var(--vc-accent) 45%, transparent);
+  box-shadow: 0 0 0 4px var(--vc-accent-soft);
+}
+.vc-hsearch-form input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--vc-ink);
+  font: inherit;
+  font-size: 16px;
+}
+.vc-hsearch-form input::-webkit-search-cancel-button {
+  display: none;
+}
+.vc-hsearch-x {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--vc-muted);
+  cursor: pointer;
+}
+.vc-hsearch-x:hover {
+  background: var(--vc-surface-2);
+  color: var(--vc-ink);
+}
+.vc-hsearch-hint {
+  margin: 0.55rem 0.9rem 0.2rem;
+  font-size: 0.75rem;
+  color: var(--vc-faint);
+}
+
+.vc-rec-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+}
+.vc-rec-chips-label {
+  align-self: center;
+  margin-right: 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--vc-faint);
+}
+.vc-rec-chips .vc-chip span {
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+}
+
+.vc-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--vc-line-2);
+  background: var(--vc-surface);
+  color: var(--vc-ink-2);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.vc-csv:hover {
+  border-color: var(--vc-muted);
+  color: var(--vc-ink);
+}
+.vc-csv-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.vc-rss {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: var(--vc-muted);
+  text-decoration: none;
+}
+.vc-rss:hover {
+  color: var(--vc-accent);
+}
+.vc-rss-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 1.5rem 0 0;
+}
