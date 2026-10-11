@@ -12,7 +12,7 @@ import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, DocumentType, SearchFilters } from '../../src/types/models';
 import { ensurePeopleTable } from '../api/people';
-import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, dropRestatement, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -32,7 +32,8 @@ import { constructionAnswer } from './constructionAnswer';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
-import { carryOver, keepsTopic } from './followup';
+import { carryOver, ellipticalFollowUp, keepsTopic } from './followup';
+import { BUDGET_DOC_TITLES, budgetAnswer, budgetIntent, type BudgetDocKey } from './budgetAnswer';
 import { citedMotions } from './voteMatch';
 import { placeAnswer, placeIntent, resolvePlace } from './place';
 import { LATEST_ACTION_Q, councilName, currentCouncil, motionEvidence, queryMotions, votesFor, type MotionOut } from '../api/votes';
@@ -165,7 +166,7 @@ async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: numb
   const qwen = model.includes('qwen');
   // Qwen 3 thinks out loud unless told not to; answers here need no visible reasoning.
   const msgs = qwen ? messages.map((m, i) => (i === 0 && m.role === 'system' ? { ...m, content: `${m.content}\n/no_think` } : m)) : messages;
-  const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : qwen ? { messages: msgs, max_tokens: 900, temperature: 0.2 } : { messages, max_tokens: maxTokens, temperature };
+  const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : qwen ? { messages: msgs, max_tokens: 900, temperature: 0 } : { messages, max_tokens: maxTokens, temperature };
   const run = meteredRun(env, model, input);
   const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), AI_TIMEOUT_MS));
   const text = aiText(await Promise.race([run, timeout]))
@@ -183,7 +184,7 @@ async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; 
   let last: unknown = null;
   for (const [i, model] of models.entries()) {
     try {
-      const text = await runOnce(env, model, messages, opts.maxTokens ?? MAX_TOKENS, opts.temperature ?? 0.1);
+      const text = await runOnce(env, model, messages, opts.maxTokens ?? MAX_TOKENS, opts.temperature ?? 0);
       const note = i > 0 && last ? ` (after ${String(last instanceof Error ? last.message : last).slice(0, 120)})` : '';
       return { text, engine: model + note };
     } catch (e) {
@@ -195,7 +196,7 @@ async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; 
 
 /** Small-model streaming (server-sent events: `data: {"response":"..."}` ... `data: [DONE]`). */
 async function streamSmall(env: Env, messages: Msg[], onDelta: (text: string) => Promise<void>): Promise<string> {
-  const out = await meteredRun(env, FALLBACK_AI_MODEL, { messages, max_tokens: MAX_TOKENS, temperature: 0.1, stream: true });
+  const out = await meteredRun(env, FALLBACK_AI_MODEL, { messages, max_tokens: MAX_TOKENS, temperature: 0, stream: true });
   let sofar = '';
   const forward = async (piece: string) => {
     sofar += piece;
@@ -278,6 +279,59 @@ export function isFollowUp(q: string): boolean {
   return PRONOUN.test(q) || /^(and|also|what about|how about)\b/i.test(q.trim());
 }
 
+/**
+ * A budget answer from budgetData.ts as a final response. The cited documents are the budget book and
+ * amendment ids recorded there; their catalog rows (title, date, links) are read when available, and
+ * the titles and dates recorded in budgetData.ts are used when not. No excerpt is quoted: the values
+ * were keyed from the documents, so the citation opens the document rather than quoting a passage.
+ */
+export async function budgetResponse(env: Env, base: { id: string; question: string; relatedDocuments: DocumentSummary[]; suggestedFollowUps: string[]; generatedAt: string }, a: ReturnType<typeof budgetAnswer>): Promise<AskResponse> {
+  const order: BudgetDocKey[] = [];
+  for (const s of a.sentences) for (const d of s.docs) if (!order.includes(d)) order.push(d);
+  const ids = order.map((k) => BUDGET_DOC_TITLES[k].id);
+  const rows = ids.length
+    ? await env.CATALOG_DB.prepare('SELECT id, title, document_date, original_url, archive_status, archive_key FROM documents WHERE id IN (SELECT value FROM json_each(?))')
+        .bind(JSON.stringify(ids))
+        .all<{ id: string; title: string | null; document_date: string | null; original_url: string | null; archive_status: string | null; archive_key: string | null }>()
+        .then((r) => new Map((r.results ?? []).map((x) => [x.id, x])))
+        .catch(() => new Map<string, never>())
+    : new Map<string, never>();
+  const citations: Citation[] = order.map((k, i) => {
+    const doc = BUDGET_DOC_TITLES[k];
+    const row = rows.get(doc.id) as { title: string | null; document_date: string | null; original_url: string | null; archive_status: string | null; archive_key: string | null } | undefined;
+    return {
+      index: i + 1,
+      documentId: doc.id,
+      documentTitle: row?.title ?? doc.title,
+      documentType: 'budget',
+      documentNumber: null,
+      date: row?.document_date ?? doc.date,
+      governmentBodyName: null,
+      meetingId: null,
+      meetingTitle: null,
+      agendaItem: null,
+      page: null,
+      sectionTitle: null,
+      excerpt: { documentId: doc.id, chunkId: null, page: null, sectionTitle: null, text: '', highlights: [] },
+      archiveUrl: row?.archive_status === 'archived' && row.archive_key ? `/api/documents/${doc.id}/file` : null,
+      originalUrl: row?.original_url ?? null,
+    };
+  });
+  const segments = a.sentences.map((s) => ({ text: s.text, citations: s.docs.map((d) => order.indexOf(d) + 1) }));
+  const paragraphs = [{ segments }];
+  const answer = segments.map((s) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ');
+  return {
+    ...base,
+    retrievalStatus: 'grounded',
+    answer,
+    paragraphs,
+    citations,
+    notice: null,
+    engine: 'budget-data',
+    section: { path: '/budget', label: 'Open the budget', hint: 'Every fund, department and project' },
+  } as AskResponse;
+}
+
 type Prepared =
   | { kind: 'final'; response: AskResponse }
   | { kind: 'model'; messages: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
@@ -333,6 +387,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     await new Promise((r) => setTimeout(r, 650));
     return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'assistant', mode: 'conversation' } as AskResponse };
   }
+
+  // Budget figures and dates (fund and department totals, revenue lines, the adoption date) come
+  // straight from worker/lib/budgetData.ts, written by code and cited to the budget documents, so
+  // the same question always gets the same numbers. Never the model's wording of a figure.
+  const bi = budgetIntent(body.question);
+  if (bi) return { kind: 'final', response: await budgetResponse(env, base, budgetAnswer(bi)) };
 
   // A message that names a part of the portal ("voting record", "staff directory"): what it holds,
   // answered from the data, with a card that opens it here.
@@ -745,7 +805,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const first = segmentAnswer(briefAnswer(attributeCitations(raw.replace(/\bNO_RECORD\b/g, ''), evidence)), evidence.length);
     // Every figure must be in the source it cites; unsupported sentences are removed.
     const grounded = groundParagraphs(first.paragraphs, evidence, topicNotes);
-    grounded.paragraphs = tidyOpeners(grounded.paragraphs);
+    // A closing sentence that only repeats figures already given is dropped.
+    grounded.paragraphs = dropRestatement(tidyOpeners(grounded.paragraphs));
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
     if (!seg.used.size) {
       // Nothing the model wrote could be tied to a source: show the records, never an unchecked answer.
@@ -888,12 +949,17 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
 
   // The conversation brain: follow-up or new question, rewritten to stand on its own, and what the
   // resident stated as fact. Everything after this reads the standalone question.
-  const rw = typed.conversation?.length && aiConfigured(env) && !aiBreakerOpen() ? await rewriteQuestion(env, fixSpelling(typed.question), typed.conversation).catch(() => null) : null;
+  // "and parks?", "what about the library?", "and for 2026?": the new subject (or time) goes into the
+  // previous question's frame, word for word. This is exact, so it wins and the model is not asked.
+  const elliptical = ellipticalFollowUp(fixSpelling(typed.question), typed.conversation ?? []);
+  const rw = !elliptical && typed.conversation?.length && aiConfigured(env) && !aiBreakerOpen() ? await rewriteQuestion(env, fixSpelling(typed.question), typed.conversation).catch(() => null) : null;
   // A message with no subject of its own ("who voted for it and how much did it cost?") always
   // takes the subject of the previous turns, whatever the model decided: the model's rewrite is
   // used only when it kept that subject.
-  const carried = carryOver(fixSpelling(typed.question), typed.conversation ?? []);
-  const body = carried
+  const carried = elliptical ? null : carryOver(fixSpelling(typed.question), typed.conversation ?? []);
+  const body = elliptical
+    ? ({ ...typed, question: elliptical, followUp: true } as AskRequest)
+    : carried
     ? ({ ...typed, question: rw?.followUp && keepsTopic(rw.standalone, carried.terms) ? rw.standalone : carried.standalone, followUp: true } as AskRequest)
     : rw
       ? ({ ...typed, question: rw.standalone, followUp: rw.followUp } as AskRequest)

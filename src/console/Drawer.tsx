@@ -90,7 +90,7 @@ export function Drawer({ preview, onClose }: { preview: Preview; onClose: () => 
               </>
             )}
           </dl>
-          {v.excerpt && (
+          {v.excerpt && v.excerpt.text && (
             <blockquote className="vc-quote">
               <Highlighted text={v.excerpt.text} ranges={v.excerpt.highlights} />
             </blockquote>

@@ -13,5 +13,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["worker"]
+  "include": ["worker", "tests/worker-ask-followup.test.ts"]
 }
