@@ -128,7 +128,8 @@ async function refreshSheriff(env: Env, budget: Budget): Promise<Record<string, 
 export async function runFrequent(env: Env, scheduledTime = Date.now()): Promise<Record<string, unknown>> {
   const budget = new Budget(env);
   const summary: Record<string, unknown> = {};
-  summary.civicclerk = await track(env, 'civicclerk', () => refreshCivicClerk(env, budget));
+  // CivicClerk refuses Cloudflare's network (403); it is tried once an hour (runHourly) to notice if
+  // that changes. Meetings arrive meanwhile from the Utah Public Notice Website and the GitHub job.
   Object.assign(summary, await runSync(env, scheduledTime, budget));
   summary.votes = await track(env, 'votes', () => processVotes(env, 6_000, 20));
   return summary;

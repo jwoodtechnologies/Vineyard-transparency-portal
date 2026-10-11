@@ -4,18 +4,18 @@
  * page was read, so "right now" questions never get an old summary.
  */
 import type { Env } from '../env';
-import { findGlance, glanceText } from '../lib/glance';
+import { glanceText } from '../lib/glance';
+import { getConstruction } from '../api/construction';
 
 export { glanceText };
-import { latestSnapshot, WATCHED_PAGES } from '../sync/city';
+import { WATCHED_PAGES } from '../sync/city';
 
 export async function constructionAnswer(env: Env): Promise<{ text: string; followUps: string[] } | null> {
-  const snap = await latestSnapshot(env, 'construction');
   const page = WATCHED_PAGES.find((p) => p.id === 'construction')!;
-  if (!snap.current) {
-    return { text: `The portal has not stored a copy of the city's Construction Projects page yet. The page is ${page.url}`, followUps: ['What projects are funded this year?'] };
+  const res = await getConstruction(env);
+  const c = (await res.json()) as { available: boolean; asOf?: string; glance?: Parameters<typeof glanceText>[0]; text?: string };
+  if (!c.available || !c.asOf) {
+    return { text: `The portal has not stored a readable copy of the city's Construction Projects page yet. The page is ${page.url}`, followUps: ['What projects are funded this year?'] };
   }
-  const tables = JSON.parse(String(snap.current.tables_json ?? '[]'));
-  const text = glanceText(findGlance(tables), String(snap.current.retrieved_at), String(snap.current.text ?? ''));
-  return { text, followUps: ['What projects are funded this year?', 'Show me the city map'] };
+  return { text: glanceText(c.glance ?? null, c.asOf, c.text ?? ''), followUps: ['What projects are funded this year?', 'Show me the city map'] };
 }

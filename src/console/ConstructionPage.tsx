@@ -9,7 +9,7 @@ import './console.css';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { FeatureCollection, Geometry } from 'geojson';
-import { ArrowUpRight, ChevronDown, MapPin } from 'lucide-react';
+import { ChevronDown, MapPin } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { Frame } from './Chrome';
 import { DocLink } from './DocLink';
@@ -249,15 +249,7 @@ export default function ConstructionPage() {
         </div>
       </section>
 
-      <section className="vc-latest-sec">
-        <div className="vc-latest-sec-head">
-          <h2>City construction page</h2>
-          <a className="vc-latest-more" href={CITY_PAGE} target="_blank" rel="noopener noreferrer">
-            City&apos;s page <ArrowUpRight size={12} strokeWidth={2} />
-          </a>
-        </div>
-        <CitySnapshot />
-      </section>
+      <CitySnapshot cityPage={CITY_PAGE} />
 
       <section className="vc-latest-sec">
         <div className="vc-latest-sec-head">

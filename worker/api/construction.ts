@@ -5,31 +5,70 @@
  */
 import type { Env } from '../env';
 import { json } from '../lib/http';
-import { latestSnapshot, snapshotHtml, WATCHED_PAGES } from '../sync/city';
+import { latestSnapshot, recentSnapshots, snapshotHtml, WATCHED_PAGES } from '../sync/city';
+import { extractHtml } from '../sync/extract';
 import { categorize } from '../sync/urls';
 import { findGlance, type GlanceTable } from '../lib/glance';
 
 export { findGlance, type GlanceTable };
 type Table = Parameters<typeof findGlance>[0][number];
 
+interface Parsed {
+  retrievedAt: string;
+  url: string;
+  heading: string | null;
+  glance: GlanceTable | null;
+  text: string;
+  documents: Array<{ url: string; label: string; group: string | null }>;
+}
+
+/** A stored version, parsed with the current parser when its HTML was kept (so parser fixes apply to old copies). */
+function parseSnapshot(row: Record<string, unknown>): Parsed {
+  const url = String(row.url ?? '');
+  if (typeof row.html === 'string' && row.html) {
+    const page = extractHtml(row.html, url);
+    return {
+      retrievedAt: String(row.retrieved_at),
+      url,
+      heading: page.heading,
+      glance: findGlance(page.tables),
+      text: page.text,
+      documents: page.links.filter((l) => categorize(l.url).category === 'document').map((l) => ({ url: l.url, label: l.text || decodeURIComponent(l.url.split('?')[0].split('/').pop() ?? ''), group: l.group ?? null })),
+    };
+  }
+  const tables = JSON.parse(String(row.tables_json ?? '[]')) as Table[];
+  const links = JSON.parse(String(row.links_json ?? '[]')) as Array<{ url: string; text: string; group?: string | null }>;
+  return {
+    retrievedAt: String(row.retrieved_at),
+    url,
+    heading: (row.heading as string | null) ?? null,
+    glance: findGlance(tables),
+    text: String(row.text ?? ''),
+    documents: links.filter((l) => categorize(l.url).category === 'document').map((l) => ({ url: l.url, label: l.text || decodeURIComponent(l.url.split('?')[0].split('/').pop() ?? ''), group: l.group ?? null })),
+  };
+}
+
+const good = (p: Parsed) => Boolean(p.glance?.rows.length) || p.documents.length > 0;
+
 export async function getConstruction(env: Env): Promise<Response> {
   const page = WATCHED_PAGES.find((p) => p.id === 'construction')!;
-  const snap = await latestSnapshot(env, 'construction');
-  if (!snap.current) {
+  const [rows, snap] = await Promise.all([recentSnapshots(env, 'construction', 12), latestSnapshot(env, 'construction')]);
+  // The newest version that parses into a table or documents; an unreadable copy never replaces a good one.
+  const parsed = rows.map(parseSnapshot);
+  const best = parsed.find(good) ?? null;
+  if (!best) {
     return json({ available: false, sourceUrl: page.url, lastCheckedAt: snap.lastCheckedAt }, { cache: 'public, max-age=60' });
   }
-  const tables = JSON.parse(String(snap.current.tables_json ?? '[]')) as Table[];
-  const links = JSON.parse(String(snap.current.links_json ?? '[]')) as Array<{ url: string; text: string }>;
   return json(
     {
       available: true,
-      sourceUrl: String(snap.current.url ?? page.url),
-      asOf: String(snap.current.retrieved_at),
+      sourceUrl: best.url || page.url,
+      asOf: best.retrievedAt,
       lastCheckedAt: snap.lastCheckedAt,
-      heading: snap.current.heading ?? null,
-      glance: findGlance(tables),
-      text: String(snap.current.text ?? ''),
-      documents: links.filter((l) => categorize(l.url).category === 'document').map((l) => ({ url: l.url, label: l.text || decodeURIComponent(l.url.split('/').pop() ?? '') })),
+      heading: best.heading,
+      glance: best.glance,
+      text: best.text,
+      documents: best.documents,
       versions: snap.versions,
     },
     { cache: 'public, max-age=120' },

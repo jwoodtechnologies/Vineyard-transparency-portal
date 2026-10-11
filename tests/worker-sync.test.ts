@@ -140,3 +140,53 @@ describe('PDF text extraction (unpdf, as in the Worker)', () => {
     expect(out?.pages[1].text).toContain('Approval of minutes');
   });
 });
+
+describe('real Revize construction page structure', () => {
+  const html = `<html><head><base href="https://www.vineyardutah.gov/"><script>RZ.x = "<div id='post'>broken</div><table>";</script></head><body>
+  <header><a href="index.php">Home</a></header>
+  <main id="main"><div class="container"><div class="row"><div class="col-lg-9"><div id="entry"><div id="freeform-main"><div id="post" class="clearfix">
+    <h1>Construction Projects</h1>
+    <script>RZ.page = { html: "</div></div><p>junk</p>" };</script>
+    <p><strong>AT A GLANCE</strong></p>
+    <table border="1"><thead><tr><th><span><strong>Project</strong></span></th><th><span><strong>Type</strong></span></th><th><span><strong>Location</strong></span></th><th><span><strong>Work description</strong></span></th><th><span><strong>Status</strong></span></th><th><span><strong>Expected completion</strong></span></th></tr></thead>
+    <tbody>
+      <tr><td>HAWK crossing</td><td>Pedestrian signal</td><td>Center Street and Holdaway Road</td><td>New pedestrian crossing</td><td>Underway</td><td>Early November</td></tr>
+      <tr><td>575 South</td><td>Road</td><td>575 South</td><td>Road work</td><td>Delayed</td><td>TBD</td></tr>
+    </tbody></table>
+  </div></div></div></div>
+  <div class="col-lg-3"><article id="document-center"><section id="categorties-wrap">
+    <div class="outer-cat cat"><h3>Pavement Preservation 2026 7 documents</h3><div class="inner-cat-wrap"><ul class="file-group">
+      <li><a target="_blank" href="Departmnts/PW/Construction Updates/Email Update 1 - July 10, 2026.pdf?t=1760000000">Email Update 1 - July 10, 2026</a></li>
+    </ul></div></div>
+  </section></article></div></div></div></main>
+  <footer><a href="privacy.php">Privacy</a></footer></body></html>`;
+
+  it('reads the at a glance table, the documents and their categories', async () => {
+    const { extractHtml } = await import('../worker/sync/extract');
+    const page = extractHtml(html, 'https://www.vineyardutah.gov/government/construction_projects.php');
+    const g = findGlance(page.tables)!;
+    expect(g.headers).toEqual(['Project', 'Type', 'Location', 'Work description', 'Status', 'Expected completion']);
+    expect(g.rows).toHaveLength(2);
+    expect(g.rows[1]).toMatchObject({ Project: '575 South', Status: 'Delayed' });
+    expect(page.text).not.toContain('junk');
+    expect(page.text).not.toContain('RZ.');
+    const doc = page.links.find((l) => l.url.includes('Email%20Update%201'))!;
+    expect(doc.url).toBe('https://www.vineyardutah.gov/Departmnts/PW/Construction%20Updates/Email%20Update%201%20-%20July%2010,%202026.pdf?t=1760000000');
+    expect(doc.group).toBe('Pavement Preservation 2026');
+    expect(doc.text).toBe('Email Update 1 - July 10, 2026');
+    expect(page.links.some((l) => l.url.includes('privacy.php'))).toBe(false);
+  });
+});
+
+describe('robots.txt', () => {
+  it('follows the group for our agent or *, longest match wins', async () => {
+    const { parseRobots, allowedBy } = await import('../worker/sync/robotsParse');
+    const rules = parseRobots(`User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nDisallow: /revize/\nDisallow: /search.php\nAllow: /revize/public/\n`);
+    expect(allowedBy(rules, '/government/construction_projects.php')).toBe(true);
+    expect(allowedBy(rules, '/revize/login')).toBe(false);
+    expect(allowedBy(rules, '/revize/public/file.pdf')).toBe(true);
+    expect(allowedBy(rules, '/search.php?q=x')).toBe(false);
+    expect(allowedBy(parseRobots(''), '/anything')).toBe(true);
+    expect(allowedBy(parseRobots('User-agent: VineyardTransparencyPortal\nDisallow: /private\n\nUser-agent: *\nDisallow: /'), '/public')).toBe(true);
+  });
+});

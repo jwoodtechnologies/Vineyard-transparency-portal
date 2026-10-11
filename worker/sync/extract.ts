@@ -13,6 +13,8 @@ export interface Page {
 export interface LinkInfo {
   url: string;
   text: string;
+  /** Category heading of a document list on the page (e.g. "Pavement Preservation 2026"). */
+  group?: string | null;
 }
 
 export interface HtmlExtraction {
@@ -69,7 +71,37 @@ function headingBefore(el: HTMLElement): string | null {
   return null;
 }
 
-export function extractHtml(html: string, pageUrl: string): HtmlExtraction {
+/** Removes scripts, styles, comments and templates before parsing (Revize pages carry many inline RZ.* scripts). */
+export function stripNonContent(html: string): string {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<script\b[\s\S]*?<\/script\s*>/gi, ' ')
+    .replace(/<style\b[\s\S]*?<\/style\s*>/gi, ' ')
+    .replace(/<noscript\b[\s\S]*?<\/noscript\s*>/gi, ' ')
+    .replace(/<template\b[\s\S]*?<\/template\s*>/gi, ' ');
+}
+
+/** "Pavement Preservation 2026 7 documents" -> "Pavement Preservation 2026". */
+export function cleanGroup(text: string): string {
+  return text.replace(/\s+/g, ' ').replace(/\s*\d+\s+documents?\s*$/i, '').trim();
+}
+
+function groupOf(a: HTMLElement): string | null {
+  let el: HTMLElement | null = a.parentNode as HTMLElement | null;
+  for (let i = 0; el && i < 8; i++) {
+    const cls = el.getAttribute?.('class') ?? '';
+    if (/\b(outer-cat|cat)\b/.test(cls)) {
+      const head = el.querySelector('h1, h2, h3, h4, h5, .cat-title, .category-title, button, summary, a.cat-name, span.cat-name');
+      const t = head ? cleanGroup(head.textContent ?? '') : '';
+      if (t) return t.slice(0, 200);
+    }
+    el = el.parentNode as HTMLElement | null;
+  }
+  return null;
+}
+
+export function extractHtml(rawHtml: string, pageUrl: string): HtmlExtraction {
+  const html = stripNonContent(rawHtml);
   const doc = parse(html, { comment: false, blockTextElements: { script: false, style: false, noscript: false, pre: true } });
   const baseHref = doc.querySelector('base')?.getAttribute('href');
   const base = (baseHref && resolve(baseHref, pageUrl)) || pageUrl;
@@ -109,13 +141,15 @@ export function extractHtml(html: string, pageUrl: string): HtmlExtraction {
     if (t && blocks[blocks.length - 1] !== t) blocks.push(t);
   }
 
+  // Links come from the page's main area (document lists can sit beside the text container).
+  const linkRoot = doc.querySelector('main') ?? body;
   const links: LinkInfo[] = [];
   const seen = new Set<string>();
-  for (const a of root.querySelectorAll('a')) {
+  for (const a of [...root.querySelectorAll('a'), ...(linkRoot === root ? [] : linkRoot.querySelectorAll('a'))]) {
     const url = resolve(a.getAttribute('href') ?? '', base);
     if (!url || seen.has(url)) continue;
     seen.add(url);
-    links.push({ url, text: textOf(a).slice(0, 300) });
+    links.push({ url, text: textOf(a).slice(0, 300), group: groupOf(a) });
   }
   return { heading, text: clean(blocks.join('\n')), links, tables };
 }

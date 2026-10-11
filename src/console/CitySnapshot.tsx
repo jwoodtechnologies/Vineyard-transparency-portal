@@ -20,33 +20,39 @@ export interface ConstructionSnapshot {
   heading?: string | null;
   glance?: Glance | null;
   text?: string;
-  documents?: Array<{ url: string; label: string }>;
+  documents?: Array<{ url: string; label: string; group?: string | null }>;
   versions?: Array<{ retrievedAt: string }>;
 }
 
 const fmt = (iso: string, withTime = false) =>
   new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', month: 'long', day: 'numeric', year: 'numeric', ...(withTime ? { hour: 'numeric', minute: '2-digit' } : {}) }).format(new Date(iso));
 
-export function CitySnapshot() {
+function groupDocs(docs: NonNullable<ConstructionSnapshot['documents']>): Array<[string | null, typeof docs]> {
+  const out = new Map<string | null, typeof docs>();
+  for (const d of docs) out.set(d.group ?? null, [...(out.get(d.group ?? null) ?? []), d]);
+  return [...out.entries()];
+}
+
+/**
+ * The whole "City construction page" section. It is not shown at all until a readable copy exists:
+ * the portal never shows an empty section.
+ */
+export function CitySnapshot({ cityPage }: { cityPage: string }) {
   const load = useJson<ConstructionSnapshot>('/api/construction');
-  if (load.status === 'loading') return <p className="vc-cp-lede">Loading the city&apos;s page.</p>;
-  if (load.status === 'error') return <p className="vc-cp-lede">The stored copy of the city&apos;s page did not load. Reload to try again.</p>;
+  if (load.status !== 'done' || !load.data.available || !load.data.asOf) return null;
   const s = load.data;
-  if (!s.available || !s.asOf) {
-    return (
-      <p className="vc-cp-lede">
-        Not read yet.{' '}
-        <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer">
-          City&apos;s page
-        </a>
-      </p>
-    );
-  }
   const g = s.glance;
   return (
+    <section className="vc-latest-sec">
+      <div className="vc-latest-sec-head">
+        <h2>City construction page</h2>
+        <a className="vc-latest-more" href={s.sourceUrl || cityPage} target="_blank" rel="noopener noreferrer">
+          City&apos;s page <ArrowUpRight size={12} strokeWidth={2} />
+        </a>
+      </div>
     <div className="vc-snap">
       <p className="vc-cp-asof">
-        As of {fmt(s.asOf)}
+        As of {fmt(s.asOf as string)}
         {s.lastCheckedAt ? <span className="vc-snap-checked">Checked {fmt(s.lastCheckedAt, true)}</span> : null}
       </p>
       {g && g.rows.length > 0 ? (
@@ -78,23 +84,28 @@ export function CitySnapshot() {
           </div>
         </>
       ) : (
-        <p className="vc-cp-lede">The city&apos;s page has no project table.</p>
+        null
       )}
       {s.documents && s.documents.length > 0 && (
-        <details className="vc-cp-docs">
+        <details className="vc-cp-docs" open={!g || !g.rows.length}>
           <summary>
             <FileText size={15} strokeWidth={1.8} /> City documents <span>{s.documents.length}</span>
             <ChevronDown size={15} strokeWidth={1.9} className="vc-cp-docs-chev" />
           </summary>
-          <ul>
-            {s.documents.map((d) => (
-              <li key={d.url}>
-                <a href={d.url} target="_blank" rel="noopener noreferrer">
-                  {d.label} <ArrowUpRight size={13} strokeWidth={1.9} />
-                </a>
-              </li>
-            ))}
-          </ul>
+          {groupDocs(s.documents).map(([group, docs]) => (
+            <div key={group ?? 'other'} className="vc-snap-group">
+              {group && <h4 className="vc-snap-h">{group}</h4>}
+              <ul>
+                {docs.map((d) => (
+                  <li key={d.url}>
+                    <a href={d.url} target="_blank" rel="noopener noreferrer">
+                      {d.label} <ArrowUpRight size={13} strokeWidth={1.9} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </details>
       )}
       {s.text && (
@@ -112,5 +123,6 @@ export function CitySnapshot() {
       )}
       {s.versions && s.versions.length > 1 && <p className="vc-cp-fine">{s.versions.length} stored versions of this page. Each change is kept with the time it was read.</p>}
     </div>
+    </section>
   );
 }

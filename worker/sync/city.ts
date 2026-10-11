@@ -14,6 +14,7 @@ import { classifyType } from '../lib/civicclerk';
 import { extractHtml, type HtmlExtraction } from './extract';
 import { indexRecord, sha256Hex, SYNC_UA } from './ingest';
 import { canonicalUrl, categorize, normalizeUrl, urlKey } from './urls';
+import { assertRobots } from './robots';
 
 export const CITY = 'https://www.vineyardutah.gov/';
 export const CITY_SOURCE = 'vineyard-city-website';
@@ -97,7 +98,8 @@ async function ensureTables(env: Env): Promise<void> {
   ensured = true;
 }
 
-export async function fetchCityPage(url: string, etag?: string | null, lastModified?: string | null): Promise<{ status: number; html: string | null; finalUrl: string; etag: string | null; lastModified: string | null }> {
+export async function fetchCityPage(env: Env, url: string, etag?: string | null, lastModified?: string | null): Promise<{ status: number; html: string | null; finalUrl: string; etag: string | null; lastModified: string | null }> {
+  await assertRobots(env, url);
   const headers: Record<string, string> = { 'user-agent': SYNC_UA, accept: 'text/html,application/xhtml+xml' };
   if (etag) headers['if-none-match'] = etag;
   if (lastModified) headers['if-modified-since'] = lastModified;
@@ -193,7 +195,7 @@ export async function watchPages(env: Env, budget: Budget, onlyIds?: string[]): 
     if (onlyIds && !onlyIds.includes(w.id)) continue;
     const prev = await env.CATALOG_DB.prepare('SELECT * FROM page_watch WHERE page_id = ?').bind(w.id).first<Record<string, string | null>>();
     try {
-      const r = await fetchCityPage(w.url, prev?.etag, prev?.last_modified);
+      const r = await fetchCityPage(env, w.url, prev?.etag, prev?.last_modified);
       if (r.status === 304 || !r.html) {
         await env.CATALOG_DB.prepare(
           `INSERT INTO page_watch (page_id, url, last_checked_at, last_status, last_error) VALUES (?, ?, ?, ?, ?)
@@ -229,6 +231,13 @@ export async function watchPages(env: Env, budget: Budget, onlyIds?: string[]): 
     }
   }
   return out;
+}
+
+/** Recent stored versions of a watched page, newest first (with HTML when it was kept). */
+export async function recentSnapshots(env: Env, pageId: string, limit = 10): Promise<Array<Record<string, unknown>>> {
+  await ensureTables(env);
+  const r = await env.CATALOG_DB.prepare('SELECT * FROM page_snapshots WHERE page_id = ? ORDER BY retrieved_at DESC LIMIT ?').bind(pageId, limit).all<Record<string, unknown>>();
+  return r.results ?? [];
 }
 
 /** Latest stored version of a watched page, plus the retrieval times of earlier versions. */
@@ -297,7 +306,7 @@ export async function crawlCitySite(env: Env, budget: Budget, maxPages: number, 
     if (Date.now() > deadline) break;
     let status = 0;
     try {
-      const r = await fetchCityPage(p.url);
+      const r = await fetchCityPage(env, p.url);
       status = r.status;
       if (r.html) {
         const page = extractHtml(r.html, r.finalUrl);

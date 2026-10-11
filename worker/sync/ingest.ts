@@ -11,6 +11,7 @@ import { Budget, putChunks, storeArchive, upsertDocument } from '../admin/routes
 import { CC_API, classifyType } from '../lib/civicclerk';
 import { chunkPages } from './chunk';
 import { extractHtml, extractPdf, looksScanned, type Page } from './extract';
+import { assertRobots, RobotsBlocked } from './robots';
 
 export const SYNC_UA = 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org; public records archive)';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -176,6 +177,8 @@ export async function ingestItem(env: Env, item: QueueRow, budget: Budget): Prom
   const kind = str(meta.kind);
   try {
     if (kind === 'mco_content') return 'left_for_github';
+    // CivicClerk refuses Cloudflare's network (HTTP 403): its files are read by the GitHub job.
+    if (kind === 'cc_attachment' || /(^|\.)civicclerk\.com$/i.test(new URL(item.url).host)) return 'left_for_github';
     let url = item.url;
     let sourceUrl = item.url;
     if (kind === 'cc_attachment') {
@@ -192,6 +195,7 @@ export async function ingestItem(env: Env, item: QueueRow, budget: Budget): Prom
       await setStatus(env, key, 'skipped', { error: 'media files are linked, not archived' });
       return 'skipped';
     }
+    await assertRobots(env, url);
     const headers: Record<string, string> = { 'user-agent': SYNC_UA, accept: '*/*' };
     if (item.known_etag) headers['if-none-match'] = item.known_etag;
     if (item.known_last_modified) headers['if-modified-since'] = item.known_last_modified;
@@ -288,6 +292,10 @@ export async function ingestItem(env: Env, item: QueueRow, budget: Budget): Prom
     return 'done';
   } catch (e) {
     const msg = String(e instanceof Error ? e.message : e).slice(0, 400);
+    if (e instanceof RobotsBlocked) {
+      await setStatus(env, key, 'skipped', { error: msg }).catch(() => undefined);
+      return 'skipped';
+    }
     if (/quota_exhausted|budget/i.test(msg)) return 'error';
     const retry = new Date(Date.now() + Math.min(24, 2 ** Math.min(item.attempts, 4)) * 3600_000).toISOString();
     await setStatus(env, key, 'error', { error: `worker: ${msg}`, retryAt: retry }).catch(() => undefined);
