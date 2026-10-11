@@ -88,7 +88,7 @@ export default function LatestPage() {
 
   const { council, minutes, next, boards } = useMemo(() => {
     if (load.status !== 'done') return { council: null, minutes: null, next: null, boards: [] as MeetingSummary[] };
-    const all = load.data.filter((m) => m.status !== 'cancelled' && m.status !== 'postponed');
+    const all = load.data.filter((m) => m.status !== 'cancelled' && m.status !== 'postponed' && m.status !== 'unconfirmed');
     const held = all.filter((m) => m.date < today && (m.agendaDocumentId || m.packetDocumentId || m.minutesDocumentId));
     const isCouncil = (m: MeetingSummary) => m.governmentBodyId === 'city-council';
     const lastCouncil = [...held].reverse().find(isCouncil) ?? null;

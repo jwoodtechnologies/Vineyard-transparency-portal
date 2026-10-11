@@ -113,3 +113,13 @@ class CivicClerkMeetings(unittest.TestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].metadata["documentType"], "minutes")
         self.assertEqual(cc.meetings[0]["sourceUrl"], "https://vineyardut.portal.civicclerk.com/event/1451/files")
+
+
+class UnconfirmedCopyTest(unittest.TestCase):
+    def test_copies_set_on_other_dates(self):
+        from ingest.adapters.civicclerk import unconfirmed_copy
+
+        self.assertTrue(unconfirmed_copy("Active Transportation Commission Meeting 12-09-2025", "2026-12-08", False, 0))
+        self.assertFalse(unconfirmed_copy("Active Transportation Commission Meeting 12-09-2025", "2025-12-09", False, 0))
+        self.assertFalse(unconfirmed_copy("Active Transportation Commission Meeting 12-09-2025", "2026-12-08", True, 0))
+        self.assertFalse(unconfirmed_copy("City Council", "2026-12-08", False, 0))

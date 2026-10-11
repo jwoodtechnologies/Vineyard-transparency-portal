@@ -251,3 +251,33 @@ export async function setSubmissionsOpen(env: Env, open: boolean): Promise<Recor
   await log(env, open ? 'resume' : 'pause', null, null, 'by owner');
   return { ok: true, open };
 }
+
+/** Titles the automated end to end test uses. The admin cleanup route touches nothing else. */
+export const E2E_TITLE_PREFIX = 'Portal end to end test';
+
+async function e2eSubmission(env: Env, documentId: unknown): Promise<Record<string, unknown>> {
+  await ensureContribTables(env);
+  const sub = await env.CATALOG_DB.prepare('SELECT * FROM resident_submissions WHERE document_id = ?').bind(String(documentId ?? '').slice(0, 64)).first<Record<string, unknown>>();
+  if (!sub) throw notFound('That item was not found.');
+  if (!String(sub.title ?? '').startsWith(E2E_TITLE_PREFIX)) throw new HttpError(403, 'unauthorized', 'Only end to end test items can be handled here.');
+  return sub;
+}
+
+/** State of a test item, for the end to end check (admin, GitHub OIDC). */
+export async function e2eState(env: Env, documentId: unknown): Promise<Record<string, unknown>> {
+  const sub = await e2eSubmission(env, documentId);
+  return { id: sub.id, hidden: Boolean(sub.hidden_at), removed: Boolean(sub.removed_at), reports: Number(sub.reports ?? 0) };
+}
+
+/** Removes a test item the same way the owner's Remove button does, then deletes its rows. */
+export async function e2eCleanup(env: Env, documentId: unknown): Promise<Record<string, unknown>> {
+  const sub = await e2eSubmission(env, documentId);
+  await removeSubmission(env, sub.id);
+  const after = await env.CATALOG_DB.prepare('SELECT removed_at FROM resident_submissions WHERE id = ?').bind(sub.id).first<{ removed_at: string | null }>();
+  await env.CATALOG_DB.batch([
+    env.CATALOG_DB.prepare('DELETE FROM resident_reports WHERE submission_id = ?').bind(sub.id),
+    env.CATALOG_DB.prepare('DELETE FROM resident_submissions WHERE id = ?').bind(sub.id),
+  ]);
+  await log(env, 'delete', String(sub.id), null, 'end to end test item deleted');
+  return { ok: true, removedAt: after?.removed_at ?? null, deleted: true };
+}

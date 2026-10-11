@@ -35,6 +35,7 @@ import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
 import { carryOver, ellipticalFollowUp, keepsTopic } from './followup';
 import { BUDGET_DOC_TITLES, budgetAnswer, budgetIntent, type BudgetDocKey } from './budgetAnswer';
+import { isTaxRateQuestion, isTaxRateRecord, newerRateRecord, taxRateIntent, taxRateResponse, taxRateSentences } from './taxRateAnswer';
 import { citedMotions } from './voteMatch';
 import { placeAnswer, placeIntent, resolvePlace } from './place';
 import { LATEST_ACTION_Q, SCOPE_FROM, councilName, currentCouncil, motionEvidence, queryMotions, votesFor, type MotionOut } from '../api/votes';
@@ -456,6 +457,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // Budget figures and dates (fund and department totals, revenue lines, the adoption date) come
   // straight from worker/lib/budgetData.ts, written by code and cited to the budget documents, so
   // the same question always gets the same numbers. Never the model's wording of a figure.
+  // "What is the property tax rate?": the certified rate, its fiscal year and its date, written by
+  // code from worker/lib/taxRates.ts, or from a newer tax rate record when the archive holds one.
+  // Checked before the budget figures so "how much is the property tax rate" is never the revenue line.
+  const tri = taxRateIntent(body.question);
+  if (tri) {
+    const newer = await newerRateRecord(env).catch(() => null);
+    const sentences = taxRateSentences(tri, utahToday(), newer);
+    if (sentences.length) return { kind: 'final', response: await taxRateResponse(env, base, sentences) };
+  }
+
   const bi = budgetIntent(body.question);
   if (bi) return { kind: 'final', response: await budgetResponse(env, base, budgetAnswer(bi)) };
 
@@ -847,6 +858,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   }
   // The newest votes stay first, in date order, whatever the ranking made of them.
   if (latestHits.length) hits = [...latestHits, ...hits.filter((h) => !voteIds.has(h.chunkId))];
+  // A property tax rate is answered only from tax rate records: never from a project's fiscal analysis
+  // or any other record that happens to assume a rate.
+  if (isTaxRateQuestion(body.question)) {
+    hits = hits.filter((h) => isTaxRateRecord(h));
+    if (!hits.length) {
+      const r = await fallback('no_results', null);
+      const text = "I couldn't find a tax rate record that answers that. The closest records are below.";
+      return { kind: 'final', response: { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: 'search-fallback (no tax rate record)' } as AskResponse };
+    }
+  }
   const evidence = selectEvidence(hits);
   // Start the catalog reads the final answer needs now, so they finish while the model writes.
   const docsP = summariesByIds(env, [...new Set(hits.map((h) => h.documentId))].slice(0, 30));

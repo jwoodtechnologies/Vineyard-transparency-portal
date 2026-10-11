@@ -8,6 +8,7 @@
  *  - R2: uploads are refused (archive_status = quota_deferred) when stored bytes + the new object
  *    would exceed ARCHIVE_STORAGE_HARD_STOP_BYTES, or when one object exceeds ARCHIVE_MAX_OBJECT_BYTES.
  */
+import { e2eCleanup, e2eState } from '../contrib/resident';
 import catalogSql from '../../migrations/catalog/0001_catalog.sql';
 import searchSql from '../../migrations/search/0001_search.sql';
 import type { Env } from '../env';
@@ -386,7 +387,9 @@ export async function upsertMeetings(env: Env, body: Json, budget: Budget): Prom
            agenda_document_id, packet_document_id, minutes_document_id, minutes_status, source_id, source_url, external_id, media_json, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'not_available', ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET title = excluded.title, government_body_id = excluded.government_body_id, government_body_name = excluded.government_body_name,
-           meeting_type = excluded.meeting_type, meeting_date = excluded.meeting_date, start_time = excluded.start_time, location = excluded.location, status = excluded.status,
+           meeting_type = excluded.meeting_type, meeting_date = excluded.meeting_date, start_time = excluded.start_time, location = excluded.location,
+           -- A meeting with a notice or file on record is confirmed, whatever the agenda portal's copy says.
+           status = CASE WHEN excluded.status = 'unconfirmed' AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = meetings.id) THEN meetings.status ELSE excluded.status END,
            media_json = excluded.media_json, source_url = excluded.source_url, updated_at = excluded.updated_at
          WHERE meetings.title IS NOT excluded.title OR meetings.meeting_date IS NOT excluded.meeting_date OR meetings.start_time IS NOT excluded.start_time
            OR meetings.location IS NOT excluded.location OR meetings.status IS NOT excluded.status OR meetings.media_json IS NOT excluded.media_json
@@ -1022,6 +1025,9 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
     const body = await readJson<{ people?: PersonInput[]; asOf?: string }>(request, 512 * 1024);
     return upsertPeople(env, body.people ?? [], /^\d{4}-\d{2}-\d{2}$/.test(String(body.asOf)) ? String(body.asOf) : nowIso().slice(0, 10));
   }
+  // End to end test of the public Add page (only items titled with the test prefix).
+  if (path === '/resident/e2e/state' && method === 'GET') return json(await e2eState(env, url.searchParams.get('documentId')));
+  if (path === '/resident/e2e/cleanup' && method === 'POST') return json(await e2eCleanup(env, (await readJson<Json>(request, 4096)).documentId));
   if (path === '/quota' && method === 'GET') return quota(env);
   if (path === '/verify' && method === 'GET') return verify(env);
   if (path === '/queue' && method === 'GET') return listQueue(env, url);
