@@ -1,0 +1,1 @@
+{"error":{"kind":"bad_request","message":"`from` and `to` must be YYYY-MM-DD dates."}}
