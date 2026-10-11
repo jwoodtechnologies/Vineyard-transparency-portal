@@ -1,0 +1,2 @@
+curl: (28) Connection timed out after 60002 milliseconds
+curl: (6) Could not resolve host: utahcountyvotes.gov
