@@ -100,6 +100,20 @@ TOPICS.push({
   note: 'Noise and nuisance complaints: Vineyard Municipal Code 8.08.010 (Nuisances Generally) makes it a nuisance for activities to exceed 55 decibels (dBA) between 7:00 a.m. and 10:30 p.m. and 50 decibels between 10:30 p.m. and 7:00 a.m.; quote the limits exactly as the code section states them and cite it. To report: file the city\'s Report a Concern form (it goes to Code Enforcement), and for noise happening right now, especially at night, call the Utah County Sheriff\'s non-emergency line at 801-798-5600 (Vineyard\'s police service); call 911 only for emergencies. Give the rule first, then these steps.',
 });
 
+/** The Geneva Urban Renewal Area: who receives what share of the tax increment. */
+// Source: the share is quoted, not restated, from two records found by the queries below:
+//   RDA Resolution U-2010-05, Draft Geneva Urban Renewal Project Area Budget (April 28, 2010), page 6
+//   (doc_6a0c9a6544266140): "The Agency proposes capturing 75 percent of the tax increment with a cap of $300 million."
+//   RDA Resolution U-2016-07 (December 21, 2016), 2016 Annual Report, Geneva URA, page 13 (doc_179192efa15bf228):
+//   "Participation Rate 75%", "Total Tax Increment Revenue Due to RDA", "Total Pass Through to Taxing Entities (Above Base)".
+// The note carries no figure of its own: any percentage in an answer must come from a cited source.
+TOPICS.push({
+  id: 'geneva-ura',
+  match: /\b(urban renewal|ura|tax increment|increment|tif|project area|pass[- ]through|participation rate)\b|\bgeneva\b.*\b(rda|redevelopment|renewal)\b|\b(rda|redevelopment)\b.*\bgeneva\b/i,
+  queries: [{ q: '"Agency proposes capturing" "tax increment"' }, { q: '"Participation Rate" "Pass Through to Taxing Entities"' }, { q: 'Geneva Urban Renewal Project Area Budget tax increment' }],
+  note: 'Geneva Urban Renewal Area tax increment: the Redevelopment Agency captures (receives) a share of the tax increment from the project area, its participation rate, and the rest of the increment passes through to the taxing entities. State any percentage exactly as the cited record words it and say who it belongs to as the record says (for example the share the Agency captures, or the pass through to taxing entities). Never write that the taxing entities each receive the share the Agency captures.',
+});
+
 export function topicsFor(question: string, today = new Date().toISOString().slice(0, 10)): CivicTopic[] {
   const y = Number(today.slice(0, 4));
   const m = Number(today.slice(5, 7));

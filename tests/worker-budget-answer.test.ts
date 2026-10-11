@@ -32,11 +32,23 @@ describe('budget answers from budgetData.ts', () => {
 
   it('leaves questions the data cannot settle to the records search', () => {
     expect(budgetIntent('How much did the parks master plan cost?')).toBeNull();
-    expect(budgetIntent('How much is the city spending on parks in the 2026 budget?')).toBeNull();
+    expect(budgetIntent('How much is the police budget for fiscal 2024?')).toBeNull();
     expect(budgetIntent('How much did police spending increase from last year?')).toBeNull();
     expect(budgetIntent('What are police salaries in the budget?')).toBeNull();
     expect(budgetIntent('When was the Parks and Recreation Master Plan adopted?')).toBeNull();
     expect(budgetIntent('When is the next council meeting?')).toBeNull();
+  });
+
+  it('answers fiscal 2026 from the prior-year department column and says what else the data covers', () => {
+    expect(text('How much is the city spending on parks in the 2026 budget?')).toContain('Parks: $1,117,111.');
+    expect(text('How much is the police budget for FY26?')).toBe(
+      'General Fund department budgets for fiscal year 2026 (July 1, 2025 to June 30, 2026), final amended, as printed in the FY 27 Final Budget adopted June 23, 2026: Police: $4,103,125. Every line is on the portal’s Budget page.',
+    );
+    expect(text('How much is in the water fund in fiscal year 2025-2026?')).toContain("The portal's budget data has fiscal year 2026 (July 1, 2025 to June 30, 2026) figures for General Fund departments only");
+    expect(text('How much is in the water fund in fiscal year 2025-2026?')).not.toContain('$7,575,979');
+    // "2026-27" and "2027" are the budget year itself.
+    expect(text('How much is the police budget for 2026-27?')).toContain('Police: $4,705,075');
+    expect(text('How much is the police budget in 2027?')).toContain('Police: $4,705,075');
   });
 
   it('writes dates and has no dashes', () => {

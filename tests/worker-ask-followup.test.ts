@@ -49,4 +49,16 @@ describe('POST /api/ask with the live follow-up payload', () => {
     expect(r.engine).toBe('budget-data');
     expect(calls).toEqual([]);
   });
+
+  it('answers "and for 2026?" from the fiscal 2026 department figures in the budget data', async () => {
+    const r = await ask({ CATALOG_DB: emptyDb() as never }, { question: 'and for 2026?', conversation: convo, stream: true });
+    expect(r.question).toBe('How much is the city spending on police and fire in the 2026 budget?');
+    expect(r.engine).toBe('budget-data');
+    expect(r.answer).toContain('The city budget runs July 1 to June 30, so 2026 here means fiscal year 2026 (July 1, 2025 to June 30, 2026).');
+    expect(r.answer).toContain('Police: $4,103,125.');
+    expect(r.answer).toContain('Fire: $2,585,600.');
+    expect(r.answer).not.toContain('$4,705,075');
+    expect(r.answer).not.toMatch(/[–—]/);
+    expect(r.citations.map((c) => c.documentId)).toEqual(['doc_2c248c52cbadfa22']);
+  });
 });

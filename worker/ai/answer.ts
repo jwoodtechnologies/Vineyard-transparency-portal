@@ -338,6 +338,20 @@ export interface GroundSource {
  * `verified` is text the portal itself stands behind (the checked civic notes, written from the
  * city's own pages): a figure or name found there passes too, keeping the sentence's citation.
  */
+/**
+ * "The taxing entities each receive 75% of the increment" when the cited record says the Agency
+ * captures 75 percent (its participation rate) reads the record backwards: true when it does.
+ */
+export function reversedIncrementShare(sentence: string, sources: string[]): boolean {
+  const m =
+    sentence.match(/taxing entit(?:y|ies)\b[^.]{0,80}?\b(?:each\s+)?(?:receives?|gets?|keeps?|retains?|collects?|shares?)\b[^.]{0,40}?\b(\d{1,3}(?:\.\d+)?)\s?(?:%|percent)/i) ??
+    sentence.match(/\b(\d{1,3}(?:\.\d+)?)\s?(?:%|percent)\s+of\s+(?:the\s+)?(?:tax\s+)?increment\b[^.]{0,40}?\b(?:goes|go|is paid|are paid|passes|flows)\s+to\s+(?:the\s+)?(?:\w+\s+)?taxing entit/i);
+  if (!m) return false;
+  const n = m[1].replace('.', '\\.');
+  const agency = new RegExp(`\\b(?:agency|rda)\\b[^.]{0,60}?\\b(?:captur|receiv|retain|collect|due)\\w*\\b[^.]{0,30}?\\b${n}\\s?(?:%|percent)|participation rate\\W{0,3}${n}\\s?(?:%|percent)`, 'i');
+  return sources.some((t) => agency.test(t.replace(/\s+/g, ' ')));
+}
+
 export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: GroundSource[], verified = ''): { paragraphs: AnswerParagraph[]; removed: number; recited: number } {
   const known = flat(verified);
   const texts = evidence.map((e) => flat(`${e.title}\n${e.documentDate ?? ''}\n${(e.text ?? '').slice(0, MAX_CHUNK_CHARS)}`) + (known ? `\n${known}` : ''));
@@ -352,6 +366,10 @@ export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: Ground
         continue;
       }
       if (ABSENCE.test(seg.text) || META.test(seg.text)) {
+        removed++;
+        continue;
+      }
+      if (reversedIncrementShare(seg.text, seg.citations.map((i) => evidence[i - 1]?.text ?? ''))) {
         removed++;
         continue;
       }

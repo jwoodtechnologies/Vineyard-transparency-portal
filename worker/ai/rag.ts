@@ -21,7 +21,7 @@ import type { ChunkHit } from '../search/types';
 import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
 import { readAiStream } from './sse';
-import { interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
+import { asksCurrentValue, interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
 import { AGENDA_NOT_POSTED, AGENDA_TYPES, countAnswer, countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion, meetingsInFrame, nextAgenda, scheduleAnswer, type ScheduleAnswer } from './schedule';
 import { bodyOf } from './scheduleIntent';
 import { resolveTime, timeNote, utahToday } from './timeframe';
@@ -36,10 +36,12 @@ import { carryOver, ellipticalFollowUp, keepsTopic } from './followup';
 import { BUDGET_DOC_TITLES, budgetAnswer, budgetIntent, type BudgetDocKey } from './budgetAnswer';
 import { citedMotions } from './voteMatch';
 import { placeAnswer, placeIntent, resolvePlace } from './place';
-import { LATEST_ACTION_Q, councilName, currentCouncil, motionEvidence, queryMotions, votesFor, type MotionOut } from '../api/votes';
+import { LATEST_ACTION_Q, SCOPE_FROM, councilName, currentCouncil, motionEvidence, queryMotions, votesFor, type MotionOut } from '../api/votes';
 import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
+import { BODY_LABEL, longDay, meetingFollowUp, meetingVotesIntent, meetingVotesText, type MeetingVotesIntent } from './meetingVotes';
+import { isOffTopic, OFF_TOPIC_REPLY } from './offTopic';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -332,6 +334,53 @@ export async function budgetResponse(env: Env, base: { id: string; question: str
   } as AskResponse;
 }
 
+/**
+ * "What did the City Council vote on at the September 8 meeting?" / "did anyone vote no that night?":
+ * every recorded motion of that meeting (same body, same date) from the voting records, written by
+ * code and cited to the minutes they were read from. Null when the voting records do not cover the date.
+ */
+export async function meetingVotesResponse(env: Env, base: { id: string; question: string; relatedDocuments: DocumentSummary[]; suggestedFollowUps: string[]; generatedAt: string }, intent: MeetingVotesIntent, staff: StaffPerson[]): Promise<AskResponse | null> {
+  if (intent.date < SCOPE_FROM) return null;
+  const r = await queryMotions(env, { body: intent.body, date: intent.date, pageSize: 100 });
+  const final = (text: string, extra: Partial<AskResponse> = {}) =>
+    ({ ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'votes-meeting', section: { path: '/votes', label: 'Open voting records', hint: 'Every recorded vote, meeting by meeting' }, ...extra }) as AskResponse;
+  if (!r.items.length) return final(`The portal's voting records have no recorded motions for a ${BODY_LABEL[intent.body]} meeting on ${longDay(intent.date)}. The minutes may not be posted yet.`);
+  const mayor = staff.find((p) => /\bmayor\b/i.test(p.role) && !/deputy/i.test(p.role))?.name ?? null;
+  const sentences = meetingVotesText(intent, r.items, mayor);
+  const docId = r.items[0].documentId;
+  const row = await env.CATALOG_DB.prepare('SELECT d.title, d.document_date, d.document_type, d.original_url, d.archive_status, d.archive_key, d.meeting_id, m.title AS meeting_title FROM documents d LEFT JOIN meetings m ON m.id = d.meeting_id WHERE d.id = ?')
+    .bind(docId)
+    .first<{ title: string | null; document_date: string | null; document_type: string | null; original_url: string | null; archive_status: string | null; archive_key: string | null; meeting_id: string | null; meeting_title: string | null }>()
+    .catch(() => null);
+  const page = r.items.map((m) => m.page).find((p) => p != null) ?? null;
+  const citation: Citation = {
+    index: 1,
+    documentId: docId,
+    documentTitle: row?.title ?? `${BODY_LABEL[intent.body]} minutes, ${longDay(intent.date)}`,
+    documentType: 'minutes',
+    documentNumber: null,
+    date: row?.document_date ?? intent.date,
+    governmentBodyName: BODY_LABEL[intent.body],
+    meetingId: row?.meeting_id ?? r.items[0].meetingId,
+    meetingTitle: row?.meeting_title ?? null,
+    agendaItem: null,
+    page,
+    sectionTitle: null,
+    excerpt: { documentId: docId, chunkId: null, page, sectionTitle: null, text: '', highlights: [] },
+    archiveUrl: row?.archive_status === 'archived' && row.archive_key ? `/api/documents/${docId}/file` : null,
+    originalUrl: row?.original_url ?? null,
+  };
+  const segments = sentences.map((text) => ({ text, citations: [1] }));
+  const answer = segments.map((x) => `${x.text} [1]`).join(' ');
+  const shown = intent.kind === 'no' ? r.items.filter((m) => m.votes.some((v) => v.vote === 'no')) : r.items;
+  return final(answer, { paragraphs: [{ segments }], citations: [citation], votes: { member: null, q: '', items: (shown.length ? shown : r.items).slice(0, 12) } } as Partial<AskResponse>);
+}
+
+/** Sentences that give a rate (0.003796, .003796, 1.5%) with no year in them are removed. */
+export function undatedRates<T extends { segments: Array<{ text: string; citations: number[] }> }>(paragraphs: T[]): T[] {
+  return paragraphs.map((p) => ({ ...p, segments: p.segments.filter((x) => !(/(?:^|[\s(])0?\.\d{4,6}\b|\b\d+(?:\.\d+)?\s?(?:%|percent)/.test(x.text) && !/\b(?:19|20)\d{2}\b|\bfy\s?'?\d{2}\b/i.test(x.text))) })).filter((p) => p.segments.length);
+}
+
 type Prepared =
   | { kind: 'final'; response: AskResponse }
   | { kind: 'model'; messages: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
@@ -386,6 +435,21 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     // A short, natural pause so a greeting does not snap back before the question is even read.
     await new Promise((r) => setTimeout(r, 650));
     return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'assistant', mode: 'conversation' } as AskResponse };
+  }
+
+  // "What's the weather in Paris?", sports scores, trivia: one short line, no records search.
+  if (isOffTopic(body.question)) {
+    const text = OFF_TOPIC_REPLY;
+    return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'off-topic', mode: 'conversation' } as AskResponse };
+  }
+
+  // "What did the council vote on at the September 8 meeting?": every recorded motion of that
+  // meeting, from the voting records, never a model summary that can leave one out.
+  // A question about one member's votes ("how did Wood vote on September 8?") goes on to the member path.
+  const mv = namedNow ? null : meetingVotesIntent(body.question, utahToday());
+  if (mv) {
+    const r = await meetingVotesResponse(env, base, mv, staff).catch(() => null);
+    if (r) return { kind: 'final', response: r };
   }
 
   // Budget figures and dates (fund and department totals, revenue lines, the adoption date) come
@@ -697,6 +761,17 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       }
     }
   }
+  // "What is the property tax rate?": a value in effect now. The last two years of records are
+  // searched on their own so the newest record that states it is always a candidate.
+  const currentValue = asksCurrentValue(body.question) && !focus && !agendaLock;
+  if (currentValue) {
+    const since = new Date(Date.parse(`${todayUT}T12:00:00Z`) - 730 * 86_400_000).toISOString().slice(0, 10);
+    const recent = await Promise.all([...new Set([plan?.queries[0] ?? retrievalText, retrievalText])].map((q) => retrieve(q, { ...filters, dateFrom: since }).catch(() => [] as ChunkHit[])));
+    const found = interleave(recent, 12);
+    const seenN = new Set<string>();
+    hits = [...hits.slice(0, 20), ...found, ...hits.slice(20)].filter((h) => (seenN.has(h.chunkId) ? false : (seenN.add(h.chunkId), true)));
+    topicNotes = `${topicNotes} Current value: the question asks for a rate or amount in effect now. Answer from the newest record among the sources that states it, and start with that value's fiscal or tax year and the record's title and date, in the form "<what> for fiscal <year>: <value> (<record title>, <date>)". If no source is from the current fiscal year, say this is the newest figure found in the records and give its date. Never give a rate or amount without its year, and never present an older year's figure as current.`.trim();
+  }
   const currentIds = new Set<string>();
   if (CURRENT.test(body.question) || ROLE.test(body.question)) {
     const current = await retrieve(retrievalText, { ...filters, currency: ['current'] }).catch(() => [] as ChunkHit[]);
@@ -755,6 +830,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     if (person && /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role)) lead(govIds, 2);
     lead(currentIds, 2);
     lead(firstIds, 3);
+    // A value in effect now: among the passages that answer, the newest records first.
+    if (currentValue) {
+      const top = best.slice(0, 10).sort((a, b) => String(b.documentDate ?? `${b.year ?? 0}-00-00`).localeCompare(String(a.documentDate ?? `${a.year ?? 0}-00-00`)));
+      best = [...top, ...best.slice(10)];
+    }
     // "The first meeting", "the earliest ordinance": among the passages that answer, oldest first.
     if (/\b(first|earliest|oldest|original)\b(?!\s+responders?)/i.test(body.question)) {
       const top = best.slice(0, 8).sort((a, b) => String(a.documentDate ?? `${a.year ?? 9999}-12-31`).localeCompare(String(b.documentDate ?? `${b.year ?? 9999}-12-31`)));
@@ -807,6 +887,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const grounded = groundParagraphs(first.paragraphs, evidence, topicNotes);
     // A closing sentence that only repeats figures already given is dropped.
     grounded.paragraphs = dropRestatement(tidyOpeners(grounded.paragraphs));
+    // A current rate never stands without its year: a sentence giving one with no year or date is removed.
+    if (currentValue) grounded.paragraphs = undatedRates(grounded.paragraphs);
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
     if (!seg.used.size) {
       // Nothing the model wrote could be tied to a source: show the records, never an unchecked answer.
@@ -951,7 +1033,9 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   // resident stated as fact. Everything after this reads the standalone question.
   // "and parks?", "what about the library?", "and for 2026?": the new subject (or time) goes into the
   // previous question's frame, word for word. This is exact, so it wins and the model is not asked.
-  const elliptical = ellipticalFollowUp(fixSpelling(typed.question), typed.conversation ?? []);
+  // "did anyone vote no that night?": the meeting named earlier (body and date) goes into the question.
+  const meetingQ = meetingFollowUp(fixSpelling(typed.question), typed.conversation ?? [], utahToday());
+  const elliptical = meetingQ ?? ellipticalFollowUp(fixSpelling(typed.question), typed.conversation ?? []);
   const rw = !elliptical && typed.conversation?.length && aiConfigured(env) && !aiBreakerOpen() ? await rewriteQuestion(env, fixSpelling(typed.question), typed.conversation).catch(() => null) : null;
   // A message with no subject of its own ("who voted for it and how much did it cost?") always
   // takes the subject of the previous turns, whatever the model decided: the model's rewrite is
@@ -978,6 +1062,7 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   const withContact = (r: AskResponse): AskResponse => {
     const x = r as AskResponse & { mode?: string; engine?: string; people?: string[] };
     // Only the motions the answer is about: the ones it cites, when it cites any.
+    if (x.engine === 'votes-meeting') return r;
     if (votes && x.mode !== 'conversation' && !isNextAgendaQuestion(body.question)) r = { ...r, votes: { ...votes, items: citedMotions(votes.items, (r.citations ?? []).map((c) => c.excerpt?.chunkId)) } } as AskResponse;
     // What the resident shared is acknowledged as theirs, after the answer from the records.
     if (shared && x.mode !== 'conversation') r = { ...r, answer: `${r.answer} ${shared}`.trim(), paragraphs: [...(r.paragraphs ?? []), { segments: [{ text: shared, citations: [] }] }] };

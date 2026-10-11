@@ -392,7 +392,7 @@ export interface MotionOut {
 }
 
 /** Motions, newest first, filtered by member, body, year, result and words in the motion. */
-export async function queryMotions(env: Env, f: { all?: boolean; member?: string | null; body?: string | null; year?: number | null; q?: string | null; result?: string | null; vote?: string | null; page?: number; pageSize?: number }): Promise<{ items: MotionOut[]; total: number }> {
+export async function queryMotions(env: Env, f: { all?: boolean; member?: string | null; body?: string | null; year?: number | null; date?: string | null; q?: string | null; result?: string | null; vote?: string | null; page?: number; pageSize?: number }): Promise<{ items: MotionOut[]; total: number }> {
   await ensureVotesTables(env);
   let sql = scopeSql(f.body);
   const params: unknown[] = [];
@@ -411,6 +411,10 @@ export async function queryMotions(env: Env, f: { all?: boolean; member?: string
   if (f.year) {
     sql += ' AND substr(m.meeting_date, 1, 4) = ?';
     params.push(String(f.year));
+  }
+  if (f.date) {
+    sql += ' AND m.meeting_date = ?';
+    params.push(f.date);
   }
   if (f.result) {
     sql += ' AND m.result = ?';

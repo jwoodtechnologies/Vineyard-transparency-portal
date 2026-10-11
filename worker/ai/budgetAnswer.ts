@@ -2,8 +2,9 @@
  * Budget questions answered straight from worker/lib/budgetData.ts: the adoption date, fund totals,
  * General Fund department budgets and revenue lines of the fiscal 2027 budget. Every number and date
  * in these answers is a value from that file, written by code, never by the model, and each sentence
- * cites the budget document the value was keyed from (BUDGET_DOCS). A question this cannot answer
- * exactly (another year, a comparison, a project, salaries) returns null and goes to the records search.
+ * cites the budget document the value was keyed from (BUDGET_DOCS). Fiscal 2026 (or a bare "2026")
+ * is answered from the prior-year department column. A question this cannot answer exactly (another
+ * year, a comparison, a project, salaries) returns null and goes to the records search.
  * Pure: no Worker types.
  */
 import { ALL_FUNDS_TOTAL, BUDGET_ADOPTED, BUDGET_AMENDED, BUDGET_DOCS, BUDGET_FISCAL_YEAR, DEPARTMENTS, FUNDS, GENERAL, REVENUE, type BudgetFund, type BudgetLine, type RevenueLine } from '../lib/budgetData';
@@ -13,7 +14,9 @@ export type BudgetIntent =
   | { kind: 'adopted' }
   | { kind: 'amended' }
   | { kind: 'total' }
-  | { kind: 'lines'; departments: BudgetLine[]; funds: BudgetFund[]; revenue: RevenueLine[] };
+  | { kind: 'lines'; departments: BudgetLine[]; funds: BudgetFund[]; revenue: RevenueLine[] }
+  /** Fiscal 2026: only the General Fund department figures (the FY2026 column of the FY 27 book) are in the data. */
+  | { kind: 'prior'; departments: BudgetLine[]; other: boolean; calendar: boolean };
 
 /** Which budget document a sentence cites. */
 export type BudgetDocKey = 'book' | 'amendment';
@@ -89,20 +92,46 @@ const ALLOWED = new Set(
   ).split(/\s+/),
 );
 
-/** Years the question names; the data holds fiscal 2027 only. */
-function namesOtherYear(q: string): boolean {
-  const fy = String(BUDGET_FISCAL_YEAR);
-  const yy = fy.slice(2);
-  for (const m of q.matchAll(/\bfy\s?'?(\d{2}(?:\d{2})?)\b/gi)) if (m[1] !== yy && m[1] !== fy) return true;
-  for (const m of q.matchAll(/\bfiscal\s+(?:year\s+)?(\d{2,4})\b/gi)) if (m[1] !== yy && m[1] !== fy) return true;
-  for (const m of q.replace(/\bfy\s?'?\d{2,4}\b/gi, ' ').replace(/\bfiscal\s+(?:year\s+)?\d{2,4}\b/gi, ' ').matchAll(/\b(19|20)\d{2}\b/g)) if (m[0] !== fy) return true;
-  return false;
+/** A span of two years ("2026-2027", "2026-27", "2026/27"): the fiscal year it names is the later one. */
+const SPAN = /\b((?:19|20)\d{2})\s*[-/]\s*((?:19|20)?\d{2})\b/g;
+/** Every year expression in a question: spans, "FY27", "fiscal year 2026", a bare year. */
+const YEAR_WORDS = /\b(?:19|20)\d{2}\s*[-/]\s*(?:19|20)?\d{2}\b|\bfy\s?'?\d{2,4}\b|\bfiscal\s+(?:year\s+)?\d{2,4}\b|\b(?:19|20)\d{2}\b/gi;
+
+/**
+ * The fiscal year a question names: the budget year (2027), the year before it (2026, the data's
+ * prior-year column), another year, or none. A bare calendar year is read as the fiscal year ending
+ * in it ("2026" is fiscal 2026, July 2025 to June 2026), and `calendar` says it was a bare year.
+ */
+export function fiscalYearIn(q: string): { year: number | null; other: boolean; calendar: boolean } {
+  const years = new Set<number>();
+  let calendar = false;
+  const full = (x: string) => Number(x.length === 2 ? `20${x}` : x);
+  let rest = q.replace(SPAN, (_, a: string, b: string) => {
+    const end = full(b.length === 2 ? `${a.slice(0, 2)}${b}` : b);
+    if (end - Number(a) === 1) years.add(end);
+    else years.add(-1);
+    return ' ';
+  });
+  rest = rest.replace(/\bfy\s?'?(\d{2}(?:\d{2})?)\b/gi, (_, y: string) => (years.add(full(y)), ' '));
+  rest = rest.replace(/\bfiscal\s+(?:year\s+)?(\d{2,4})\b/gi, (_, y: string) => (years.add(full(y)), ' '));
+  for (const m of rest.matchAll(/\b(?:19|20)\d{2}\b/g)) {
+    years.add(Number(m[0]));
+    calendar = true;
+  }
+  const list = [...years];
+  const prior = BUDGET_FISCAL_YEAR - 1;
+  if (!list.length) return { year: null, other: false, calendar: false };
+  if (list.every((y) => y === BUDGET_FISCAL_YEAR)) return { year: BUDGET_FISCAL_YEAR, other: false, calendar: false };
+  if (list.every((y) => y === prior)) return { year: prior, other: false, calendar };
+  return { year: null, other: true, calendar };
 }
 
 /** The budget question a message asks, or null when the data cannot answer it exactly. */
 export function budgetIntent(question: string): BudgetIntent | null {
   const q = question.replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim();
-  if (!BUDGETISH.test(q) || namesOtherYear(q) || OUT_OF_SCOPE.test(q)) return null;
+  const fy = fiscalYearIn(q);
+  if (!BUDGETISH.test(q) || fy.other || OUT_OF_SCOPE.test(q)) return null;
+  const prior = fy.year === BUDGET_FISCAL_YEAR - 1;
   const asksDate = /\b(when|what\s+date|which\s+date|what\s+day|date)\b/i.test(q);
   if (asksDate && /\bbudget\b/i.test(q)) {
     if (/\bamend(ed|ment)\b/i.test(q) && !/\b(adopt\w*|pass\w*|final)\b/i.test(q)) return { kind: 'amended' };
@@ -110,7 +139,7 @@ export function budgetIntent(question: string): BudgetIntent | null {
     return null;
   }
   if (asksDate) return null;
-  let rest = q;
+  let rest = q.replace(YEAR_WORDS, ' ');
   const take = (re: RegExp) => {
     const hit = re.test(rest);
     if (hit) rest = rest.replace(new RegExp(re.source, 'gi'), ' ');
@@ -122,8 +151,9 @@ export function budgetIntent(question: string): BudgetIntent | null {
   const departments = DEPARTMENTS.filter((d) => names.includes(d.name));
   const total = take(TOTAL);
   // Anything left that names a subject ("the parks master plan", "Holdaway Fields") is not a budget line.
-  const left = topicWords(rest.replace(/\bfy\s?'?\d{2,4}\b/gi, ' ').replace(/\b\d{4}\b/g, ' ')).filter((w) => !ALLOWED.has(w.toLowerCase()));
+  const left = topicWords(rest).filter((w) => !ALLOWED.has(w.toLowerCase()));
   if (left.length) return null;
+  if (prior) return revenue.length || funds.length || departments.length || total ? { kind: 'prior', departments, other: Boolean(revenue.length || funds.length || total), calendar: fy.calendar } : null;
   if (revenue.length || funds.length || departments.length) return { kind: 'lines', departments, funds, revenue };
   if (total) return { kind: 'total' };
   return null;
@@ -137,6 +167,22 @@ export function budgetAnswer(intent: BudgetIntent): BudgetAnswer {
   const book = adopted ? `the FY 27 Final Budget adopted ${adopted}` : 'the FY 27 Final Budget';
   const amend = amended ? `the First Budget Amendment of ${amended}` : 'the First Budget Amendment';
   const s: BudgetAnswer['sentences'] = [];
+  if (intent.kind === 'prior') {
+    const py = BUDGET_FISCAL_YEAR - 1;
+    const pfy = `fiscal year ${py} (July 1, ${py - 1} to June 30, ${py})`;
+    if (intent.calendar) {
+      s.push({ text: `The city budget runs July 1 to June 30, so ${py} here means ${pfy}.`, docs: [] });
+      s.push({ text: `Fiscal year ${BUDGET_FISCAL_YEAR} began July 1, ${py}.`, docs: [] });
+    }
+    if (intent.departments.length) {
+      s.push({ text: `General Fund department budgets for ${pfy}, final amended, as printed in ${book}:`, docs: ['book'] });
+      for (const d of intent.departments) s.push({ text: `${d.name}: ${usd(d.prior)}.`, docs: ['book'] });
+    }
+    if (intent.other || !intent.departments.length)
+      s.push({ text: `The portal's budget data has ${pfy} figures for General Fund departments only; its fund, revenue and total figures are for ${fy}.`, docs: [] });
+    s.push({ text: 'Every line is on the portal’s Budget page.', docs: [] });
+    return { intent: intent.kind, sentences: s };
+  }
   if (intent.kind === 'adopted') {
     s.push(adopted ? { text: `The City Council adopted the FY 27 Final Budget, for ${fy}, on ${adopted}.`, docs: ['book'] } : { text: 'The adoption date of the FY 27 Final Budget is not recorded in the portal’s budget data.', docs: [] });
     if (amended) s.push({ text: `The First Budget Amendment to it is dated ${amended}.`, docs: ['amendment'] });

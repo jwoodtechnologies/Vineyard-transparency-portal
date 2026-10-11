@@ -157,6 +157,17 @@ export function relevant<T extends { rel: number }>(ranked: T[], min = 4): T[] {
   return keep.length >= min ? keep : ranked.slice(0, Math.max(min, keep.length));
 }
 
+/**
+ * "What is the property tax rate?", "how much is the water fee now?": a value in effect today, so
+ * the newest record that states it answers, with its year. A question that names a year or the past does not.
+ */
+export function asksCurrentValue(question: string): boolean {
+  const q = question.toLowerCase();
+  if (!/\b(rates?|levy|levies|fees?|prices?|charges?)\b/.test(q)) return false;
+  if (/\b(19|20)\d{2}\b|\bfy\s?'?\d{2}\b|\b(was|were|used to|history|historical|historically|in the past|first|original|originally|last year|previous|prior)\b/.test(q)) return false;
+  return /\b(what('s| is| are)|whats|how much (is|are|does|do)|current|currently|now|today|this year|latest|present)\b/.test(q);
+}
+
 const HISTORICAL = /\b(19[89]\d|20[0-2]\d|history|historically|first|earliest|oldest|originally|original|in the past|over the years|back in|used to|ever|since|timeline)\b/i;
 const PRESENT = /\b(now|current|currently|today|this year|latest|recent|recently|right now|going on|happening|doing|working on|plans?|planned|planning|upcoming|status|still|new|update)\b/i;
 
@@ -170,8 +181,8 @@ export function recencyWeighted<T extends ChunkHit & { rel: number }>(ranked: T[
   // Code sections lead only when the question is about rules; otherwise they never crowd out records.
   const codeWeight = rules ? 1 : 0.6;
   if (HISTORICAL.test(question)) return ranked.map((h, i) => ({ h, i, s: h.documentType === 'municipal_code' ? h.rel * codeWeight : h.rel })).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.h);
-  // Present tense (what is happening, current, plans): a record two years old counts a third as much.
-  const strength = PRESENT.test(question) ? 1.0 : 0.3;
+  // Present tense (what is happening, current, plans, "what is the tax rate"): a record two years old counts a third as much.
+  const strength = PRESENT.test(question) || asksCurrentValue(question) ? 1.0 : 0.3;
   const weight = (h: T) => {
     if (h.documentType === 'municipal_code') return codeWeight;
     if (currentIds.has(h.chunkId)) return 1;
