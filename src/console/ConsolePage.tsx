@@ -190,13 +190,27 @@ export default function ConsolePage() {
   const lastTurnEl = useRef<HTMLElement | null>(null);
   const [keys, setKeys] = useState(false);
 
-  // A phone keyboard lifts fixed text over the question box: note when one is open.
+  // A phone keyboard lifts fixed text over the question box: note when one is open. iOS shrinks
+  // innerHeight with the keyboard too, so the viewport difference alone misses it; a focused text
+  // field on a touch screen counts as an open keyboard.
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
-    const check = () => setKeys(window.innerHeight - vv.height > 150);
-    vv.addEventListener('resize', check);
-    return () => vv.removeEventListener('resize', check);
+    const touch = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    const typing = () => {
+      const el = document.activeElement;
+      return touch && !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit'].includes((el as HTMLInputElement).type)));
+    };
+    const check = () => setKeys(typing() || (!!vv && window.innerHeight - vv.height > 150));
+    // focusout fires before focus lands elsewhere: check on the next frame.
+    const later = () => requestAnimationFrame(check);
+    vv?.addEventListener('resize', check);
+    document.addEventListener('focusin', check);
+    document.addEventListener('focusout', later);
+    return () => {
+      vv?.removeEventListener('resize', check);
+      document.removeEventListener('focusin', check);
+      document.removeEventListener('focusout', later);
+    };
   }, []);
 
   const patch = useCallback((id: string, p: Partial<Turn> | ((t: Turn) => Partial<Turn>)) => {
