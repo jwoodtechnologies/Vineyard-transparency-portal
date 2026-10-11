@@ -1,6 +1,6 @@
 # Cloudflare setup (production)
 
-Everything runs on the **Cloudflare Free plan**. No paid plan, add-on or payment method is used.
+Everything runs on Cloudflare, on a Workers Paid plan ($5 a month) shared with other projects. Usage is capped by the Worker to stay inside the included amounts (see FREE_TIER_LIMITS.md); no overage is expected.
 
 ## Resources (account `7e8349e41c1d414340974453ef6ac227`)
 

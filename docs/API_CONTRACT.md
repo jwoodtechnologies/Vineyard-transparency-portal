@@ -17,7 +17,6 @@ the Phase 2 archive backend. All request/response bodies use the TypeScript type
 | Array query params | Repeat the key: `?type=agenda&type=minutes`. |
 | Auth | None. The portal has no accounts. Cookies and `Authorization` headers are ignored (the Worker strips them before proxying). |
 | Untrusted text | Every string that originates from an archived document (titles, excerpts, page text) is untrusted and must be rendered as text, never HTML. |
-| Demo data | Production responses omit `isDemo` or set it `false`. |
 
 ### Pagination
 
@@ -439,7 +438,7 @@ authentication_required | blocked | unknown`, `lastCheckedAt`, `lastSuccessfulCh
 
 `ArchiveStatistics`: `documentsIndexed`, `pagesIndexed`, `meetingsIndexed`, `earliestRecordDate`,
 `latestRecordDate`, `archiveLastUpdatedAt`, `sourcesMonitored`, `sourcesHealthy`, `ocrPendingCount`,
-`isDemo: false`. All numbers are computed from the index, never estimated.
+All numbers are computed from the index, never estimated.
 
 ### GET /api/suggestions
 
