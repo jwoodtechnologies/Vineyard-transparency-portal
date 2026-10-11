@@ -1,5 +1,6 @@
 // Vineyard Transparency Portal: one Cloudflare Worker serving the SPA (static assets) and /api/*.
-// Workers Free plan only. See docs/CLOUDFLARE.md and docs/FREE_TIER_LIMITS.md.
+// Workers Paid ($5/month, shared with the owner's other projects): every setting below stays inside
+// the plan's included usage, zero overage. See docs/FREE_TIER_LIMITS.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "vineyard-transparency-portal",
@@ -33,9 +34,13 @@
     "AI_ENABLED": "true",
     "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fp8",
     "AI_MAX_REQUESTS_PER_DAY": "220",
-    "AI_BIG_PER_DAY": "3000",
-    "SEARCH_SHARD_MAX_BYTES": "9500000000",
-    "MAX_D1_INGEST_ROWS_PER_DAY": "3000000",
+    "AI_BIG_PER_DAY": "35",
+    // Hard cap on estimated Workers AI Neurons per UTC day (included: 10,000/day per account).
+    "AI_NEURONS_PER_DAY": "8000",
+    // D1 storage included: 5 GB per account. Two shards at 2 GB leave room for the catalog and other projects.
+    "SEARCH_SHARD_MAX_BYTES": "2000000000",
+    // D1 rows written included: 50 million per month per account. 1 million a day leaves room for other projects.
+    "MAX_D1_INGEST_ROWS_PER_DAY": "1000000",
     // 6 GB: the account's other buckets already hold ~1.7 GB of the 10 GB free allowance.
     "ARCHIVE_STORAGE_HARD_STOP_BYTES": "6000000000",
     "ARCHIVE_MAX_OBJECT_BYTES": "26214400",
@@ -43,7 +48,11 @@
     "OIDC_REPOSITORY": "jwoodtechnologies/Vineyard-transparency-portal",
     "OIDC_ALLOWED_REFS": "refs/heads/main"
   },
-  // Every five minutes: new meetings and newly posted files (worker/cron.ts); news once an hour.
+  // Every five minutes: CivicClerk, city pages, Utah public notices, the events calendar and the file
+  // queue (worker/cron.ts, worker/sync/run.ts); news once an hour.
   "triggers": { "crons": ["*/5 * * * *"] },
+  // Workers Paid: allow up to 2 minutes of CPU for a tick that extracts a long PDF (billed CPU stays
+  // far inside the 30 million CPU-ms included each month; most ticks use well under a second).
+  "limits": { "cpu_ms": 120000 },
   "observability": { "enabled": true }
 }

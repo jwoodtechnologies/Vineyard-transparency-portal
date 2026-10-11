@@ -1,0 +1,142 @@
+import { describe, expect, it } from 'vitest';
+import { canonicalUrl, categorize, urlKey } from '../worker/sync/urls';
+import { chunkPages } from '../worker/sync/chunk';
+import { extractHtml, looksScanned } from '../worker/sync/extract';
+import { parsePmnResults } from '../worker/sync/pmnParse';
+import { findGlance, glanceText } from '../worker/lib/glance';
+import { shouldArchive } from '../worker/lib/archivePolicy';
+import { estimateNeurons } from '../worker/ai/meter';
+import { calendarText } from '../worker/sync/calendarText';
+
+describe('queue keys match the Python crawler (ingest/urls.py url_key)', () => {
+  const cases: Array<[string, string, string]> = [
+    ['https://www.vineyardutah.gov/Center Street and Holdaway Road 8.4 2026.pdf?t=12', 'https://vineyardutah.gov/Center%20Street%20and%20Holdaway%20Road%208.4%202026.pdf', '10b3cda34e706425ed616ea9f0b6ba3dae9aa37bcfecb30367bd8a3950f40917'],
+    ['https://vineyardutah.gov/DocumentCenter/View/2375/Building-Portal-Account-Guide', 'https://vineyardutah.gov/DocumentCenter/View/2375/Building-Portal-Account-Guide', '3123c020da50ea31541198da314961dbb3ce872b9042649c957f67b546b037f3'],
+    ['https://www.vineyardutah.gov/government/construction_projects.php', 'https://vineyardutah.gov/government/construction_projects.php', 'c26580d9224c8f03188abbc6ce1cef1ef253ab101bf8e0b46b99592b4f1f47bd'],
+    ['https://www.utah.gov/pmn/sitemap/notice/1114505.html?b=2&a=1', 'https://utah.gov/pmn/sitemap/notice/1114505.html?a=1&b=2', '9b132c8ca01bea3e2bc5ff2f0da9c03e697f3d0522edacfe7d37b07e40a802c4'],
+  ];
+  for (const [url, canon, key] of cases) {
+    it(url, async () => {
+      expect(canonicalUrl(url)).toBe(canon);
+      expect(await urlKey(url)).toBe(key);
+    });
+  }
+
+  it('categorizes city links like ingest/sources.py', () => {
+    expect(categorize('https://www.vineyardutah.gov/x/notice.pdf').category).toBe('document');
+    expect(categorize('https://www.vineyardutah.gov/calendar.php').category).toBe('excluded');
+    expect(categorize('https://www.vineyardutah.gov/government/streets.php')).toMatchObject({ category: 'city_page', crawlable: true });
+    expect(categorize('https://www.facebook.com/VineyardCity').category).toBe('other');
+  });
+});
+
+const CONSTRUCTION_HTML = `<html><head><base href="https://www.vineyardutah.gov/"></head><body>
+<nav><a href="/menu.php">Menu</a></nav>
+<div id="post">
+  <h1>Construction Projects</h1>
+  <h2>AT A GLANCE</h2>
+  <table>
+    <tr><th>Project</th><th>Type</th><th>Location</th><th>Work description</th><th>Status</th><th>Expected completion</th></tr>
+    <tr><td>HAWK crossing</td><td>Pedestrian signal</td><td>Center Street and Holdaway Road</td><td>New crossing</td><td>Underway</td><td>Early November</td></tr>
+    <tr><td>Traffic signal</td><td>Signal</td><td>400 North and Mill Road</td><td>New signal</td><td>Planned</td><td>TBD</td></tr>
+  </table>
+  <p>Questions go to Public Works.</p>
+  <a href="Update%205.pdf">Update 5</a>
+  <a href="government/streets.php">Streets</a>
+</div></body></html>`;
+
+describe('city page extraction', () => {
+  const page = extractHtml(CONSTRUCTION_HTML, 'https://www.vineyardutah.gov/government/construction_projects.php');
+
+  it('keeps the content, drops navigation, resolves links from <base>', () => {
+    expect(page.heading).toBe('Construction Projects');
+    expect(page.text).toContain('HAWK crossing');
+    expect(page.text).not.toContain('Menu');
+    expect(page.links.map((l) => l.url)).toContain('https://www.vineyardutah.gov/Update%205.pdf');
+  });
+
+  it('finds the AT A GLANCE table with the city columns', () => {
+    const g = findGlance(page.tables)!;
+    expect(g.heading).toBe('AT A GLANCE');
+    expect(g.headers).toEqual(['Project', 'Type', 'Location', 'Work description', 'Status', 'Expected completion']);
+    expect(g.rows[0]).toMatchObject({ Project: 'HAWK crossing', Status: 'Underway', 'Expected completion': 'Early November' });
+  });
+
+  it('answers construction questions from the table with the date it was read', () => {
+    const text = glanceText(findGlance(page.tables), '2026-10-11T16:00:00Z', page.text);
+    expect(text).toMatch(/^As of October 11, 2026, the city's Construction Projects page lists 2 projects:/);
+    expect(text).toContain('HAWK crossing, Center Street and Holdaway Road (Pedestrian signal): status Underway, expected completion Early November.');
+    expect(text).not.toMatch(/[–—]/);
+  });
+});
+
+describe('Utah Public Notice results', () => {
+  const html = `<table id="browseResults-table"><tbody>
+    <tr class="on"><td><a href="/pmn/sitemap/notice/1114505.html">Redevelopment Agency Board Meeting </a></td><td>2026/10/13 06:00 PM</td><td>Redevelopment Agency</td><td>Vineyard</td>
+      <td><ul><li><a href="/pmn/files/1499769.pdf" target="blank">10.13.26 RDA Packet (1).pdf</a></li></ul></td></tr>
+    <tr class="off"><td><a href="/pmn/sitemap/notice/1114999.html">Board Meeting</a></td><td>2026/10/14</td><td>Board</td><td>Vineyard Water District</td><td></td></tr>
+  </tbody></table>`;
+  it('parses notices, times and attachments', () => {
+    const [a, b] = parsePmnResults(html);
+    expect(a).toMatchObject({ id: '1114505', title: 'Redevelopment Agency Board Meeting', eventDate: '2026-10-13', eventTime: '18:00', publicBody: 'Redevelopment Agency', entity: 'Vineyard' });
+    expect(a.url).toBe('https://www.utah.gov/pmn/sitemap/notice/1114505.html');
+    expect(a.attachments).toEqual([{ url: 'https://www.utah.gov/pmn/files/1499769.pdf', name: '10.13.26 RDA Packet (1).pdf' }]);
+    expect(b.entity).toBe('Vineyard Water District');
+  });
+});
+
+describe('chunking and scans', () => {
+  it('never crosses pages and keeps page numbers', () => {
+    const chunks = chunkPages([
+      { number: 1, text: 'A'.repeat(1000) + '\n\n' + 'B'.repeat(1000) },
+      { number: 2, text: 'Short page two.' },
+    ]);
+    expect(chunks.map((c) => c.pageStart)).toEqual([1, 1, 2]);
+  });
+  it('flags image-only PDFs for OCR', () => {
+    expect(looksScanned([{ number: 1, text: ' ' }, { number: 2, text: '3' }])).toBe(true);
+    expect(looksScanned([{ number: 1, text: 'The City Council met on October 13, 2026 and approved the minutes.' }])).toBe(false);
+  });
+});
+
+describe('archive policy', () => {
+  it('archives minutes, agendas, ordinances, resolutions, notices, budgets and audits only', () => {
+    for (const t of ['minutes', 'agenda', 'ordinance', 'resolution', 'public_notice', 'budget', 'audit', 'financial_report']) expect(shouldArchive(t, 'X')).toBe(true);
+    for (const t of ['agenda_packet', 'staff_report', 'presentation', 'contract', 'other']) expect(shouldArchive(t, 'X')).toBe(false);
+    expect(shouldArchive('agenda', '10.13.26 RDA Packet')).toBe(false);
+    expect(shouldArchive('minutes', 'Draft minutes (City Council, 2026-09-15, item 3)')).toBe(false);
+    expect(shouldArchive('resolution', 'Resolution 2026-40 (City Council, 2026-09-15, item 3)')).toBe(true);
+  });
+});
+
+describe('AI neuron estimate', () => {
+  it('counts input and the full output allowance', () => {
+    const n = estimateNeurons('@cf/meta/llama-3.1-8b-instruct-fp8', { messages: [{ role: 'user', content: 'x'.repeat(3500) }], max_tokens: 400 });
+    expect(n).toBeGreaterThanOrEqual((1000 * 4119 + 400 * 34868) / 1e6);
+    expect(n).toBeLessThan(18.2);
+    expect(estimateNeurons('@cf/unknown/model', { messages: [], max_tokens: 100 })).toBeGreaterThan(10);
+  });
+});
+
+describe('calendar record', () => {
+  it('lists events with date, time, category and place', () => {
+    const t = calendarText([{ id: 'a', title: 'Blizzard 5K', category: 'Recreation', allDay: false, start: '2026-11-07T08:30:00', end: null, location: 'Lakeside Park', description: null, url: '' }], '2026-10-11', '2027-02-08');
+    expect(t).toContain('2026-11-07 08:30 | Blizzard 5K | Recreation | Lakeside Park');
+  });
+});
+
+describe('PDF text extraction (unpdf, as in the Worker)', () => {
+  it('reads each page of a PDF', async () => {
+    const { PDFDocument, StandardFonts } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    for (const line of ['Agenda item 1: Call to order', 'Agenda item 2: Approval of minutes']) {
+      const page = doc.addPage([400, 200]);
+      page.drawText(line, { x: 20, y: 100, size: 12, font });
+    }
+    const { extractPdf } = await import('../worker/sync/extract');
+    const out = await extractPdf(await doc.save());
+    expect(out?.pageCount).toBe(2);
+    expect(out?.pages[1].text).toContain('Approval of minutes');
+  });
+});

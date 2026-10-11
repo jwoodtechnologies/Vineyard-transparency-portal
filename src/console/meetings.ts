@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import type { GovernmentBody, MeetingSummary } from '@/types/models';
 import { BrowseService, MeetingService } from '@/services';
 import { fresh } from './api';
+import { type PortalEvent } from './calendarMerge';
+
+export * from './calendarMerge';
 
 const years = new Map<number, Promise<MeetingSummary[]>>();
 
@@ -178,18 +181,6 @@ export function agendaOutline(text: string): OutlineItem[] {
 
 // ------------------------------------------------------------------ community events
 
-/** A Vineyard City calendar event (community, recreation, library, utilities, city meetings). */
-export interface PortalEvent {
-  id: string;
-  title: string;
-  category: string;
-  start: string; // local ISO
-  end: string | null;
-  allDay: boolean;
-  location: string | null;
-  description: string | null;
-  url: string;
-}
 
 const eventYears = new Map<number, Promise<PortalEvent[]>>();
 const eventsEnabled = import.meta.env.VITE_DATA_MODE === 'api';
@@ -225,63 +216,3 @@ export function useEvents(yearList: number[]): PortalEvent[] | null {
   return state.key === key ? state.items : null;
 }
 
-export type CategoryId = 'meetings' | 'community' | 'recreation' | 'library' | 'utilities';
-export const CATEGORIES: Array<{ id: CategoryId; label: string; tone: number }> = [
-  { id: 'meetings', label: 'Meetings', tone: 0 },
-  { id: 'community', label: 'Community', tone: 3 },
-  { id: 'recreation', label: 'Recreation', tone: 2 },
-  { id: 'library', label: 'Library', tone: 7 },
-  { id: 'utilities', label: 'Utilities', tone: 5 },
-];
-
-export function categoryOf(e: PortalEvent): CategoryId {
-  const c = e.category.toLowerCase();
-  if (c.includes('meeting')) return 'meetings';
-  if (c.includes('recreation') || c.includes('sport')) return 'recreation';
-  if (c.includes('library')) return 'library';
-  if (c.includes('utilit') || c.includes('trash') || c.includes('waste')) return 'utilities';
-  return 'community';
-}
-
-export const eventTone = (e: PortalEvent) => (categoryOf(e) === 'meetings' ? 4 : (CATEGORIES.find((c) => c.id === categoryOf(e))?.tone ?? 3));
-
-export type CalItem =
-  | { kind: 'meeting'; key: string; date: string; time: string | null; m: MeetingSummary; cityTime?: string | null }
-  | { kind: 'event'; key: string; date: string; time: string | null; e: PortalEvent };
-
-const MEETING_WORDS = /council|planning|commission|redevelopment|youth|board|committee|coalition|arch|transportation|appeals|hearing/g;
-
-/**
- * One list of meetings and events, sorted by date and time. City-calendar copies of meetings that
- * CivicClerk already lists (same day, same body) are dropped so nothing shows twice.
- */
-export function mergeItems(meetings: MeetingSummary[], events: PortalEvent[]): CalItem[] {
-  const byDate = new Map<string, MeetingSummary[]>();
-  for (const m of meetings) byDate.set(m.date, [...(byDate.get(m.date) ?? []), m]);
-  // The city keeps two calendars (the agenda portal and its website). When they give one meeting two
-  // different start times, the website's time is kept so the calendar can show both.
-  const cityTime = new Map<string, string>();
-  const extra: CalItem[] = [];
-  const seen = new Set<string>();
-  for (const e of events) {
-    if (seen.has(e.id)) continue;
-    seen.add(e.id);
-    const date = e.start.slice(0, 10);
-    const time = e.allDay ? null : e.start.slice(11, 16);
-    if (categoryOf(e) === 'meetings') {
-      const words = e.title.toLowerCase().match(MEETING_WORDS) ?? [];
-      const same = (byDate.get(date) ?? []).find((m) => {
-        const t = `${m.title} ${m.governmentBodyName ?? ''}`.toLowerCase();
-        return words.some((w) => t.includes(w)) || (time != null && m.startTime === time);
-      });
-      if (same) {
-        const sameBody = words.some((w) => `${same.title} ${same.governmentBodyName ?? ''}`.toLowerCase().includes(w));
-        if (sameBody && time && same.startTime && time !== same.startTime.slice(0, 5) && !/cancel/i.test(`${e.title} ${same.title}`)) cityTime.set(same.id, time);
-        continue;
-      }
-    }
-    extra.push({ kind: 'event', key: e.id, date, time, e });
-  }
-  const items: CalItem[] = [...meetings.map((m): CalItem => ({ kind: 'meeting', key: m.id, date: m.date, time: m.startTime, m, cityTime: cityTime.get(m.id) ?? null })), ...extra];
-  return items.sort((a, b) => (a.date + (a.time ?? '00:00')).localeCompare(b.date + (b.time ?? '00:00')));
-}

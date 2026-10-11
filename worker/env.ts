@@ -28,6 +28,8 @@ export interface Env {
   AI_MAX_REQUESTS_PER_DAY?: string;
   /** Answers per day from the larger model before the small one takes over. */
   AI_BIG_PER_DAY?: string;
+  /** Hard daily cap on estimated Workers AI Neurons (zero overage; the account allowance is 10,000). */
+  AI_NEURONS_PER_DAY?: string;
   ARCHIVE_STORAGE_HARD_STOP_BYTES?: string;
   ARCHIVE_MAX_OBJECT_BYTES?: string;
   MAX_D1_INGEST_ROWS_PER_DAY?: string;

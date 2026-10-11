@@ -64,7 +64,7 @@ export async function listChecks(env: Env): Promise<CheckRow[]> {
   await ensureCheckTable(env);
   const res = await env.CATALOG_DB.prepare('SELECT * FROM check_status ORDER BY id').all<Record<string, string | null>>();
   return (res.results ?? []).map((r) => {
-    let summary: unknown = null;
+    let summary: unknown;
     try {
       summary = r.last_summary_json ? JSON.parse(r.last_summary_json) : null;
     } catch {

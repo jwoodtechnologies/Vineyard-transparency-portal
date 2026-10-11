@@ -21,6 +21,7 @@ import { MEETING_COPY_GROUPS_SQL } from '../lib/meetingCopies';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
+import { shouldArchive } from '../lib/archivePolicy';
 import { ensureActivityTables } from '../panel/store';
 import { newSetupCode } from '../panel/auth';
 import { requireIngestAuth } from './auth';
@@ -430,12 +431,14 @@ async function listQueue(env: Env, url: URL): Promise<Response> {
   // Parallel runners each take a slice of the queue by the first hex digit of the URL key.
   const shards = Math.min(16, Math.max(0, Number(url.searchParams.get('shards') ?? 0) || 0));
   const shard = Math.max(0, Number(url.searchParams.get('shard') ?? 0) || 0);
+  // The city's web host refuses GitHub's runners: their ingest skips city-hosted files (the Worker reads them).
+  const city = url.searchParams.get('skipCity') === '1' ? ` AND q.url NOT LIKE '%vineyardutah.gov%' AND q.url NOT LIKE '%vineyardutah.org%' AND q.url NOT LIKE '%cms3.revize.com/revize/vineyard%'` : '';
   const slice = shards > 1 ? ` AND ((instr('0123456789abcdef', substr(q.url_key, 1, 1)) - 1) % ${shards}) = ${shard % shards}` : '';
   const res = await env.CATALOG_DB.prepare(
     `SELECT q.*, (SELECT ds.etag FROM document_sources ds WHERE ds.canonical_key = q.url_key LIMIT 1) AS known_etag,
             (SELECT ds.last_modified FROM document_sources ds WHERE ds.canonical_key = q.url_key LIMIT 1) AS known_last_modified,
             (SELECT ds.document_id FROM document_sources ds WHERE ds.canonical_key = q.url_key LIMIT 1) AS known_document_id
-     FROM crawl_queue q WHERE q.status = ? ${source ? 'AND q.source_id = ?' : ''} AND q.attempts < ?${slice}
+     FROM crawl_queue q WHERE q.status = ? ${source ? 'AND q.source_id = ?' : ''} AND q.attempts < ?${slice}${city}
        AND (q.next_attempt_at IS NULL OR q.next_attempt_at <= ?)
      ORDER BY q.priority, q.discovered_at LIMIT ?`,
   )
@@ -484,7 +487,7 @@ async function retryErrors(env: Env, budget: Budget): Promise<Response> {
  * Registers a fetched record. The server decides, from the catalog, whether this is a new
  * document, a new version of a known URL, a duplicate binary found at another URL, or unchanged.
  */
-async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Response> {
+export async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Response> {
   const d = (body.document ?? {}) as Json;
   const src = (body.source ?? {}) as Json;
   const canonicalKey = s(src.canonicalKey, 64);
@@ -566,7 +569,7 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
       ]);
       const rows = sum(r);
       await budget.record(rows);
-      return json({ status: 'unchanged', documentId: known.id, shard: known.search_shard, needsChunks: (Number(known.chunk_count ?? 0) === 0 && known.text_status !== 'empty' && known.text_status !== 'unsupported') || known.ocr_status === 'needed', needsArchive: known.archive_status !== 'archived', rowsWritten: rows });
+      return json({ status: 'unchanged', documentId: known.id, shard: known.search_shard, needsChunks: (Number(known.chunk_count ?? 0) === 0 && known.text_status !== 'empty' && known.text_status !== 'unsupported') || known.ocr_status === 'needed', needsArchive: known.archive_status !== 'archived' && shouldArchive(known.document_type, known.title), rowsWritten: rows });
     }
     // Same URL, different bytes: a new version. The old version row keeps its hash and archive key.
     const version = Number(known.current_version ?? 1) + 1;
@@ -588,7 +591,7 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
     ]);
     const rows = sum(r);
     await budget.record(rows);
-    return json({ status: 'new_version', documentId: known.id, version, shard: known.search_shard, needsChunks: true, needsArchive: true, rowsWritten: rows });
+    return json({ status: 'new_version', documentId: known.id, version, shard: known.search_shard, needsChunks: true, needsArchive: shouldArchive(known.document_type, title), rowsWritten: rows });
   }
 
   // One record per meeting: the same minutes or agenda from a second source (CivicClerk and the
@@ -629,7 +632,7 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
       ]);
       const rows = sum(r);
       await budget.record(rows);
-      return json({ status: 'duplicate', documentId: dup.id, shard: dup.search_shard, needsChunks: Number(dup.chunk_count ?? 0) === 0 && dup.text_status !== 'empty' && dup.text_status !== 'unsupported', needsArchive: dup.archive_status !== 'archived', rowsWritten: rows });
+      return json({ status: 'duplicate', documentId: dup.id, shard: dup.search_shard, needsChunks: Number(dup.chunk_count ?? 0) === 0 && dup.text_status !== 'empty' && dup.text_status !== 'unsupported', needsArchive: dup.archive_status !== 'archived' && shouldArchive(dup.document_type, dup.title), rowsWritten: rows });
     }
   }
 
@@ -705,10 +708,10 @@ async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Res
   const r = await db.batch(stmts);
   const rows = sum(r);
   await budget.record(rows);
-  return json({ status: 'new', documentId: id, shard, needsChunks: true, needsArchive: true, rowsWritten: rows }, { status: 201 });
+  return json({ status: 'new', documentId: id, shard, needsChunks: true, needsArchive: shouldArchive(docType, title), rowsWritten: rows }, { status: 201 });
 }
 
-async function putChunks(env: Env, id: string, body: Json, budget: Budget): Promise<Response> {
+export async function putChunks(env: Env, id: string, body: Json, budget: Budget): Promise<Response> {
   const doc = await env.CATALOG_DB.prepare('SELECT * FROM documents WHERE id = ?').bind(id).first<Json>();
   if (!doc) throw notFound('Unknown document.');
   const repo = new SearchRepository(env);
@@ -781,7 +784,7 @@ async function putChunks(env: Env, id: string, body: Json, budget: Budget): Prom
   return json({ ok: true, documentId: id, shard: doc.search_shard, chunks: total, rowsWritten: written });
 }
 
-async function patchDocument(env: Env, id: string, body: Json, budget: Budget): Promise<Response> {
+export async function patchDocument(env: Env, id: string, body: Json, budget: Budget): Promise<Response> {
   const allowed: Record<string, string> = { archiveStatus: 'archive_status', textStatus: 'text_status', ocrStatus: 'ocr_status', pageCount: 'page_count' };
   const sets: string[] = [];
   const params: unknown[] = [];
@@ -817,9 +820,22 @@ async function putArchive(env: Env, request: Request, sha: string, url: URL, bud
   if (!storage.available) return json({ status: 'unavailable', message: 'No archive bucket is bound.' }, { status: 409 });
   const size = Number(request.headers.get('content-length') ?? NaN);
   if (!Number.isFinite(size) || size <= 0) throw badRequest('Content-Length is required.');
-  const maxObject = intVar(env.ARCHIVE_MAX_OBJECT_BYTES, 25 * 1024 * 1024);
   const ext = (url.searchParams.get('ext') ?? 'bin').toLowerCase();
   const contentType = (request.headers.get('content-type') ?? 'application/octet-stream').split(';')[0].slice(0, 100);
+  const out = await storeArchive(env, sha, request.body, size, ext, contentType, budget);
+  const code = out.status === 'archived' ? 201 : out.status === 'remote_only_large_file' ? 413 : out.status === 'quota_deferred' ? 409 : 200;
+  return json(out, { status: code });
+}
+
+/**
+ * Stores one original in R2 if the archive policy and the storage hard stop allow it, and records
+ * the outcome on every document with that content hash. Used by the ingest API and the Worker's
+ * own five-minute sync.
+ */
+export async function storeArchive(env: Env, sha: string, body: ReadableStream | ArrayBuffer | null, size: number, ext: string, contentType: string, budget: Budget): Promise<Json> {
+  const storage = storageFor(env.ARCHIVE);
+  if (!storage.available) return { status: 'unavailable', message: 'No archive bucket is bound.' };
+  const maxObject = intVar(env.ARCHIVE_MAX_OBJECT_BYTES, 25 * 1024 * 1024);
   const key = archiveKey(sha, ext);
   const db = env.CATALOG_DB;
 
@@ -831,14 +847,22 @@ async function putArchive(env: Env, request: Request, sha: string, url: URL, bud
   if (size > maxObject) {
     const r = await markDocs('remote_only_large_file', false).run();
     await budget.record(Number(r.meta?.rows_written ?? 0));
-    return json({ status: 'remote_only_large_file', maxObjectBytes: maxObject }, { status: 413 });
+    return { status: 'remote_only_large_file', maxObjectBytes: maxObject };
+  }
+
+  // Archive policy: only priority records get a stored copy; everything else stays a link to the city's copy.
+  const candidates = await db.prepare("SELECT document_type, title FROM documents WHERE sha256 = ? AND archive_status != 'archived'").bind(sha).all<{ document_type: string; title: string }>();
+  if ((candidates.results ?? []).length && !(candidates.results ?? []).some((c) => shouldArchive(c.document_type, c.title))) {
+    const r = await markDocs('link_only', false).run();
+    await budget.record(Number(r.meta?.rows_written ?? 0));
+    return { status: 'link_only' };
   }
 
   const existing = await storage.head(key);
   if (existing) {
     const r = await db.batch([markDocs('archived', true), db.prepare('UPDATE document_versions SET archive_key = ? WHERE sha256 = ? AND archive_key IS NULL').bind(key, sha)]);
     await budget.record(sum(r));
-    return json({ status: 'exists', key, size: existing.size });
+    return { status: 'exists', key, size: existing.size };
   }
 
   const stats = await db.prepare('SELECT stored_bytes FROM archive_stats WHERE id = 1').first<{ stored_bytes: number }>();
@@ -848,19 +872,19 @@ async function putArchive(env: Env, request: Request, sha: string, url: URL, bud
     const r = await db.batch([markDocs('quota_deferred', false), db.prepare('UPDATE archive_stats SET deferred_count = deferred_count + 1, updated_at = ? WHERE id = 1').bind(nowIso())]);
     await budget.record(sum(r));
     console.warn(JSON.stringify({ event: 'archive_quota_deferred', sha, size, projected, hardStop }));
-    return json({ status: 'quota_deferred', projectedBytes: projected, hardStopBytes: hardStop }, { status: 409 });
+    return { status: 'quota_deferred', projectedBytes: projected, hardStopBytes: hardStop };
   }
 
-  if (!request.body) throw badRequest('Missing body.');
+  if (!body) throw badRequest('Missing body.');
   await budget.check(5);
-  const stored = await storage.put(key, request.body, size, contentType, sha);
+  const stored = await storage.put(key, body, size, contentType, sha);
   const r = await db.batch([
     markDocs('archived', true),
     db.prepare('UPDATE document_versions SET archive_key = ? WHERE sha256 = ? AND archive_key IS NULL').bind(key, sha),
     db.prepare('UPDATE archive_stats SET stored_bytes = stored_bytes + ?, stored_objects = stored_objects + 1, updated_at = ? WHERE id = 1').bind(stored.size, nowIso()),
   ]);
   await budget.record(sum(r), { r2Bytes: stored.size, r2Ops: 1 });
-  return json({ status: 'archived', key, size: stored.size }, { status: 201 });
+  return { status: 'archived', key, size: stored.size };
 }
 
 async function runs(env: Env, id: string | null, body: Json, budget: Budget): Promise<Response> {

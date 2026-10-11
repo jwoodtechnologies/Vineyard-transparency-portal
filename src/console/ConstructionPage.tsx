@@ -9,14 +9,14 @@ import './console.css';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { FeatureCollection, Geometry } from 'geojson';
-import { ArrowUpRight, ChevronDown, FileText, Mail, MapPin, Phone } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, MapPin } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { Frame } from './Chrome';
 import { DocLink } from './DocLink';
 import { useJson } from './api';
+import { CitySnapshot } from './CitySnapshot';
 import type { MapFocus } from './ConstructionMap';
 import {
-  ACTIVE,
   ALSO_FUNDED,
   CATEGORIES,
   CITY_PAGE,
@@ -24,9 +24,6 @@ import {
   millions,
   money,
   plansFrom,
-  shortDate,
-  telHref,
-  type ActiveProject,
   type Category,
   type Plan,
   type PlanProps,
@@ -36,7 +33,7 @@ const ConstructionMap = lazy(() => import('./ConstructionMap'));
 
 type FC = FeatureCollection<Geometry, PlanProps>;
 
-type Picked = { kind: 'active'; id: string } | { kind: 'plan'; key: string };
+type Picked = { kind: 'plan'; key: string };
 
 /** Four small bars: every stage up to the current one is filled. */
 function StageBars({ stage }: { stage: Plan['stage'] }) {
@@ -62,95 +59,6 @@ function YearStrip({ plan, years }: { plan: Plan; years: number[] }) {
         </span>
       ))}
     </div>
-  );
-}
-
-function ActiveCard({ p, onShow, picked }: { p: ActiveProject; onShow: (p: ActiveProject) => void; picked: boolean }) {
-  const [more, setMore] = useState(false);
-  const shown = more ? p.updates : p.updates.slice(0, 2);
-  return (
-    <article id={`cp-${p.id}`} className="vc-cp-card" data-picked={picked || undefined}>
-      <header className="vc-cp-card-head">
-        <span className="vc-cp-n" aria-hidden="true">
-          {p.n}
-        </span>
-        <div>
-          <h3>{p.title}</h3>
-          <p className="vc-cp-where">{p.where}</p>
-        </div>
-      </header>
-      {p.asOf && <p className="vc-cp-asof">Latest city update: {shortDate(p.asOf)}</p>}
-      <p className="vc-cp-sum">{p.summary}</p>
-      <dl className="vc-cp-facts">
-        {p.facts.map(([k, v]) => (
-          <div key={k}>
-            <dt>{k}</dt>
-            <dd>{v}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <h4 className="vc-cp-h">Timeline</h4>
-      <ol className="vc-cp-line">
-        {shown.map((u) => (
-          <li key={`${u.date}:${u.title}`}>
-            <span className="vc-cp-when">{u.when ? `${u.when}, 2026` : shortDate(u.date)}</span>
-            <strong>{u.title}</strong>
-            <p>{u.text}</p>
-          </li>
-        ))}
-      </ol>
-      {p.updates.length > 2 && (
-        <button type="button" className="vc-cp-more" onClick={() => setMore((v) => !v)} aria-expanded={more}>
-          {more ? 'Show fewer' : `Show ${p.updates.length - 2} earlier`}
-          <ChevronDown size={14} strokeWidth={2} data-up={more || undefined} />
-        </button>
-      )}
-
-      <h4 className="vc-cp-h">What to expect</h4>
-      <ul className="vc-cp-expect">
-        {p.expect.map((e) => (
-          <li key={e}>{e}</li>
-        ))}
-      </ul>
-
-      <p className="vc-cp-contact">Questions? {p.contact.label}</p>
-      <div className="vc-cp-actions">
-        <button type="button" className="vc-primary" onClick={() => onShow(p)}>
-          <MapPin size={15} strokeWidth={1.9} /> Show on map
-        </button>
-        {p.contact.phone && (
-          <a className="vc-secondary" href={telHref(p.contact.phone)}>
-            <Phone size={15} strokeWidth={1.9} /> {p.contact.phone}
-          </a>
-        )}
-        {p.contact.email && (
-          <a className="vc-secondary" href={`mailto:${p.contact.email}`}>
-            <Mail size={15} strokeWidth={1.9} /> Email
-          </a>
-        )}
-      </div>
-
-      <details className="vc-cp-docs">
-        <summary>
-          <FileText size={15} strokeWidth={1.8} /> City documents <span>{p.docs.length}</span>
-          <ChevronDown size={15} strokeWidth={1.9} className="vc-cp-docs-chev" />
-        </summary>
-        <ul>
-          {p.docs.map((d) => (
-            <li key={d.label}>
-              {d.id ? (
-                <DocLink id={d.id}>{d.label}</DocLink>
-              ) : (
-                <a href={d.href} target="_blank" rel="noopener noreferrer">
-                  {d.label} <ArrowUpRight size={13} strokeWidth={1.9} />
-                </a>
-              )}
-            </li>
-          ))}
-        </ul>
-      </details>
-    </article>
   );
 }
 
@@ -262,19 +170,6 @@ export default function ConstructionPage() {
     mapBox.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  const showActive = useCallback(
-    (p: ActiveProject) => {
-      const lons = p.sites.map((s) => s.lon);
-      const lats = p.sites.map((s) => s.lat);
-      toMap([
-        [Math.min(...lons), Math.min(...lats)],
-        [Math.max(...lons), Math.max(...lats)],
-      ]);
-      setPicked({ kind: 'active', id: p.id });
-    },
-    [toMap],
-  );
-
   const showPlan = useCallback(
     (p: Plan) => {
       if (p.bounds) toMap(p.bounds);
@@ -290,14 +185,9 @@ export default function ConstructionPage() {
     },
     [plans],
   );
-  const onMapActive = useCallback((id: string) => setPicked({ kind: 'active', id }), []);
 
   const goDetails = () => {
     if (!picked) return;
-    if (picked.kind === 'active') {
-      document.getElementById(`cp-${picked.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
     const p = plans.find((x) => x.key === picked.key);
     if (!p) return;
     setCategory('All');
@@ -305,15 +195,13 @@ export default function ConstructionPage() {
     requestAnimationFrame(() => document.getElementById(`plan-${p.key.replace(/\W+/g, '-')}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
-  const pickedActive = picked?.kind === 'active' ? ACTIVE.find((a) => a.id === picked.id) : null;
-  const pickedPlan = picked?.kind === 'plan' ? plans.find((p) => p.key === picked.key) : null;
-  const latest = ACTIVE.map((a) => a.asOf).filter(Boolean).sort().at(-1);
+  const pickedPlan = picked ? plans.find((p) => p.key === picked.key) : null;
 
   return (
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Construction projects</h1>
-        <p className="vc-page-sub">From the city&apos;s construction notices and project list.</p>
+        <p className="vc-page-sub">From the city&apos;s Construction Projects page and project list.</p>
       </header>
 
       <section className="vc-cp-mapsec" ref={mapBox} aria-label="Map">
@@ -322,19 +210,16 @@ export default function ConstructionPage() {
             <ConstructionMap
               key={resolved}
               plans={load.status === 'done' ? load.data : null}
-              active={ACTIVE}
+              active={[]}
               dark={resolved === 'dark'}
               focus={focus}
               selected={pickedPlan?.gis ?? null}
               onPlan={onMapPlan}
-              onActive={onMapActive}
+              onActive={() => undefined}
             />
           </Suspense>
         </div>
         <div className="vc-cp-legend">
-          <span className="vc-cp-key">
-            <b className="vc-cp-pin vc-cp-pin-key">1</b> Recent construction notices
-          </span>
           <span className="vc-cp-key">
             Funded projects
             <span className="vc-cp-swatches" aria-hidden="true">
@@ -346,16 +231,7 @@ export default function ConstructionPage() {
           </span>
         </div>
         <div className="vc-cp-pick" aria-live="polite">
-          {pickedActive ? (
-            <>
-              <span className="vc-cp-pick-name">
-                <b className="vc-cp-n">{pickedActive.n}</b> {pickedActive.title}
-              </span>
-              <button type="button" className="vc-cp-link" onClick={goDetails}>
-                Details
-              </button>
-            </>
-          ) : pickedPlan ? (
+          {pickedPlan ? (
             <>
               <span className="vc-cp-pick-name">
                 {pickedPlan.name}
@@ -368,24 +244,19 @@ export default function ConstructionPage() {
               </button>
             </>
           ) : (
-            <span className="vc-cp-hint">Tap a numbered pin or a shaded area for details.</span>
+            <span className="vc-cp-hint">Tap a shaded area for details.</span>
           )}
         </div>
       </section>
 
       <section className="vc-latest-sec">
         <div className="vc-latest-sec-head">
-          <h2>Construction updates</h2>
+          <h2>City construction page</h2>
           <a className="vc-latest-more" href={CITY_PAGE} target="_blank" rel="noopener noreferrer">
             City&apos;s page <ArrowUpRight size={12} strokeWidth={2} />
           </a>
         </div>
-        {latest && <p className="vc-cp-lede">Latest city update: {shortDate(latest)}.</p>}
-        <div className="vc-cp-cards">
-          {ACTIVE.map((p) => (
-            <ActiveCard key={p.id} p={p} onShow={showActive} picked={pickedActive?.id === p.id} />
-          ))}
-        </div>
+        <CitySnapshot />
       </section>
 
       <section className="vc-latest-sec">
@@ -444,7 +315,7 @@ export default function ConstructionPage() {
       </section>
 
       <p className="vc-cp-source">
-        Sources: Vineyard City construction notices and email updates, the city&apos;s Capital Improvement Plan map and the FY 2026-2027 Capital Projects Reference Guide, and the adopted fiscal 2027 budget. Independent project, not an official Vineyard City website.
+        Sources: the city&apos;s Construction Projects page (stored copy, read every five minutes), the city&apos;s Capital Improvement Plan map and the FY 2026-2027 Capital Projects Reference Guide, and the adopted fiscal 2027 budget. Independent project, not an official Vineyard City website.
       </p>
     </Frame>
   );

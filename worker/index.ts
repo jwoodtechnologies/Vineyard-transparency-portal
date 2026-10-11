@@ -6,7 +6,8 @@
  *   everything    → static SPA assets (dist/), with SPA fallback for client routes
  *
  * No public accounts. Visits and questions are logged for the owner's private activity panel
- * (see worker/panel). An hourly Cron Trigger (worker/cron.ts) keeps meetings and news current.
+ * (see worker/panel). A five-minute Cron Trigger (worker/cron.ts) keeps meetings, city pages, notices
+ * and newly posted files current.
  */
 import type { Env } from './env';
 import { API_SECURITY_HEADERS, HttpError, errorResponse, json, notFound } from './lib/http';
@@ -23,6 +24,7 @@ import { getDraftMinutes } from './api/draftMinutes';
 import { getPerson, getPersonPhoto, listPeople } from './api/people';
 import { handleVotes } from './api/votes';
 import { listBoards } from './api/boards';
+import { getConstruction } from './api/construction';
 import { runFrequent, runHourly } from './cron';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
@@ -105,6 +107,9 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       break;
     case 'boards':
       if (!b) return listBoards(env);
+      break;
+    case 'construction':
+      if (!b) return getConstruction(env);
       break;
     case 'votes':
       if (!b || ((b === 'members' || b === 'years' || b === 'attendance' || b === 'meetings') && !c)) return handleVotes(env, url, b);
@@ -203,7 +208,7 @@ export default {
     // Every five minutes the agenda portal is checked; once an hour the full check (news too) runs and is logged.
     const hourly = new Date(controller.scheduledTime).getUTCMinutes() < 5;
     ctx.waitUntil(
-      (hourly ? runHourly(env) : runFrequent(env)).then(
+      (hourly ? runHourly(env, controller.scheduledTime) : runFrequent(env, controller.scheduledTime)).then(
         (summary) => console.log(hourly ? 'hourly' : 'five-minute', JSON.stringify(summary)),
         (e) => console.error('scheduled check failed', String(e)),
       ),

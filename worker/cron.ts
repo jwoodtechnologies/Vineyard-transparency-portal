@@ -1,13 +1,13 @@
 /**
- * Hourly check (Cloudflare Cron Trigger, free plan). Keeps the portal current between the nightly
- * full crawl:
+ * Scheduled checks (Cloudflare Cron Trigger, every five minutes; the :00 tick also reads news):
  *   1. CivicClerk: meetings from three weeks back to two months ahead. New or changed meetings are
- *      saved right away (the calendar updates within the hour) and any newly posted agenda, packet,
- *      minutes or attachment is queued for text extraction.
- *   2. Utah County Sheriff's Office: new press releases. Ones that mention Vineyard appear on the
- *      Latest page within the hour and are queued for indexing.
- * Heavy work (downloads, PDF text, OCR) stays in the GitHub Actions ingest job, which drains the
- * queue every few hours. Everything here respects the same daily D1 write budget as ingestion.
+ *      saved right away and newly posted agendas, packets, minutes and attachments are queued.
+ *   2. City website, Utah Public Notice Website and the city events calendar (worker/sync/run.ts).
+ *   3. Queue: new files are fetched, their text extracted and indexed for search and chat, and
+ *      priority records archived, inside the Worker (worker/sync/ingest.ts).
+ *   4. Utah County Sheriff's Office press releases (hourly).
+ * The GitHub ingest job keeps OCR, Word/Excel files and the municipal code site. Every write is
+ * counted against the same daily D1 budget as ingestion.
  */
 import type { Env } from './env';
 import { Budget, upsertBodies, upsertMeetings, upsertQueue } from './admin/routes';
@@ -16,6 +16,7 @@ import { ensureNewsTables } from './lib/news';
 import { UCSO_ARCHIVE, UCSO_SOURCE, cleanText, mentionsVineyard, recent, releaseBody, ucsoPage, type UcsoItem } from './lib/sheriff';
 import { processVotes } from './api/votes';
 import { track } from './sync/checks';
+import { runSync } from './sync/run';
 
 const UA = { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org; public records archive)', accept: 'application/json, text/html;q=0.9' };
 
@@ -124,15 +125,16 @@ async function refreshSheriff(env: Env, budget: Budget): Promise<Record<string, 
  * posted files (agendas, packets, minutes). Meetings show on the calendar right away; files are
  * queued and read by the ingest job on its next pass. Writes happen only when something changed.
  */
-export async function runFrequent(env: Env): Promise<Record<string, unknown>> {
+export async function runFrequent(env: Env, scheduledTime = Date.now()): Promise<Record<string, unknown>> {
   const budget = new Budget(env);
   const summary: Record<string, unknown> = {};
   summary.civicclerk = await track(env, 'civicclerk', () => refreshCivicClerk(env, budget));
+  Object.assign(summary, await runSync(env, scheduledTime, budget));
   summary.votes = await track(env, 'votes', () => processVotes(env, 6_000, 20));
   return summary;
 }
 
-export async function runHourly(env: Env): Promise<Record<string, unknown>> {
+export async function runHourly(env: Env, scheduledTime = Date.now()): Promise<Record<string, unknown>> {
   await ensureNewsTables(env);
   const budget = new Budget(env);
   const started = new Date().toISOString();
@@ -143,6 +145,7 @@ export async function runHourly(env: Env): Promise<Record<string, unknown>> {
   summary.civicclerk = cc;
   summary.sheriff = ucso;
   // New minutes become voting records within the hour.
+  Object.assign(summary, await runSync(env, scheduledTime, budget));
   summary.votes = await track(env, 'votes', () => processVotes(env, 8_000, 40));
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('INSERT INTO cron_runs (started_at, finished_at, summary_json) VALUES (?, ?, ?)').bind(started, new Date().toISOString(), JSON.stringify(summary)),

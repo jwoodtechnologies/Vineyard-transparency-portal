@@ -8,6 +8,9 @@ import { SearchRepository } from '../search/SearchRepository';
 import { aiBreakerOpen, aiConfigured } from '../ai/rag';
 import { listChecks } from '../sync/checks';
 
+/** crawl_runs rows that are full crawls (not the frequent queue drains, which also log runs). */
+const REAL_CRAWL = "trigger LIKE '%:run' OR trigger LIKE '%:crawl' OR trigger = 'worker-site-pass'";
+
 export async function handleHealth(env: Env): Promise<Response> {
   const checkedAt = nowIso();
   let database: boolean;
@@ -16,7 +19,7 @@ export async function handleHealth(env: Env): Promise<Response> {
   try {
     const r = await env.CATALOG_DB.prepare('SELECT count(*) AS n FROM documents').first<{ n: number }>();
     indexed = Number(r?.n ?? 0);
-    lastCrawl = await env.CATALOG_DB.prepare("SELECT id, status, started_at, finished_at FROM crawl_runs ORDER BY started_at DESC LIMIT 1").first<Record<string, unknown>>();
+    lastCrawl = await env.CATALOG_DB.prepare(`SELECT id, trigger, status, started_at, finished_at FROM crawl_runs WHERE ${REAL_CRAWL} ORDER BY started_at DESC LIMIT 1`).first<Record<string, unknown>>();
     database = true;
   } catch {
     database = false;
@@ -48,7 +51,7 @@ export async function handleHealth(env: Env): Promise<Response> {
       aiMode: ai ? 'available' : 'search-only',
       searchShards: repo.activeShards.length,
       indexedDocuments: indexed,
-      lastCrawl: lastCrawl ? { status: lastCrawl.status, startedAt: lastCrawl.started_at, finishedAt: lastCrawl.finished_at } : null,
+      lastCrawl: lastCrawl ? { kind: lastCrawl.trigger === 'worker-site-pass' ? 'city website pass' : 'nightly crawl', status: lastCrawl.status, startedAt: lastCrawl.started_at, finishedAt: lastCrawl.finished_at } : null,
       checks,
     },
     { cache: CACHE.none },
@@ -68,7 +71,8 @@ export async function handleStats(env: Env): Promise<Response> {
       .first<Record<string, number | string | null>>(),
     db.prepare('SELECT count(*) AS n FROM meetings').first<{ n: number }>(),
     db.prepare("SELECT count(*) AS n, sum(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS healthy FROM sources WHERE crawl_enabled = 1").first<{ n: number; healthy: number }>(),
-    db.prepare("SELECT max(finished_at) AS at FROM crawl_runs WHERE status IN ('completed', 'budget_reached')").first<{ at: string | null }>(),
+    // A real crawl only: the nightly crawl (":run"/":crawl") or the Worker's full pass of the city site, not queue drains.
+    db.prepare(`SELECT max(finished_at) AS at FROM crawl_runs WHERE status IN ('completed', 'budget_reached') AND (${REAL_CRAWL})`).first<{ at: string | null }>(),
   ]);
   const stats: ArchiveStatistics & Record<string, unknown> = {
     documentsIndexed: Number(docs?.n ?? 0),

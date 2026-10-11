@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', '.wrangler', 'node_modules', 'public/pdf.worker*', 'data/archive'] },
+  { ignores: ['.claude', 'dist', '.wrangler', 'node_modules', 'public/pdf.worker*', 'data/archive'] },
   {
     files: ['src/**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

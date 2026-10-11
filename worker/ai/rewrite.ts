@@ -5,10 +5,10 @@
  * answer can acknowledge it as theirs, never as a record). One small call (a few Neurons); on any
  * problem the message is used as typed.
  */
+import { meteredRun } from './meter';
 import { aiText } from './answer';
 
-type AiRunner = { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
-type Env = { AI?: unknown };
+type Env = { AI?: unknown; CATALOG_DB?: object; AI_NEURONS_PER_DAY?: string };
 type Turn = { role: 'user' | 'assistant'; content: string };
 
 export const REWRITE_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
@@ -55,7 +55,7 @@ export async function rewriteQuestion(env: Env, question: string, conversation: 
   if (!turns.some((t) => t.role === 'user')) return null;
   const convo = turns.map((t) => `${t.role === 'user' ? 'Resident' : 'Assistant'}: ${t.content.replace(/\s+/g, ' ').slice(0, t.role === 'user' ? 400 : 600)}`).join('\n');
   try {
-    const run = (env.AI as unknown as AiRunner).run(REWRITE_MODEL, {
+    const run = meteredRun(env, REWRITE_MODEL, {
       messages: [
         { role: 'system', content: `${PROMPT}\n/no_think` },
         { role: 'user', content: `Conversation so far:\n${convo}\n\nLatest message: ${question}` },

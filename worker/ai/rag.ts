@@ -7,6 +7,7 @@
  * If Workers AI is missing, disabled, over the daily budget, or failing, the response is a
  * search-only result with the fixed notice below and the site keeps working.
  */
+import { meteredRun } from './meter';
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, DocumentType, SearchFilters } from '../../src/types/models';
@@ -25,7 +26,8 @@ import { countAnswer, countKind, isMeetingCountQuestion, isScheduleQuestion, mee
 import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
-import { serviceAnswer } from './serviceAnswers';
+import { isConstructionNowQuestion, serviceAnswer } from './serviceAnswers';
+import { constructionAnswer } from './constructionAnswer';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
@@ -143,7 +145,6 @@ async function aiBudgetLeft(env: Env): Promise<number | null> {
 }
 
 type Msg = { role: string; content: string };
-type AiRunner = { run: (model: string, input: unknown) => Promise<unknown> };
 const MAX_TOKENS = 400;
 const AI_TIMEOUT_MS = 25_000;
 /**
@@ -158,7 +159,7 @@ async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: numb
   // Qwen 3 thinks out loud unless told not to; answers here need no visible reasoning.
   const msgs = qwen ? messages.map((m, i) => (i === 0 && m.role === 'system' ? { ...m, content: `${m.content}\n/no_think` } : m)) : messages;
   const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : qwen ? { messages: msgs, max_tokens: 900, temperature: 0.2 } : { messages, max_tokens: maxTokens, temperature };
-  const run = (env.AI as unknown as AiRunner).run(model, input);
+  const run = meteredRun(env, model, input);
   const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), AI_TIMEOUT_MS));
   const text = aiText(await Promise.race([run, timeout]))
     .replace(/<think>[\s\S]*?<\/think>/g, '')
@@ -187,7 +188,7 @@ async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; 
 
 /** Small-model streaming (server-sent events: `data: {"response":"..."}` ... `data: [DONE]`). */
 async function streamSmall(env: Env, messages: Msg[], onDelta: (text: string) => Promise<void>): Promise<string> {
-  const out = await (env.AI as unknown as AiRunner).run(FALLBACK_AI_MODEL, { messages, max_tokens: MAX_TOKENS, temperature: 0.1, stream: true });
+  const out = await meteredRun(env, FALLBACK_AI_MODEL, { messages, max_tokens: MAX_TOKENS, temperature: 0.1, stream: true });
   let sofar = '';
   const forward = async (piece: string) => {
     sofar += piece;
@@ -368,6 +369,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const todayUT = utahToday();
   const frame = resolveTime(body.question, todayUT);
   // A library card or the bookmobile: one right answer from the library's own site, with the button to its page.
+  // "What construction is going on right now?": the city's page as last stored, with its date.
+  if (isConstructionNowQuestion(body.question)) {
+    const c = await constructionAnswer(env).catch(() => null);
+    if (c) return quick(c.text, undefined, c.followUps);
+  }
   const service = serviceAnswer(body.question);
   if (service) return quick(service.text, undefined, service.followUps);
   // "Is the city hiring?": the official job site, live.

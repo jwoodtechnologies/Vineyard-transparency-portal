@@ -81,13 +81,22 @@ def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | No
     statuses = []
 
     log("Discovering sources from the live transparency portal…")
-    manifest = discover(client, follow_depth=1)
-    if manifest_path:
-        os.makedirs(os.path.dirname(manifest_path) or ".", exist_ok=True)
-        with open(manifest_path, "w") as f:
-            json.dump(manifest, f, indent=2)
-    log(f"Transparency portal: {manifest['linkCount']} links inventoried across {len(manifest['pagesInspected'])} pages; categories {manifest['countsByCategory']}")
-    statuses.append({"id": "vineyard-transparency-portal", "status": "active"})
+    # The city's web host refuses GitHub's runner addresses (HTTP 403, robots.txt included). The
+    # portal's five-minute Worker check reads the city site instead, so here it is skipped, not fatal,
+    # and the city sources' status is left to the Worker.
+    city_ok = True
+    try:
+        manifest = discover(client, follow_depth=1)
+        if manifest_path:
+            os.makedirs(os.path.dirname(manifest_path) or ".", exist_ok=True)
+            with open(manifest_path, "w") as f:
+                json.dump(manifest, f, indent=2)
+        log(f"Transparency portal: {manifest['linkCount']} links inventoried across {len(manifest['pagesInspected'])} pages; categories {manifest['countsByCategory']}")
+        statuses.append({"id": "vineyard-transparency-portal", "status": "active"})
+    except (HttpFailure, RobotsDisallowed) as e:
+        city_ok = False
+        manifest = {"links": [], "pagesInspected": [], "linkCount": 0, "countsByCategory": {}}
+        log(f"City website not reachable from this runner ({e}); the Worker's five-minute check reads it instead.")
 
     def enqueue(items):
         batch = []
@@ -115,7 +124,7 @@ def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | No
             statuses.append({"id": "vineyard-civicclerk-meetings", "status": "blocked" if isinstance(e, RobotsDisallowed) else "unreachable", "message": str(e)[:300]})
             log(f"CivicClerk failed: {e}")
 
-    if not only or "vineyard-city-website" in only:
+    if city_ok and (not only or "vineyard-city-website" in only):
         # Whole-site crawl: the portal's links plus the site's top-level sections.
         seeds = sorted(set(main_content_seeds(manifest)) | {f"https://www.vineyardutah.gov/{p}" for p in ("index.php", "government/index.php", "community_/index.php", "services/index.php", *CITY_SECTION_PAGES)})
         web = VineyardWebsiteAdapter(client, seeds=seeds, max_depth=4, max_pages=900)
@@ -135,7 +144,7 @@ def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | No
             statuses.append({"id": "vineyard-municipal-code", "status": "blocked" if isinstance(e, RobotsDisallowed) else "unreachable", "message": str(e)[:300]})
             log(f"Municipal code site failed: {e}")
 
-    if not only or "vineyard-city-website" in only:
+    if city_ok and (not only or "vineyard-city-website" in only):
         # Who's who as of today: mayor, council, staff, boards (replaces yesterday's lists).
         try:
             from . import people
@@ -478,7 +487,8 @@ def ingest(api: PortalApi, client: PoliteClient, run_id: str, limit: int, archiv
     for status in statuses:
         while processed < limit and time.time() - started < time_budget_s:
             # Parallel backfill: each runner takes its own slice of the queue (by the first hex digit of the URL key).
-            page = api.get("/queue", status=status, limit=min(50, limit - processed), **({"shard": shard, "shards": shards} if shards else {}))
+            # City-hosted files are left to the Worker (the city refuses this runner's addresses).
+            page = api.get("/queue", status=status, limit=min(50, limit - processed), skipCity=1, **({"shard": shard, "shards": shards} if shards else {}))
             items = page.get("items") or []
             if not items:
                 break

@@ -6,13 +6,13 @@
  * Cost (Workers AI, free daily allowance): the plan is about 3 Neurons and the rerank about 5 per
  * question. Both fail soft: on any problem the keyword ranking is used as before.
  */
+import { meteredRun } from './meter';
 import type { DocumentType } from '../../src/types/models';
 import type { ChunkHit } from '../search/types';
 import { aiText } from './answer';
 
-type AiRunner = { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
 /** Only the AI binding is used here (kept free of Worker types so tests typecheck anywhere). */
-type Env = { AI?: unknown };
+type Env = { AI?: unknown; CATALOG_DB?: object; AI_NEURONS_PER_DAY?: string };
 
 export const PLAN_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
 export const RERANK_MODEL = '@cf/baai/bge-reranker-base';
@@ -74,7 +74,7 @@ export function parsePlan(out: string, question: string): SearchPlan | null {
 
 export async function planSearch(env: Env, question: string, previous: string | null): Promise<SearchPlan | null> {
   try {
-    const run = (env.AI as unknown as AiRunner).run(PLAN_MODEL, {
+    const run = meteredRun(env, PLAN_MODEL, {
       messages: [
         { role: 'system', content: `${PLAN_PROMPT}\n/no_think` },
         { role: 'user', content: `Today is ${new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10)} (this year ${new Date(Date.now() - 6 * 3600_000).getUTCFullYear()}).\n${previous ? `Earlier question (context only): ${previous}\n` : ''}Question: ${question}` },
@@ -123,7 +123,7 @@ export async function rerank(env: Env, question: string, hits: ChunkHit[]): Prom
     for (let i = 0; i < hits.length; i += BATCH) batches.push(hits.slice(i, i + BATCH));
     const scored = await Promise.all(
       batches.map(async (b, bi) => {
-        const run = (env.AI as unknown as AiRunner).run(RERANK_MODEL, { query: question.slice(0, 500), contexts: b.map((h) => ({ text: passage(h) })), top_k: b.length });
+        const run = meteredRun(env, RERANK_MODEL, { query: question.slice(0, 500), contexts: b.map((h) => ({ text: passage(h) })), top_k: b.length });
         const out = (await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('rerank timeout')), 6000))])) as { response?: Array<{ id?: number; score?: number }> };
         const list = out?.response;
         if (!Array.isArray(list) || !list.length) throw new Error('rerank: empty');

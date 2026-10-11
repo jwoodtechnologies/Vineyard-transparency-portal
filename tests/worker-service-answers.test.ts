@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { serviceAnswer } from '../worker/ai/serviceAnswers';
+import { isConstructionNowQuestion, serviceAnswer } from '../worker/ai/serviceAnswers';
 
 describe('service answers', () => {
   it('answers library card questions', () => {
@@ -14,15 +14,17 @@ describe('service answers', () => {
     }
   });
 
-  it('answers what is being built from the city construction updates', () => {
+  it('sends what is being built to the stored city construction page, not a typed answer', () => {
     for (const q of ['What construction is happening in Vineyard?', 'Are there any road closures right now?', 'when is the chip seal', 'Is Center Street closed?', 'what is the pavement preservation schedule', 'Any construction updates?']) {
-      expect(serviceAnswer(q)?.text, q).toMatch(/August 21, 2026/);
+      expect(isConstructionNowQuestion(q), q).toBe(true);
+      expect(serviceAnswer(q), q).toBeNull();
     }
   });
 
   it('leaves everything else to the records', () => {
     for (const q of ['What are the construction permit fees?', 'What is the status of the 1200 North overpass construction?', 'Who is the contractor for the skate park?', 'construction standards for roads', 'How do I apply for a construction job?', 'What construction codes does Vineyard use?', 'How much is the library card fee reimbursement?', 'What did the council vote on the library budget?', 'Who is on the library board?', 'What is the budget for 2027?']) {
       expect(serviceAnswer(q), q).toBeNull();
+      expect(isConstructionNowQuestion(q), q).toBe(false);
     }
   });
 });

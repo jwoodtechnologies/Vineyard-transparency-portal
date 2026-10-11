@@ -343,7 +343,11 @@ def _length_m(geom) -> float:
 
 
 def run(api: PortalApi, client: PoliteClient) -> dict:
-    records = build(client)
+    try:
+        records = build(client)
+    except Exception as e:
+        api.post("/sources/status", {"statuses": [{"id": SOURCE_ID, "status": "unreachable", "message": str(e)[:300]}]})
+        raise
     counts = {"records": len(records), "new_or_changed": 0, "unchanged": 0}
     kept_projects: list[str] = []
     for r in records:
@@ -387,4 +391,5 @@ def run(api: PortalApi, client: PoliteClient) -> dict:
         except Exception as e:  # never fail the run over cleanup; the next run tries again
             log(f"GIS prune skipped: {e}")
     log(f"GIS records: {counts}")
+    api.post("/sources/status", {"statuses": [{"id": SOURCE_ID, "status": "active" if records else "unreachable", "message": None if records else "No GIS records returned."}]})
     return counts
