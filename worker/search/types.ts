@@ -11,6 +11,8 @@ export interface ShardFilters {
   sourceIds?: string[];
   meetingId?: string;
   currency?: RecordCurrency[];
+  /** A records home topic (src/lib/recordTopics.ts). */
+  topic?: string;
 }
 
 export interface ChunkHit {

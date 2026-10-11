@@ -1,7 +1,7 @@
 /**
  * /budget : the fiscal 2027 budget made readable. Five views:
  *   Spending       every $100 of General Fund spending as 100 squares or a donut, tap a color to open its departments;
- *                  then the money in each of the city's nine funds
+ *                  then each fund's own budget as a table (never summed into an all-funds total)
  *   Revenue        the same for revenue, with taxes shown apart from fees, grants and money moved between funds
  *   Sales tax      what the city budgets from sales tax, the rate in Vineyard and where each part goes, by year
  *   Projects       the funds paying for the capital projects the council listed, then every project
@@ -23,7 +23,11 @@ import { useJson } from './api';
 import { CsvButton } from './CsvButton';
 import { csvName } from './csv';
 import { ProjectDetail } from './ProjectDetail';
-import { money, pct, share, short, swatch, treemap, type Budget, type BudgetLine, type Project } from './budget';
+import { money, pct, short, swatch, treemap, type Budget, type BudgetLine, type Project } from './budget';
+
+/** "2026-08-25" as "August 25, 2026". */
+const LONG = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const longDay = (iso: string) => LONG.format(new Date(`${iso.slice(0, 10)}T00:00:00Z`));
 
 type Tab = 'spend' | 'revenue' | 'sales' | 'projects' | 'past';
 const TABS: Array<{ id: Tab; label: string }> = [
@@ -45,36 +49,30 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-/* ---------- the nine funds ---------- */
+/* ---------- each fund ---------- */
 
-const BIG_FUNDS = 5;
-
-function AllFunds({ b }: { b: Budget }) {
-  const slices: Slice[] = useMemo(() => {
-    const ranked = [...b.funds].sort((x, y) => y.total - x.total);
-    const big = ranked.slice(0, BIG_FUNDS);
-    const rest = ranked.slice(BIG_FUNDS);
-    const out: Slice[] = big.map((f, slot) => ({ key: f.key, slot, name: f.name, amount: f.total, items: [], note: f.about }));
-    if (rest.length) {
-      out.push({
-        key: 'rest',
-        slot: BIG_FUNDS,
-        name: `${rest.length} smaller funds`,
-        amount: rest.reduce((t, f) => t + f.total, 0),
-        items: rest.map((f) => ({ name: f.name, amount: f.total })),
-      });
-    }
-    return out;
-  }, [b]);
+/** Each fund's own budget, as the budget book lists it. Never added together into one total (owner rule). */
+function FundList({ b }: { b: Budget }) {
   return (
-    <section className="vc-bud-sec">
-      <h2>All funds</h2>
-      <p className="vc-bud-lede">
-        Nine funds hold {short(b.allFundsTotal)} for fiscal 2027. The Redevelopment Agency&apos;s roads, utilities and downtown work is {share(b.funds.find((f) => f.key === 'rda')?.total ?? 0, b.allFundsTotal)} of it; the General Fund pays for everyday city services.
-      </p>
-      <Split kind="donut" slices={slices} noun="money" title="Budget by fund" centerCaption="All funds" caption="Tap a color for details." />
-      <p className="vc-bud-fine">Budgeted revenue including prior-year fund balance. FY 27 budget book, All Funds Summary, page 3.</p>
-    </section>
+    <Numbers summary="See each fund's budget">
+      <table>
+        <thead>
+          <tr>
+            <th>Fund</th>
+            <th>FY2027</th>
+          </tr>
+        </thead>
+        <tbody>
+          {b.funds.map((f) => (
+            <tr key={f.key}>
+              <td>{f.name}</td>
+              <td>{money(f.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="vc-bud-fine">The budget is presented fund by fund. Each figure is that fund&apos;s budgeted revenue including prior-year fund balance. FY 27 budget book, page 3.</p>
+    </Numbers>
   );
 }
 
@@ -118,14 +116,13 @@ function SpendTab({ b }: { b: Budget }) {
   return (
     <>
       <Split kind="switch" slices={slices} noun="spending" title="General Fund spending" centerCaption="General Fund" caption="Tap a color to see what is inside." />
-      <AllFunds b={b} />
       <Numbers summary="See every department as a table">
         <table>
           <thead>
             <tr>
               <th>Department</th>
               <th>Budget</th>
-              <th>Cut from last year</th>
+              <th>Cut from fiscal 2026</th>
             </tr>
           </thead>
           <tbody>
@@ -145,6 +142,7 @@ function SpendTab({ b }: { b: Budget }) {
           rows={() => [['Department', 'Adopted', 'Amended', 'Prior year'], ...all.map((l) => [l.name, l.adopted, l.amended, l.prior])]}
         />
       </div>
+      <FundList b={b} />
     </>
   );
 }
@@ -397,20 +395,22 @@ export default function BudgetPage() {
                 <i data-k="spend" style={{ flexGrow: b.general.amended.total }} />
                 <i data-k="left" style={{ flexGrow: Math.max(b.general.amended.surplus, b.general.revenueTotal * 0.015) }} />
               </div>
-              <p className="vc-bud-cap">General Fund only, with the amendment just passed on August 25. Revenue minus spending is the surplus.</p>
+              <p className="vc-bud-cap">General Fund only, as amended {longDay(b.amended)} by {b.amendmentOrdinance}. Revenue minus spending is the surplus.</p>
               <div className="vc-bud-hero vc-bud-cuts">
                 <div data-k="cut">
                   <span>Cut by the amendment</span>
                   <b>{short(b.general.cutByAmendment)}</b>
-                  <em>just passed</em>
+                  <em>
+                    {b.amendmentOrdinance}, {longDay(b.amended)}
+                  </em>
                 </div>
                 <div data-k="cut">
                   <span>Cut since tentative</span>
                   <b>{short(b.general.tentativeTotal - b.general.amended.total)}</b>
-                  <em>from {short(b.general.tentativeTotal)} in May</em>
+                  <em>from {short(b.general.tentativeTotal)} on May 12, 2026</em>
                 </div>
                 <div data-k="cut">
-                  <span>Cut from last year</span>
+                  <span>Cut from fiscal 2026</span>
                   <b>{short(cutTotal)}</b>
                   <em>{cutDepts} departments</em>
                 </div>
@@ -462,7 +462,7 @@ export default function BudgetPage() {
                 </li>
                 <li>
                   <Link to={docHref(b.docs.amendment)}>
-                    <FileText size={13} /> FY 27 First Budget Amendment, Aug 25 (PDF)
+                    <FileText size={13} /> FY 27 First Budget Amendment, {longDay(b.amended)} (PDF)
                   </Link>
                 </li>
                 <li>

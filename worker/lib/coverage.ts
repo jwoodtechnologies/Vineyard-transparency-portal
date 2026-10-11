@@ -169,7 +169,7 @@ export function meetingsMissingDocs(rows: MeetingRow[], today: string): MissingM
   for (const r of rows) {
     const day = r.date.slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day >= today) continue;
-    if (/cancel|postpon/i.test(r.status) || /\bcancel/i.test(r.title)) continue;
+    if (/cancel|postpon|unconfirmed/i.test(r.status) || /\bcancel/i.test(r.title)) continue;
     if ((r.bodyId && NOT_A_BODY.has(r.bodyId)) || NOTICE_TITLE.test(r.title.trim())) continue;
     const k = `${r.bodyId ?? r.bodyName ?? r.title}|${day}`;
     const prev = merged.get(k);
@@ -254,7 +254,7 @@ export async function computeCoverage(env: Env, now = Date.now()): Promise<Cover
     sightings.push({ text: String(d.title ?? ''), bodyId: body, type, record: true });
   }
   for (const m of motions.results ?? []) {
-    let refs: string[] = [];
+    let refs: string[];
     try {
       refs = m.refs ? (JSON.parse(String(m.refs)) as string[]) : [];
     } catch {

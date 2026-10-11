@@ -6,16 +6,21 @@
 import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, ChevronRight, FileText, Search, X } from 'lucide-react';
 import { Frame } from './Chrome';
 import { fresh, getJson, useJson } from './api';
-import { RECORD_CATEGORIES, categoryById } from './categories';
+import { categoryById } from './categories';
 import { DocLink } from './DocLink';
 import { TYPE_LABEL, formatDate, sourceLabel } from './format';
 import { RssLink } from './RssLink';
 import { ResultChips, type ChipFacets } from './ResultChips';
+import { RECORD_TOPICS, topicById } from '@/lib/recordTopics';
+import type { RecordStatus } from '@/lib/recordTitle';
+import { labelsOf } from './recordLabels';
+import { RecordChips } from './RecordChips';
+import { RecordsHome } from './RecordsHome';
 
 interface Row {
   id: string;
@@ -28,6 +33,12 @@ interface Row {
   mimeType: string | null;
   sourceId: string | null;
   snippet?: string | null;
+  documentNumber: string | null;
+  governmentBodyId: string | null;
+  displayTitle?: string;
+  agendaItemNumber?: string | null;
+  status?: RecordStatus | null;
+  adoption?: { date: string | null; minutesDocumentId: string; page: number | null } | null;
 }
 
 interface Bucket {
@@ -65,6 +76,12 @@ function rowsOf(r: Resp, searching: boolean): Row[] {
       mimeType: (d.mimeType as string | null) ?? null,
       sourceId: (d.sourceId as string | null) ?? null,
       snippet: ex ? ex.replace(/\s+/g, ' ').slice(0, 200) : null,
+      documentNumber: (d.documentNumber as string | null) ?? null,
+      governmentBodyId: (d.governmentBodyId as string | null) ?? null,
+      ...(typeof d.displayTitle === 'string' ? { displayTitle: d.displayTitle } : {}),
+      ...('agendaItemNumber' in d ? { agendaItemNumber: (d.agendaItemNumber as string | null) ?? null } : {}),
+      ...('status' in d ? { status: (d.status as RecordStatus | null) ?? null } : {}),
+      adoption: (d.adoption as Row['adoption']) ?? null,
     };
   });
 }
@@ -75,7 +92,8 @@ const monthOf = (d: string | null, y: number | null) => (d && /^\d{4}-\d{2}/.tes
 function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boolean }) {
   const groups: Array<{ label: string; rows: Row[] }> = [];
   for (const r of rows) {
-    const label = grouped ? monthOf(r.date, r.year) : '';
+    // An undated ordinance or resolution is grouped by the meeting that adopted it, from the minutes.
+    const label = grouped ? monthOf(r.date ?? r.adoption?.date ?? null, r.year) : '';
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.rows.push(r);
     else groups.push({ label, rows: [r] });
@@ -86,22 +104,25 @@ function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boo
         <section key={`${g.label}-${i}`} className="vc-rec-group">
           {g.label && <h2 className="vc-rec-month">{g.label}</h2>}
           <ul className="vc-mdocs">
-            {g.rows.map((d) => (
+            {g.rows.map((d) => {
+              const lb = labelsOf(d);
+              return (
               <li key={d.id}>
                 <DocLink id={d.id} query={q || undefined} className="vc-mdoc">
                   <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.documentType) ? d.documentType : 'other'}>
                     <FileText size={15} strokeWidth={1.8} />
                   </span>
                   <span className="vc-mdoc-main">
-                    <span className="vc-mdoc-title">{d.title}</span>
-                    <span className="vc-mdoc-meta">{[TYPE_LABEL[d.documentType as keyof typeof TYPE_LABEL] ?? 'Record', d.governmentBodyName, formatDate(d.date) ?? (d.year ? String(d.year) : null)].filter(Boolean).join(' · ')}</span>
+                    <span className="vc-mdoc-title">{lb.title}</span>
+                    <RecordChips labels={lb} />
                     {sourceLabel(d.sourceId) && <span className="vc-source-label">{sourceLabel(d.sourceId)}</span>}
                     {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
                   </span>
                   <ChevronRight size={16} className="vc-mdoc-go" />
                 </DocLink>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       ))}
@@ -206,30 +227,41 @@ function TopicRecords({ topics, exclude }: { topics: string; exclude: Set<string
   );
 }
 
+/** /records: the topic tiles with no filter chosen; any filter, search or ?all=1 opens the list. */
 export default function RecordsPage() {
+  const [params] = useSearchParams();
+  const listing = ['c', 'topic', 't', 'q', 'y', 'b', 'f', 's', 'all'].some((k) => params.has(k));
+  return listing ? <RecordsList /> : <RecordsHome />;
+}
+
+function RecordsList() {
   const [params, setParams] = useSearchParams();
-  const cat = categoryById(params.get('c'));
+  const topic = topicById(params.get('topic'));
+  const cat = topic ? null : categoryById(params.get('c'));
   const q = (params.get('q') ?? '').trim();
+  // Types a topic or category offers as a narrower filter.
+  const typeOptions = topic ? (topic.types ?? []).map((id) => ({ id, label: TYPE_LABEL[id as keyof typeof TYPE_LABEL] ?? id })) : (cat?.types ?? []);
   const typesKey = (params.get('t') ?? '')
     .split(',')
-    .filter((t) => (cat ? cat.types.some((x) => x.id === t) : t in TYPE_LABEL))
+    .filter((t) => (topic || cat ? typeOptions.some((x) => x.id === t) : t in TYPE_LABEL))
     .join(',');
-  const types = useMemo(() => typesKey.split(',').filter(Boolean), [typesKey]);
+  const types = typesKey.split(',').filter(Boolean);
   const year = params.get('y') ?? '';
   const body = params.get('b') ?? '';
   const from = COLLECTIONS.some((c) => c.id === params.get('f')) ? params.get('f')! : '';
   const sort = params.get('s') === 'old' ? 'date_asc' : params.get('s') === 'az' ? 'title' : 'date_desc';
   // Agendas & minutes with no type chosen and no search: the list is meetings, newest first.
-  const meetingMode = cat?.id === 'meetings' && !types.length && !q && !from;
+  const meetingMode = (cat?.id === 'meetings' || topic?.id === 'meetings') && !types.length && !q && !from;
   const [draft, setDraft] = useState(q);
   const [pages, setPages] = useState(1);
   const facets = useJson<Facets>('/api/browse/facets');
 
-  const query = useMemo(() => {
+  const query = (() => {
     const u = new URLSearchParams();
+    if (topic) u.set('topic', topic.id);
     if (types.length) types.forEach((t) => u.append('type', t));
     // A body category (the RDA) is every record of that body, whatever its type.
-    else if (!cat?.body) (cat?.types ?? []).forEach((t) => u.append('type', t.id));
+    else if (!topic && !cat?.body) (cat?.types ?? []).forEach((t) => u.append('type', t.id));
     if (year) u.set('year', year);
     if (body || cat?.body) u.set('body', body || cat!.body!);
     if (from) u.set('source', from);
@@ -239,13 +271,13 @@ export default function RecordsPage() {
       u.set('match', 'all');
     }
     return u.toString();
-  }, [cat, types, year, body, sort, q, from]);
+  })();
   const key = `${query}|${pages}`;
   const [state, setState] = useState<{ key: string; rows: Row[]; total: number; status: 'done' | 'error'; facets?: ChipFacets }>({ key: '', rows: [], total: 0, status: 'done' });
 
   useEffect(() => {
-    document.title = `${cat?.label ?? 'All records'} | Vineyard Transparency Portal`;
-  }, [cat]);
+    document.title = `${topic?.label ?? cat?.label ?? 'All records'} | Vineyard Transparency Portal`;
+  }, [cat, topic]);
 
   useEffect(() => {
     let live = true;
@@ -311,7 +343,16 @@ export default function RecordsPage() {
   return (
     <Frame>
       <header className="vc-page-head">
-        <h1 className="vc-page-title">{cat?.label ?? 'All records'}</h1>
+        <Link to="/records" className="vc-rec-back">
+          Records
+        </Link>
+        <h1 className="vc-page-title">{topic?.label ?? cat?.label ?? 'All records'}</h1>
+        {topic?.notice && <p className="vc-source-label">{topic.notice}</p>}
+        {topic?.index && (
+          <Link to={`/records/${topic.index}`} className="vc-rec-index-link">
+            {topic.index === 'rda-resolutions' ? 'RDA resolutions by number' : `${topic.label} by number`} <ChevronRight size={14} />
+          </Link>
+        )}
       </header>
 
       <form
@@ -323,7 +364,7 @@ export default function RecordsPage() {
         }}
       >
         <Search size={16} strokeWidth={1.9} />
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Search ${cat ? cat.label.toLowerCase() : 'all records'}`} aria-label="Search these records" enterKeyHint="search" />
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Search ${topic ? topic.label.toLowerCase() : cat ? cat.label.toLowerCase() : 'all records'}`} aria-label="Search these records" enterKeyHint="search" />
         {draft && (
           <button
             type="button"
@@ -343,24 +384,31 @@ export default function RecordsPage() {
         <div className="vc-rec-selects">
           <label className="vc-rec-select">
             <span>Show</span>
-            <select value={cat?.id ?? ''} onChange={(e) => update({ c: e.target.value || null, t: null }, false)}>
+            <select
+              value={topic ? topic.id : cat ? `c:${cat.id}` : ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                update(v.startsWith('c:') ? { c: v.slice(2), topic: null, t: null } : { topic: v || null, c: null, t: null, all: v ? null : '1' }, false);
+              }}
+            >
               <option value="">All records</option>
-              {RECORD_CATEGORIES.filter((c) => c.id !== 'code' && c.id !== 'plans').map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
+              {cat && <option value={`c:${cat.id}`}>{cat.label}</option>}
+              {RECORD_TOPICS.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
                 </option>
               ))}
             </select>
           </label>
-          {cat && (
+          {typeOptions.length > 1 && (
             <label className="vc-rec-select">
               <span>Type</span>
               <select value={types[0] ?? ''} onChange={(e) => update({ t: e.target.value || null })}>
-                <option value="">{cat.id === 'meetings' ? 'Meetings' : 'All types'}</option>
-                {cat.types.map((t) => (
+                <option value="">{cat?.id === 'meetings' || topic?.id === 'meetings' ? 'Meetings' : 'All types'}</option>
+                {typeOptions.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.label}
-                    {!cat.body && typeCount.get(t.id) ? ` (${typeCount.get(t.id)!.toLocaleString()})` : ''}
+                    {!topic && !cat?.body && typeCount.get(t.id) ? ` (${typeCount.get(t.id)!.toLocaleString()})` : ''}
                   </option>
                 ))}
               </select>
@@ -388,7 +436,7 @@ export default function RecordsPage() {
               ))}
             </select>
           </label>
-          {collections.length > 0 && (
+          {collections.length > 0 && !topic?.sources && (
             <label className="vc-rec-select">
               <span>From</span>
               <select value={from} onChange={(e) => update({ f: e.target.value || null })}>
@@ -411,7 +459,7 @@ export default function RecordsPage() {
             </select>
           </label>
           {filtered && (
-            <button type="button" className="vc-rec-reset" onClick={() => { setDraft(''); update({ t: null, y: null, b: null, q: null, s: null, f: null }); }}>
+            <button type="button" className="vc-rec-reset" onClick={() => { setDraft(''); update({ t: null, y: null, b: null, q: null, s: null, f: null, all: topic || cat ? null : '1' }); }}>
               Clear filters
             </button>
           )}
@@ -431,7 +479,7 @@ export default function RecordsPage() {
       {q && !loading && state.status === 'done' && state.facets && (
         <ResultChips
           facets={state.facets}
-          allowedTypes={cat ? cat.types.map((t) => t.id) : null}
+          allowedTypes={topic || cat ? typeOptions.map((t) => t.id) : null}
           type={types[0] ?? ''}
           year={year}
           body={body}

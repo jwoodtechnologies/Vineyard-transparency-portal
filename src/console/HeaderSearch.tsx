@@ -6,14 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
-
-/** "/" opens search unless the reader is typing somewhere or holding a modifier key. */
-export function isSearchShortcut(e: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'defaultPrevented'>, target: EventTarget | null): boolean {
-  if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return false;
-  const el = target as HTMLElement | null;
-  if (!el || typeof el.closest !== 'function') return true;
-  return !el.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
-}
+import { isSearchShortcut } from './searchShortcut';
 
 export function HeaderSearch() {
   const [open, setOpen] = useState(false);

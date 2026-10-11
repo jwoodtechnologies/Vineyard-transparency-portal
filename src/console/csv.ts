@@ -31,18 +31,3 @@ export function csvName(...parts: Array<string | number | null | undefined>): st
     .join('-');
   return `${base || 'vineyard'}.csv`;
 }
-
-export function downloadCsv(filename: string, rows: CsvValue[][]): void {
-  const blob = new Blob([CSV_BOM + toCsv(rows)], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-    a.remove();
-  }, 1000);
-}

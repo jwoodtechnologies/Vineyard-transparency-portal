@@ -8,10 +8,13 @@ import { ArrowUpRight, CalendarDays, Download, Expand, Flag, Layers, MessageSqua
 import type { DocumentDetail, DocumentPageText } from '@/types/models';
 import { DocumentService } from '@/services';
 import { BackButton, Frame } from './Chrome';
-import { TYPE_LABEL, formatDate, sourceLabel } from './format';
+import { formatDate, sourceLabel } from './format';
 import { meetingHref } from './meetings';
 import { MeetingDocsSheet } from './MeetingDocs';
 import { useMeetingDocs } from './meetingDocs';
+import { DocLink } from './DocLink';
+import { labelsOf } from './recordLabels';
+import { STATUS_LABEL } from '@/lib/recordTitle';
 
 const PdfViewer = lazy(() => import('@/components/documents/PdfViewer'));
 
@@ -274,7 +277,10 @@ export default function DocumentView() {
 
   const original = safeHttp(doc.originalUrl);
   const highlight = q.split(/\s+/).filter((w) => w.length > 2).slice(0, 8);
-  const facts = [TYPE_LABEL[doc.documentType] ?? 'Record', formatDate(doc.date), doc.governmentBodyName, doc.pageCount ? `${doc.pageCount} pages` : null].filter(Boolean);
+  const lb = labelsOf(doc);
+  const facts = [lb.type, formatDate(doc.date) ?? (doc.adoption?.date ? null : doc.year ? String(doc.year) : null), doc.governmentBodyName, lb.item ? `Item ${lb.item}` : null, doc.pageCount ? `${doc.pageCount} pages` : null].filter(Boolean);
+  // The file as filed: its original name (the title above is shortened for reading).
+  const filedAs = doc.fileName && doc.fileName !== lb.title ? doc.fileName : doc.title !== lb.title ? doc.title : null;
   const label = sourceLabel(doc.sourceId);
   const resident = doc.sourceId === 'resident-submitted';
 
@@ -287,7 +293,22 @@ export default function DocumentView() {
             <span key={i}>{f}</span>
           ))}
         </p>
-        <h1 className="vc-page-title">{doc.title}</h1>
+        <h1 className="vc-page-title">{lb.title}</h1>
+        {(lb.status || filedAs) && (
+          <p className="vc-doc-filed">
+            {lb.status && (
+              <span className="vc-rchip" data-status={lb.status}>
+                {STATUS_LABEL[lb.status]}
+              </span>
+            )}
+            {doc.adoption?.date && (
+              <DocLink id={doc.adoption.minutesDocumentId} page={doc.adoption.page} className="vc-doc-adopted">
+                Adopted {formatDate(doc.adoption.date)}, minutes{doc.adoption.page ? ` page ${doc.adoption.page}` : ''}
+              </DocLink>
+            )}
+            {filedAs && <span className="vc-doc-file">File name: {filedAs}</span>}
+          </p>
+        )}
         {label && <p className="vc-source-label vc-doc-source">{label}</p>}
         <div className="vc-mtg-actions">
           {doc.meeting && (

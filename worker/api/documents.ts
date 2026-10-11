@@ -5,6 +5,8 @@ import { archiveUrlFor, toDocument, toDocumentSummary, toGovernmentBody, toMeeti
 import { RELATIONSHIP_MAP, typesForCategories } from '../lib/taxonomy';
 import { clampInt, parseJsonObject, toBool } from '../lib/util';
 import { SearchRepository } from '../search/SearchRepository';
+import { topicById, topicSql } from '../../src/lib/recordTopics';
+import { applyAdoptions } from './records';
 import { storageFor, isArchiveKey, isResidentKey, type RangeRequest } from '../storage/StorageProvider';
 
 /** Catalog-side WHERE clause for the shared filter vocabulary (alias `doc`). */
@@ -24,6 +26,12 @@ export function catalogFilterSql(f: SearchFilters): { sql: string; params: unkno
   if (f.sourceIds?.length) add('doc.source_id IN (SELECT value FROM json_each(?))', JSON.stringify(f.sourceIds));
   if (f.meetingId) add('doc.meeting_id = ?', f.meetingId);
   if (f.currency?.length) add('doc.currency IN (SELECT value FROM json_each(?))', JSON.stringify(f.currency));
+  const topic = topicById(f.topic);
+  if (topic) {
+    const t = topicSql(topic, 'doc');
+    clauses.push(`(${t.sql})`);
+    params.push(...t.params);
+  }
   return { sql: clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '', params };
 }
 
@@ -34,11 +42,17 @@ export const ORDER_BY: Record<string, string> = {
   relevance: "coalesce(doc.document_date, CAST(doc.year AS TEXT) || '-12-31') IS NULL, coalesce(doc.document_date, CAST(doc.year AS TEXT) || '-12-31') DESC, doc.title",
 };
 
+/** Each row's agenda item, for the Draft rule (a file attached to an agenda item). */
+export const agendaItems = (rows: Row[]) => new Map(rows.map((r) => [String(r.id), r.agenda_item_id == null ? null : String(r.agenda_item_id)]));
+
 export async function summariesByIds(env: Env, ids: string[]): Promise<Map<string, DocumentSummary>> {
   const out = new Map<string, DocumentSummary>();
   if (!ids.length) return out;
   const res = await env.CATALOG_DB.prepare('SELECT * FROM documents WHERE id IN (SELECT value FROM json_each(?))').bind(JSON.stringify(ids)).all<Row>();
-  for (const r of res.results ?? []) out.set(String(r.id), toDocumentSummary(r));
+  const rows = res.results ?? [];
+  const items = rows.map(toDocumentSummary);
+  await applyAdoptions(env, items, agendaItems(rows));
+  for (const s of items) out.set(s.id, s);
   return out;
 }
 
@@ -65,7 +79,8 @@ export async function listDocuments(env: Env, url: URL, filters: SearchFilters):
     env.CATALOG_DB.prepare(`SELECT * FROM documents doc${sql} ORDER BY ${order} LIMIT ? OFFSET ?`).bind(...params, pageSize, (page - 1) * pageSize).all<Row>(),
     env.CATALOG_DB.prepare(`SELECT count(*) AS n FROM documents doc${sql}`).bind(...params).first<{ n: number }>(),
   ]);
-  const body: Paginated<DocumentSummary> = { items: (rows.results ?? []).map(toDocumentSummary), page, pageSize, total: Number(count?.n ?? 0) };
+  const items = await applyAdoptions(env, (rows.results ?? []).map(toDocumentSummary), agendaItems(rows.results ?? []));
+  const body: Paginated<DocumentSummary> = { items, page, pageSize, total: Number(count?.n ?? 0) };
   return json(body, { cache: CACHE.list });
 }
 
@@ -96,8 +111,9 @@ export async function getDocumentDetail(env: Env, request: Request, id: string):
     row.agenda_item_id ? db.prepare('SELECT id, number, title FROM agenda_items WHERE id = ?').bind(row.agenda_item_id).first<Row>() : Promise.resolve(null),
   ]);
 
+  const [labelled] = await applyAdoptions(env, [toDocument(row)], agendaItems([row]));
   const detail: DocumentDetail = {
-    ...toDocument(row),
+    ...labelled,
     governmentBody: body ? toGovernmentBody(body) : null,
     meeting: meeting ? toMeetingSummary(meeting) : null,
     agendaItem: agendaItem ? { id: String(agendaItem.id), number: String(agendaItem.number), title: String(agendaItem.title) } : null,

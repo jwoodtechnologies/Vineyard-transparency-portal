@@ -10,6 +10,7 @@ const MeetingPage = lazy(() => import('@/console/MeetingPage'));
 const DocumentView = lazy(() => import('@/console/DocumentView'));
 const MapPage = lazy(() => import('@/console/MapPage'));
 const RecordsPage = lazy(() => import('@/console/RecordsPage'));
+const RecordsIndexPage = lazy(() => import('@/console/RecordsIndexPage'));
 const PeoplePage = lazy(() => import('@/console/PeoplePage'));
 const VotesPage = lazy(() => import('@/console/VotesPage'));
 const BoardsPage = lazy(() => import('@/console/BoardsPage'));
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
   { path: '/map', element: quiet(<MapPage />) },
   { path: '/construction', element: quiet(<ConstructionPage />) },
   { path: '/records', element: quiet(<RecordsPage />) },
+  { path: '/records/:index', element: quiet(<RecordsIndexPage />) },
   { path: '/votes', element: quiet(<VotesPage />) },
   { path: '/boards', element: quiet(<BoardsPage />) },
   { path: '/planning', element: quiet(<PlanningPage />) },

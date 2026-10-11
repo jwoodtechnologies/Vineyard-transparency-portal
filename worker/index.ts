@@ -33,6 +33,7 @@ import { logQuestion, who } from './panel/store';
 import { addFile, addForm, addStatus, reportSubmission } from './contrib/resident';
 import { coverageSummary } from './api/coverage';
 import { handleFeed } from './api/feeds';
+import { isIndexKind, recordIndex, recordTopics } from './api/records';
 
 function id(segment: string | undefined): string {
   const value = decodeURIComponent(segment ?? '');
@@ -151,6 +152,10 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     case 'browse':
       if (b === 'facets') return browseFacets(env);
       break;
+    case 'records':
+      if (b === 'topics' && !c) return recordTopics(env);
+      if (isIndexKind(b) && !c) return recordIndex(env, b, url);
+      break;
     case 'suggestions':
       return suggestions(env);
     case 'topics':
@@ -167,7 +172,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
  * and POST /api/ask, admin, health and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|suggestions|stats|coverage\/summary)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|records\/(?:topics|ordinances|resolutions|rda-resolutions)|suggestions|stats|coverage\/summary)$/;
 
 async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '');

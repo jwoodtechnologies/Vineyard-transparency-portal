@@ -3,7 +3,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { testEnv } from './helpers/d1';
 import { PANEL_PREFIX, handlePanel } from '../worker/panel/routes';
 import { newSetupCode } from '../worker/panel/auth';
-import { addFile, addForm, addStatus, reportSubmission, RESIDENT_STORAGE_BYTES } from '../worker/contrib/resident';
+import { addFile, addForm, addStatus, e2eCleanup, e2eState, reportSubmission, RESIDENT_STORAGE_BYTES } from '../worker/contrib/resident';
 import { getDocumentFile } from '../worker/api/documents';
 import { HttpError } from '../worker/lib/http';
 import { plainText, sanitizeName, sniffFile } from '../worker/lib/contrib';
@@ -471,5 +471,17 @@ describe('resident submissions', () => {
     env.CATALOG_DB.db.prepare("INSERT INTO resident_submissions (id, kind, title, file_key, file_size, ip_hash, day, created_at) VALUES ('sub_x', 'file', 't', 'resident/sub_0000000000000000.pdf', ?, 'h', '2000-01-01', '2000-01-01')").run(RESIDENT_STORAGE_BYTES - 4);
     const r = await call(() => addFile(env, residentReq('/api/add/file', { form: fileForm(PNG, 'a.png'), ip: '198.51.100.91' })));
     expect(r.status).toBe(507);
+  });
+
+  it('the end to end admin routes touch only test items, and cleanup deletes them', async () => {
+    const env = testEnv();
+    const real = (await (await note(env, 'A real note from a resident', '198.51.100.7')).json()) as { documentId: string };
+    await expect(e2eState(env, real.documentId)).rejects.toThrow(/end to end test/);
+    await expect(e2eCleanup(env, real.documentId)).rejects.toThrow(/end to end test/);
+    const test = (await (await note(env, 'Automated check', '198.51.100.8', { title: 'Portal end to end test e2e1' })).json()) as { documentId: string };
+    expect(await e2eState(env, test.documentId)).toMatchObject({ hidden: false, removed: false });
+    expect(await e2eCleanup(env, test.documentId)).toMatchObject({ ok: true, deleted: true });
+    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM resident_submissions WHERE document_id = ?').get(test.documentId)!.n).toBe(0);
+    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM documents WHERE id = ?').get(test.documentId)!.n).toBe(0);
   });
 });

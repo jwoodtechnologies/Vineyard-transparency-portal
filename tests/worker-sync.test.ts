@@ -190,3 +190,17 @@ describe('robots.txt', () => {
     expect(allowedBy(parseRobots('User-agent: VineyardTransparencyPortal\nDisallow: /private\n\nUser-agent: *\nDisallow: /'), '/public')).toBe(true);
   });
 });
+
+describe('CivicClerk copies set on other dates', () => {
+  it('marks an entry naming another date, with no agenda or files, as unconfirmed', async () => {
+    const { unconfirmedCopy, mapEvent } = await import('../worker/lib/civicclerk');
+    expect(unconfirmedCopy('Active Transportation Commission Meeting 12-09-2025', '2026-12-08', false, 0)).toBe(true);
+    expect(unconfirmedCopy('Active Transportation Commission Meeting 12-09-2025', '2025-12-09', false, 0)).toBe(false);
+    expect(unconfirmedCopy('Active Transportation Commission Regular Meeting 10 -08 -2026', '2026-10-08', false, 1)).toBe(false);
+    expect(unconfirmedCopy('Active Transportation Commission Meeting 12-09-2025', '2026-12-08', true, 0)).toBe(false);
+    expect(unconfirmedCopy('City Council', '2026-12-08', false, 0)).toBe(false);
+    const m = mapEvent({ id: 1425, eventName: 'Active Transportation Commission Meeting 12-09-2025', startDateTime: '2026-12-08T17:30:00Z', categoryName: 'Active Transportation Commission', isPublished: 'Published', agendaId: 0, publishedFiles: [] }, new Date('2026-10-11T00:00:00Z'));
+    expect(m?.meeting.status).toBe('unconfirmed');
+    expect(m?.meeting.date).toBe('2026-12-08');
+  });
+});

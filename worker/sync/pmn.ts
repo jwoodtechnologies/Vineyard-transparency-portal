@@ -88,6 +88,8 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
       .bind(n.eventDate, body.id, body.name)
       .first<{ id: string; agenda_document_id: string | null; packet_document_id: string | null }>();
     if (found) {
+      // A notice for the day confirms a meeting the agenda portal listed only as an undated copy.
+      await env.CATALOG_DB.prepare(`UPDATE meetings SET status = ? WHERE id = ? AND status = 'unconfirmed'`).bind(n.eventDate < today ? 'held' : 'scheduled', found.id).run();
       meetingFor.set(n.id, { id: found.id, hasAgenda: Boolean(found.agenda_document_id), hasPacket: Boolean(found.packet_document_id) });
       continue;
     }

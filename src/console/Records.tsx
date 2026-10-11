@@ -5,8 +5,10 @@ import { Archive, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { DocumentType, FacetBucket, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { docHref } from '@/lib/routes';
 import type { Turn } from './types';
-import { TYPE_LABEL, formatDate, sourceLabel } from './format';
+import { formatDate, sourceLabel } from './format';
 import { Highlighted } from './Highlighted';
+import { labelsOf } from './recordLabels';
+import { STATUS_LABEL } from '@/lib/recordTitle';
 import { useWide } from './useWide';
 
 interface MenuProps {
@@ -149,6 +151,7 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
           {items.map((item, i) => {
             const ex = item.excerpts[0];
             const d = item.document;
+            const lb = labelsOf(d);
             return (
               <Link
                 key={d.id}
@@ -162,7 +165,12 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
                 }}
               >
                 <div className="vc-result-meta">
-                  <span className="vc-type">{TYPE_LABEL[d.documentType] ?? 'Record'}</span>
+                  {lb.status && (
+                    <span className="vc-rchip" data-status={lb.status}>
+                      {STATUS_LABEL[lb.status]}
+                    </span>
+                  )}
+                  <span className="vc-type">{lb.type}</span>
                   {formatDate(d.date) && (
                     <>
                       <span className="vc-dot" />
@@ -176,7 +184,7 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
                     </>
                   )}
                 </div>
-                <h3 className="vc-result-title">{d.title}</h3>
+                <h3 className="vc-result-title">{lb.title}</h3>
                 {sourceLabel(d.sourceId) && <p className="vc-source-label">{sourceLabel(d.sourceId)}</p>}
                 {ex && (
                   <p className="vc-excerpt">

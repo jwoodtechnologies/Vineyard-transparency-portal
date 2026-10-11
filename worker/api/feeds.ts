@@ -87,7 +87,7 @@ async function build(env: Env, which: 'records' | 'meetings', origin: string, se
   const rows = await env.CATALOG_DB.prepare(
     `SELECT m.id, m.title, m.government_body_id, m.government_body_name, m.meeting_date, m.start_time, m.location, m.status,
             coalesce(m.agenda_document_id, (SELECT d.id FROM documents d WHERE d.meeting_id = m.id AND d.document_type = 'agenda' LIMIT 1)) AS agenda_id
-     FROM meetings m WHERE m.meeting_date >= ? AND m.meeting_date < ? ORDER BY m.meeting_date ASC, m.start_time ASC LIMIT 150`,
+     FROM meetings m WHERE m.meeting_date >= ? AND m.meeting_date < ? AND coalesce(m.status, '') != 'unconfirmed' ORDER BY m.meeting_date ASC, m.start_time ASC LIMIT 150`,
   )
     .bind(day(0), day(61))
     .all<Row>();
