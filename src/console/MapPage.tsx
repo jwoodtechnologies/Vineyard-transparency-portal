@@ -488,6 +488,8 @@ export default function MapPage() {
   // ?focus=road:Main St | project:Name | park:Name, from answers and records: applied once the map
   // and that layer's data are both ready.
   const focusRef = useRef<string | null>(params.get('focus'));
+  // ?lat=..&lng=..&z=17&label=.. from answers about a place: the map opens centered there, with a marker.
+  const pointRef = useRef(mapPoint(params));
   const dataRef = useRef<Record<string, FC>>({});
   const readyRef = useRef(false);
   const applyFocus = useCallback(() => {
@@ -540,7 +542,15 @@ export default function MapPage() {
   // Map instance, re-styled when the theme changes.
   useEffect(() => {
     if (!box.current) return;
-    const map = new maplibregl.Map({ container: box.current, style: styleFor(base, resolved === 'dark'), maxPitch: 70, bounds: VINEYARD, fitBoundsOptions: { padding: 24 }, attributionControl: false, maxZoom: 19, minZoom: 10 });
+    const point = pointRef.current;
+    const map = new maplibregl.Map({ container: box.current, style: styleFor(base, resolved === 'dark'), maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 19, minZoom: 10 });
+    if (point) {
+      const marker = new maplibregl.Marker({ color: '#f59f00' }).setLngLat([point.lng, point.lat]).addTo(map);
+      if (point.label) {
+        marker.getElement().setAttribute('aria-label', point.label);
+        marker.getElement().setAttribute('title', point.label);
+      }
+    }
     map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Data: <a href="https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb" target="_blank" rel="noopener">Vineyard City Public GIS</a>' }), 'bottom-right');
     map.addControl(new maplibregl.NavigationControl({ showCompass: base === 'terrain', visualizePitch: true }), 'bottom-right');
     // If the basemap service is unreachable, keep the city layers working on a plain background.
@@ -614,7 +624,7 @@ export default function MapPage() {
       const look = LOOK[key];
       if (!fc || !info || !look) continue;
       const src = `vtp-${key}`;
-      if (key === 'boundary' && !map.getSource(src) && !focusRef.current) {
+      if (key === 'boundary' && !map.getSource(src) && !focusRef.current && !pointRef.current) {
         const b = boundsOf(fc.features);
         const pad = typeof window !== 'undefined' && window.innerWidth > 820 ? { top: 90, bottom: 30, left: 300, right: 30 } : 20;
         // Terrain opens tilted toward the mountains, still framed on Vineyard.
@@ -953,6 +963,17 @@ export default function MapPage() {
       </div>
     </div>
   );
+}
+
+/** A point from the address (?lat=..&lng=..&z=..&label=..), checked to be a real coordinate near Vineyard. */
+function mapPoint(params: URLSearchParams): { lat: number; lng: number; zoom: number; label: string | null } | null {
+  const lat = Number(params.get('lat'));
+  const lng = Number(params.get('lng'));
+  if (!params.get('lat') || !params.get('lng') || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  // Utah County and around: anything else is a mistyped link, and the map opens on the city instead.
+  if (lat < 39 || lat > 41.5 || lng < -113 || lng > -110.5) return null;
+  const z = Number(params.get('z'));
+  return { lat, lng, zoom: Number.isFinite(z) && z > 0 ? Math.max(10, Math.min(19, z)) : 17, label: params.get('label')?.slice(0, 120) || null };
 }
 
 /** Keep a focused feature clear of the layers panel (left) and the details card (right/bottom). */

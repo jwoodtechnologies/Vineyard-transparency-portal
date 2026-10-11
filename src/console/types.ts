@@ -7,7 +7,14 @@ export interface AnswerSeries {
   items: Array<{ id: string; title: string; date: string | null; year: number | null; tag?: string }>;
 }
 
-export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent; series?: AnswerSeries; people?: string[]; contact?: string; votes?: AnswerVotes; section?: { path: string; label: string; hint: string } };
+export type ConsoleAnswer = AskResponse & { mode?: 'conversation'; event?: AnswerEvent; series?: AnswerSeries; people?: string[]; contact?: string; votes?: AnswerVotes; section?: { path: string; label: string; hint: string }; map?: AnswerMap };
+
+/** A card that opens the portal map centered on the place the answer is about. */
+export interface AnswerMap {
+  href: string;
+  label: string;
+  hint: string;
+}
 
 export interface AnswerVotes {
   member: string | null;

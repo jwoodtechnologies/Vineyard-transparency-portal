@@ -455,3 +455,23 @@ export function pendingRows(meetings: MeetingLite[], read: MinutesRead[], today:
 export function mergeRows(votes: SheetRow[], pending: SheetRow[]): SheetRow[] {
   return [...votes, ...pending].sort((a, b) => (b.m.date ?? '').localeCompare(a.m.date ?? ''));
 }
+
+/** Titles a member can carry before their last name, as the people records and rosters store them. */
+const MEMBER_TITLE = /^(mayor|deputy mayor|mayor pro tem(?:pore)?|council ?member|councilor|commissioner|chair(?:person)?|vice[- ]chair(?:person)?|board member)$/i;
+
+/**
+ * A member as the minutes address them: the stored title and the last name ("Council Member
+ * McCumber", "Mayor Fullmer"). With no stored title (or one that is not a plain title), the last
+ * name alone: a title is never made up.
+ */
+export function memberTitle(name: string, role: string | null | undefined): string {
+  const raw = name.trim().split(/\s+/).pop() ?? name;
+  const surname = raw !== raw.toLowerCase() ? raw : raw.charAt(0).toUpperCase() + raw.slice(1).replace(/^c([a-z])/, (_, c: string) => (raw.startsWith('mc') ? `c${c.toUpperCase()}` : `c${c}`));
+  const title = (role ?? '').split(/[,(]| - /)[0].replace(/\s+/g, ' ').trim();
+  return title && MEMBER_TITLE.test(title) ? `${title} ${surname}` : surname;
+}
+
+/** The motion as the minutes record it, with only spacing tidied. */
+export function recordedMotion(m: Pick<MotionRow, 'motion'>): string {
+  return m.motion.replace(/\s+/g, ' ').trim();
+}
