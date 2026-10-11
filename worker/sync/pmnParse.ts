@@ -76,6 +76,16 @@ const TITLE_BODIES: Array<[RegExp, string]> = [
  * body it was filed under. A title that names its own filing body ("City Council and RDA Joint
  * Meeting" under City Council) keeps it.
  */
+/**
+ * What a meeting notice says about its meeting: a cancellation notice ("Planning Commission
+ * Cancellation Notice 6.17.26 Meeting", notice 1089445) cancels it; any other notice confirms it
+ * as held (day past) or scheduled.
+ */
+export function noticeStatus(title: string, eventDate: string, today: string): 'cancelled' | 'held' | 'scheduled' {
+  if (/cancel/i.test(title)) return 'cancelled';
+  return eventDate < today ? 'held' : 'scheduled';
+}
+
 export function noticeBody(publicBody: string, title: string): string {
   const filed = publicBody.trim();
   const t = title.replace(/\s+/g, ' ');

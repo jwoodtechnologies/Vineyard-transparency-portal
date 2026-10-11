@@ -10,7 +10,7 @@ import { bodyFor, classifyType } from '../lib/civicclerk';
 import { SYNC_UA } from './ingest';
 import { urlKey } from './urls';
 import { assertRobots } from './robots';
-import { noticeBody, parsePmnResults, PMN, type PmnNotice } from './pmnParse';
+import { noticeBody, noticeStatus, parsePmnResults, PMN, type PmnNotice } from './pmnParse';
 
 export { parsePmnResults, type PmnNotice };
 
@@ -118,8 +118,10 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
       .bind(n.eventDate, body.id, body.name)
       .first<{ id: string; agenda_document_id: string | null; packet_document_id: string | null }>();
     if (found) {
-      // A notice for the day confirms a meeting the agenda portal listed only as an undated copy.
-      await env.CATALOG_DB.prepare(`UPDATE meetings SET status = ? WHERE id = ? AND status = 'unconfirmed'`).bind(n.eventDate < today ? 'held' : 'scheduled', found.id).run();
+      // A notice for the day confirms a meeting the agenda portal listed only as an undated copy;
+      // a cancellation notice cancels the meeting on file, whatever its status.
+      const status = noticeStatus(n.title, n.eventDate, today);
+      await env.CATALOG_DB.prepare(`UPDATE meetings SET status = ?1 WHERE id = ?2 AND (status = 'unconfirmed' OR (?1 = 'cancelled' AND status IS NOT 'cancelled'))`).bind(status, found.id).run();
       meetingFor.set(n.id, { id: found.id, hasAgenda: Boolean(found.agenda_document_id), hasPacket: Boolean(found.packet_document_id) });
       continue;
     }
@@ -135,7 +137,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
       date: n.eventDate,
       startTime: n.eventTime,
       location: null,
-      status: /cancel/i.test(n.title) ? 'cancelled' : n.eventDate < today ? 'held' : 'scheduled',
+      status: noticeStatus(n.title, n.eventDate, today),
       sourceId: PMN_SOURCE,
       sourceUrl: n.url,
       externalId: `pmn:${n.id}`,

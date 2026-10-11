@@ -163,19 +163,31 @@ export interface MissingMeeting {
 const NOT_A_BODY = new Set(['public-notices', 'general']);
 const NOTICE_TITLE = /^(public notice|public hearing|notice of)\b/i;
 
-/** Held, not canceled, and missing at least one of agenda, packet and minutes. Same body and day merge. */
+/**
+ * Held, not canceled, and missing at least one of agenda, packet and minutes. Same body and day merge.
+ * The city sometimes posts a cancellation as a second calendar entry ("CANCELED Planning Commission -
+ * June 17, 2026") and leaves the original entry in place with nothing on it; that day is canceled
+ * unless the remaining entry has an agenda, packet or minutes of its own.
+ */
 export function meetingsMissingDocs(rows: MeetingRow[], today: string): MissingMeeting[] {
   const merged = new Map<string, MeetingRow>();
+  const canceledDays = new Set<string>();
+  const key = (r: MeetingRow, day: string) => `${r.bodyId ?? r.bodyName ?? r.title}|${day}`;
   for (const r of rows) {
     const day = r.date.slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day >= today) continue;
-    if (/cancel|postpon|unconfirmed/i.test(r.status) || /\bcancel/i.test(r.title)) continue;
+    if (/cancel|postpon/i.test(r.status) || /\bcancel/i.test(r.title)) {
+      canceledDays.add(key(r, day));
+      continue;
+    }
+    if (/unconfirmed/i.test(r.status)) continue;
     if ((r.bodyId && NOT_A_BODY.has(r.bodyId)) || NOTICE_TITLE.test(r.title.trim())) continue;
-    const k = `${r.bodyId ?? r.bodyName ?? r.title}|${day}`;
+    const k = key(r, day);
     const prev = merged.get(k);
     if (!prev) merged.set(k, { ...r, date: day, has: { ...r.has } });
     else for (const d of ['agenda', 'packet', 'minutes'] as MeetingDoc[]) prev.has[d] = prev.has[d] || r.has[d];
   }
+  for (const [k, r] of merged) if (canceledDays.has(k) && !r.has.agenda && !r.has.packet && !r.has.minutes) merged.delete(k);
   return [...merged.values()]
     .map((r) => ({ id: r.id, title: r.title, bodyId: r.bodyId, bodyName: r.bodyName, date: r.date, missing: (['agenda', 'packet', 'minutes'] as MeetingDoc[]).filter((d) => !r.has[d]) }))
     .filter((r) => r.missing.length > 0)

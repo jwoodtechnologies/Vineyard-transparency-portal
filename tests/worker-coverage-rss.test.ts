@@ -69,6 +69,22 @@ describe('held meetings missing files', () => {
     expect(out).toEqual([{ id: 'a', title: 'City Council', bodyId: 'city-council', bodyName: 'City Council', date: '2026-09-01', missing: ['minutes'] }]);
   });
 
+  it('a day the body canceled in a second calendar entry is not a missing meeting (Planning Commission, June 17, 2026)', () => {
+    const pc = { bodyId: 'planning-commission', bodyName: 'Planning Commission' };
+    const out = meetingsMissingDocs(
+      [
+        // Event 1562 has no agenda or files; event 1636 "CANCELED Planning Commission - June 17, 2026" carries the notice.
+        row({ ...pc, id: 'mtg_cc_1562', title: 'Planning Commission', date: '2026-06-17', has: { agenda: false, packet: false, minutes: false } }),
+        row({ ...pc, id: 'mtg_cc_1636', title: 'CANCELED Planning Commission - June 17, 2026', date: '2026-06-17', has: { agenda: true, packet: false, minutes: false } }),
+        // A canceled entry beside one that has its own agenda: that meeting was still noticed, so it stays.
+        row({ ...pc, id: 'kept', title: 'Planning Commission', date: '2026-06-03', has: { agenda: true, packet: false, minutes: false } }),
+        row({ ...pc, id: 'gone', title: 'Planning Commission', date: '2026-06-03', status: 'cancelled' }),
+      ],
+      '2026-10-11',
+    );
+    expect(out.map((m) => m.id)).toEqual(['kept']);
+  });
+
   it('public summary shows only the year asked, with padded numbers', () => {
     const r = {
       computedAt: '2026-10-11T00:00:00Z',

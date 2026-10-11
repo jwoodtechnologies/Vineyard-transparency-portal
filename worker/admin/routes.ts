@@ -392,7 +392,9 @@ export async function upsertMeetings(env: Env, body: Json, budget: Budget): Prom
          ON CONFLICT(id) DO UPDATE SET title = excluded.title, government_body_id = excluded.government_body_id, government_body_name = excluded.government_body_name,
            meeting_type = excluded.meeting_type, meeting_date = excluded.meeting_date, start_time = excluded.start_time, location = excluded.location,
            -- A meeting with a notice or file on record is confirmed, whatever the agenda portal's copy says.
-           status = CASE WHEN excluded.status = 'unconfirmed' AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = meetings.id) THEN meetings.status ELSE excluded.status END,
+           -- A meeting canceled by a cancellation notice on record stays canceled when the agenda portal still lists it.
+           status = CASE WHEN meetings.status = 'cancelled' AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = meetings.id AND lower(d.title) LIKE '%cancel%') THEN 'cancelled'
+             WHEN excluded.status = 'unconfirmed' AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = meetings.id) THEN meetings.status ELSE excluded.status END,
            media_json = excluded.media_json, source_url = excluded.source_url, updated_at = excluded.updated_at
          WHERE meetings.title IS NOT excluded.title OR meetings.meeting_date IS NOT excluded.meeting_date OR meetings.start_time IS NOT excluded.start_time
            OR meetings.location IS NOT excluded.location OR meetings.status IS NOT excluded.status OR meetings.media_json IS NOT excluded.media_json

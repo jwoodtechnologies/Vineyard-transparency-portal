@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { canonicalUrl, categorize, urlKey } from '../worker/sync/urls';
 import { chunkPages } from '../worker/sync/chunk';
 import { extractHtml, looksScanned } from '../worker/sync/extract';
-import { noticeBody, parsePmnResults } from '../worker/sync/pmnParse';
+import { noticeBody, noticeStatus, parsePmnResults } from '../worker/sync/pmnParse';
 import { findGlance, glanceText } from '../worker/lib/glance';
 import { shouldArchive } from '../worker/lib/archivePolicy';
 import { estimateNeurons } from '../worker/ai/meter';
@@ -210,6 +210,13 @@ describe('public notice body', () => {
     // The notice site files ARCH Commission meetings under "City Council" (notice 1110699, September 24, 2026).
     expect(noticeBody('City Council', 'ARCH Commission Meeting')).toBe('ARCH Commission');
     expect(noticeBody('City Council', 'Planning Commission Work Session')).toBe('Planning Commission');
+  });
+  it('a cancellation notice cancels its meeting; other notices confirm it', () => {
+    // Notice 1089445: the Planning Commission meeting of June 17, 2026 was canceled.
+    expect(noticeStatus('Planning Commission Cancellation Notice 6.17.26 Meeting', '2026-06-17', '2026-10-11')).toBe('cancelled');
+    expect(noticeStatus('CANCELED Planning Commission Meeting', '2026-04-15', '2026-10-11')).toBe('cancelled');
+    expect(noticeStatus('Planning Commission Meeting', '2026-09-02', '2026-10-11')).toBe('held');
+    expect(noticeStatus('City Council Meeting', '2026-10-13', '2026-10-11')).toBe('scheduled');
   });
   it('keeps the filing body when the title names it or names no other', () => {
     expect(noticeBody('City Council', 'City Council and RDA Joint Meeting')).toBe('City Council');
