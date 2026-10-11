@@ -10,6 +10,8 @@ import type { DocLite } from './api';
 import { DocLink } from './DocLink';
 import { useMeetingDocs } from './meetingDocs';
 import { TYPE_LABEL, formatDate } from './format';
+import { ErrorNote } from './ErrorNote';
+import { normalizeDatesInText } from '@/lib/dates';
 
 export function MeetingDocList({ docs, currentId, onPick }: { docs: DocLite[]; currentId?: string; onPick?: () => void }) {
   return (
@@ -66,7 +68,7 @@ export function MeetingDocsSheet({ meeting, currentId, onClose }: { meeting: { i
         </div>
         <div className="vc-drawer-body">
           <h2 id="vc-mdocs-title" className="vc-drawer-title">
-            {meeting.title}
+            {normalizeDatesInText(meeting.title)}
           </h2>
           {meeting.date && <p className="vc-mdocs-date">{formatDate(meeting.date)}</p>}
           {status === 'loading' && (
@@ -76,7 +78,7 @@ export function MeetingDocsSheet({ meeting, currentId, onClose }: { meeting: { i
               <span style={{ width: '86%' }} />
             </div>
           )}
-          {status === 'error' && <div className="vc-empty">The list could not be loaded. Try again in a moment.</div>}
+          {status === 'error' && <ErrorNote>The list could not be loaded.</ErrorNote>}
           {status === 'done' && !docs.length && <div className="vc-empty">No other records from this meeting are in the archive yet.</div>}
           {status === 'done' && docs.length > 0 && (
             <>

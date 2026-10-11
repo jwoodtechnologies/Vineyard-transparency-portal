@@ -3,9 +3,7 @@
  * plus community, recreation, library and utility events from the city website calendar.
  * Three views of the same data: Upcoming (the default), a month Calendar, and Past by year.
  */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { RssLink } from './RssLink';
@@ -38,6 +36,9 @@ import {
   type CategoryId,
   type PortalEvent,
 } from './meetings';
+import { setHead } from '@/lib/head';
+import { ErrorNote } from './ErrorNote';
+import { normalizeDatesInText } from '@/lib/dates';
 
 type View = 'upcoming' | 'calendar' | 'past';
 const VIEWS: Array<{ id: View; label: string }> = [
@@ -90,7 +91,7 @@ function MeetingRow({ m, today, cityTime = null }: { m: MeetingSummary; today: s
         </div>
         <h3 className="vc-meeting-title">
           <Link to={meetingHref(m)} className="vc-meeting-link">
-            {m.title}
+            {normalizeDatesInText(m.title)}
           </Link>
         </h3>
         <MeetingFiles m={m} />
@@ -368,7 +369,7 @@ export default function MeetingsPage() {
   const [social, setSocial] = useState(false);
 
   useEffect(() => {
-    document.title = 'Calendar | Vineyard Transparency Portal';
+    setHead('Calendar');
   }, []);
 
   const firstYear = useMemo(() => {
@@ -474,7 +475,7 @@ export default function MeetingsPage() {
       )}
 
       {load.status === 'loading' && <Skeleton />}
-      {load.status === 'error' && <div className="vc-empty">The calendar could not be loaded right now. Please try again in a moment.</div>}
+      {load.status === 'error' && <ErrorNote>The calendar could not be loaded.</ErrorNote>}
       {load.status === 'done' && view === 'upcoming' && <Upcoming items={shown} today={today} meetingsOnly={type === 'meetings'} />}
       {load.status === 'done' && view === 'calendar' && <Calendar items={shown} month={month} today={today} onMonth={(ym) => set({ month: ym === today.slice(0, 7) ? null : ym })} />}
       {load.status === 'done' && view === 'past' && <Past items={shown} today={today} />}

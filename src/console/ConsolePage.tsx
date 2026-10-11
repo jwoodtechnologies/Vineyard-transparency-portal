@@ -6,9 +6,7 @@
  * Matching records stay tucked away behind "Browse records" until the reader asks for them.
  * Chats are saved in this browser only (see history.ts) and can be reopened or deleted.
  */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronDown, ChevronRight, History, Plus, RotateCcw } from 'lucide-react';

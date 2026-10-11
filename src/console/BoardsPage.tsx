@@ -2,7 +2,7 @@
  * Boards and commissions: every body that meets, its members as the city website lists them today,
  * and its meetings. Bodies with no meeting in the past year and none scheduled show as inactive.
  */
-import './console.css';
+import './styles';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, ChevronDown, Search, Vote } from 'lucide-react';
@@ -11,6 +11,7 @@ import { useJson } from './api';
 import { formatDate } from './format';
 import { PersonPhoto } from './PersonCard';
 import type { Person } from './people';
+import { ErrorNote } from './ErrorNote';
 
 interface Board {
   id: string;
@@ -39,7 +40,8 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
             {b.kind === 'staff committee' ? 'Staff committee · ' : ''}
             {b.members.length ? `${b.members.length} members · ` : ''}
             {b.meetings ? `${b.meetings} meetings on file` : 'No meetings on file'}
-            {b.nextMeeting ? ` · next ${formatDate(b.nextMeeting)}` : b.lastMeeting ? ` · last ${formatDate(b.lastMeeting)}` : ''}
+            {b.nextMeeting || b.lastMeeting ? ' · ' : ''}
+            {b.nextMeeting ? <span className="vc-nowrap">next {formatDate(b.nextMeeting)}</span> : b.lastMeeting ? <span className="vc-nowrap">last {formatDate(b.lastMeeting)}</span> : null}
           </span>
         </span>
         <ChevronDown size={18} className="vc-board-chev" data-open={open} />
@@ -121,12 +123,17 @@ export default function BoardsPage() {
         <input type="search" placeholder="Find a board or a member" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a board or a member" />
       </form>
       {load.status === 'loading' && (
-        <div className="vc-skeleton" aria-hidden="true">
-          <span style={{ width: '90%' }} />
-          <span style={{ width: '76%' }} />
+        // Card-shaped placeholders in the space the boards take, so the note below them stays put.
+        <div className="vc-boards" aria-hidden="true">
+          {Array.from({ length: 7 }, (_, i) => (
+            <div key={i} className="vc-board vc-board-wait vc-skeleton">
+              <span style={{ width: '48%' }} />
+              <span style={{ width: '72%' }} />
+            </div>
+          ))}
         </div>
       )}
-      {load.status === 'error' && <div className="vc-empty">Boards could not load just now.</div>}
+      {load.status === 'error' && <ErrorNote>The boards could not be loaded.</ErrorNote>}
       <div className="vc-boards">
         {shown.map((b) => (
           <BoardCard key={b.id} b={b} open={Boolean(needle) || Boolean(open[b.id])} onToggle={() => setOpen((o) => ({ ...o, [b.id]: !o[b.id] }))} />

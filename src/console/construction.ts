@@ -7,6 +7,7 @@
  *     percent, years, fiscal 2027 amount and fund), with plain descriptions from the council's
  *     FY 2026-2027 Capital Projects Reference Guide.
  */
+import { formatDate } from '@/lib/dates';
 
 export type Stage = 'Planning' | 'Design' | 'Procurement' | 'Construction';
 export const STAGES: Stage[] = ['Planning', 'Design', 'Procurement', 'Construction'];
@@ -279,8 +280,7 @@ export function millions(n: number): string {
 
 /** "Aug 21, 2026" from an ISO date, with no timezone drift. */
 export function shortDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  return formatDate(iso);
 }
 
 export const telHref = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;

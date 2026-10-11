@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from '@/app/router';
 import PullToRefresh from '@/console/PullToRefresh';
+import { applyRouteHead } from '@/lib/head';
 
 /** The shell leaves in the same frame the first screen arrives (a .vc frame in the root), so nothing flashes in between. */
 function dropShellWhenDrawn(root: HTMLElement): void {
@@ -23,6 +24,16 @@ function dropShellWhenDrawn(root: HTMLElement): void {
 const stop = router.subscribe(() => {
   document.documentElement.classList.remove('vtp-boot');
   stop();
+});
+
+// Title and description per route, on first load and on every change of page (a screen with more to say,
+// such as a record, sets its own once its data is in).
+let headPath = window.location.pathname;
+applyRouteHead(headPath);
+router.subscribe((state) => {
+  if (state.location.pathname === headPath) return;
+  headPath = state.location.pathname;
+  applyRouteHead(headPath);
 });
 
 const root = document.getElementById('root')!;

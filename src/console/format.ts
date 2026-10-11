@@ -1,4 +1,5 @@
 import type { DocumentType } from '@/types/models';
+import { formatDate as oneDate } from '@/lib/dates';
 
 export const TYPE_LABEL: Record<DocumentType, string> = {
   agenda: 'Agenda',
@@ -43,12 +44,9 @@ export function sourceLabel(sourceId: string | null | undefined): string | null 
   return sourceId === 'resident-submitted' ? RESIDENT_LABEL : sourceId === 'portal-staff' ? STAFF_LABEL : null;
 }
 
-const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-
+/** "Oct 13, 2026" (src/lib/dates.ts), or null when there is no date. */
 export function formatDate(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? null : DATE.format(d);
+  return oneDate(iso) || null;
 }
 
 /** Splits text into plain and highlighted runs from [start, end) ranges. Never produces HTML. */

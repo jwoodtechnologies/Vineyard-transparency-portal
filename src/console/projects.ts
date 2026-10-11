@@ -1,4 +1,5 @@
 /** Shapes and labels for GET /api/projects/detail, used by ProjectDetail. */
+import { formatDate } from '@/lib/dates';
 
 export interface ProjectVote {
   kind: 'budget' | 'project';
@@ -41,12 +42,7 @@ export const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency:
 
 /** "Jun 23, 2026" from an ISO date; a full timestamp is read in Vineyard time. */
 export function dayLabel(iso: string): string {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-    const [y, m, d] = iso.split('-').map(Number);
-    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-  }
-  const t = new Date(iso);
-  return Number.isNaN(t.getTime()) ? '' : t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Denver' });
+  return formatDate(iso);
 }
 
 /** "p. 4" or "pages 4 and 5". */

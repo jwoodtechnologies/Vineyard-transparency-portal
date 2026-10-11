@@ -2,7 +2,7 @@
  * Voting records as a chart, like a spreadsheet: one row for each thing the council or commission decided,
  * with the date, how it ended, and a column for every member. Selecting a row opens the motion and each vote.
  */
-import './console.css';
+import './styles';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Check, ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
@@ -47,12 +47,7 @@ interface Attendance {
 function AttendanceView({ a }: { a: Attendance }) {
   const seen = (name: string, list: string[]) => list.some((x) => x.toLowerCase() === name.toLowerCase() || x.toLowerCase() === (name.split(' ').pop() ?? '').toLowerCase());
   const meetings = [...a.meetings].sort((x, y) => x.date.localeCompare(y.date));
-  const short = (d: string) =>
-    new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'UTC',
-    });
+  const short = (d: string) => formatMonthDay(d);
   if (!meetings.length) return <p className="vc-mo-note">No Planning Commission minutes have been posted for this year yet.</p>;
   return (
     <section className="vc-att2">
@@ -94,9 +89,10 @@ function AttendanceView({ a }: { a: Attendance }) {
   );
 }
 import { ORDER, VOTE_LABEL } from './MotionCard';
+import { formatDate, formatMonthDay, formatWeekdayDate } from '@/lib/dates';
+import { ErrorNote } from './ErrorNote';
 
-const DAY = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00Z`) : null);
-const fmt = (iso: string | null, o: Intl.DateTimeFormatOptions) => (DAY(iso) ? DAY(iso)!.toLocaleDateString('en-US', { ...o, timeZone: 'UTC' }) : '');
+const fmt = (iso: string | null, o: Intl.DateTimeFormatOptions) => (iso ? (o.weekday ? formatWeekdayDate(iso) : formatDate(iso)) : '');
 const last = (n: string) => n.split(' ').pop() ?? n;
 /** What the body calls the people who vote in it. */
 const seat = (bodyId: string | null) => (bodyId === 'planning-commission' ? 'Commissioner' : bodyId === 'redevelopment-agency' ? 'Board Member' : 'Council Member');
@@ -485,7 +481,7 @@ function YearSection({
           <span style={{ width: '70%' }} />
         </div>
       )}
-      {open && list.status === 'error' && <p className="vc-mo-note">This year could not load just now.</p>}
+      {open && list.status === 'error' && <ErrorNote>This year could not be loaded.</ErrorNote>}
       {open && list.status === 'done' && !rows.length && <p className="vc-mo-note">No votes match.</p>}
       {open && rows.length > 0 && ready && <VoteSheet rows={rows} member={member} seats={seats} mayor={mayor} showBody={showBody} />}
       {open && rows.length > 0 && ready && (
@@ -559,7 +555,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
           <span style={{ width: '60%' }} />
         </div>
       )}
-      {years.status === 'error' && <p className="vc-mo-note">The votes could not load just now. Reload to try again.</p>}
+      {years.status === 'error' && <ErrorNote>The votes could not be loaded.</ErrorNote>}
       {view !== 'attendance' && years.status === 'done' && !yearList.length && <p className="vc-mo-note">No votes match.</p>}
       {view !== 'attendance' &&
         yearList.map((y, i) => (

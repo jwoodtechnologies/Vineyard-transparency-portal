@@ -1,5 +1,6 @@
 import { bodyChip, displayTitle, recordStatus, type RecordStatus } from '@/lib/recordTitle';
 import { TYPE_LABEL, formatDate } from './format';
+import { normalizeDatesInText } from '@/lib/dates';
 
 export interface LabelSource {
   title: string;
@@ -39,7 +40,7 @@ export function labelsOf(d: LabelSource): Labels {
   // A packet file filed under an ordinance or resolution item that is not the measure itself reads as an attachment.
   const type = legislative && !status && (attachedOnly || (d.agendaItemNumber && !/\b(ordinance|resolution|ord|res)\b/i.test(d.title.replace(/_/g, ' ')))) ? 'Attachment' : (TYPE_LABEL[d.documentType as keyof typeof TYPE_LABEL] ?? 'Record');
   return {
-    title: d.displayTitle ?? shown!.title,
+    title: normalizeDatesInText(d.displayTitle ?? shown!.title),
     type,
     body: bodyChip(d.governmentBodyName),
     date: formatDate(d.date) ?? formatDate(d.adoption?.date) ?? (d.year ? String(d.year) : null),

@@ -5,6 +5,7 @@
  */
 import { ArrowUpRight, ChevronDown, FileText } from 'lucide-react';
 import { useJson } from './api';
+import { formatDate, formatDateTime, normalizeDatesInText } from '@/lib/dates';
 
 interface Glance {
   heading: string | null;
@@ -24,8 +25,10 @@ export interface ConstructionSnapshot {
   versions?: Array<{ retrievedAt: string }>;
 }
 
-const fmt = (iso: string, withTime = false) =>
-  new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', month: 'long', day: 'numeric', year: 'numeric', ...(withTime ? { hour: 'numeric', minute: '2-digit' } : {}) }).format(new Date(iso));
+const fmt = (iso: string, withTime = false) => (withTime ? formatDateTime(iso) : formatDate(iso));
+
+/** The city's heading in sentence case with its date in the one format: "At a glance: updated Oct 5, 2026". */
+const tidyHeading = (h: string) => normalizeDatesInText(h === h.toUpperCase() ? h.charAt(0) + h.slice(1).toLowerCase() : h);
 
 function groupDocs(docs: NonNullable<ConstructionSnapshot['documents']>): Array<[string | null, typeof docs]> {
   const out = new Map<string | null, typeof docs>();
@@ -57,7 +60,7 @@ export function CitySnapshot({ cityPage, data }: { cityPage: string; /** Already
       </p>
       {g && g.rows.length > 0 ? (
         <>
-          {g.heading && <h3 className="vc-snap-h">{g.heading}</h3>}
+          {g.heading && <h3 className="vc-snap-h">{tidyHeading(g.heading)}</h3>}
           <div className="vc-snap-table-wrap">
             <table className="vc-snap-table">
               <thead>
@@ -74,7 +77,7 @@ export function CitySnapshot({ cityPage, data }: { cityPage: string; /** Already
                   <tr key={i}>
                     {g.headers.map((h, j) => (
                       <td key={h} data-label={h} data-first={j === 0 || undefined}>
-                        {r[h] || ''}
+                        {/^status$/i.test(h.trim()) && r[h] ? <span className="vc-tag">{r[h]}</span> : normalizeDatesInText(r[h] || '')}
                       </td>
                     ))}
                   </tr>
@@ -116,7 +119,7 @@ export function CitySnapshot({ cityPage, data }: { cityPage: string; /** Already
           </summary>
           <div className="vc-snap-text">
             {s.text.split('\n').map((line, i) => (
-              <p key={i}>{line}</p>
+              <p key={i}>{normalizeDatesInText(line)}</p>
             ))}
           </div>
         </details>

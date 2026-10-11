@@ -1,7 +1,5 @@
 /** /latest : the newest from Vineyard City in three parts: the last council meeting, recent board meetings, city posts. */
-import '@fontsource-variable/inter';
-import '@fontsource-variable/source-serif-4';
-import './console.css';
+import './styles';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, FileText, Users } from 'lucide-react';
@@ -11,6 +9,9 @@ import { SocialDock, SocialLauncher, SocialSheet } from './FacebookFeed';
 import { useWide } from './useWide';
 import { MeetingFiles } from './MeetingFiles';
 import { dayNumber, formatTime, longDate, meetingHref, monthShort, todayIso, toneOf, useMeetings, weekdayShort } from './meetings';
+import { setHead } from '@/lib/head';
+import { ErrorNote } from './ErrorNote';
+import { normalizeDatesInText } from '@/lib/dates';
 
 function Section({ title, icon, children, more }: { title: string; icon: ReactNode; children: ReactNode; more?: ReactNode }) {
   return (
@@ -53,7 +54,7 @@ function MeetingCard({ m, featured = false }: { m: MeetingSummary; featured?: bo
           )}
         </div>
         <Link to={meetingHref(m)} className="vc-latest-meeting-title">
-          <h3 className="vc-meeting-title">{m.title}</h3>
+          <h3 className="vc-meeting-title">{normalizeDatesInText(m.title)}</h3>
         </Link>
         <MeetingFiles m={m} showMissing />
       </div>
@@ -64,9 +65,10 @@ function MeetingCard({ m, featured = false }: { m: MeetingSummary; featured?: bo
   );
 }
 
-function Skeleton() {
+/** Loading lines in the space the cards will take, so nothing below them moves when they arrive. */
+function Skeleton({ height }: { height: string }) {
   return (
-    <div className="vc-skeleton" aria-hidden="true">
+    <div className="vc-skeleton" aria-hidden="true" style={{ minHeight: height, alignContent: 'start' }}>
       <span style={{ width: '92%' }} />
       <span style={{ width: '78%' }} />
       <span style={{ width: '85%' }} />
@@ -83,7 +85,7 @@ export default function LatestPage() {
   const [social, setSocial] = useState(false);
 
   useEffect(() => {
-    document.title = 'Latest | Vineyard Transparency Portal';
+    setHead('Latest');
   }, []);
 
   const { council, minutes, next, boards } = useMemo(() => {
@@ -124,8 +126,8 @@ export default function LatestPage() {
           </Link>
         }
       >
-        {load.status === 'loading' && <Skeleton />}
-        {load.status === 'error' && <div className="vc-empty">Meetings could not be loaded right now. Try again in a moment.</div>}
+        {load.status === 'loading' && <Skeleton height="20rem" />}
+        {load.status === 'error' && <ErrorNote>The meetings could not be loaded.</ErrorNote>}
         {load.status === 'done' && (council ? <MeetingCard m={council} featured /> : <div className="vc-empty">No regular City Council meeting has been posted yet.</div>)}
         {council && minutes && minutes.id !== council.id && (
           <>
@@ -149,7 +151,7 @@ export default function LatestPage() {
           </Link>
         }
       >
-        {load.status === 'loading' && <Skeleton />}
+        {load.status === 'loading' && <Skeleton height="36rem" />}
         {load.status === 'done' && (boards.length ? <div className="vc-sched-list">{boards.map((m) => <MeetingCard key={m.id} m={m} />)}</div> : <div className="vc-empty">No board or commission meetings have been posted yet.</div>)}
       </Section>
 
