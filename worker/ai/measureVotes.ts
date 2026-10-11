@@ -24,6 +24,21 @@ export interface MeasureVotesIntent {
 const REF = /\b(ordinance|ord\.?|resolution|res\.?)\s*(?:no\.?\s*|number\s*|#\s*)?((?:19|20)\d{2})\s*[-‐-―]\s*(\d{1,3})\b/i;
 const VOTE_WORDS = /\b(vot\w*|motion\w*|tie|tie-?break\w*|broke|pass(?:ed|es)?|approv\w*|adopt\w*|aye|nay|roll call|support\w*|oppos\w*|against|in favor|unanimous\w*|moved|seconded|split)\b/i;
 
+const ITEM_VOTE = /\bhow did (?:the )?(?:city council|council|rda|redevelopment agency(?: board)?|planning commission|board|commission)\s+vote\s+(?:on|for)\s+(?:the\s+)?(.+?)\s*\??\s*$/i;
+
+/**
+ * "How did the council vote on the First Amendment to the Holdaway Fields development agreement?": a vote
+ * question about an item named in words, not by number. The item as the question names it, or null.
+ */
+export function itemVoteIn(q: string): { label: string; phrase: string } | null {
+  if (measureRefIn(q)) return null;
+  const m = q.match(ITEM_VOTE);
+  if (!m) return null;
+  const phrase = m[1].replace(/\s+(?:at|in|on|during)\s+(?:the\s+)?(?:last|latest|recent|\w+ \d{1,2}).*$/i, '').trim();
+  if (phrase.split(/\s+/).length < 2 || /^(it|that|this|them|those|these|his|her|their|its)\b/i.test(phrase)) return null;
+  return { phrase, label: `the ${phrase}` };
+}
+
 /** "Ordinance 2026-07", "Ord. 2026-7", "RES 2026-16" in a message. */
 export function measureRefIn(q: string): MeasureRef | null {
   const m = q.match(REF);
@@ -94,7 +109,7 @@ const VOTE_LABEL: Record<string, string> = { yes: 'Voting yes', no: 'Voting no',
  * meeting (the minutes' attendance list, or the directory); `member` is the member the question
  * names, by the name the record uses, if any.
  */
-export function measureVotesText(intent: MeasureVotesIntent, m: MeasureMotion, mayor: string | null, member: string | null): string[] {
+export function measureVotesText(intent: { ref: { label: string }; focus: MeasureVotesIntent['focus'] }, m: MeasureMotion, mayor: string | null, member: string | null): string[] {
   const body = bodyOf(m.bodyId);
   const who = (n: string) => memberTitle(n, body, mayor);
   const where = `at the ${m.date ? `${longDay(m.date)} ` : ''}${BODY_LABEL[body]} meeting`;
@@ -108,6 +123,7 @@ export function measureVotesText(intent: MeasureVotesIntent, m: MeasureMotion, m
   const head = verb
     ? `${label} ${verb}${tally ? ` ${tally}` : m.unanimous && !m.votes.length ? ' unanimously' : ''} ${where}${tiePart}.`
     : `The minutes of the ${m.date ? `${longDay(m.date)} ` : ''}${BODY_LABEL[body]} meeting record a vote on ${label} but not its result.`;
+  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const out: string[] = [];
   const moverLine = m.mover ? `${who(m.mover)} moved it${m.seconder ? ` and ${who(m.seconder)} seconded` : ''}.` : null;
   if (intent.focus === 'mover') out.push(moverLine ? moverLine.replace(/^(.+?) moved it/, `$1 moved ${label}`) : `The minutes record no mover for ${label}.`);
@@ -121,7 +137,7 @@ export function measureVotesText(intent: MeasureVotesIntent, m: MeasureMotion, m
     if (v) out.push(v.vote === 'yes' || v.vote === 'no' ? `${name} voted ${v.vote} on ${label} ${where}.` : `${name} is recorded as ${v.vote === 'absent' ? 'absent' : v.vote} on ${label} ${where}.`);
     else out.push(`The minutes record no vote by ${name} on ${label}.`);
   }
-  out.push(head);
+  out.push(cap(head));
   const groups = ['yes', 'no', 'abstain', 'recused', 'absent']
     .map((k) => ({ k, names: m.votes.filter((v) => v.vote === k).map((v) => who(v.member)).sort((a, b) => Number(a.startsWith('Mayor ')) - Number(b.startsWith('Mayor ')) || lastOf(a).localeCompare(lastOf(b))) }))
     .filter((g) => g.names.length);

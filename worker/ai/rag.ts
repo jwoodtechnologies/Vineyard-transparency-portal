@@ -43,10 +43,10 @@ import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 import { BODY_LABEL, longDay, meetingBodyIn, meetingDateIn, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, motionLine, MOVER_Q, type MeetingBody, type MeetingVotesIntent } from './meetingVotes';
-import { decidingMotion, measureRefIn, measureVotesIntent, measureVotesText, motionIsAbout, type MeasureVotesIntent } from './measureVotes';
+import { decidingMotion, itemVoteIn, measureRefIn, measureVotesIntent, measureVotesText, motionIsAbout, type MeasureVotesIntent } from './measureVotes';
 import { officialRoster, TERM_FROM, titleOfficials } from './officials';
 import { isOffTopic, OFF_TOPIC_REPLY } from './offTopic';
-import { bodyClarify, CONTACT_Q, docLookupIntent, feeIntent, lastMeetingIntent, monthClarify, monthVotesIntent, motionSearchWords, personClarify, recordLookupIntent, resolveFollowUp, suggestFollowUps } from './lookups';
+import { bodyClarify, CONTACT_Q, docLookupIntent, feeIntent, lastMeetingIntent, monthClarify, itemWords, monthVotesIntent, motionSearchWords, personClarify, recordLookupIntent, resolveFollowUp, suggestFollowUps } from './lookups';
 import { routeFor } from './quotes';
 import { bodiesOnDate, clarifyResponse, codeResponse, docLookupResponse, feeResponse, lastVotesDate, quotesResponse, recordLookupResponse, recordsAnswer, routeResponse } from './lookupAnswers';
 import { BUDGET_AMENDED } from '../lib/budgetData';
@@ -559,6 +559,26 @@ export async function measureVotesResponse(env: Env, base: { id: string; questio
   // The motion that decided it: the last one with a recorded result and roll call.
   const newestFirst = [...found].reverse();
   const decided = decidingMotion(newestFirst, intent.ref) ?? newestFirst[0];
+  return motionVotesResponse(env, base, intent, found, decided, staff);
+}
+
+/**
+ * "How did the council vote on the First Amendment to the Holdaway Fields development agreement?": the
+ * one recorded motion whose agenda item or wording holds every word of the item named, written by code
+ * like a numbered measure (tally, each member including abstentions, mover). Null when no single item matches.
+ */
+export async function itemVotesResponse(env: Env, base: { id: string; question: string; relatedDocuments: DocumentSummary[]; suggestedFollowUps: string[]; generatedAt: string }, item: { label: string; phrase: string }, staff: StaffPerson[]): Promise<AskResponse | null> {
+  const words = itemWords(item.phrase).sort((a, b) => b.length - a.length).slice(0, 5);
+  if (words.length < 2) return null;
+  const r = await queryMotions(env, { q: words.join(' '), pageSize: 12 });
+  const recorded = r.items.filter((m) => m.result !== 'unknown');
+  const key = (m: MotionOut) => (m.item ?? m.motion).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!recorded.length || new Set(recorded.map(key)).size !== 1) return null;
+  const decided = recorded.find((m) => m.votes.length) ?? recorded[0];
+  return motionVotesResponse(env, base, { ref: { label: item.label }, focus: 'vote' }, [...recorded].reverse(), decided, staff);
+}
+
+async function motionVotesResponse(env: Env, base: { id: string; question: string; relatedDocuments: DocumentSummary[]; suggestedFollowUps: string[]; generatedAt: string }, intent: { ref: { label: string }; focus: MeasureVotesIntent['focus'] }, found: MotionOut[], decided: MotionOut, staff: StaffPerson[]): Promise<AskResponse | null> {
   // The mayor as of that meeting: the minutes' attendance list prints "Mayor <name>"; for a meeting in the
   // current term with no such line, the directory's mayor.
   const att = await env.CATALOG_DB.prepare("SELECT member FROM meeting_attendance WHERE document_id = ? AND member LIKE 'Mayor %' LIMIT 1")
@@ -789,6 +809,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const mvi = measureVotesIntent(body.question);
   if (mvi) {
     const r = await measureVotesResponse(env, base, mvi, staff).catch(() => null);
+    if (r) return { kind: 'final', response: r };
+  }
+  const ivi = namedNow || meetingDateIn(body.question, todayQ) ? null : itemVoteIn(body.question);
+  if (ivi) {
+    const r = await itemVotesResponse(env, base, ivi, staff).catch(() => null);
     if (r) return { kind: 'final', response: r };
   }
   const mv = namedNow ? null : meetingVotesIntent(body.question, utahToday());
