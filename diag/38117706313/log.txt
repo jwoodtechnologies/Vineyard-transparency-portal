@@ -1,0 +1,7 @@
+[06:20:22] Discovering sources from the live transparency portal…
+[06:20:22] City website not reachable from this runner (https://www.vineyardutah.gov/transparency_portal/index.php); the Worker's five-minute check reads it instead.
+[06:44:22] CivicClerk: 1386 meetings, 15 public bodies
+[06:51:26] Municipal code site: entries per book {'minutes': 1071, 'resolutions': 635, 'orddoc': 304, 'ordinances': 498, 'zoning': 261, 'subdivords': 74, 'districts': 127, 'landscaping': 121, 'plan': 157}
+[06:51:28] Queued/refreshed 7787 document URLs
+[06:51:28] Ingest: {} archived=0 deferred=0 chunks=0 errors=0
+[06:51:29] Run run_20261011T062021_gh38117706313: completed {'discovered': 7787, 'fetched': 0, 'ingested': 0, 'unchanged': 0, 'duplicates': 0, 'errors': 0, 'bytes_archived': 0} (source requests 1816, API requests 42)
