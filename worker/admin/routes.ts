@@ -32,6 +32,7 @@ import { newSetupCode } from '../panel/auth';
 import { requireIngestAuth } from './auth';
 import { splitSql } from '../lib/sql';
 import { exportPage, exportTables, pruneBackups, putBackup } from './backup';
+import { ensureSourceCounter, SOURCE_COUNTER_SET } from '../sync/jobHealth';
 
 export const BUDGET_MESSAGE = 'Daily free-tier ingestion budget reached. Resume next UTC quota period.';
 
@@ -352,14 +353,16 @@ async function upsertSources(env: Env, body: Json, budget: Budget): Promise<Resp
 async function sourceStatus(env: Env, body: Json, budget: Budget): Promise<Response> {
   const list = Array.isArray(body.statuses) ? (body.statuses as Json[]) : [];
   const now = nowIso();
+  await ensureSourceCounter(env);
   const stmts = list
     .filter((x) => idOk(x.id))
     .slice(0, 200)
-    .map((x) =>
-      env.CATALOG_DB.prepare(
-        `UPDATE sources SET status = ?, status_message = ?, last_checked_at = ?, last_success_at = CASE WHEN ? = 'active' THEN ? ELSE last_success_at END WHERE id = ?`,
-      ).bind(s(x.status, 40) ?? 'unknown', s(x.message, 500), now, s(x.status, 40) ?? 'unknown', now, x.id),
-    );
+    .map((x) => {
+      const status = s(x.status, 40) ?? 'unknown';
+      return env.CATALOG_DB.prepare(
+        `UPDATE sources SET status = ?, status_message = ?, last_checked_at = ?, last_success_at = CASE WHEN ? = 'active' THEN ? ELSE last_success_at END, ${SOURCE_COUNTER_SET} WHERE id = ?`,
+      ).bind(status, s(x.message, 500), now, status, now, status, status, x.id);
+    });
   const rows = stmts.length ? sum(await env.CATALOG_DB.batch(stmts)) : 0;
   await budget.record(rows);
   return json({ ok: true, rowsWritten: rows });

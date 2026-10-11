@@ -1,0 +1,43 @@
+# Watchdog (scripts/watchdog/run.mjs): opens an issue labeled "watchdog" when a scheduled check or a
+# source fails 3 times in a row (GET /api/health/jobs), when the nightly chat suite fails, or when the
+# scheduled ingest workflow fails 3 runs in a row. Comments at most once a day while it stays failing,
+# and closes the issue with a comment when it recovers. One issue per job, found by label and title.
+#
+# No stored secret: the workflow's own GITHUB_TOKEN, limited to issues: write and actions: read.
+# Cost: about 15 seconds an hour, no npm install (the script has no dependencies).
+name: Watchdog
+
+on:
+  schedule:
+    # Hourly, off the hour (the ingest runs at minutes 0-50 by tens and 17).
+    - cron: "41 * * * *"
+  workflow_run:
+    workflows: ["Chat suite"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  actions: read
+  contents: read
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/watchdog
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check jobs and update issues
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WATCHDOG_BASE: https://vineyardportal.org
+        run: node scripts/watchdog/run.mjs

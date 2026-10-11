@@ -7,6 +7,7 @@ import { clampInt, nowIso, randomId } from '../lib/util';
 import { SearchRepository } from '../search/SearchRepository';
 import { aiBreakerOpen, aiConfigured } from '../ai/rag';
 import { listChecks } from '../sync/checks';
+import { jobHealth } from '../sync/jobHealth';
 
 /** crawl_runs rows that are full crawls (not the frequent queue drains, which also log runs). */
 const REAL_CRAWL = "trigger LIKE '%:run' OR trigger LIKE '%:crawl' OR trigger = 'worker-site-pass'";
@@ -56,6 +57,15 @@ export async function handleHealth(env: Env): Promise<Response> {
     },
     { cache: CACHE.none },
   );
+}
+
+/**
+ * GET /api/health/jobs: every scheduled check and enabled source with its consecutive failures, last run,
+ * last success and last error (cleaned of tokens and paths). Public and read only; cached at the edge for
+ * five minutes. Read hourly by .github/workflows/watchdog.yml.
+ */
+export async function handleHealthJobs(env: Env): Promise<Response> {
+  return json(await jobHealth(env), { cache: 'public, max-age=60' });
 }
 
 export async function handleStats(env: Env): Promise<Response> {

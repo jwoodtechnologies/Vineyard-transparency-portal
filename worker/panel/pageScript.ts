@@ -37,7 +37,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
   var TYPE_NAME = {}; TYPES.forEach(function(t){ TYPE_NAME[t[0]] = t[1]; });
 
   // ------------------------------------------------------------ navigation
-  var VIEWS = [['activity','Activity',true],['add','Add',false],['uploads','Uploads',false],['subs','Submissions',true],['people','People',true],['coverage','Coverage',true]];
+  var VIEWS = [['activity','Activity',true],['add','Add',false],['uploads','Uploads',false],['subs','Submissions',true],['people','People',true],['coverage','Coverage',true],['health','Health',true]];
   function buildNav(){
     var nav = $('nav'); nav.textContent = '';
     VIEWS.forEach(function(v){ if (v[2] && me.role !== 'owner') return; var b = el('button', null, v[1]); b.type = 'button'; b.dataset.v = v[0]; b.setAttribute('aria-pressed', 'false'); b.addEventListener('click', function(){ go(v[0]); }); nav.appendChild(b); });
@@ -53,6 +53,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
     if (v === 'subs') loadSubs();
     if (v === 'people') loadPeople();
     if (v === 'coverage') loadCoverage();
+    if (v === 'health') loadHealth();
   }
 
   // ------------------------------------------------------------ activity (owner)
@@ -392,6 +393,41 @@ export const PANEL_SCRIPT = String.raw`(function(){
     $('covWhen').textContent = 'Loading...';
     api('/coverage').then(function(j){ cov = j; renderCoverage(); }).catch(function(x){ authFail(x); $('covWhen').textContent = x.message; });
   }
+  // ------------------------------------------------------------ health (owner)
+  function stamp(iso){ return iso ? fFull.format(new Date(iso)) + ', ' + fTime.format(new Date(iso)) : 'Never'; }
+  function healthRow(r){
+    var li = el('li', 'item'); var w = el('div', 'when');
+    if (r.lastRunAt) { w.appendChild(el('b', null, fTime.format(new Date(r.lastRunAt)))); w.appendChild(el('span', null, fDay.format(new Date(r.lastRunAt)))); } else w.appendChild(el('b', null, 'Never'));
+    li.appendChild(w);
+    var main = el('div', 'main'); var title = el('div');
+    var dot = el('span', 'mark' + (r.failing ? ' fail' : '')); dot.title = r.failing ? 'Failing' : 'OK'; title.appendChild(dot);
+    title.appendChild(document.createTextNode(r.name + (r.kind === 'source' && r.name !== r.id ? ' (' + r.id + ')' : '')));
+    main.appendChild(title);
+    var meta = el('div', 'meta');
+    meta.appendChild(el('span', null, 'Last run ' + stamp(r.lastRunAt)));
+    meta.appendChild(el('span', null, 'Last success ' + stamp(r.lastSuccessAt)));
+    if (r.status) meta.appendChild(el('span', null, 'Status ' + r.status));
+    if (r.lastErrorAt) meta.appendChild(el('span', null, 'Last error ' + stamp(r.lastErrorAt)));
+    main.appendChild(meta);
+    if (r.lastError) main.appendChild(el('div', 'meta err1', r.lastError));
+    li.appendChild(main);
+    var n = r.consecutiveFailures; var pill = el('span', 'pill soft', n === 1 ? '1 failure' : n + ' failures'); pill.title = 'Failures in a row'; li.appendChild(pill);
+    return li;
+  }
+  function healthList(id, rows){
+    var ul = $(id); ul.textContent = '';
+    rows.slice().sort(function(a, b){ return (b.failing - a.failing) || (b.consecutiveFailures - a.consecutiveFailures) || (a.name < b.name ? -1 : 1); }).forEach(function(r){ ul.appendChild(healthRow(r)); });
+    $(id + 'Empty').classList.toggle('hidden', rows.length > 0);
+  }
+  function loadHealth(){
+    $('hlWhen').textContent = 'Loading...';
+    api('/health').then(function(j){
+      var failing = j.jobs.concat(j.sources).filter(function(r){ return r.failing; }).length;
+      $('hlWhen').textContent = 'Read ' + stamp(j.generatedAt) + '. Marked when failing ' + j.threshold + ' times in a row. ' + (failing ? failing + ' failing.' : 'None failing.');
+      healthList('hlJobs', j.jobs); healthList('hlSources', j.sources);
+    }).catch(function(x){ authFail(x); $('hlWhen').textContent = x.message; });
+  }
+  $('hlRefresh').addEventListener('click', loadHealth);
   $('covBody').addEventListener('change', function(){ covAll.covMeet = false; renderCoverage(); });
   $('covRefresh').addEventListener('click', function(){ var b = $('covRefresh'); b.disabled = true; $('covWhen').textContent = 'Checking the archive...';
     post('/coverage/refresh').then(function(j){ cov = j; renderCoverage(); }, function(x){ $('covWhen').textContent = x.message; }).then(function(){ b.disabled = false; }); });
