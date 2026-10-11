@@ -1,0 +1,17 @@
+{
+  "apply": false,
+  "storedBytes": 5999997012,
+  "storedObjects": 1986,
+  "archivedRecords": 1958,
+  "removableObjects": 288,
+  "removableRecords": 288,
+  "removableBytes": 1179426715,
+  "removableByType": {
+    "agenda_packet": 169,
+    "other": 109,
+    "study": 10
+  },
+  "priorityDeferredRecords": 1458,
+  "priorityDeferredBytes": 2840187006,
+  "nonPriorityDeferredRecords": 1053
+}
