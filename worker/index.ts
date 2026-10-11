@@ -24,7 +24,7 @@ import { getDraftMinutes } from './api/draftMinutes';
 import { getPerson, getPersonPhoto, listPeople } from './api/people';
 import { handleVotes } from './api/votes';
 import { listBoards } from './api/boards';
-import { getConstruction } from './api/construction';
+import { getConstruction, getPageSource } from './api/construction';
 import { runFrequent, runHourly } from './cron';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
@@ -110,6 +110,10 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       break;
     case 'construction':
       if (!b) return getConstruction(env);
+      break;
+    case 'pages':
+      // The stored copy of a watched city page, exactly as read (text/plain, never rendered).
+      if (b && /^[a-z]{2,20}$/.test(b) && c === 'source' && parts.length === 3) return getPageSource(env, b);
       break;
     case 'votes':
       if (!b || ((b === 'members' || b === 'years' || b === 'attendance' || b === 'meetings') && !c)) return handleVotes(env, url, b);

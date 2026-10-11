@@ -5,7 +5,7 @@
  */
 import type { Env } from '../env';
 import { json } from '../lib/http';
-import { latestSnapshot, WATCHED_PAGES } from '../sync/city';
+import { latestSnapshot, snapshotHtml, WATCHED_PAGES } from '../sync/city';
 import { categorize } from '../sync/urls';
 import { findGlance, type GlanceTable } from '../lib/glance';
 
@@ -34,4 +34,13 @@ export async function getConstruction(env: Env): Promise<Response> {
     },
     { cache: 'public, max-age=120' },
   );
+}
+
+export async function getPageSource(env: Env, pageId: string): Promise<Response> {
+  if (!WATCHED_PAGES.some((p) => p.id === pageId)) return json({ error: { kind: 'not_found', message: 'Unknown page.' } }, { status: 404 });
+  const snap = await snapshotHtml(env, pageId);
+  if (!snap) return json({ error: { kind: 'not_found', message: 'No stored copy yet.' } }, { status: 404 });
+  return new Response(snap.html, {
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=60', 'x-source-url': snap.url, 'x-retrieved-at': snap.retrievedAt },
+  });
 }

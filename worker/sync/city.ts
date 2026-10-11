@@ -89,6 +89,11 @@ async function ensureTables(env: Env): Promise<void> {
     env.CATALOG_DB.prepare('CREATE INDEX IF NOT EXISTS site_pages_pass ON site_pages (pass_id, depth)'),
     env.CATALOG_DB.prepare(`CREATE TABLE IF NOT EXISTS site_crawl (id INTEGER PRIMARY KEY CHECK (id = 1), pass_id TEXT NOT NULL, started_at TEXT NOT NULL, pages_done INTEGER NOT NULL DEFAULT 0, docs_queued INTEGER NOT NULL DEFAULT 0, errors INTEGER NOT NULL DEFAULT 0)`),
   ]);
+  try {
+    await env.CATALOG_DB.prepare('ALTER TABLE page_snapshots ADD COLUMN html TEXT').run();
+  } catch {
+    /* column exists */
+  }
   ensured = true;
 }
 
@@ -205,8 +210,8 @@ export async function watchPages(env: Env, budget: Budget, onlyIds?: string[]): 
       const changed = sha !== prev?.sha256;
       let queued = 0;
       if (changed) {
-        await env.CATALOG_DB.prepare('INSERT INTO page_snapshots (page_id, url, retrieved_at, sha256, heading, text, tables_json, links_json, http_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .bind(w.id, r.finalUrl, now, sha, page.heading, page.text.slice(0, 200_000), JSON.stringify(page.tables).slice(0, 200_000), JSON.stringify(page.links.slice(0, 400)), r.status)
+        await env.CATALOG_DB.prepare('INSERT INTO page_snapshots (page_id, url, retrieved_at, sha256, heading, text, tables_json, links_json, http_status, html) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .bind(w.id, r.finalUrl, now, sha, page.heading, page.text.slice(0, 200_000), JSON.stringify(page.tables).slice(0, 200_000), JSON.stringify(page.links.slice(0, 400)), r.status, r.html.slice(0, 1_500_000))
           .run();
         await indexPage(env, r.finalUrl, page, sha, w.sourceId, w.label, budget);
         queued = await queueLinkedDocuments(env, page, r.finalUrl, 10, budget, w.sourceId);
@@ -227,6 +232,13 @@ export async function watchPages(env: Env, budget: Budget, onlyIds?: string[]): 
 }
 
 /** Latest stored version of a watched page, plus the retrieval times of earlier versions. */
+/** The stored HTML of the latest version of a watched page (the city's own markup, for checking extraction). */
+export async function snapshotHtml(env: Env, pageId: string): Promise<{ url: string; retrievedAt: string; html: string } | null> {
+  await ensureTables(env);
+  const r = await env.CATALOG_DB.prepare('SELECT url, retrieved_at, html FROM page_snapshots WHERE page_id = ? AND html IS NOT NULL ORDER BY retrieved_at DESC LIMIT 1').bind(pageId).first<{ url: string; retrieved_at: string; html: string }>();
+  return r ? { url: r.url, retrievedAt: r.retrieved_at, html: r.html } : null;
+}
+
 export async function latestSnapshot(env: Env, pageId: string): Promise<{ current: Record<string, unknown> | null; versions: Array<{ retrievedAt: string; sha256: string }>; lastCheckedAt: string | null }> {
   await ensureTables(env);
   const [cur, versions, watch] = await Promise.all([

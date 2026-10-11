@@ -39,6 +39,8 @@ export interface Env {
   OIDC_ALLOWED_REFS?: string;
   /** Optional static bearer token (Worker secret) for running ingestion from a local machine. */
   INGEST_TOKEN?: string;
+  /** Optional Worker secret: lets the five-minute tick start the GitHub CivicClerk check (worker/sync/dispatch.ts). */
+  GITHUB_DISPATCH_TOKEN?: string;
 }
 
 export function intVar(value: string | undefined, fallback: number): number {

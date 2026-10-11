@@ -31,7 +31,8 @@ on:
   schedule:
     # Nightly full crawl at 09:17 UTC (03:17 America/Denver): every source, new and changed records.
     - cron: "17 9 * * *"
-    # Every 10 minutes: read what the five-minute Worker check queued (new agendas, packets, minutes, releases).
+    # Every 10 minutes (GitHub runs it less often under load): CivicClerk meetings and newly posted files
+    # (CivicClerk refuses Cloudflare's network, so the Worker cannot read it), then the file queue.
     - cron: "*/10 * * * *"
     # Weekly: refresh the GIS records (every road, capital project, zoning district, park, school).
     - cron: "37 10 * * 1"
@@ -54,12 +55,13 @@ jobs:
       VTP_API_BASE: ${{ vars.VTP_API_BASE || 'https://vineyardportal.org,https://vineyard-transparency-portal.citizenjwood.workers.dev' }}
       VTP_OIDC_AUDIENCE: vineyardportal.org
       VTP_TRIGGER: ${{ github.event_name }}
-      IN_COMMAND: ${{ inputs.command || (github.event.schedule == '*/10 * * * *' && 'ingest') || (github.event.schedule == '37 10 * * 1' && 'gis') || (github.event.schedule == '7 11 * * 0' && 'backup') || 'run' }}
-      IN_LIMIT: ${{ inputs.limit || '3000' }}
-      IN_SOURCE: ${{ inputs.source || '' }}
+      IN_COMMAND: ${{ inputs.command || (github.event.schedule == '*/10 * * * *' && 'run') || (github.event.schedule == '37 10 * * 1' && 'gis') || (github.event.schedule == '7 11 * * 0' && 'backup') || 'run' }}
+      IN_LIMIT: ${{ inputs.limit || (github.event.schedule == '*/10 * * * *' && '200') || '3000' }}
+      IN_SOURCE: ${{ inputs.source || (github.event.schedule == '*/10 * * * *' && 'vineyard-civicclerk-meetings') || '' }}
       IN_SINCE: ${{ inputs.since || '' }}
+      QUICK: ${{ github.event.schedule == '*/10 * * * *' && 'true' || inputs.source == 'vineyard-civicclerk-meetings' && 'true' || 'false' }}
       IN_OCR: ${{ (inputs.ocr || github.event.schedule == '*/10 * * * *') && 'true' || 'false' }}
-      IN_HOURS: ${{ inputs.hours || '5' }}
+      IN_HOURS: ${{ inputs.hours || (github.event.schedule == '*/10 * * * *' && '0.25') || '5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -78,6 +80,8 @@ jobs:
           [[ "$IN_HOURS" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "bad hours"; exit 2; }
           ARGS=(--limit "$IN_LIMIT" --hours "$IN_HOURS")
           if [[ -n "$IN_SOURCE" ]]; then [[ "$IN_SOURCE" =~ ^[a-z0-9-]{1,64}$ ]] || exit 2; ARGS+=(--source "$IN_SOURCE"); fi
+          # The quick CivicClerk check reads the last 30 days of meetings (and everything upcoming).
+          if [[ -z "$IN_SINCE" && "$QUICK" == "true" ]]; then IN_SINCE=$(date -u -d '30 days ago' +%F); fi
           if [[ -n "$IN_SINCE" ]]; then [[ "$IN_SINCE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || exit 2; ARGS+=(--since "$IN_SINCE"); fi
           if [[ "$IN_OCR" == "true" ]]; then ARGS+=(--ocr); fi
           python -m ingest "$IN_COMMAND" "${ARGS[@]}"

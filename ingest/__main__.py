@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{m['linkCount']} links; categories {m['countsByCategory']}; sources {m['sourceIds']} → {a.manifest}")
         elif cmd in ("crawl", "ingest", "ingest:resume", "run"):
             # The command is part of the trigger, so the site's "last crawl" counts only real crawls (run, crawl).
-            api.post("/runs", {"id": run_id, "trigger": f"{os.environ.get('VTP_TRIGGER', 'manual')}:{cmd}", "sources": a.source or []})
+            api.post("/runs", {"id": run_id, "trigger": f"{os.environ.get('VTP_TRIGGER', 'manual')}:{cmd}" + (":partial" if a.source else ""), "sources": a.source or []})
             status, message = "completed", None
             total = {}
             try:

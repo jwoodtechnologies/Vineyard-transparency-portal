@@ -14,12 +14,14 @@ import { crawlCitySite, watchPages } from './city';
 import { syncCalendar } from './calendar';
 import { drainQueue } from './ingest';
 import { syncPmn } from './pmn';
+import { dispatchCivicClerk } from './dispatch';
 
 export async function runSync(env: Env, scheduledTime: number, budget = new Budget(env)): Promise<Record<string, unknown>> {
   const started = Date.now();
   const deadline = started + 210_000; // 3.5 minutes; the next tick starts at 5
   const minute = new Date(scheduledTime).getUTCMinutes();
   const out: Record<string, unknown> = {};
+  if (minute % 10 < 5 && (env as Env & { GITHUB_DISPATCH_TOKEN?: string }).GITHUB_DISPATCH_TOKEN) out.github = await track(env, 'civicclerk-dispatch', () => dispatchCivicClerk(env));
   out.pages = await track(env, 'city-pages', () => watchPages(env, budget));
   if (minute % 15 < 5) out.pmn = await track(env, 'utah-pmn', () => syncPmn(env, budget));
   if (minute % 30 < 5) out.calendar = await track(env, 'city-calendar', () => syncCalendar(env, budget));

@@ -74,12 +74,15 @@ export function extractHtml(html: string, pageUrl: string): HtmlExtraction {
   const baseHref = doc.querySelector('base')?.getAttribute('href');
   const base = (baseHref && resolve(baseHref, pageUrl)) || pageUrl;
   for (const el of doc.querySelectorAll(DROP)) el.remove();
+  // Revize pages can carry several content containers (or an empty first one): use the candidate
+  // with the most text, and the whole body when no candidate holds real content.
+  const body = doc.querySelector('body') ?? doc;
+  const len = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ').trim().length;
   let root: HTMLElement | null = null;
   for (const sel of CONTENT_SELECTORS) {
-    root = doc.querySelector(sel);
-    if (root) break;
+    for (const el of doc.querySelectorAll(sel)) if (!root || len(el) > len(root)) root = el;
   }
-  root = root ?? doc.querySelector('body') ?? doc;
+  if (!root || len(root) < 200 || (root.querySelectorAll('table').length === 0 && body.querySelectorAll('table').length > 0 && len(root) < len(body) * 0.3)) root = body;
 
   const headingEl = root.querySelector('h1, h2') ?? doc.querySelector('h1');
   const heading = headingEl ? textOf(headingEl) || null : null;
