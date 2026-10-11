@@ -1,0 +1,139 @@
+{
+  "generatedAt": "2026-10-11T22:35:24.259Z",
+  "total": 4818,
+  "shown": 446,
+  "withheld": 4372,
+  "withheldByReason": {
+    "joined-names": 1274,
+    "no-entity-word": 1233,
+    "et-al": 897,
+    "residential": 366,
+    "name-only": 272,
+    "type-unknown": 253,
+    "trust-or-estate": 51,
+    "generational-suffix": 25,
+    "care-of-or-title": 1
+  },
+  "sample": [
+    {
+      "name": "VINEYARD TOWN",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "IHC HEALTH SERVICES INC",
+      "propertyType": "VACANT COMMERCIAL"
+    },
+    {
+      "name": "GOODBORO VINEYARD HOLDAWAY LLC",
+      "propertyType": "VACANT"
+    },
+    {
+      "name": "VINEYARD GATEWAY I LLC",
+      "propertyType": "VACANT COMMERCIAL"
+    },
+    {
+      "name": "TOWN OF VINEYARD",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "GOODBORO VINEYARD HOLDAWAY LLC",
+      "propertyType": "VACANT"
+    },
+    {
+      "name": "CENTRAL UTAH WATER CONSERVANCY DISTRICT",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "MOUNTAIN AMERICA FEDERAL CREDIT UNION",
+      "propertyType": "VACANT COMMERCIAL"
+    },
+    {
+      "name": "MILL ROAD VENTURES LLC",
+      "propertyType": "VACANT COMMERCIAL"
+    },
+    {
+      "name": "CADENCE HOMES BUILDING CORP",
+      "propertyType": "VACANT"
+    },
+    {
+      "name": "TOWN OF VINEYARD'",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "COTTONWOOD GENEVA LLC",
+      "propertyType": "VACANT COMMERCIAL"
+    },
+    {
+      "name": "VINEYARD CITY",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "LAKEFRONT TOWNHOMES ASSOCIATION",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "VINEYARD CITY",
+      "propertyType": "unknown"
+    },
+    {
+      "name": "UTAH DEPARTMENT OF TRANSPORTATION",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "ORCHARDS AT VINEYARD-3 LLC",
+      "propertyType": "VACANT"
+    },
+    {
+      "name": "VINEYARD CITY",
+      "propertyType": "unknown"
+    },
+    {
+      "name": "VINEYARD CITY",
+      "propertyType": "unknown"
+    },
+    {
+      "name": "VINEYARD CITY",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "VINEYARD TOWN",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "CITY OF OREM",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "VINEYARD CITY",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "VINEYARD CITY",
+      "propertyType": "unknown"
+    },
+    {
+      "name": "TOWN OF VINEYARD",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "LAKEFRONT TOWNHOMES ASSOCIATION",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "UTAH DEPARTMENT OF TRANSPORTATION",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "WATERS EDGE HOME OWNERS ASSOCIATION",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "TOWN OF VINEYARD",
+      "propertyType": "EXEMPT"
+    },
+    {
+      "name": "UNIVERSITY OF UTAH THE",
+      "propertyType": "VACANT"
+    }
+  ]
+}
