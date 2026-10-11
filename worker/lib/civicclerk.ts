@@ -101,12 +101,28 @@ export interface CcEvent {
   youtubeVideoId?: string | null;
   eventLocation?: { address1?: string; city?: string; state?: string } | null;
   publishedFiles?: Array<{ fileId?: number; type?: string; name?: string; url?: string; publishOn?: string }>;
+  agendaId?: number | null;
 }
 
 export interface MappedEvent {
   meeting: Record<string, unknown>;
   body: { id: string; name: string; kind: string } | null;
   files: Array<{ identifier: string; url: string; parentUrl: string; priority: number; metadata: Record<string, unknown> }>;
+}
+
+/**
+ * A CivicClerk entry that names a different date than the one it is set on, with no agenda and no
+ * files: the city's portal holds copies of a meeting ("Active Transportation Commission Meeting
+ * 12-09-2025" also set on Mar 10, Jun 9 and Dec 8, 2026, events 1422, 1423, 1425). The city's date
+ * is shown, but the meeting is "unconfirmed" until a notice or agenda is posted for it.
+ */
+export function unconfirmedCopy(name: string, date: string | null, hasAgenda: boolean, fileCount: number): boolean {
+  if (!date || hasAgenda || fileCount > 0) return false;
+  const m = /\b(\d{1,2})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{4}|\d{2})\b/.exec(name);
+  if (!m) return false;
+  const y = m[3].length === 2 ? `20${m[3]}` : m[3];
+  const named = `${y}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  return named !== date;
 }
 
 export function mapEvent(ev: CcEvent, now = new Date()): MappedEvent | null {
@@ -141,7 +157,13 @@ export function mapEvent(ev: CcEvent, now = new Date()): MappedEvent | null {
     date: local?.date ?? null,
     startTime: local?.time ?? null,
     location,
-    status: label.includes('cancel') ? 'cancelled' : held ? 'held' : 'scheduled',
+    status: label.includes('cancel')
+      ? 'cancelled'
+      : unconfirmedCopy(name, local?.date ?? null, Boolean(ev.agendaId), (ev.publishedFiles ?? []).length)
+        ? 'unconfirmed'
+        : held
+          ? 'held'
+          : 'scheduled',
     sourceId: CC_SOURCE,
     sourceUrl: parentUrl,
     externalId: String(ev.id),

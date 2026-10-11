@@ -54,7 +54,7 @@ export async function scheduleAnswer(env: Env, question: string): Promise<Schedu
       .catch(() => []),
     env.CATALOG_DB.prepare(
       `SELECT id, title, meeting_date, start_time, location FROM meetings
-       WHERE coalesce(government_body_name, title) LIKE ? AND meeting_date >= ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%'
+       WHERE coalesce(government_body_name, title) LIKE ? AND meeting_date >= ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%' AND coalesce(status, '') != 'unconfirmed'
        ORDER BY meeting_date ASC, start_time ASC LIMIT 1`,
     )
       .bind(body.like, today)
@@ -121,7 +121,7 @@ export async function meetingsInFrame(env: Env, question: string, frame: TimeFra
   if (!onlyAhead && win.from < today) {
     const end = win.to < today ? win.to : addDay(today, -1);
     const r = await env.CATALOG_DB.prepare(
-      `SELECT count(DISTINCT substr(meeting_date, 1, 10)) AS n FROM meetings WHERE coalesce(government_body_name, title) LIKE ? AND substr(meeting_date, 1, 10) BETWEEN ? AND ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%'`,
+      `SELECT count(DISTINCT substr(meeting_date, 1, 10)) AS n FROM meetings WHERE coalesce(government_body_name, title) LIKE ? AND substr(meeting_date, 1, 10) BETWEEN ? AND ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%' AND coalesce(status, '') != 'unconfirmed'`,
     )
       .bind(body.like, win.from, end)
       .first<{ n: number }>()
@@ -192,7 +192,7 @@ export async function nextAgenda(env: Env, question: string): Promise<NextAgenda
   const meeting = schedule.meetingId
     ? { id: schedule.meetingId }
     : await env.CATALOG_DB.prepare(
-        `SELECT id FROM meetings WHERE coalesce(government_body_name, title) LIKE ? AND substr(meeting_date, 1, 10) = ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%' ORDER BY start_time ASC LIMIT 1`,
+        `SELECT id FROM meetings WHERE coalesce(government_body_name, title) LIKE ? AND substr(meeting_date, 1, 10) = ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%' AND coalesce(status, '') != 'unconfirmed' ORDER BY start_time ASC LIMIT 1`,
       )
         .bind(body.like, date)
         .first<{ id: string }>()

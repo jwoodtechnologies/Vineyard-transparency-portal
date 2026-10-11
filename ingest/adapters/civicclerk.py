@@ -7,6 +7,8 @@ publishedFiles[{fileId, type, name, url, publishOn}]. Files download from
 """
 from __future__ import annotations
 
+import re
+
 from datetime import datetime, timedelta, timezone
 from typing import Iterator
 from urllib.parse import quote
@@ -56,6 +58,20 @@ def walk_attachments(items: list) -> Iterator[tuple[dict, dict]]:
                     yield it, att
         yield from walk_attachments(it.get("childItems") or it.get("items") or [])
 
+
+
+def unconfirmed_copy(name: str, date: str | None, has_agenda: bool, file_count: int) -> bool:
+    """A CivicClerk entry naming a different date than it is set on, with no agenda and no files
+    (copies like "Active Transportation Commission Meeting 12-09-2025" set on Dec 8, 2026). The city's
+    date is kept, but the meeting is unconfirmed until a notice or agenda is posted (same rule as
+    worker/lib/civicclerk.ts unconfirmedCopy)."""
+    if not date or has_agenda or file_count > 0:
+        return False
+    m = re.search(r"\b(\d{1,2})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{4}|\d{2})\b", name)
+    if not m:
+        return False
+    y = m.group(3) if len(m.group(3)) == 4 else f"20{m.group(3)}"
+    return f"{y}-{int(m.group(1)):02d}-{int(m.group(2)):02d}" != date
 
 class CivicClerkAdapter(SourceAdapter):
     source_id = "vineyard-civicclerk-meetings"
@@ -126,7 +142,7 @@ class CivicClerkAdapter(SourceAdapter):
                     "date": date_str,
                     "startTime": local.strftime("%H:%M") if local else None,
                     "location": location,
-                    "status": "cancelled" if "cancel" in f"{name} {agenda_name}".lower() else "held" if dt_utc and dt_utc < now else "scheduled",
+                    "status": "cancelled" if "cancel" in f"{name} {agenda_name}".lower() else "unconfirmed" if unconfirmed_copy(name, date_str, bool(ev.get("agendaId")), len(ev.get("publishedFiles") or [])) else "held" if dt_utc and dt_utc < now else "scheduled",
                     "sourceId": self.source_id,
                     "sourceUrl": f"{PORTAL}/event/{int(ev['id'])}/files",
                     "externalId": str(ev["id"]),

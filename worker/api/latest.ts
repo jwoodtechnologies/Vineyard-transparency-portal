@@ -31,7 +31,7 @@ export async function getLatest(env: Env): Promise<Response> {
     db
       .prepare(
         `SELECT id, slug, title, government_body_name, meeting_date, start_time, location, status, agenda_document_id, packet_document_id
-         FROM meetings WHERE meeting_date >= ? AND meeting_date <= ? AND status != 'cancelled' ORDER BY meeting_date, start_time LIMIT 8`,
+         FROM meetings WHERE meeting_date >= ? AND meeting_date <= ? AND status NOT IN ('cancelled', 'unconfirmed') ORDER BY meeting_date, start_time LIMIT 8`,
       )
       .bind(today, shiftDays(today, 21))
       .all<Row>(),

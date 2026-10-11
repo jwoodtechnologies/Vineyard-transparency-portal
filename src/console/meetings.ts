@@ -130,7 +130,7 @@ export function meetingHref(m: Pick<MeetingSummary, 'id'>): string {
 }
 
 export const statusLabel = (m: Pick<MeetingSummary, 'status' | 'date'>, today: string): string | null =>
-  m.status === 'cancelled' ? 'Cancelled' : m.status === 'postponed' ? 'Postponed' : m.date >= today ? 'Upcoming' : null;
+  m.status === 'cancelled' ? 'Cancelled' : m.status === 'postponed' ? 'Postponed' : m.status === 'unconfirmed' ? 'Date not confirmed' : m.date >= today ? 'Upcoming' : null;
 
 /** Pull a readable agenda outline ("1. CALL TO ORDER", "3.1 Discussion of ...") out of agenda text. */
 export interface OutlineItem {

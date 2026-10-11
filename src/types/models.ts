@@ -224,7 +224,7 @@ export interface Meeting {
   date: ISODate;
   startTime: string | null;
   location: string | null;
-  status: 'scheduled' | 'held' | 'cancelled' | 'postponed' | 'unknown';
+  status: 'scheduled' | 'held' | 'cancelled' | 'postponed' | 'unconfirmed' | 'unknown';
   agendaDocumentId: string | null;
   packetDocumentId: string | null;
   minutesDocumentId: string | null;
