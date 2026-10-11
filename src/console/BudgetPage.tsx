@@ -296,7 +296,7 @@ function ProjectsTab({ b }: { b: Budget }) {
 
       <p className="vc-bud-total">
         {shown.length} {shown.length === 1 ? 'project' : 'projects'}, <b>{money(shownTotal)}</b>
-        {fund ? ` from ${nameOf(fund)}` : ` in all. General Fund share: ${money(general)} (${pct(general, allTotal, 0)})`}
+        {fund ? ` from ${nameOf(fund)}` : ` in the adopted budget. General Fund share: ${money(general)} (${pct(general, allTotal, 0)})`}
       </p>
       <ul className="vc-bud-projects">
         {(showAll || fund ? shown : shown.slice(0, FIRST)).map((p) => (
