@@ -34,6 +34,9 @@ on:
         type: choice
         default: "false"
         options: ["true", "false"]
+      only:
+        description: Run only these case ids (comma separated; model cases spend from the tests bucket)
+        default: ""
 
 permissions:
   contents: write
@@ -83,12 +86,15 @@ jobs:
           sleep 20
       - name: Run
         id: run
+        env:
+          ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.only || '' }}
         run: |
           set -uo pipefail
           if [[ "$FULL" == "true" ]]; then MODE=full; else MODE=deploy; fi
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           # The seed defaults to the UTC day number, which picks the day's group of model cases.
-          node scripts/chat-suite/run.mjs --base "$BASE" --mode "$MODE" --out chat-suite-results.json
+          if [[ -n "$ONLY" ]]; then MODE=full; fi
+          node scripts/chat-suite/run.mjs --base "$BASE" --mode "$MODE" ${ONLY:+--only "$ONLY"} --out chat-suite-results.json
       - name: Keep the results
         if: always()
         uses: actions/upload-artifact@v4
