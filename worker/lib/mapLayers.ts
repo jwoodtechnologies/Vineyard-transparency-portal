@@ -1,10 +1,12 @@
 /**
  * The city's public ArcGIS layers the portal serves, with the fields each may expose (no parcel
  * owner names or mailing addresses, no private business licenses), and the Utah County parcel
- * queries with their field allowlists. Pure: no Worker types, so the
+ * queries with their field allowlists. The one exception is the parcel card's owner line: read per
+ * tap and shown only when lib/ownerFilter.ts allows it. Pure: no Worker types, so the
  * Ask pipeline's place lookups and their tests can use it.
  */
 import { FY27_PROJECTS_WHERE } from './capitalPlan';
+import { deedYear, ownerDecision } from './ownerFilter';
 
 export const BASE = 'https://services.arcgis.com/QdlehUncXjEmQYtI/arcgis/rest/services/';
 /** The city's 2025 copy of the county parcel layer. */
@@ -72,7 +74,8 @@ export const MAP_LAYERS: MapLayerDef[] = [
     group: 'Land',
     // Outlines come from Utah County's current parcels as zoom 16 GeoJSON tiles with the parcel
     // number only (/api/map/parcels, see countyParcelTileUrl). The city's 2025 copy is the fallback
-    // if the county service is down. No owner names either way.
+    // if the county service is down. No owner names on the layer either way (the card's owner line
+    // comes from a separate per-tap query, see countyOwnerAtUrl).
     path: CITY_PARCELS_PATH,
     fields: ['PARCEL_NO', 'SITE_FULL_ADDRESS', 'ACREAGE', 'SUB_NAME', 'PROP_TYPE_DESCR', 'GLA_WEIGHTED_YRBLT', 'MKT_CUR_VALUE', 'TAX_DISTRICT_DESCR'],
     geometry: 'polygon',
@@ -158,8 +161,9 @@ const LOOKUPS = new Map<string, MapLayerDef>([
 export const COUNTY_PARCELS_MAPSERVER = 'https://maps200.utahcounty.gov/arcgis/rest/services/Parcels/Parcel_TaxParcelPUMA/MapServer';
 /**
  * Layer 2 of that service ("OwnerParcel with Label"): current parcel polygons with no scale limit.
- * It also holds owner names and mailing addresses, so every query names its fields and every
- * response is stripped to an allowlist in the Worker, whatever the county sends back.
+ * It also holds owner names (OWNER_NAME) and mailing addresses (OWN_FULL_ADDRESS), so every query
+ * names its fields and every response is stripped to an allowlist in the Worker, whatever the county
+ * sends back. OWNER_NAME is read only by the per-tap owner query and passes the owner filter first.
  */
 export const COUNTY_PARCEL_LAYER = 2;
 /** Fields the outline tiles may carry. */
@@ -241,6 +245,21 @@ export function countyParcelAtUrl(lng: number, lat: number): string {
   return `${COUNTY_PARCELS_MAPSERVER}/${COUNTY_PARCEL_LAYER}/query?${pointQuery(lng, lat, PARCEL_CARD_FIELDS, true)}`;
 }
 
+/**
+ * Fields of the per-tap owner query. OWNER_NAME is the county's owner field; VESTING_DOC gives the
+ * year the vesting deed was recorded. Never OWN_FULL_ADDRESS (the mailing address).
+ */
+export const OWNER_QUERY_FIELDS = ['PARCEL_NO', 'OWNER_NAME', 'VESTING_DOC'] as const;
+
+/**
+ * County query for the owner of the parcel under a point (no shape). Read once per tap with no
+ * upstream caching (the route fetches it with cache: 'no-store'); the raw name never leaves the Worker
+ * unless ownerDecision (lib/ownerFilter.ts) allows it.
+ */
+export function countyOwnerAtUrl(lng: number, lat: number): string {
+  return `${COUNTY_PARCELS_MAPSERVER}/${COUNTY_PARCEL_LAYER}/query?${pointQuery(lng, lat, OWNER_QUERY_FIELDS, false)}`;
+}
+
 /** City 2025 parcel query at a point: parcel number, property type and year built, no shape. */
 export function cityParcelAtUrl(lng: number, lat: number): string {
   return `${BASE}${CITY_PARCELS_PATH}/query?${pointQuery(lng, lat, CITY_PARCEL_FIELDS, false)}`;
@@ -292,13 +311,47 @@ export interface ParcelCard {
   /** Which of `properties` came from the city's 2025 parcel layer (the rest are current county records). */
   city: string[];
   geometry: unknown;
+  /**
+   * The owner from the county record, only when ownerDecision allows it (an entity, and not a home
+   * unless a government or an HOA owns it). Absent otherwise, with nothing in its place.
+   */
+  owner?: ParcelOwner;
+}
+
+export interface ParcelOwner {
+  name: string;
+  /** The date the county record was read (YYYY-MM-DD). */
+  asOf: string;
+  /** The year the vesting deed was recorded, when the county's document number gives it. */
+  deedYear?: number;
+}
+
+/**
+ * The owner line for a card, or undefined. Reads only the owner feature with the card's own parcel
+ * number, and the property type from the city layer only for that same number (no number, or a
+ * different one, means the type is unknown and only a government or an HOA can be shown).
+ */
+export function parcelOwner(owner: unknown, parcelNo: string, propType: unknown, subName: unknown, today: string): ParcelOwner | undefined {
+  if (!parcelNo) return undefined;
+  const feats = (owner as { features?: unknown } | null)?.features;
+  if (!Array.isArray(feats)) return undefined;
+  const props = (feats as GeoFeature[]).map((f) => (f && typeof f === 'object' ? (f.properties ?? {}) : {}));
+  // Exactly one record for this parcel number; anything else is left out.
+  const same = props.filter((p) => String(p.PARCEL_NO ?? '').trim() === parcelNo);
+  if (same.length !== 1) return undefined;
+  const p = same[0];
+  const d = ownerDecision({ owner: p.OWNER_NAME, propType, subName });
+  if (!d.show) return undefined;
+  const year = deedYear(p.VESTING_DOC);
+  return { name: d.name, asOf: today, ...(year ? { deedYear: year } : {}) };
 }
 
 /**
  * The parcel card for a point: current county fields, plus property type and year built from the
- * city's 2025 layer when it names the same parcel. Only allowlisted fields can appear.
+ * city's 2025 layer when it names the same parcel, plus the owner when the owner filter allows it.
+ * Only allowlisted fields can appear.
  */
-export function parcelCard(county: unknown, city: unknown): ParcelCard {
+export function parcelCard(county: unknown, city: unknown, owner: unknown = null, today = new Date().toISOString().slice(0, 10)): ParcelCard {
   const c = stripFeatures((county as { features?: unknown } | null)?.features, PARCEL_CARD_FIELDS)[0];
   if (!c) return { found: false, properties: {}, city: [], geometry: null };
   const properties: Record<string, string | number> = {};
@@ -313,7 +366,9 @@ export function parcelCard(county: unknown, city: unknown): ParcelCard {
   for (const k of ['SITE_FULL_ADDRESS', 'PARCEL_NO', 'ACREAGE', 'SUB_NAME'] as const) put(k, c.properties[k]);
   for (const k of ['PROP_TYPE_DESCR', 'GLA_WEIGHTED_YRBLT'] as const) if (match && put(k, match.properties[k])) cityKeys.push(k);
   for (const k of ['MKT_CUR_VALUE', 'TAX_DISTRICT_DESCR'] as const) put(k, c.properties[k]);
-  return { found: true, properties, city: cityKeys, geometry: c.geometry };
+  const sameNo = no ? stripFeatures((city as { features?: unknown } | null)?.features, CITY_PARCEL_FIELDS).find((f) => String(f.properties.PARCEL_NO ?? '').trim() === no) : undefined;
+  const o = parcelOwner(owner, no, sameNo?.properties.PROP_TYPE_DESCR, c.properties.SUB_NAME, today);
+  return { found: true, properties, city: cityKeys, geometry: c.geometry, ...(o ? { owner: o } : {}) };
 }
 
 /**

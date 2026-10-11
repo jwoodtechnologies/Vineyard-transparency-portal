@@ -1,6 +1,8 @@
 # Read-only diagnostics for maintainers who cannot reach the city sites directly.
 # Saves copies of source pages and API responses, or the log of a short crawl, to the
 # `diagnostics` branch (diag/<run id>/). Never touches main. Start it from the Actions tab.
+# owner-filter: counts of parcel owners the map card would show or withhold (no withheld names
+# anywhere), with 30 random shown names, in diag/<run id>/owner-filter.json.
 name: Diagnostics
 
 on:
@@ -10,7 +12,7 @@ on:
         description: What to capture
         type: choice
         default: fixtures
-        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf]
+        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf, owner-filter]
       urls:
         description: Extra URLs to save (space separated, optional)
         default: ""
@@ -36,11 +38,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf'
+        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf' && inputs.task != 'owner-filter'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-ingest.txt
+      # Node 24 runs the Worker's TypeScript owner filter as is (type stripping), for owner-filter.
+      - uses: actions/setup-node@v4
+        if: inputs.task == 'owner-filter'
+        with:
+          node-version: 24
       - name: Capture
         run: |
           set -uo pipefail
@@ -103,6 +110,10 @@ jobs:
             PERF=(node scripts/perf/perf.mjs --base https://vineyardportal.org --runs 3 --pw "$PW/node_modules/playwright/index.mjs")
             "${PERF[@]}" --out "$OUT/perf.json" > "$OUT/perf.txt" 2>&1 || echo "exit=$?" >> "$OUT/perf.txt"
             "${PERF[@]}" --desktop --out "$OUT/perf-desktop.json" > "$OUT/perf-desktop.txt" 2>&1 || echo "exit=$?" >> "$OUT/perf-desktop.txt"
+          elif [[ "$TASK" == "owner-filter" ]]; then
+            # Every Vineyard parcel through worker/lib/ownerFilter.ts. Writes counts by reason and 30 random
+            # SHOWN names only; withheld names are never printed or written (scripts/owner-filter/run.mjs).
+            node scripts/owner-filter/run.mjs --out "$OUT/owner-filter.json" > "$OUT/owner-filter.txt" 2>&1 || echo "exit=$?" >> "$OUT/owner-filter.txt"
           elif [[ "$TASK" == "map-perf" ]]; then
             # Parcel lines on /map at zoom 12 to 15 on the phone profile: bytes over the wire and time until drawn.
             PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"

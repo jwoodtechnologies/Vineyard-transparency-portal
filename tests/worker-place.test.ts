@@ -90,7 +90,7 @@ describe('resolving a spot from the city roads layer', () => {
 
     const a = placeAnswer(intent, p);
     expect(a.map.href).toBe('/map?lat=40.301&lng=-111.75&z=17&label=Vineyard+Connector+and+Main+St&layers=parcels');
-    expect(a.text).toBe('The map below is centered where Vineyard Connector and Main St meet, with parcel outlines shown. The portal map does not list owners. Ownership is in the Utah County parcel records.');
+    expect(a.text).toBe('The map below is centered where Vineyard Connector and Main St meet, with parcel outlines shown. The portal does not show owners of homes or individuals. For land held by a company, church or government, tap the parcel on the map to see the owner from the Utah County parcel records.');
     expect(a.text).not.toMatch(/[–—]/);
   });
 
@@ -100,7 +100,7 @@ describe('resolving a spot from the city roads layer', () => {
     expect(p).toBeNull();
     const a = placeAnswer(intent, p);
     expect(a.text).toMatch(/^That location could not be found on the city's map layers\./);
-    expect(a.text).toMatch(/Ownership is in the Utah County parcel records\.$/);
+    expect(a.text).toMatch(/does not show owners of homes or individuals\. .*Utah County parcel records\.$/);
     expect(a.map.href).toBe('/map?layers=parcels');
   });
 

@@ -7,14 +7,15 @@
  * edge caching, so the Worker does almost no CPU work and the city's servers see one request per
  * layer page per cache period, not one per visitor. Utah County's current parcels come through as
  * zoom 16 GeoJSON tiles with the parcel number only, and a point lookup for the parcel card, both
- * stripped to field allowlists here (never owner names or mailing addresses). For the city-wide view
+ * stripped to field allowlists here (never mailing addresses; an owner name only on the card, only
+ * when lib/ownerFilter.ts finds an entity, and on a home only a government or an HOA). For the city-wide view
  * (zoom 12 to 15) a prebuilt, generalized set of parcel lines is served from R2 (geometry only).
  */
 import type { Env } from '../env';
 import { API_SECURITY_HEADERS, badRequest, HttpError, json, notFound, readJson } from '../lib/http';
 import { checkParcelLines, isParcelLineLevel, PARCEL_LINES_MAX_BYTES, parcelLinesKey } from '../lib/parcelLines';
 import { budgetForFeature } from '../lib/capitalPlan';
-import { BASE, byKey, cityParcelAtUrl, COUNTY_PAGE, countyParcelAtUrl, countyParcelTileUrl, MAP_LAYERS, PARCEL_TILE_PAGES, parcelCard, parcelPoint, parcelTileBody, type MapLayerDef } from '../lib/mapLayers';
+import { BASE, byKey, cityParcelAtUrl, COUNTY_PAGE, countyOwnerAtUrl, countyParcelAtUrl, countyParcelTileUrl, MAP_LAYERS, PARCEL_TILE_PAGES, parcelCard, parcelPoint, parcelTileBody, type MapLayerDef } from '../lib/mapLayers';
 
 export { MAP_LAYERS, type MapLayerDef };
 
@@ -122,15 +123,37 @@ export async function getParcelOutlines(z: string, x: string, yJson: string): Pr
 }
 
 /**
+ * The county owner record under a point, read once per tap and never stored upstream: no Cloudflare
+ * fetch cache (cache: 'no-store', no cf options), so the raw owner name is in no cache body or key.
+ * Any failure is null, with nothing logged (an error could carry the response text).
+ */
+async function ownerJson(url: string): Promise<unknown> {
+  try {
+    const res = await fetch(url, { headers: { accept: 'application/geo+json, application/json', 'user-agent': UA }, cache: 'no-store' });
+    if (!res.ok) {
+      void res.body?.cancel();
+      return null;
+    }
+    const data = (await res.json()) as { error?: unknown; features?: unknown } | null;
+    return data && !data.error && Array.isArray(data.features) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * GET /api/map/parcel?lng=..&lat=.. → the parcel card for the parcel under a point: current Utah
- * County fields (allowlisted) and, from the city's 2025 parcel layer, property type and year built.
+ * County fields (allowlisted), from the city's 2025 parcel layer property type and year built, and
+ * the owner only when lib/ownerFilter.ts allows it (an entity, and on a home only a government or an
+ * HOA). The owner name is classified here in the Worker; the body (which the edge may keep) holds
+ * only the allowed name, never the raw county value, a withheld name or the mailing address.
  */
 export async function getParcelAt(url: URL): Promise<Response> {
   const pt = parcelPoint(Number(url.searchParams.get('lng') ?? ''), Number(url.searchParams.get('lat') ?? ''));
   if (!url.searchParams.get('lng') || !url.searchParams.get('lat') || !pt) throw new HttpError(400, 'bad_request', 'Give a point in Vineyard as lng and lat.');
-  const [county, city] = await Promise.all([arcgisJson(countyParcelAtUrl(pt[0], pt[1])), arcgisJson(cityParcelAtUrl(pt[0], pt[1]))]);
+  const [county, city, owner] = await Promise.all([arcgisJson(countyParcelAtUrl(pt[0], pt[1])), arcgisJson(cityParcelAtUrl(pt[0], pt[1])), ownerJson(countyOwnerAtUrl(pt[0], pt[1]))]);
   if (!county) throw new HttpError(502, 'backend_unavailable', 'The county parcel records did not respond. Try again shortly.');
-  return json(parcelCard(county, city), { cache: DAY });
+  return json(parcelCard(county, city, owner), { cache: DAY });
 }
 
 /**

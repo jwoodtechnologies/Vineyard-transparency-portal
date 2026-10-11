@@ -1293,11 +1293,11 @@
       "question": "Who owns the parcel at Vineyard Connector and Main Street?",
       "mustContain": [
         {
-          "text": "does not list owners",
+          "text": "does not show owners of homes or individuals",
           "kind": "behavior",
           "source": {
             "file": "worker/ai/place.ts",
-            "note": "the parcel layer has no owner fields; answers never name an owner"
+            "note": "chat never names an owner; the map card shows entity owners only (worker/lib/ownerFilter.ts)"
           }
         }
       ],

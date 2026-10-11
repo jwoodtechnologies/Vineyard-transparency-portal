@@ -220,7 +220,7 @@ const LABEL: Record<string, string> = {
   planned_construction_year: 'Planned construction year (UDOT)',
 };
 
-const HIDE = new Set(['OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Length', '__c', '__label', '__src', '__loading', 'CULDESAC', 'SITE_STATE']);
+const HIDE = new Set(['OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Length', '__c', '__label', '__src', '__loading', '__owner', 'CULDESAC', 'SITE_STATE']);
 
 /** Parcel outline colors: yellow on imagery and dark maps, violet on the light streets map. */
 const parcelLine = (dark: boolean) => (dark ? '#ffd400' : '#7048e8');
@@ -233,6 +233,20 @@ interface ParcelCardResponse {
   properties: Record<string, string | number>;
   city: string[];
   geometry: Geometry | null;
+  /** Only when the Worker's owner filter allows it (an entity; on a home, a government or an HOA). */
+  owner?: ParcelOwner;
+}
+
+interface ParcelOwner {
+  name: string;
+  asOf: string;
+  deedYear?: number;
+}
+
+/** The allowed owner a parcel card carries (props.__owner), or null. */
+function ownerOf(p: Record<string, unknown>): ParcelOwner | null {
+  const o = p.__owner as Partial<ParcelOwner> | undefined;
+  return o && typeof o.name === 'string' && o.name && typeof o.asOf === 'string' ? (o as ParcelOwner) : null;
 }
 
 function fmt(key: string, v: unknown): string | null {
@@ -647,7 +661,7 @@ export default function MapPage() {
       clearHighlight(m);
     };
     getJson<ParcelCardResponse>(`/api/map/parcel?lng=${ll.lng.toFixed(6)}&lat=${ll.lat.toFixed(6)}`).then(
-      (r) => (r.found ? settle({ ...r.properties, __src: r.city.length ? 'county+city' : 'county' }, r.geometry) : no ? settle(fromLayer) : nothing()),
+      (r) => (r.found ? settle({ ...r.properties, __src: r.city.length ? 'county+city' : 'county', ...(r.owner ? { __owner: r.owner } : {}) }, r.geometry) : no ? settle(fromLayer) : nothing()),
       () => settle(fromLayer),
     );
   }, []);
@@ -1167,7 +1181,7 @@ export default function MapPage() {
                 })}
               </div>
             ))}
-            <p className="vc-panel-note">From the city&apos;s public GIS. Parcel lines from Utah County GIS. No owner names are shown.</p>
+            <p className="vc-panel-note">From the city&apos;s public GIS. Parcel lines from Utah County GIS. Owner names are shown only for companies, churches, HOAs and government, never for individuals; on a home, only a government or HOA owner.</p>
           </aside>
         )}
 
@@ -1256,6 +1270,20 @@ export default function MapPage() {
                     <dd>{v}</dd>
                   </div>
                 ))}
+              {picked.layer === 'parcels' && (() => {
+                // Shown only when the Worker allowed it; nothing at all otherwise.
+                const o = ownerOf(picked.props);
+                return o ? (
+                  <div data-wide="true">
+                    <dt>Owner (county record)</dt>
+                    <dd>
+                      {o.name}
+                      <br />
+                      <small>{[o.deedYear ? `Deed recorded ${o.deedYear}` : null, `county record as of ${formatDate(o.asOf)}`].filter(Boolean).join('; ').replace(/^c/, 'C')}</small>
+                    </dd>
+                  </div>
+                ) : null;
+              })()}
             </dl>
             {picked.layer === 'parcels' && (
               <p className="vc-map-note">

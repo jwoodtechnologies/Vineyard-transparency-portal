@@ -19,6 +19,12 @@ Scope: agendas, minutes, meeting packets, PDFs and financial documents from Vine
 | `vineyard-civicclerk-meetings` | "Government Meetings & Decisions" (vineyardut.portal.civicclerk.com, a CivicPlus product) | yes | `CivicClerkAdapter`: public API `vineyardut.api.civicclerk.com/v1/Events`, full history via `@odata.nextLink`. Meetings, public bodies, Agenda / Agenda Packet / Minutes files, video links |
 | `vineyard-municipal-code` | Code & Policies (vineyard.municipalcodeonline.com, CivicPlus codification) | no | The site serves its book content only to its own pages (a server-side same-site filter answers other requests with "Unauthorized Access"). The portal respects that and does not work around it. Its ordinances, resolutions and minutes are indexed where the city also publishes them (CivicClerk packets and vineyardutah.gov). |
 
+Map data (read live by the Worker for `/map`, not archived): the city's public ArcGIS layers and
+Utah County GIS parcels (`Parcels/Parcel_TaxParcelPUMA/MapServer/2`). From the county parcels the map
+uses outlines, parcel numbers and the card fields; the owner (`OWNER_NAME`) is read per tap and shown
+only for entities, never for individuals or a business-held home (rules in
+[SECURITY.md](SECURITY.md#privacy), code in `worker/lib/ownerFilter.ts`). Mailing addresses are never read.
+
 Out of scope and retired from the registry: Transparent Utah and the ArcGIS map viewer. Social
 share links, the Revize CMS login, Google Maps, ApplicantPro jobs, "Report a Concern" and calendar
 pages are never fetched.

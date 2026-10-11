@@ -5,8 +5,10 @@
  *
  * The spot comes only from the city's own GIS layers (the same allowlisted layers /map uses): two
  * named roads are looked up on the roads layer and the point where they meet is computed here; a
- * park or school from its layer; an address from the parcel layer's site address. The parcel layer
- * has no owner fields, so an answer never names an owner.
+ * park or school from its layer; an address from the parcel layer's site address. The lookup layers
+ * have no owner fields, so an answer never names an owner, for any parcel: the same sentence for every
+ * owner question, which neither names nor hints at who owns a home. The map's parcel card shows an
+ * entity owner (company, church, government, HOA) only when lib/ownerFilter.ts allows it.
  */
 import { layerQueryUrl } from '../lib/mapLayers';
 
@@ -333,6 +335,12 @@ export interface PlaceAnswer {
   map: { href: string; label: string; hint: string };
 }
 
+/**
+ * The one owner sentence, the same for every parcel: the chat never names an owner and never says
+ * whether a particular parcel's owner is shown (that would hint that a home's owner is a person).
+ */
+export const OWNER_NOTE = 'The portal does not show owners of homes or individuals. For land held by a company, church or government, tap the parcel on the map to see the owner from the Utah County parcel records.';
+
 /** The answer: where the map is centered and what it shows, and never an owner. */
 export function placeAnswer(intent: PlaceIntent, p: ResolvedPlace | null): PlaceAnswer {
   const parts: string[] = [];
@@ -346,6 +354,6 @@ export function placeAnswer(intent: PlaceIntent, p: ResolvedPlace | null): Place
   } else {
     parts.push(`That location could not be found on the city's map layers. The portal map below shows ${shows || 'the city layers'}.`);
   }
-  if (intent.owner) parts.push("The portal map does not list owners. Ownership is in the Utah County parcel records.");
+  if (intent.owner) parts.push(OWNER_NOTE);
   return { text: parts.join(' '), map: { href: mapHref(p, intent), label: p ? p.label : 'Open the city map', hint: p ? 'Open on map' : 'Portal map' } };
 }
