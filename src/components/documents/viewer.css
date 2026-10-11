@@ -1,0 +1,349 @@
+/*
+ * The record viewer (src/console/RecordViewer.tsx, src/components/documents/PdfViewer.tsx), on the console
+ * tokens (docs/DESIGN.md). Plain classes: the viewer never depends on a utility stylesheet being loaded.
+ */
+.vc-viewer-shell {
+  position: relative;
+  overflow: clip;
+  border: 1px solid var(--vc-line-2);
+  border-radius: var(--vc-radius-lg);
+  background: var(--vc-bg-2);
+}
+
+/* toolbar */
+.vc-vbar {
+  position: sticky;
+  top: var(--vc-topbar-h, 64px);
+  z-index: 6;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--vc-sp-2);
+  min-height: 3rem;
+  padding: var(--vc-sp-1) var(--vc-sp-2);
+  border-bottom: 1px solid var(--vc-line-2);
+  background: var(--vc-bg);
+  color: var(--vc-ink);
+  font-size: var(--vc-fs-ui);
+  line-height: var(--vc-lh-ui);
+}
+.vc-vbar-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+.vc-vbar-end {
+  margin-left: auto;
+}
+.vc-vbar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  padding-left: var(--vc-sp-2);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vc .vc-vbtn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: var(--vc-h-icon);
+  height: var(--vc-h-icon);
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--vc-radius-sm);
+  background: transparent;
+  color: var(--vc-ink);
+  font: inherit;
+  font-size: var(--vc-fs-ui);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.vc .vc-vbtn:hover:not(:disabled) {
+  background: var(--vc-bg-2);
+}
+.vc .vc-vbtn:disabled {
+  color: var(--vc-faint);
+  opacity: 0.45;
+  cursor: default;
+}
+.vc .vc-vbar-exit {
+  height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: var(--vc-ink);
+  color: var(--vc-bg);
+  font-weight: 650;
+}
+.vc .vc-vbar-exit:hover:not(:disabled) {
+  background: var(--vc-ink-2);
+}
+.vc-vbar-page {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--vc-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vc .vc-vbar-page input {
+  width: 3.25rem;
+  height: 2rem;
+  padding: 0 4px;
+  border: 1px solid var(--vc-line-2);
+  border-radius: var(--vc-radius-sm);
+  background: var(--vc-bg);
+  color: var(--vc-ink);
+  font: inherit;
+  font-size: 16px; /* 16 px: iPhone does not zoom the page when the box is tapped */
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.vc .vc-vbar-pct {
+  min-width: 3.4rem;
+  height: var(--vc-h-icon);
+  border: 0;
+  border-radius: var(--vc-radius-sm);
+  background: transparent;
+  color: var(--vc-muted);
+  font: inherit;
+  font-size: var(--vc-fs-sm);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.vc-vbar-show-sm {
+  display: none;
+}
+@media (max-width: 719px) {
+  .vc-vbar-show-sm {
+    display: inline;
+  }
+  .vc-vbar-hide-sm,
+  .vc .vc-vbtn.vc-vbar-hide-sm {
+    display: none;
+  }
+  .vc-vbar {
+    gap: var(--vc-sp-1);
+    padding: var(--vc-sp-1);
+  }
+  .vc .vc-vbtn {
+    padding: 0 6px;
+  }
+}
+
+/* the browser's own PDF viewer (computers) */
+.vc-pdf-frame {
+  display: block;
+  width: 100%;
+  height: calc(100dvh - var(--vc-topbar-h, 64px) - 3rem - 1px);
+  min-height: 520px;
+  border: 0;
+  background: var(--vc-bg-2);
+}
+
+/* pdf.js pages (phones, tablets) */
+.vc-pdf-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--vc-sp-3);
+  overflow-x: auto;
+  padding: var(--vc-sp-3) var(--vc-sp-2);
+  background: var(--vc-bg-2);
+}
+@media (min-width: 720px) {
+  .vc-pdf-pages {
+    gap: var(--vc-sp-4);
+    padding: var(--vc-sp-4);
+  }
+}
+.vc-pdf-page {
+  position: relative;
+  flex: none;
+  max-width: none;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(11, 11, 13, 0.08),
+    0 2px 8px rgba(11, 11, 13, 0.08);
+  /* The page is paper in both themes: the PDF's own colors, never inverted. */
+  color-scheme: light;
+  /* A page opened by number lands below the site header and the viewer toolbar. */
+  scroll-margin-top: calc(var(--vc-topbar-h, 64px) + 3.75rem);
+}
+.vc-viewer-shell[data-full='true'] .vc-pdf-page {
+  scroll-margin-top: var(--vc-sp-3);
+}
+.vc-pdf-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.vc-pdf-pageno {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #6e6f76;
+  font-size: var(--vc-fs-sm);
+  pointer-events: none;
+}
+.vc-pdf-loading {
+  width: min(100%, 680px);
+  aspect-ratio: 8.5 / 11;
+}
+.vc-pdf-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(11, 11, 13, 0.05) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: vc-pdf-shimmer 1.4s linear infinite;
+}
+@keyframes vc-pdf-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vc-pdf-shimmer {
+    animation: none;
+  }
+}
+
+/* images, files offered as a download, record text */
+.vc-viewer-image {
+  display: grid;
+  place-items: center;
+  padding: var(--vc-sp-3);
+}
+.vc-viewer-image img {
+  max-width: 100%;
+  max-height: 80vh;
+  height: auto;
+  border-radius: var(--vc-radius-sm);
+  background: #ffffff;
+}
+.vc-filecard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--vc-sp-2);
+  margin: var(--vc-sp-4);
+  padding: var(--vc-sp-5) var(--vc-sp-4);
+  border: 1px solid var(--vc-line-2);
+  border-radius: var(--vc-radius-md);
+  background: var(--vc-bg);
+  color: var(--vc-muted);
+  text-align: center;
+}
+.vc-filecard-kind {
+  margin: 0;
+  color: var(--vc-ink);
+  font-size: var(--vc-fs-lg);
+  font-weight: 600;
+}
+.vc-filecard-note {
+  max-width: 34rem;
+  margin: 0;
+  font-size: var(--vc-fs-body);
+  line-height: var(--vc-lh-body);
+  text-wrap: pretty;
+}
+.vc .vc-filecard-btn {
+  margin-top: var(--vc-sp-2);
+}
+.vc-viewer-body > .vc-textpages,
+.vc-viewer-body > .vc-empty,
+.vc-viewer-body > .vc-skeleton {
+  margin: var(--vc-sp-3);
+}
+.vc-viewer-note {
+  margin: 0 var(--vc-sp-4);
+  color: var(--vc-muted);
+  font-size: var(--vc-fs-sm);
+}
+
+/* full screen: a fixed layer over the whole screen, the toolbar on top, the record scrolls below it */
+.vc-viewer-shell[data-full='true'] {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+}
+.vc-viewer-shell[data-full='true'] .vc-vbar {
+  position: static;
+  flex: none;
+  padding-top: calc(env(safe-area-inset-top) + var(--vc-sp-1));
+}
+.vc-viewer-shell[data-full='true'] .vc-viewer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.vc-viewer-shell[data-full='true'] .vc-pdf-frame {
+  height: 100%;
+  min-height: 0;
+}
+
+/* print: the record, not the viewer chrome */
+@media print {
+  .vc-viewer-shell {
+    border: 0;
+    background: none;
+  }
+  .vc-pdf-pages {
+    padding: 0;
+    background: none;
+  }
+  .vc-pdf-frame {
+    display: none;
+  }
+}
+
+/* The record page header stays short so the first page shows without scrolling: one row of actions,
+   swiped sideways on a phone instead of wrapping into a tall block. */
+.vc {
+  --vc-topbar-h: 65px;
+}
+@media (max-width: 640px) {
+  .vc {
+    --vc-topbar-h: 57px;
+  }
+  .vc .vc-doc-head {
+    margin: var(--vc-sp-3) 0 var(--vc-sp-4);
+  }
+  .vc .vc-doc-head .vc-page-title {
+    margin-bottom: var(--vc-sp-3);
+    font-size: 1.6rem;
+  }
+  .vc .vc-doc-actions {
+    flex-wrap: nowrap;
+    margin: 0 calc(-1 * var(--vc-sp-4));
+    padding: 2px var(--vc-sp-4);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .vc .vc-doc-actions::-webkit-scrollbar {
+    display: none;
+  }
+  .vc .vc-doc-actions > * {
+    flex: none;
+  }
+}

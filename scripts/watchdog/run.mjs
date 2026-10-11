@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Watchdog (Node 20, no dependencies): opens a GitHub issue when a scheduled job, a source, the nightly
- * chat suite or the scheduled ingest workflow is failing, comments at most once a day while it stays
+ * chat suite, the nightly document check or the scheduled ingest workflow is failing, comments at most once a day while it stays
  * failing, and closes the issue when it recovers. Run by .github/workflows/watchdog.yml with the
  * workflow's own GITHUB_TOKEN (issues: write, actions: read). No other secret.
  *
@@ -76,8 +76,8 @@ async function openIssues() {
 
 async function main() {
   if (!token && !dry) throw new Error('GITHUB_TOKEN is not set.');
-  const [health, chat, ingest] = await Promise.all([readHealth(), runs('chat-suite.yml', 1), runs('ingest.yml', 20)]);
-  const items = evaluate({ health, chatRun: chat?.[0] ?? null, ingestRuns: ingest, repo, base, server });
+  const [health, chat, docCheck, ingest] = await Promise.all([readHealth(), runs('chat-suite.yml', 1), runs('doc-check.yml', 1), runs('ingest.yml', 20)]);
+  const items = evaluate({ health, chatRun: chat?.[0] ?? null, docRun: docCheck?.[0] ?? null, ingestRuns: ingest, repo, base, server });
   for (const i of items) if (i.failing) console.log(`Failing: ${i.title}`);
   await ensureLabel();
   const actions = plan(items, await openIssues(), Date.now(), Boolean(health));

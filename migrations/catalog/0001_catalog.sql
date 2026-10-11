@@ -257,3 +257,12 @@ CREATE TABLE IF NOT EXISTS issue_reports (
   context_json TEXT NOT NULL,
   received_at TEXT NOT NULL
 );
+
+-- Old record ids: a record folded into another (new_id) or taken out of the archive (new_id NULL, reason).
+-- GET /api/documents/:id follows it, so old links open the current record (worker/lib/redirects.ts).
+CREATE TABLE IF NOT EXISTS document_redirects (
+  old_id TEXT PRIMARY KEY,
+  new_id TEXT,
+  reason TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);

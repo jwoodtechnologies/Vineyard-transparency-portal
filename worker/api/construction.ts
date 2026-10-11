@@ -19,7 +19,29 @@ interface Parsed {
   heading: string | null;
   glance: GlanceTable | null;
   text: string;
-  documents: Array<{ url: string; label: string; group: string | null }>;
+  documents: Array<{ url: string; label: string; group: string | null; documentId?: string }>;
+}
+
+/**
+ * The archive's record for each linked city file, so the page opens it in the portal's own viewer. The city
+ * adds a changing ?t= stamp to its file links, so the address is matched without its query.
+ */
+async function withRecordIds(env: Env, docs: Parsed['documents']): Promise<Parsed['documents']> {
+  const found = await Promise.all(
+    docs.slice(0, 80).map(async (d) => {
+      const bare = d.url.replace(/[?#].*$/, '');
+      if (!/^https:\/\//.test(bare)) return null;
+      const row = await env.CATALOG_DB.prepare(
+        `SELECT d.id FROM documents d WHERE d.original_url = ? OR d.original_url = ? OR d.original_url LIKE ?
+         UNION SELECT ds.document_id FROM document_sources ds WHERE ds.source_url = ? OR ds.source_url LIKE ? LIMIT 1`,
+      )
+        .bind(d.url, bare, `${bare}?%`, d.url, `${bare}?%`)
+        .first<{ id: string }>()
+        .catch(() => null);
+      return row?.id ?? null;
+    }),
+  );
+  return docs.map((d, i) => (found[i] ? { ...d, documentId: found[i]! } : d));
 }
 
 /** A stored version, parsed with the current parser when its HTML was kept (so parser fixes apply to old copies). */
@@ -71,7 +93,7 @@ export async function getConstruction(env: Env): Promise<Response> {
       heading: best.heading,
       glance: best.glance,
       text: best.text,
-      documents: best.documents,
+      documents: await withRecordIds(env, best.documents),
       versions: snap.versions,
     },
     { cache: 'public, max-age=120' },

@@ -2145,17 +2145,6 @@ a.vc-card:hover {
   letter-spacing: 0.08em;
   font-size: var(--vc-fs-micro);
 }
-.vc-viewer {
-  overflow: hidden;
-  border-radius: 20px;
-  border: 1px solid var(--vc-line);
-  background: var(--vc-surface-2);
-}
-.vc-viewer-wait {
-  height: 70vh;
-  border-radius: 20px;
-  background: var(--vc-surface-2);
-}
 .vc-textpages {
   display: grid;
   gap: 0.8rem;
@@ -3497,102 +3486,6 @@ html.vc-locked .vc-landing {
   text-decoration: none;
 }
 
-/* documents: real full screen */
-.vc-viewer-shell {
-  position: relative;
-}
-.vc-full-open {
-  position: absolute;
-  top: 0.55rem;
-  right: 0.6rem;
-  z-index: 5;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  height: 2.2rem;
-  padding: 0 0.85rem;
-  border: 1px solid var(--vc-line-2);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--vc-bg) 92%, transparent);
-  box-shadow: var(--vc-shadow-sm);
-  color: var(--vc-ink);
-  font: inherit;
-  font-size: var(--vc-fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-  backdrop-filter: blur(10px);
-}
-.vc-viewer-shell[data-full='true'] {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  display: flex;
-  flex-direction: column;
-  width: 100vw;
-  height: 100dvh;
-  background: var(--vc-bg);
-}
-.vc-viewer-shell[data-full='true'] > .vc-viewer,
-.vc-viewer-shell[data-full='true'] > .vc-textpages,
-.vc-viewer-shell[data-full='true'] > .vc-viewer-wait {
-  flex: 1;
-  min-height: 0;
-  height: auto;
-  overflow: auto;
-  border: 0;
-  border-radius: 0;
-  -webkit-overflow-scrolling: touch;
-}
-.vc-viewer-shell[data-full='true'] > .vc-viewer > * {
-  height: 100%;
-}
-.vc-viewer-shell[data-full='true'] > .vc-textpages {
-  padding: 1rem;
-}
-.vc-full-bar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.75rem;
-  padding: calc(env(safe-area-inset-top) + 0.5rem) 0.75rem 0.5rem 1rem;
-  border-bottom: 1px solid var(--vc-line);
-  background: var(--vc-bg);
-}
-.vc-full-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-size: var(--vc-fs-ui);
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.vc-full-exit {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 0.4rem;
-  height: 2.6rem;
-  padding: 0 1.05rem;
-  border: 0;
-  border-radius: 999px;
-  background: var(--vc-ink);
-  color: var(--vc-bg);
-  font: inherit;
-  font-size: var(--vc-fs-ui);
-  font-weight: 650;
-  cursor: pointer;
-}
-@media (max-width: 640px) {
-  .vc-full-open span {
-    display: none;
-  }
-  .vc-full-open {
-    width: 2.4rem;
-    padding: 0;
-    justify-content: center;
-  }
-}
 
 /* Action bubbles under an answer */
 .vc-quick { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
@@ -4824,8 +4717,6 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 /* Records added on the portal: the collection label, shown wherever the record is. */
 .vc-source-label { display: inline-flex; align-self: flex-start; margin: 4px 0 0; padding: 2px 8px; border-radius: 999px; background: var(--vc-accent-soft); color: var(--vc-accent); font-size: 11.5px; font-weight: 600; line-height: 1.5; letter-spacing: 0.01em; }
 .vc-doc-source { margin: 10px 0 0; font-size: var(--vc-fs-xs); }
-.vc-viewer-image { display: grid; place-items: center; padding: 12px; background: var(--vc-bg-2); }
-.vc-viewer-image img { max-width: 100%; max-height: 80vh; height: auto; border-radius: 8px; }
 
 /* /add : Submit a public record */
 .vc-add-lede { margin: 10px 0 0; color: var(--vc-muted); font-size: var(--vc-fs-body); line-height: 1.5; max-width: 60ch; }
@@ -5136,8 +5027,7 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
   .vc-csv-row,
   .vc-sh-chev,
   .vc-board-chev,
-  .vc-full-bar,
-  .vc-full-open,
+  .vc-vbar,
   .maplibregl-map,
   .vc button,
   .vc-primary,

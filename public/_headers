@@ -2,6 +2,10 @@
 # Every page (/, /index.html, every client route served by the single-page fallback) and /theme-init.js is
 # revalidated on each load (no-cache, max-age=0, must-revalidate), so a deploy is seen at once. Unhashed files
 # (icons, the manifest) revalidate too, with a 304 when unchanged. worker/lib/edgeCache.ts applies the same.
+# Record viewer (src/console/DocumentView.tsx): 'wasm-unsafe-eval' lets pdf.js compile its WebAssembly image
+# decoders (scanned pages, JBIG2 and JPEG 2000; it allows WebAssembly only, never JavaScript eval); the two
+# CivicClerk hosts let a phone read a meeting file the portal holds no copy of (CivicClerk refuses Cloudflare);
+# frame-src 'self' shows a PDF in the browser's own viewer from the portal's file route.
 /*
   Strict-Transport-Security: max-age=15552000
   X-Content-Type-Options: nosniff
@@ -9,7 +13,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://basemap.nationalmap.gov https://gisaerials.utahcounty.gov; worker-src 'self' blob:; frame-src 'self' https://www.facebook.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://basemap.nationalmap.gov https://gisaerials.utahcounty.gov https://vineyardut.api.civicclerk.com https://civicclerk.blob.core.windows.net; worker-src 'self' blob:; frame-src 'self' https://www.facebook.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Cache-Control: no-cache, max-age=0, must-revalidate
 
 # Hashed build output never changes under its name: kept a year. "!" drops the rule above for these paths.

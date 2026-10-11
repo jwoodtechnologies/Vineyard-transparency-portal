@@ -1,4 +1,6 @@
 import { fileURLToPath, URL } from 'node:url';
+import { createReadStream, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -78,8 +80,53 @@ function fastStart(): Plugin {
   };
 }
 
+/**
+ * pdf.js data files: the standard fonts (PDFs that name Helvetica or Times without embedding them), the Adobe
+ * character maps (Asian text), the ICC color profile and the WebAssembly decoders (JBIG2 and JPEG 2000 scans:
+ * without them a scanned page draws only its faint background). Copied from pdfjs-dist under
+ * /assets/pdfjs-<version>/ (immutable, like every hashed asset; the version is in the path), and served the same
+ * way by the dev server. src/components/documents/pdfAssets.ts points pdf.js at them.
+ */
+function pdfjsAssets(): Plugin {
+  const root = fileURLToPath(new URL('./node_modules/pdfjs-dist/', import.meta.url));
+  const version = (JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { version: string }).version;
+  const base = `assets/pdfjs-${version}`;
+  const keep = (dir: string, name: string) => (dir === 'wasm' ? /\.wasm$|_nowasm_fallback\.js$/.test(name) && !name.startsWith('quickjs') : !/^LICENSE/.test(name));
+  const files = () =>
+    ['cmaps', 'standard_fonts', 'wasm', 'iccs'].flatMap((dir) =>
+      readdirSync(join(root, dir))
+        .filter((name) => keep(dir, name))
+        .map((name) => ({ path: `${dir}/${name}`, abs: join(root, dir, name) })),
+    );
+  const TYPES: Record<string, string> = { '.wasm': 'application/wasm', '.js': 'text/javascript' };
+  return {
+    name: 'vtp-pdfjs-assets',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? '').split('?')[0];
+        const prefix = `/${base}/`;
+        if (!path.startsWith(prefix)) return next();
+        const rel = decodeURIComponent(path.slice(prefix.length));
+        const [dir, name] = rel.split('/');
+        if (!dir || !name || rel.includes('..') || !keep(dir, name)) return next();
+        const abs = join(root, dir, name);
+        try {
+          statSync(abs);
+        } catch {
+          return next();
+        }
+        res.setHeader('content-type', TYPES[name.slice(name.lastIndexOf('.'))] ?? 'application/octet-stream');
+        createReadStream(abs).pipe(res);
+      });
+    },
+    generateBundle() {
+      for (const f of files()) this.emitFile({ type: 'asset', fileName: `${base}/${f.path}`, source: readFileSync(f.abs) });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), fastStart()],
+  plugins: [react(), tailwindcss(), fastStart(), pdfjsAssets()],
   // The client's own build id (src/console/api.ts): a new build discards the API copies kept on the device.
   define: { __VTP_BUILD__: JSON.stringify(BUILD_ID) },
   resolve: {

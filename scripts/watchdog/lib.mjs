@@ -7,6 +7,8 @@
  *     recovered below that (the counter only drops on a success);
  *   - the nightly chat suite (the newest scheduled run of chat-suite.yml): failing when it failed,
  *     recovered when it passed;
+ *   - the nightly document check (the newest scheduled run of doc-check.yml): failing when it failed,
+ *     recovered when it passed;
  *   - the scheduled ingest workflow (ingest.yml): failing after 3 failed scheduled runs in a row,
  *     recovered below that. Cancelled and skipped runs are not counted.
  * Issues: one open issue per failing item, found by label and exact title. A still-failing item gets at
@@ -67,10 +69,11 @@ function rowItem(row, kind, base) {
 
 /**
  * Every watched item. `health` is the /api/health/jobs body (null when it could not be read);
- * `chatRun` the newest completed scheduled chat suite run (null when unknown); `ingestRuns` the
+ * `chatRun` the newest completed scheduled chat suite run (null when unknown); `docRun` the same for the
+ * document check; `ingestRuns` the
  * newest completed scheduled ingest runs, newest first (null when unknown).
  */
-export function evaluate({ health, chatRun, ingestRuns, repo, base, server = 'https://github.com' }) {
+export function evaluate({ health, chatRun, docRun = null, ingestRuns, repo, base, server = 'https://github.com' }) {
   const items = [];
   if (health) {
     for (const row of health.jobs ?? []) items.push(rowItem(row, 'job', base));
@@ -89,6 +92,22 @@ export function evaluate({ health, chatRun, ingestRuns, repo, base, server = 'ht
         `- Run: ${chatRun.html_url ?? `${server}/${repo}/actions/runs/${chatRun.id}`}`,
         `- Started: ${stamp(chatRun.run_started_at ?? chatRun.created_at)}`,
         `- Results: ${server}/${repo}/blob/diagnostics/suite/${chatRun.id}/results.json`,
+      ].join('\n'),
+    });
+  }
+  if (docRun) {
+    const failed = FAILED.has(docRun.conclusion);
+    const ok = docRun.conclusion === 'success';
+    items.push({
+      key: 'doc-check',
+      title: 'Watchdog: document check failing',
+      failing: failed ? true : ok ? false : null,
+      details: [
+        `The nightly document check run ${docRun.id} ended with: ${clean(docRun.conclusion)}. A record page showed a blank, faint or unstyled viewer, page text that does not match the record, or a linked record that does not open.`,
+        '',
+        `- Run (summary lists each failing record): ${docRun.html_url ?? `${server}/${repo}/actions/runs/${docRun.id}`}`,
+        `- Started: ${stamp(docRun.run_started_at ?? docRun.created_at)}`,
+        `- Report: ${server}/${repo}/blob/diagnostics/doc-check/${docRun.id}/report.json`,
       ].join('\n'),
     });
   }
@@ -134,7 +153,7 @@ export function plan(items, openIssues, now = Date.now(), complete = true) {
   }
   if (complete) {
     for (const i of openIssues) {
-      if (seen.has(i.title) || !/^Watchdog: (source )?\S+ failing$/.test(i.title) || /^Watchdog: (chat suite|ingest workflow) failing$/.test(i.title)) continue;
+      if (seen.has(i.title) || !/^Watchdog: (source )?\S+ failing$/.test(i.title) || /^Watchdog: (chat suite|document check|ingest workflow) failing$/.test(i.title)) continue;
       actions.push({ type: 'close', number: i.number, title: i.title, body: `${MARKER}\nNo longer listed at /api/health/jobs (${stamp(new Date(now).toISOString())}).` });
     }
   }

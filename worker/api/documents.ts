@@ -8,6 +8,12 @@ import { SearchRepository } from '../search/SearchRepository';
 import { topicById, topicSql } from '../../src/lib/recordTopics';
 import { applyAdoptions } from './records';
 import { storageFor, isArchiveKey, isResidentKey, type RangeRequest } from '../storage/StorageProvider';
+import { resolveMoved } from '../lib/redirects';
+import { robotsAllows } from '../sync/robots';
+import { PROXY_HOSTS, PROXY_MAX_BYTES } from '../../src/lib/documentFile';
+
+/** CivicClerk's file stream: tried, though CivicClerk usually refuses Cloudflare's network (the reader's browser then reads it). */
+const CIVICCLERK_API = /^https:\/\/vineyardut\.api\.civicclerk\.com\//i;
 
 /** Catalog-side WHERE clause for the shared filter vocabulary (alias `doc`). */
 export function catalogFilterSql(f: SearchFilters): { sql: string; params: unknown[] } {
@@ -84,10 +90,21 @@ export async function listDocuments(env: Env, url: URL, filters: SearchFilters):
   return json(body, { cache: CACHE.list });
 }
 
+/**
+ * One record by id or slug. An id no longer in the catalog follows worker/lib/redirects.ts: a record folded
+ * into another answers with that record (its own id, so the reader's address is corrected), and one taken out
+ * of the archive says why.
+ */
 async function getDocumentRow(env: Env, idOrSlug: string): Promise<Row> {
   const row = await env.CATALOG_DB.prepare('SELECT * FROM documents WHERE id = ? OR slug = ? LIMIT 1').bind(idOrSlug, idOrSlug).first<Row>();
-  if (!row) throw notFound();
-  return row;
+  if (row) return row;
+  const moved = await resolveMoved(env, idOrSlug);
+  if (moved?.kind === 'moved') {
+    const next = await env.CATALOG_DB.prepare('SELECT * FROM documents WHERE id = ?').bind(moved.id).first<Row>();
+    if (next) return next;
+  }
+  if (moved?.kind === 'removed') throw notFound(`This record was taken out of the archive. ${moved.reason}`);
+  throw notFound();
 }
 
 export async function getDocumentDetail(env: Env, request: Request, id: string): Promise<Response> {
@@ -256,9 +273,6 @@ async function civicClerkAttachmentUrl(agendaId: number, attachmentId: number): 
   return u && /^https:\/\/civicclerk\.blob\.core\.windows\.net\//.test(u) ? u : null;
 }
 
-/** Official hosts whose PDFs the portal may stream when it has no archived copy of its own. */
-const PROXY_HOSTS = /^https:\/\/(vineyardut\.api\.civicclerk\.com|s3[.-][a-z0-9-]*\.amazonaws\.com\/municipalcodeonline|s3\.amazonaws\.com\/municipalcodeonline|(www\.)?vineyardutah\.(gov|org)|cms3\.revize\.com)\//i;
-
 export async function getDocumentFile(env: Env, request: Request, id: string, url: URL): Promise<Response> {
   const row = await getDocumentRow(env, id);
   const docId = String(row.id);
@@ -279,16 +293,26 @@ export async function getDocumentFile(env: Env, request: Request, id: string, ur
     const original = String(row.original_url ?? '');
     // No archived copy yet: stream the official PDF through the portal (same origin, cached at the
     // edge) so it opens in the portal's own PDF viewer, exactly as published.
+    // Only government hosts (src/lib/documentFile.ts), only what their robots.txt allows, only PDFs, at most
+    // PROXY_MAX_BYTES; anything else opens at the city's own address.
     const att = original.match(/^https:\/\/vineyardut\.portal\.civicclerk\.com\/event\/\d+\/files#attachment-(\d+)-(\d+)$/);
-    const pdfSource = att ? await civicClerkAttachmentUrl(Number(att[2]), Number(att[1])) : PROXY_HOSTS.test(original) ? original : null;
-    if (!versionParam && /^application\/pdf/i.test(String(row.mime_type ?? '')) && pdfSource) {
+    const pdfSource = att ? await civicClerkAttachmentUrl(Number(att[2]), Number(att[1])) : PROXY_HOSTS.test(original) || CIVICCLERK_API.test(original) ? original : null;
+    const allowed = pdfSource ? await robotsAllows(env, pdfSource).catch(() => false) : false;
+    if (!versionParam && /^application\/pdf/i.test(String(row.mime_type ?? '')) && pdfSource && allowed) {
       const upstream = await fetch(pdfSource, {
         headers: { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)', ...(request.headers.get('range') ? { range: request.headers.get('range')! } : {}) },
         cf: att ? { cacheTtl: 3600 } : { cacheTtl: 86400, cacheEverything: true },
       } as RequestInit).catch(() => null);
-      if (upstream && (upstream.ok || upstream.status === 206)) {
+      const size = Number(upstream?.headers.get('content-range')?.split('/')[1] ?? upstream?.headers.get('content-length') ?? 0);
+      const type = upstream?.headers.get('content-type') ?? '';
+      const fits = !size || size <= PROXY_MAX_BYTES;
+      const isPdf = !type || /pdf|octet-stream|binary/i.test(type);
+      if (upstream && (upstream.ok || upstream.status === 206) && (!fits || !isPdf)) await upstream.body?.cancel().catch(() => undefined);
+      else if (upstream && (upstream.ok || upstream.status === 206)) {
         const h: Record<string, string> = {
           ...API_SECURITY_HEADERS,
+          // Shown in the portal's own viewer (a same-origin frame on desktop), like an archived copy.
+          'x-frame-options': 'SAMEORIGIN',
           'content-type': 'application/pdf',
           'cross-origin-resource-policy': 'same-origin',
           'cache-control': 'public, max-age=3600',

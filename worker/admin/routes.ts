@@ -31,6 +31,7 @@ import { ensureActivityTables } from '../panel/store';
 import { newSetupCode } from '../panel/auth';
 import { requireIngestAuth } from './auth';
 import { splitSql } from '../lib/sql';
+import { ensureRedirects, redirectStatement } from '../lib/redirects';
 import { exportPage, exportTables, pruneBackups, putBackup } from './backup';
 import { putParcelLines } from '../api/map';
 import { ensureSourceCounter, SOURCE_COUNTER_SET } from '../sync/jobHealth';
@@ -131,8 +132,14 @@ async function mergeDuplicateMeetings(env: Env): Promise<{ dated: number; merged
   const empties = await db
     .prepare("SELECT id, search_shard FROM documents WHERE source_id = 'vineyard-municipal-code' AND mime_type LIKE 'text/html%' AND document_type IN ('minutes','resolution','ordinance') AND coalesce(file_size, 0) < 200 LIMIT 2000")
     .all<{ id: string; search_shard: number | null }>();
+  if ((empties.results ?? []).length || (groups.results ?? []).length) await ensureRedirects(env);
   for (const e of empties.results ?? []) {
-    await db.batch([db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id)]);
+    await db.batch([
+      db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id),
+      db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id),
+      db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id),
+      redirectStatement(env, e.id, null, 'The code site entry had a title only, with no text or file.'),
+    ]);
     if (e.search_shard != null && repo.activeShards.includes(e.search_shard)) await repo.removeDocument(e.search_shard, e.id).catch(() => 0);
     merged++;
   }
@@ -148,6 +155,7 @@ async function mergeDuplicateMeetings(env: Env): Promise<{ dated: number; merged
         db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(dup.id),
         db.prepare('DELETE FROM document_relationships WHERE from_document_id = ? OR to_id = ?').bind(dup.id, dup.id),
         db.prepare('DELETE FROM documents WHERE id = ?').bind(dup.id),
+        redirectStatement(env, dup.id, keep.id, 'Another copy of the same meeting record.'),
       ]);
       if (dup.shard != null && repo.activeShards.includes(dup.shard)) await repo.removeDocument(dup.shard, dup.id).catch(() => 0);
       merged++;
@@ -1015,8 +1023,14 @@ async function pruneGis(env: Env, body: Json): Promise<Response> {
   const rows = await db.prepare("SELECT id, search_shard FROM documents WHERE source_id = 'vineyard-gis' AND title LIKE ?").bind(`${prefix}%`).all<{ id: string; search_shard: number | null }>();
   const stale = (rows.results ?? []).filter((r) => !keep.has(r.id));
   if (stale.length > 150) throw new HttpError(400, 'bad_request', 'Too many records would be removed; refusing.');
+  if (stale.length) await ensureRedirects(env);
   for (const e of stale) {
-    await db.batch([db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id)]);
+    await db.batch([
+      db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id),
+      db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id),
+      db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id),
+      redirectStatement(env, e.id, null, 'The project is not in the adopted budget, so its city map summary was taken out.'),
+    ]);
     if (e.search_shard != null && repo.activeShards.includes(e.search_shard)) await repo.removeDocument(e.search_shard, e.id).catch(() => 0);
   }
   return json({ ok: true, removed: stale.length });
@@ -1030,8 +1044,14 @@ async function withdrawTaxYears(env: Env, body: Json): Promise<Response> {
   let removed = 0;
   for (const y of years) {
     const rows = await db.prepare("SELECT id, search_shard FROM documents WHERE source_id = 'utah-county-tax-rates' AND document_type = 'tax_rate' AND title = ?").bind(`Utah County tax rates ${y}, Vineyard tax areas`).all<{ id: string; search_shard: number | null }>();
+    if ((rows.results ?? []).length) await ensureRedirects(env);
     for (const e of rows.results ?? []) {
-      await db.batch([db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id), db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id)]);
+      await db.batch([
+        db.prepare('DELETE FROM document_sources WHERE document_id = ?').bind(e.id),
+        db.prepare('DELETE FROM document_versions WHERE document_id = ?').bind(e.id),
+        db.prepare('DELETE FROM documents WHERE id = ?').bind(e.id),
+        redirectStatement(env, e.id, null, `The county had not set ${y} rates yet (it listed zeros), so the record was withdrawn.`),
+      ]);
       if (e.search_shard != null && repo.activeShards.includes(e.search_shard)) await repo.removeDocument(e.search_shard, e.id).catch(() => 0);
       removed++;
     }
