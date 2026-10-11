@@ -2327,6 +2327,7 @@
     {
       "id": "meetings-next-public-hearing",
       "category": "notices",
+      "tier": "model",
       "question": "When is the next public hearing?",
       "mustNotContain": [
         "The next City Council meeting"
