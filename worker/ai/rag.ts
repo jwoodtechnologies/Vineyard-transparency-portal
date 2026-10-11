@@ -477,6 +477,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     votes.slice(0, 12).forEach((h) => pinnedVotes.add(h.chunkId));
     const seenV = new Set<string>();
     hits = [...votes.slice(0, 12), ...hits].filter((h) => (seenV.has(h.chunkId) ? false : (seenV.add(h.chunkId), true)));
+    // Source: the six-member council form, see the governance note in worker/ai/answer.ts.
     const mayorNote = /\bmayor\b/i.test(person.role) && !/deputy/i.test(person.role) ? ` Since January 1, 2026 (six-member council form) the mayor is not a voting member of the council and votes only to break a tie or on the city manager appointment: say that first, citing the source on the form of government, then give any vote a source shows.` : '';
     question = `${question}\n(${person.name} is ${person.role}. Minutes record votes by last name, for example "motion carried 4-0 (Holdaway, Lauret, McCumber, Wood)" or "${person.last} voted nay". Report how ${person.name} voted or moved only where a source shows it, with the meeting date.${mayorNote})`;
   }

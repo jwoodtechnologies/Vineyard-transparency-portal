@@ -59,6 +59,15 @@ def log(msg: str) -> None:
 # so each feature must be named here, tied to its budget line(s). The same table lives in
 # worker/lib/capitalPlan.ts (the map reads that one); a test fails if they differ.
 # Fund keys: general, impact, rap, transport, wastewater, water, rda.
+# Sources (comments cannot go inside the table: the test reads it as JSON). Each "id" is an OBJECTID in
+# the city's Capital Improvement Plan layer, viewable at
+#   https://services.arcgis.com/QdlehUncXjEmQYtI/arcgis/rest/services/Capital_Improvement_Plan_Public_View/FeatureServer/650/<id>
+# ("gis" is its Project_Name, as read in October 2026). Each amount is from the FY 27 Final Budget Slides
+# (doc_4d69a97b95e87bea), the same line as budgetData PROJECTS in worker/lib/budgetData.ts:
+#   slide page 4: ids 1, 2, 11, 12, 14, 18, 25 (impact line), 28, 29, 31, 53, 75, 76, 77, 84, 94
+#   slide page 5: ids 3, 25 (water and wastewater lines), 38, 39, 86, 92, 93
+#   slide page 6: ids 4, 16, 21, 25 (rda line), 42, 96
+# Matching a map feature to a slide line is the portal's own call, not printed in either source.
 # BEGIN FY27_PLAN (generated from worker/lib/capitalPlan.ts; tests/worker-capitalplan.test.ts keeps the two in step)
 FY27_PLAN = [
     {"id": 1, "gis": "1200 North Bridge", "items": [["general", "Design of the 1200 North overpass bridge", 500000]]},

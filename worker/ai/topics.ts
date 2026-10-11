@@ -21,11 +21,17 @@ export const TOPICS: CivicTopic[] = [
       { q: '"bond parameters" repealed referendum "city center"', from: '2025-01-01' },
       { q: 'referendum petition bonding "city center"', from: '2025-01-01' },
     ],
+    // Source: NOT TRACED - verify. The referendum petition, Resolution 2025-15 (the 2025 bond parameters
+    // resolution for the city center), its repeal by the City Council in May 2025, and Resolution 2024-34 are
+    // stated with no document id or page. Open Resolution 2025-15, the May 2025 City Council minutes or
+    // resolution that repealed it, and the referendum petition notice (the queries above find them).
     note: 'New City Hall / city center: residents filed a referendum petition against the 2025 bond parameters resolution for the proposed city center (Resolution 2025-15), and the City Council repealed that resolution in May 2025. There are no current plans to build a new City Hall. For any City Hall or city center question, say that first and cite the record that shows the repeal or the referendum; older planning records (such as Resolution 2024-34) are history, never current plans.',
   },
   {
     id: 'form-of-government',
     match: /\b(mayor|vot(e|es|ed|ing)|form of government|six-member|five-member|tie|council members?|who decides)\b/i,
+    // The six-member council facts (from January 1, 2026; Resolution 2024-21; Utah Code 10-3b-301) are written
+    // in worker/ai/answer.ts, which carries their source comment; this topic only pulls the records forward.
     queries: [
       { q: '"six-member council" "took effect" January 2026', from: '2025-06-01' },
       { q: '"six-member" mayor vote tie', from: '2024-01-01' },
@@ -36,11 +42,16 @@ export const TOPICS: CivicTopic[] = [
     id: 'elections',
     match: /\b(elections?|candidates?|ballot|canvass|primary|general election|running for|re-?elect|campaign|term ends?|referendum|initiative)\b/i,
     queries: [{ q: 'municipal election canvass results council', from: '2023-01-01' }, { q: 'election candidates council seats', from: '2025-01-01' }],
+    // Source: NOT TRACED - verify. "Municipal general elections in November of odd-numbered years" is stated
+    // with no record; it is Utah election law (Utah Code Title 20A) and the city's Elections page,
+    // https://www.vineyardutah.gov/government/elections.php, should confirm it.
     note: 'Elections: Utah cities hold municipal general elections in November of odd-numbered years, so the next Vineyard municipal election is in November {NEXT_ELECTION}. Council seats (and the mayor when that term ends) are on that ballot. Use the newest canvass, candidate and election records, give their dates, and never present an old election as the current one.',
   },
 ];
 
-/** How to request records, from the city's Records Request page (checked October 1, 2026). */
+/** The budget topic. Its figures come from worker/lib/budgetData.ts (see the sources there). */
+// Source for "adopted by the City Council in June {FY_START}" and the "FY {FYS} Final Budget" / "Budget Amendment"
+// titles: FY 27 Final Budget (doc_2c248c52cbadfa22) and FY 27 First Budget Amendment (doc_3931ec08b88d5fbf), page not recorded.
 TOPICS.push({
   id: 'budget',
   match: /\bbudgets?\b|\bfiscal year\b|\bappropriat|\bgeneral fund\b|\bcity spending\b|\btax revenue\b|\bhow much (does|is|will) (the city|vineyard) (spend|make|collect|take in)\b/i,
@@ -49,6 +60,8 @@ TOPICS.push({
 });
 
 /** The projects in the adopted budget; the city's own project map still lists earlier years' work. */
+// Source: the note is projectFacts() in worker/lib/budgetFacts.ts, built from budgetData PROJECTS
+// (FY 27 Final Budget Slides, pages 4 to 6, doc_4d69a97b95e87bea).
 TOPICS.push({
   id: 'capital-projects',
   match: /\bcapital (improvement )?(projects?|plans?|improvements?)\b|\bCIP\b|\binfrastructure (projects?|plans?)\b|\bwhat('s| is| are) (being|getting|going to be) built\b|\b(road|park|trail|water|sewer|street|bridge|overpass) projects?\b/i,
@@ -56,6 +69,10 @@ TOPICS.push({
   note: '{PROJECTS}',
 });
 
+/** How to request records, from the city's Records Request page (checked October 1, 2026). */
+// Source: https://www.vineyardutah.gov/government/records_request.php, checked October 1, 2026 (the written-request
+// contents, robinr@vineyardutah.gov, 125 S Main Street, the Record Request Form, the Utah Open Records Portal,
+// police reports from the Sheriff's Office and the 10 business days). Utah Code 63G-2 is the GRAMA statute.
 TOPICS.push({
   id: 'grama',
   match: /\b(grama|records? requests?|public records?|request (a |the )?(record|document|copy)|open records)\b/i,
@@ -67,6 +84,9 @@ TOPICS.push({
   id: 'water-quality',
   match: /\b(water quality|consumer confidence|ccr|drinking water (quality )?report|water report)\b/i,
   queries: [{ q: 'Annual Drinking Water Quality Report', from: '2024-01-01' }, { q: '"water quality report" Vineyard', from: '2023-01-01' }],
+  // Source: NOT TRACED - verify. "The 2025 report, presented in May 2026" is stated with no record; open the
+  // 2025 Annual Drinking Water Quality Report and the May 2026 council agenda that presented it. Report list:
+  // https://www.vineyardutah.gov/government/water_quality_reports.php
   note: 'Water quality reports (Consumer Confidence Reports) cover the previous calendar year and are released the following spring, so "this year\'s report" is the one released this year (for example the 2025 report, presented in May 2026). Give the newest report and its date first; every year\'s report is listed for the reader under your answer.',
 });
 
@@ -74,6 +94,9 @@ TOPICS.push({
   id: 'noise',
   match: /\b(noise|noisy|loud|music|party|parties|barking|bark|decibels?|quiet hours|nuisance|neighbou?r'?s?\b.*\b(complain|report)|complain(t|ts)? about (my )?neighbou?r)\b/i,
   queries: [{ q: '"Nuisances Generally" noise decibels' }, { q: '"NON-EMERGENCY POLICE" 798-5600' }, { q: '"Report a Concern" code enforcement', from: '2025-01-01' }],
+  // Source: Vineyard Municipal Code 8.08.010 (Nuisances Generally), https://vineyard.municipalcodeonline.com/, section
+  // given, page not applicable (the 55 dBA 7:00 a.m. to 10:30 p.m. and 50 dBA night limits). Report a Concern form and
+  // non-emergency line 801-798-5600: src/console/services.ts LINKS (city contact pages, verified September 30, 2026).
   note: 'Noise and nuisance complaints: Vineyard Municipal Code 8.08.010 (Nuisances Generally) makes it a nuisance for activities to exceed 55 decibels (dBA) between 7:00 a.m. and 10:30 p.m. and 50 decibels between 10:30 p.m. and 7:00 a.m.; quote the limits exactly as the code section states them and cite it. To report: file the city\'s Report a Concern form (it goes to Code Enforcement), and for noise happening right now, especially at night, call the Utah County Sheriff\'s non-emergency line at 801-798-5600 (Vineyard\'s police service); call 911 only for emergencies. Give the rule first, then these steps.',
 });
 

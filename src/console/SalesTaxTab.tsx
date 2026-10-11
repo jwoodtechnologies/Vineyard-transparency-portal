@@ -77,6 +77,7 @@ export default function SalesTaxTab({ b }: { b: Budget }) {
             <b>{ratePct(FOOD_RATE)}</b>
             <em>Food and ingredients</em>
           </div>
+          {/* Source for the 1% restaurant tax: NOT TRACED - verify (no record named; check the Tax Commission chart 26q4combined.pdf) */}
           <div data-k="left">
             <span>Restaurant tax</span>
             <b>{ratePct(1)}</b>
@@ -100,6 +101,7 @@ export default function SalesTaxTab({ b }: { b: Budget }) {
       <section className="vc-bud-sec">
         <h2>Local sales tax distribution</h2>
         <p className="vc-bud-lede">The State Tax Commission sends the local {ratePct(1)} to cities each month: half by where the sale happens, half by population.</p>
+        {/* Source for the 50/50 split: Citizens Budget, fiscal year 2024-2025, page 5 (doc_7641f1c7d6958611) */}
         <div className="vc-bud-half" style={swatch(1)} role="img" aria-label="Fifty percent point of sale, fifty percent population">
           <i data-k="sale">
             <b>50%</b>

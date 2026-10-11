@@ -9,18 +9,26 @@
  *   amend  doc_3931ec08b88d5fbf  "FY 27 First Budget Amendment", August 25, 2026
  * Where the slides and the book disagree (Planning is 592,442 on the slides, 529,442 in the book),
  * the book wins.
+ *
+ * Every value below carries a `// Source:` comment: document title, page, document id. A document id
+ * opens in the portal at /documents/<id>?page=<n> (for example
+ * /documents/doc_2c248c52cbadfa22?page=3 for the fund list). "page not recorded" means the document is known but the page
+ * the value was keyed from was not written down; "NOT TRACED - verify" means no record for it was found
+ * in the code, docs or commit history.
  */
 
 export const BUDGET_FISCAL_YEAR = 2027;
+// Source: FY 27 Final Budget (adopted June 23, 2026), page not recorded (doc_2c248c52cbadfa22)
 export const BUDGET_ADOPTED = '2026-06-23';
+// Source: FY 27 First Budget Amendment (August 25, 2026), page not recorded (doc_3931ec08b88d5fbf)
 export const BUDGET_AMENDED = '2026-08-25';
 
 export const BUDGET_DOCS = {
   book: 'doc_2c248c52cbadfa22',
   slides: 'doc_4d69a97b95e87bea',
   amendment: 'doc_3931ec08b88d5fbf',
-  amendmentSummary: 'doc_9570af43463830a8',
-  tentative: 'doc_4f9d4e3b68713059',
+  amendmentSummary: 'doc_9570af43463830a8', // summary of the August 25, 2026 amendment; no value below is recorded as keyed from it
+  tentative: 'doc_4f9d4e3b68713059', // FY 2027 tentative budget the council saw May 12, 2026
 } as const;
 
 export interface BudgetFund {
@@ -33,6 +41,7 @@ export interface BudgetFund {
 }
 
 /** All nine funds, FY2027 budget book page 3. */
+// Source (every `total` below): FY 27 Final Budget, page 3 (doc_2c248c52cbadfa22). The `about` text is the portal's own wording.
 export const FUNDS: BudgetFund[] = [
   { key: 'rda', name: 'Redevelopment Agency', about: 'Rebuilding the former Geneva Steel site: roads, rail, utilities and the downtown core.', total: 29_786_656 },
   { key: 'general', name: 'General Fund', about: 'Everyday city government: police, fire, parks, planning, the library and staff.', total: 17_774_808 },
@@ -44,6 +53,7 @@ export const FUNDS: BudgetFund[] = [
   { key: 'transport', name: 'Transportation', about: 'Street maintenance and improvements.', total: 1_743_994 },
   { key: 'storm', name: 'Stormwater', about: 'Storm drains and flood control.', total: 821_707 },
 ];
+// Source: FY 27 Final Budget, page not recorded (doc_2c248c52cbadfa22); the fund list it totals is on page 3 and the nine totals add to it within 3 dollars
 export const ALL_FUNDS_TOTAL = 70_944_358;
 
 export interface BudgetLine {
@@ -63,6 +73,11 @@ export interface SpendGroup {
 }
 
 /** General Fund departments, FY2027 budget book pages 5 to 21 and the Aug 25 amendment. */
+// Source (every row below):
+//   adopted: FY 27 Final Budget, pages 5 to 21 (department pages; the page for each department was not recorded) (doc_2c248c52cbadfa22)
+//   prior:   FY 27 Final Budget, same department pages, FY2026 final amended column, page not recorded per department (doc_2c248c52cbadfa22)
+//   amended: FY 27 First Budget Amendment, page not recorded (doc_3931ec08b88d5fbf); rows where amended equals adopted were not changed by it
+// Note: the FY 27 Final Budget Slides print Planning as 592,442; the book's 529,442 is used.
 export const DEPARTMENTS: BudgetLine[] = [
   { name: 'Police', adopted: 4_705_075, amended: 4_705_075, prior: 4_103_125 },
   { name: 'Fire', adopted: 2_873_462, amended: 2_873_462, prior: 2_585_600 },
@@ -84,6 +99,9 @@ export const DEPARTMENTS: BudgetLine[] = [
 ];
 
 /** Money the General Fund sends to other funds. */
+// Source (every row below): adopted from FY 27 Final Budget, page not recorded (doc_2c248c52cbadfa22);
+//   amended from FY 27 First Budget Amendment, page not recorded (doc_3931ec08b88d5fbf).
+//   prior: 0 is a placeholder (no FY2026 figure was keyed), not a value from a record.
 export const TRANSFERS_OUT: BudgetLine[] = [
   { name: 'Transportation Fund', adopted: 1_470_999, amended: 1_470_999, prior: 0 },
   { name: 'Capital Projects Fund', adopted: 1_033_762, amended: 1_033_762, prior: 0 },
@@ -108,6 +126,7 @@ export interface RevenueLine {
 }
 
 /** General Fund revenue lines, FY2027 adopted (unchanged by the amendment). */
+// Source (every row below): FY 27 Final Budget, General Fund revenue, page not recorded (doc_2c248c52cbadfa22). The rows add exactly to GENERAL.revenueBeforeTransfers.
 export const REVENUE: RevenueLine[] = [
   { name: 'Property tax', amount: 5_395_500 },
   { name: 'Sales tax', amount: 3_800_000 },
@@ -133,6 +152,7 @@ export const REVENUE: RevenueLine[] = [
   { name: 'Interest', amount: 500 },
 ];
 
+// Source (both rows): FY 27 Final Budget, General Fund transfers in, page not recorded (doc_2c248c52cbadfa22)
 export const TRANSFERS_IN: RevenueLine[] = [
   { name: 'Redevelopment Agency', amount: 640_016 },
   { name: 'Capital Projects Fund', amount: 1_300_000 },
@@ -157,25 +177,38 @@ export const REVENUE_GROUPS: RevenueGroup[] = [
 
 /** General Fund totals. */
 export const GENERAL = {
+  // Source: FY 27 Final Budget, page not recorded (doc_2c248c52cbadfa22)
   revenueBeforeTransfers: 15_834_792,
+  // Source: FY 27 Final Budget, page not recorded (doc_2c248c52cbadfa22)
   transfersIn: 1_940_016,
+  // Source: FY 27 Final Budget, page 3 (General Fund total on the fund list, same as FUNDS general) (doc_2c248c52cbadfa22)
   revenueTotal: 17_774_808,
+  // Source: FY 27 Final Budget, page not recorded (doc_2c248c52cbadfa22)
   adopted: { departments: 14_085_690, transfersOut: 3_418_464, total: 17_504_153, surplus: 270_654 },
+  // Source: FY 27 First Budget Amendment, page not recorded (doc_3931ec08b88d5fbf)
   amended: { departments: 13_865_308, transfersOut: 3_393_464, total: 17_258_772, surplus: 516_036 },
+  // Source: FY 27 First Budget Amendment, page not recorded (doc_3931ec08b88d5fbf); equals adopted.total minus amended.total within 1 dollar
   cutByAmendment: 245_382,
   /** General Fund spending in the tentative budget the council saw May 12, 2026 (budget summary, page 2). */
+  // Source: FY 2027 Tentative Budget, budget summary, page 2 (doc_4f9d4e3b68713059)
   tentativeTotal: 17_712_003,
 } as const;
 
 /** Five years of the biggest General Fund lines: FY23 to FY25 actual, FY26 final budget, FY27 adopted. */
 export const HISTORY_YEARS = ['FY23', 'FY24', 'FY25', 'FY26', 'FY27'] as const;
+// Source, by column:
+//   FY27: FY 27 Final Budget, page not recorded (doc_2c248c52cbadfa22); each equals the REVENUE amount or DEPARTMENTS adopted value above
+//   FY26 (Police, Fire): FY 27 Final Budget, department pages 5 to 21, prior-year column, page not recorded (doc_2c248c52cbadfa22); equals DEPARTMENTS prior
+//   FY26 (four revenue rows): NOT TRACED - verify (no document recorded; check the FY 27 Final Budget revenue page, doc_2c248c52cbadfa22)
+//   FY23, FY24, FY25 actuals (all rows): NOT TRACED - verify (no document recorded; check the actuals columns in the FY 27 Final Budget,
+//     doc_2c248c52cbadfa22, and the FY 26 and FY 25 final budgets or annual financial reports in the archive)
 export const HISTORY: Array<{ key: string; name: string; kind: 'revenue' | 'spending'; values: number[] }> = [
-  { key: 'property', name: 'Property tax', kind: 'revenue', values: [3_261_171, 3_683_386, 4_972_219, 4_950_000, 5_395_500] },
-  { key: 'sales', name: 'Sales tax', kind: 'revenue', values: [3_150_801, 3_204_125, 3_604_684, 3_588_000, 3_800_000] },
-  { key: 'franchise', name: 'Franchise fees', kind: 'revenue', values: [892_696, 824_467, 942_630, 951_600, 950_000] },
-  { key: 'permits', name: 'Building permits', kind: 'revenue', values: [265_675, 781_423, 611_971, 900_000, 750_000] },
-  { key: 'police', name: 'Police', kind: 'spending', values: [2_328_474, 2_815_769, 3_252_168, 4_103_125, 4_705_075] },
-  { key: 'fire', name: 'Fire', kind: 'spending', values: [1_654_069, 1_379_625, 2_250_807, 2_585_600, 2_873_462] },
+  { key: 'property', name: 'Property tax', kind: 'revenue', values: [3_261_171, 3_683_386, 4_972_219, 4_950_000, 5_395_500] }, // Source: FY23 to FY26 NOT TRACED - verify; FY27 as above
+  { key: 'sales', name: 'Sales tax', kind: 'revenue', values: [3_150_801, 3_204_125, 3_604_684, 3_588_000, 3_800_000] }, // Source: FY23 to FY26 NOT TRACED - verify; FY27 as above
+  { key: 'franchise', name: 'Franchise fees', kind: 'revenue', values: [892_696, 824_467, 942_630, 951_600, 950_000] }, // Source: FY23 to FY26 NOT TRACED - verify; FY27 as above
+  { key: 'permits', name: 'Building permits', kind: 'revenue', values: [265_675, 781_423, 611_971, 900_000, 750_000] }, // Source: FY23 to FY26 NOT TRACED - verify; FY27 as above
+  { key: 'police', name: 'Police', kind: 'spending', values: [2_328_474, 2_815_769, 3_252_168, 4_103_125, 4_705_075] }, // Source: FY23 to FY25 NOT TRACED - verify; FY26 and FY27 as above
+  { key: 'fire', name: 'Fire', kind: 'spending', values: [1_654_069, 1_379_625, 2_250_807, 2_585_600, 2_873_462] }, // Source: FY23 to FY25 NOT TRACED - verify; FY26 and FY27 as above
 ];
 
 /** Where the money for a capital project comes from, in the fixed order the page colors them. */
@@ -200,6 +233,7 @@ export interface CapitalProject {
 }
 
 /** Capital projects as listed on the council's budget slides, pages 4 to 6. Amounts are as printed. */
+// Source (every row below): FY 27 Final Budget Slides, page = the row's `page` field (doc_4d69a97b95e87bea)
 export const PROJECTS: CapitalProject[] = [
   // General Fund
   { fund: 'general', dept: 'Parks and Recreation', name: 'Finish construction of Slide Hill at Grove Park', amount: 64_959, page: 4 },

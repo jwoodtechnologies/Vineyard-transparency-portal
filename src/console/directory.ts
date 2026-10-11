@@ -16,6 +16,9 @@ const G = 'https://www.vineyardutah.gov';
 
 export const DIRECTORY: DirectoryEntry[] = [
   // Records and government
+  // Source (each entry below unless its own comment says otherwise): copied from the city's Transparency Portal page,
+  // https://www.vineyardutah.gov/transparency_portal/index.php, or the vineyardutah.gov site menus, checked October 1, 2026;
+  // which of the two each link was copied from was not recorded. The href is the page to open.
   { id: 'grama-form', group: 'Records and government', label: 'Records request (GRAMA)', hint: 'Fillable form for the City Recorder', href: `${G}/Departmnts/Recorder/GRAMA%20Request%20-%20Form%20Fillable.pdf`, kind: 'form', match: /\b(gram+[ae]r?|gramma|grama|records? requests?|public records? request|request (a |public )?records?|foia|open records)\b/i },
   { id: 'grama-page', group: 'Records and government', label: 'How records requests work', hint: 'Email, mail or in person; 10 business days', href: `${G}/government/records_request.php`, kind: 'page', match: /\b(grama|gramma|gram+[ae]r? requests?|records? requests?|public records? request|foia)\b/i },
   { id: 'open-records', group: 'Records and government', label: 'Utah Open Records Portal', hint: 'Request records online', href: 'https://openrecords.utah.gov/', kind: 'form', match: /\b(grama|gramma|gram+[ae]r? requests?|records? requests?|open records|foia)\b/i },
@@ -37,6 +40,9 @@ export const DIRECTORY: DirectoryEntry[] = [
   { id: 'newsletters', group: 'Records and government', label: 'Newsletters', href: `${G}/community_/newsletters.php`, kind: 'page', match: /\bnewsletters?\b/i },
 
   // Permits and development
+  // Source (each entry below unless its own comment says otherwise): copied from the city's Transparency Portal page,
+  // https://www.vineyardutah.gov/transparency_portal/index.php, or the vineyardutah.gov site menus, checked October 1, 2026;
+  // which of the two each link was copied from was not recorded. The href is the page to open.
   { id: 'permit-login', group: 'Permits and development', label: 'Apply for a permit', hint: 'CityInspect login', href: 'https://vineyard.cityinspect.com/login', kind: 'form', match: /\b(permits?|inspections?|build(ing)? (a|an)|remodel|fence|shed|solar|deck|addition)\b/i },
   { id: 'permit-new', group: 'Permits and development', label: 'New permit account', hint: 'CityInspect sign up', href: 'https://utah.cityinspect.com/register', kind: 'form', match: /\b(permit|cityinspect)\b.*\b(account|sign ?up|register|new user)\b/i },
   { id: 'building', group: 'Permits and development', label: 'Building department', hint: 'Codes, inspections, resources', href: `${G}/government/building.php`, kind: 'page', match: /\b(building (department|code|official)|building permits?)\b/i },
@@ -50,6 +56,9 @@ export const DIRECTORY: DirectoryEntry[] = [
   { id: 'engineering', group: 'Permits and development', label: 'Engineering standards', href: `${G}/government/engineering_standards.php`, kind: 'page', match: /\b(engineering standards?|construction standards?|public improvement standards?)\b/i },
 
   // Utilities and public works
+  // Source (each entry below unless its own comment says otherwise): copied from the city's Transparency Portal page,
+  // https://www.vineyardutah.gov/transparency_portal/index.php, or the vineyardutah.gov site menus, checked October 1, 2026;
+  // which of the two each link was copied from was not recorded. The href is the page to open.
   { id: 'water-meter', group: 'Utilities and public works', label: 'Water meter request', href: `${G}/government/water_meter_request.php`, kind: 'form', match: /\bwater meters?\b/i },
   { id: 'water-quality', group: 'Utilities and public works', label: 'Water quality reports', href: `${G}/government/water_quality_reports.php`, kind: 'page', match: /\b(water quality|drinking water|consumer confidence|ccr|lead in (the )?water|fluoride)\b/i },
   { id: 'water', group: 'Utilities and public works', label: 'Water and wastewater', href: `${G}/government/water___wastewater.php`, kind: 'page', match: /\b(water (main|line|pressure|leak|restriction|conservation)|sewer|wastewater|irrigation|secondary water)\b/i },
@@ -60,25 +69,31 @@ export const DIRECTORY: DirectoryEntry[] = [
   { id: 'eco-pass', group: 'Utilities and public works', label: 'UTA ECO Pass', href: `${G}/services/uta_eco_pass.php`, kind: 'page', match: /\b(eco ?pass|uta|frontrunner|bus pass|transit pass)\b/i },
 
   // Financial reports
+  // Source (each entry below unless its own comment says otherwise): copied from the city's Transparency Portal page,
+  // https://www.vineyardutah.gov/transparency_portal/index.php, or the vineyardutah.gov site menus, checked October 1, 2026;
+  // which of the two each link was copied from was not recorded. The href is the page to open.
   { id: 'fees', group: 'Financial reports', label: 'Fee schedule', href: `${G}/government/fee_schedule.php`, kind: 'page', match: /\b(fee schedule|fees?|how much does (a|it) cost|impact fees?)\b/i },
   { id: 'budget', group: 'Financial reports', label: 'City budget', href: `${G}/government/budget.php`, kind: 'page', match: /\b(budget|appropriation|fiscal year)\b/i },
   { id: 'acfr', group: 'Financial reports', label: 'Annual financial report', hint: 'Audited financial statements', href: `${G}/government/annual_financial_report.php`, kind: 'page', match: /\b(annual financial report|acfr|cafr|audit(ed)?|financial statements?)\b/i },
   { id: 'finance', group: 'Financial reports', label: 'Finance department', href: `${G}/government/finance.php`, kind: 'page', match: /\b(finance department|city finances?|debt|bonds?)\b/i },
-  { id: 'transparent-utah', group: 'Financial reports', label: 'Transparent Utah', hint: 'Every city payment and salary', href: 'https://transparent.utah.gov/', kind: 'page', match: /\b(salar(y|ies)|wages?|spending|checks?|payments? to|vendors?|transparent utah|how much (do|does) .* (make|earn|paid))\b/i },
+  { id: 'transparent-utah', group: 'Financial reports', label: 'Transparent Utah', hint: 'Every city payment and salary', href: 'https://transparent.utah.gov/', kind: 'page', match: /\b(salar(y|ies)|wages?|spending|checks?|payments? to|vendors?|transparent utah|how much (do|does) .* (make|earn|paid))\b/i }, // Source: https://transparent.utah.gov/ (state site linked from the city's Transparency Portal page)
   { id: 'rfp', group: 'Financial reports', label: 'Requests for proposals', hint: 'Open bids', href: `${G}/government/request_for_proposals_(rfp).php`, kind: 'page', match: /\b(rfps?|requests? for proposals?|bids?|bidding|procurement|contract opportunit)\b/i },
   { id: 'reimburse', group: 'Financial reports', label: 'Library and rec center reimbursement', href: `${G}/community_/library_reimbursement.php`, kind: 'form', match: /\b(reimburse|rec center|recreation center|library card fee)\b/i },
 
   // Parks, library and community
+  // Source (each entry below unless its own comment says otherwise): copied from the city's Transparency Portal page,
+  // https://www.vineyardutah.gov/transparency_portal/index.php, or the vineyardutah.gov site menus, checked October 1, 2026;
+  // which of the two each link was copied from was not recorded. The href is the page to open.
   { id: 'parks', group: 'Parks, library and community', label: 'Parks', href: `${G}/government/parks.php`, kind: 'page', match: /\b(parks?|pavilion|reserv(e|ation)|playground)\b/i },
   { id: 'recreation', group: 'Parks, library and community', label: 'Recreation programs', href: `${G}/government/recreation.php`, kind: 'form', match: /\b(recreation|sports|leagues?|classes|sign ?up for|register for)\b/i },
   { id: 'events', group: 'Parks, library and community', label: 'City events', href: `${G}/government/events.php`, kind: 'page', match: /\b(events?|vineyard days|festival|concerts?)\b/i },
   { id: 'splash', group: 'Parks, library and community', label: 'Splash pad', href: `${G}/government/splash_pad.php`, kind: 'page', match: /\bsplash pad\b/i },
-  { id: 'library', group: 'Parks, library and community', label: "Vineyard Children's Library", href: 'https://vineyard.lib.utah.gov/', hint: '125 S Main St, 801-226-1929', kind: 'page', match: /\blibrar(y|ies)\b/i },
-  { id: 'library-catalog', group: 'Parks, library and community', label: 'Library catalog', hint: 'Search and reserve books', href: 'https://vineyard.aspendiscovery.org/', kind: 'page', match: /\b(library catalog|search (for )?books?|reserve (a )?books?|find a book|check out (a )?books?|books? (hold|reserve))\b/i },
-  { id: 'library-online', group: 'Parks, library and community', label: 'Online library resources', hint: 'Ebooks, audiobooks and databases', href: 'https://vineyard.lib.utah.gov/online_resources/', kind: 'page', match: /\b(online (library )?resources|ebooks?|e-books?|audiobooks?|libby|overdrive)\b/i },
-  { id: 'library-events', group: 'Parks, library and community', label: 'Library events and programs', href: 'https://vineyard.lib.utah.gov/events-programs/', kind: 'page', match: /\b(story ?times?|library (events?|programs?|classes)|reading program|summer reading)\b/i },
-  { id: 'bookmobile', group: 'Parks, library and community', label: 'Bookmobile', hint: 'Run by the Utah State Library; bring a library card', href: 'https://vineyard.lib.utah.gov/events/bookmobile/', kind: 'page', match: /\b(book ?mobiles?|mobile library)\b/i },
-  { id: 'bookmobile-schedule', group: 'Parks, library and community', label: 'Bookmobile schedule and stops', href: 'https://bookmobiles.utah.gov/utah/schedule/', kind: 'page', match: /\bbook ?mobiles?\b[^.?!]*\b(schedule|stops?|times?|when|where|next)\b|\b(schedule|stops?|when|where|next)\b[^.?!]*\bbook ?mobiles?\b/i },
+  { id: 'library', group: 'Parks, library and community', label: "Vineyard Children's Library", href: 'https://vineyard.lib.utah.gov/', hint: '125 S Main St, 801-226-1929', kind: 'page', match: /\blibrar(y|ies)\b/i }, // Source: the library's own site, https://vineyard.lib.utah.gov/, checked October 3, 2026
+  { id: 'library-catalog', group: 'Parks, library and community', label: 'Library catalog', hint: 'Search and reserve books', href: 'https://vineyard.aspendiscovery.org/', kind: 'page', match: /\b(library catalog|search (for )?books?|reserve (a )?books?|find a book|check out (a )?books?|books? (hold|reserve))\b/i }, // Source: the library's own site, https://vineyard.lib.utah.gov/, checked October 3, 2026
+  { id: 'library-online', group: 'Parks, library and community', label: 'Online library resources', hint: 'Ebooks, audiobooks and databases', href: 'https://vineyard.lib.utah.gov/online_resources/', kind: 'page', match: /\b(online (library )?resources|ebooks?|e-books?|audiobooks?|libby|overdrive)\b/i }, // Source: the library's own site, https://vineyard.lib.utah.gov/, checked October 3, 2026
+  { id: 'library-events', group: 'Parks, library and community', label: 'Library events and programs', href: 'https://vineyard.lib.utah.gov/events-programs/', kind: 'page', match: /\b(story ?times?|library (events?|programs?|classes)|reading program|summer reading)\b/i }, // Source: the library's own site, https://vineyard.lib.utah.gov/, checked October 3, 2026
+  { id: 'bookmobile', group: 'Parks, library and community', label: 'Bookmobile', hint: 'Run by the Utah State Library; bring a library card', href: 'https://vineyard.lib.utah.gov/events/bookmobile/', kind: 'page', match: /\b(book ?mobiles?|mobile library)\b/i }, // Source: the library's own site, https://vineyard.lib.utah.gov/, checked October 3, 2026
+  { id: 'bookmobile-schedule', group: 'Parks, library and community', label: 'Bookmobile schedule and stops', href: 'https://bookmobiles.utah.gov/utah/schedule/', kind: 'page', match: /\bbook ?mobiles?\b[^.?!]*\b(schedule|stops?|times?|when|where|next)\b|\b(schedule|stops?|when|where|next)\b[^.?!]*\bbook ?mobiles?\b/i }, // Source: Utah State Library bookmobile schedule, https://bookmobiles.utah.gov/utah/schedule/, reached from the library's Bookmobile page, checked October 3, 2026
   { id: 'library-card', group: 'Parks, library and community', label: 'Get a library card', href: 'https://vineyard.lib.utah.gov/get-a-library-card/', kind: 'form', match: /\blibrary card\b/i },
   { id: 'garden', group: 'Parks, library and community', label: 'Community garden', href: `${G}/community_/vineyard_community_garden.php`, kind: 'form', match: /\b(community garden|garden plot)\b/i },
   { id: 'trails', group: 'Parks, library and community', label: 'Trails', href: `${G}/community_/trails.php`, kind: 'page', match: /\btrails?\b/i },
@@ -88,6 +103,9 @@ export const DIRECTORY: DirectoryEntry[] = [
   { id: 'city-maps', group: 'Parks, library and community', label: 'Official city maps', hint: 'City GIS', href: 'https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb', kind: 'map', match: /\b(official map|gis|city maps?)\b/i },
 
   // Safety and emergencies
+  // Source (each entry below unless its own comment says otherwise): copied from the city's Transparency Portal page,
+  // https://www.vineyardutah.gov/transparency_portal/index.php, or the vineyardutah.gov site menus, checked October 1, 2026;
+  // which of the two each link was copied from was not recorded. The href is the page to open.
   { id: 'alerts', group: 'Safety and emergencies', label: 'Sign up for emergency alerts', hint: 'Everbridge', href: 'https://member.everbridge.net/1332612387832225/login', kind: 'form', match: /\b(alerts?|notifications?|emergency (text|messages?)|everbridge)\b/i },
   { id: 'evac', group: 'Safety and emergencies', label: 'Evacuation maps', href: 'https://experience.arcgis.com/experience/ddf7f451101e469c856c43e5f1a761bb', kind: 'map', match: /\bevacuat/i },
   { id: 'prepare', group: 'Safety and emergencies', label: 'Emergency preparedness', href: `${G}/services/emergency_preparedness.php`, kind: 'page', match: /\b(emergency prep|preparedness|earthquake|flood|disaster|72 hour kit)\b/i },
@@ -97,6 +115,9 @@ export const DIRECTORY: DirectoryEntry[] = [
   { id: 'rad', group: 'Safety and emergencies', label: 'R.A.D. self-defense classes', href: `${G}/government/rad_systems_of_self-defense_classes.php`, kind: 'form', match: /\bself[- ]defen[cs]e\b/i },
 
   // Jobs and volunteering
+  // Source (each entry below unless its own comment says otherwise): copied from the city's Transparency Portal page,
+  // https://www.vineyardutah.gov/transparency_portal/index.php, or the vineyardutah.gov site menus, checked October 1, 2026;
+  // which of the two each link was copied from was not recorded. The href is the page to open.
   { id: 'jobs', group: 'Jobs and volunteering', label: 'City job openings', hint: 'Apply on the city job site', href: 'https://vineyardutah.applicantpro.com/jobs/', kind: 'form', match: /\b(jobs?|hiring|careers?|employment|job openings?|work for the city|positions? (open|available)|apply to work)\b/i },
   { id: 'volunteer', group: 'Jobs and volunteering', label: 'Volunteer', href: `${G}/community_/volunteer.php`, kind: 'form', match: /\bvolunteer/i },
 ];

@@ -9,6 +9,12 @@ import { json } from '../lib/http';
 import { currentRoster } from './votes';
 
 /** The city website's board names, matched to the meeting portal's bodies. */
+// Source (every key): board names as printed on the city's Board & Commission Members page,
+//   https://www.vineyardutah.gov/government/board___commission_members.php (read by ingest/people.py; added October 1, 2026).
+// Source (every value): body ids the portal derives from the CivicClerk meeting portal, https://vineyardut.portal.civicclerk.com/
+//   (worker/lib/civicclerk.ts). Pairing an old name with a new body (Bicycle Advisory Commission to Active Transportation
+//   Commission, Executive Youth Council to Youth Council, Vineyard Cares Board to Vineyard Cares Coalition) is the portal's own
+//   matching: NOT TRACED - verify that each is a renaming of the same body.
 const ALIAS: Record<string, string> = {
   'bicycle advisory commission': 'active-transportation-commission',
   'active transportation commission': 'active-transportation-commission',
