@@ -17,6 +17,7 @@ const PlanningPage = lazy(() => import('@/console/PlanningPage'));
 const LatestPage = lazy(() => import('@/console/LatestPage'));
 const BudgetPage = lazy(() => import('@/console/BudgetPage'));
 const ConstructionPage = lazy(() => import('@/console/ConstructionPage'));
+const AddPage = lazy(() => import('@/console/AddPage'));
 
 // Warm the other screens in the background once the first one is up, so tapping Meetings or a
 // record opens instantly.
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
   { path: '/planning', element: quiet(<PlanningPage />) },
   { path: '/people', element: quiet(<PeoplePage />) },
   { path: '/people/:slug', element: quiet(<PeoplePage />) },
+  { path: '/add', element: quiet(<AddPage />) },
   { path: '/search', element: <SearchRedirect /> },
   { path: '/ask', element: <SearchRedirect /> },
   { path: '*', element: <Navigate to="/" replace /> },

@@ -116,6 +116,8 @@ export interface IndexInput {
   etag?: string | null;
   lastModified?: string | null;
   httpStatus?: number;
+  /** Archive copy: by the archive policy (default), always (portal staff uploads, the only copy), or never (stored elsewhere). */
+  archive?: 'policy' | 'always' | 'never';
 }
 
 /** Writes one record (metadata, provenance, chunks, archived copy) through the same code paths as the ingest API. */
@@ -155,8 +157,9 @@ export async function indexRecord(env: Env, x: IndexInput, budget: Budget): Prom
   );
   const out = (await res.json()) as { documentId: string; status: string; needsChunks?: boolean; needsArchive?: boolean };
   let archive: string | null = null;
-  if (out.needsArchive && x.bytes && !x.mime.startsWith('text/')) {
-    const a = await storeArchive(env, x.sha, x.bytes, x.bytes.byteLength, x.ext || 'bin', x.mime, budget);
+  const archiveMode = x.archive ?? 'policy';
+  if ((archiveMode === 'always' || (archiveMode === 'policy' && out.needsArchive)) && x.bytes && !x.mime.startsWith('text/')) {
+    const a = await storeArchive(env, x.sha, x.bytes, x.bytes.byteLength, x.ext || 'bin', x.mime, budget, { always: archiveMode === 'always' });
     archive = String(a.status);
   }
   let chunks = 0;

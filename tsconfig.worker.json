@@ -13,5 +13,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["worker", "tests/worker-ask-followup.test.ts", "tests/worker-ask-meeting-votes.test.ts", "tests/worker-current-rate-ura.test.ts"]
+  "include": ["worker", "tests/worker-ask-followup.test.ts", "tests/worker-ask-meeting-votes.test.ts", "tests/worker-current-rate-ura.test.ts", "tests/worker-contrib.test.ts", "tests/helpers"]
 }

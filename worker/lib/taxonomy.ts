@@ -27,6 +27,10 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   transcript: 'Transcript',
   recording: 'Recording',
   municipal_code: 'Municipal code',
+  project: 'Project',
+  note: 'Note',
+  web_link: 'Link',
+  resident_submission: 'Resident submission',
   other: 'Other record',
 };
 
@@ -48,7 +52,8 @@ export const CATEGORY_DEFS: Array<Omit<Category, 'documentCount'> & { id: Catego
   { id: 'reports_studies', label: 'Reports & studies', description: 'Studies, reports, memoranda and presentations.', documentTypes: ['study', 'memorandum', 'presentation'] },
   { id: 'procurement', label: 'Procurement', description: 'Bids, RFPs and procurement records.', documentTypes: ['procurement'] },
   { id: 'maps', label: 'Maps', description: 'Maps.', documentTypes: ['map'] },
-  { id: 'other', label: 'Other records', description: 'Records not in another collection.', documentTypes: ['other', 'correspondence', 'exhibit', 'proclamation', 'municipal_code'] },
+  { id: 'other', label: 'Other records', description: 'Records not in another collection.', documentTypes: ['other', 'correspondence', 'exhibit', 'proclamation', 'municipal_code', 'project', 'note', 'web_link'] },
+  { id: 'resident_submissions', label: 'Resident submitted', description: 'Added by residents. Not city records.', documentTypes: ['resident_submission'] },
 ];
 
 export function categoriesForType(type: DocumentType): CategoryId[] {

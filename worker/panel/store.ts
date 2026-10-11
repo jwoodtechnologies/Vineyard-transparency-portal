@@ -36,15 +36,22 @@ const SCHEMA = [
 
 export const ACTIVITY_SCHEMA = SCHEMA;
 
-let ready: Promise<void> | null = null;
+// Once per isolate and database binding.
+const ready = new WeakMap<D1Database, Promise<void>>();
 export function ensureActivityTables(env: Env): Promise<void> {
-  ready ??= env.CATALOG_DB.batch(SCHEMA.map((s) => env.CATALOG_DB.prepare(s)))
-    .then(() => undefined)
-    .catch((e: unknown) => {
-      ready = null;
-      throw e;
-    });
-  return ready;
+  const db = env.CATALOG_DB;
+  let p = ready.get(db);
+  if (!p) {
+    p = db
+      .batch(SCHEMA.map((s) => db.prepare(s)))
+      .then(() => undefined)
+      .catch((e: unknown) => {
+        ready.delete(db);
+        throw e;
+      });
+    ready.set(db, p);
+  }
+  return p;
 }
 
 // Per-isolate write counter (refreshed from D1 every few minutes) and hourly cleanup.

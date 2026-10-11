@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { BookOpen, CalendarDays, FileText, HardHat, Landmark, Layers, Map as MapIcon, MessageSquare, Newspaper, PiggyBank, Scale, ScrollText, Users, X } from 'lucide-react';
+import { BookOpen, CalendarDays, FilePlus, FileText, HardHat, Landmark, Layers, Map as MapIcon, MessageSquare, Newspaper, PiggyBank, Scale, ScrollText, Users, X } from 'lucide-react';
 import { RECORD_CATEGORIES } from './categories';
 
 const ICONS: Record<string, typeof FileText> = { meetings: FileText, finance: Landmark, laws: Scale, code: BookOpen, plans: Layers };
@@ -84,6 +84,9 @@ export function SiteMenu() {
             </Link>
             <Link to="/construction" className="vc-panel-row">
               <HardHat size={16} strokeWidth={1.8} /> Construction projects
+            </Link>
+            <Link to="/add" className="vc-panel-row">
+              <FilePlus size={16} strokeWidth={1.8} /> Add to the record
             </Link>
             <p className="vc-panel-note">Independent project, not an official Vineyard City website.</p>
           </nav>

@@ -11,17 +11,18 @@
 import type { Env } from '../env';
 import { json } from '../lib/http';
 import { ARCHIVE_TYPES, shouldArchive } from '../lib/archivePolicy';
+import { PORTAL_SOURCES } from '../lib/contrib';
 
-type Row = { id: string; title: string; document_type: string; archive_key: string; file_size: number | null };
+type Row = { id: string; title: string; document_type: string; archive_key: string; file_size: number | null; source_id: string };
 
 export async function rebalanceArchive(env: Env, body: Record<string, unknown>): Promise<Response> {
   const db = env.CATALOG_DB;
   const apply = body.apply === true;
   const limit = Math.min(500, Math.max(1, Number(body.limit ?? 200) || 200));
-  const archived = await db.prepare(`SELECT id, title, document_type, archive_key, file_size FROM documents WHERE archive_status = 'archived' AND archive_key IS NOT NULL`).all<Row>();
+  const archived = await db.prepare(`SELECT id, title, document_type, archive_key, file_size, source_id FROM documents WHERE archive_status = 'archived' AND archive_key IS NOT NULL`).all<Row>();
   const rows = archived.results ?? [];
-  // A stored object is kept when any record using it is a priority record.
-  const keepKeys = new Set(rows.filter((r) => shouldArchive(r.document_type, r.title)).map((r) => r.archive_key));
+  // A stored object is kept when any record using it is a priority record, or was added on the portal (its only copy).
+  const keepKeys = new Set(rows.filter((r) => shouldArchive(r.document_type, r.title) || PORTAL_SOURCES.has(r.source_id)).map((r) => r.archive_key));
   const removable = rows.filter((r) => !keepKeys.has(r.archive_key));
   const byKey = new Map<string, Row[]>();
   for (const r of removable) byKey.set(r.archive_key, [...(byKey.get(r.archive_key) ?? []), r]);

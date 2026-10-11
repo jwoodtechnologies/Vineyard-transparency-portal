@@ -30,6 +30,7 @@ import { runFrequent, runHourly } from './cron';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
 import { logQuestion, who } from './panel/store';
+import { addFile, addForm, addStatus, reportSubmission } from './contrib/resident';
 
 function id(segment: string | undefined): string {
   const value = decodeURIComponent(segment ?? '');
@@ -71,10 +72,16 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     if (a === 'visit' && parts.length === 1) return handleVisit(env, request, ctx);
     if (a === 'feedback' && parts.length === 1) return handleFeedback(env, request, ctx);
     if (a === 'reports' && parts.length === 1) return submitReport(env, request);
+    if (a === 'add' && parts.length === 1) return addForm(env, request);
+    if (a === 'add' && b === 'file' && parts.length === 2) return addFile(env, request);
+    if (a === 'add' && b === 'report' && parts.length === 2) return reportSubmission(env, request);
     throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
   }
 
   switch (a) {
+    case 'add':
+      if (b === 'status' && parts.length === 2) return addStatus(env);
+      break;
     case 'health':
       return handleHealth(env);
     case 'stats':

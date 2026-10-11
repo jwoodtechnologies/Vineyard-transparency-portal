@@ -4,11 +4,11 @@ import '@fontsource-variable/source-serif-4';
 import './console.css';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, CalendarDays, Download, Expand, Layers, MessageSquare, Printer, Share2, X } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, Download, Expand, Flag, Layers, MessageSquare, Printer, Share2, X } from 'lucide-react';
 import type { DocumentDetail, DocumentPageText } from '@/types/models';
 import { DocumentService } from '@/services';
 import { BackButton, Frame } from './Chrome';
-import { TYPE_LABEL, formatDate } from './format';
+import { TYPE_LABEL, formatDate, sourceLabel } from './format';
 import { meetingHref } from './meetings';
 import { MeetingDocsSheet } from './MeetingDocs';
 import { useMeetingDocs } from './meetingDocs';
@@ -58,6 +58,7 @@ function Viewer({ doc, page, setPage, highlight }: { doc: DocumentDetail; page: 
   const [failed, setFailed] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const isPdf = doc.mimeType === 'application/pdf';
+  const isImage = /^image\/(png|jpeg)$/.test(doc.mimeType ?? '') && Boolean(doc.archiveUrl);
   useEffect(() => {
     let live = true;
     void DocumentService.fileUrl(doc.id, doc.archiveUrl).then((u) => live && setFileUrl(u));
@@ -67,9 +68,16 @@ function Viewer({ doc, page, setPage, highlight }: { doc: DocumentDetail; page: 
   }, [doc.id, doc.archiveUrl]);
   // PDFs always open as the actual PDF: the archived copy, or the official file streamed through
   // the portal when there is no copy yet. Text is the fallback only when the PDF cannot load.
-  const needText = !isPdf || failed;
+  const needText = (!isPdf && !isImage) || failed;
   const text = useLoad(needText ? `text:${doc.id}` : null, () => DocumentService.text(doc.id));
 
+  if (isImage && !failed && doc.archiveUrl) {
+    return (
+      <div className="vc-viewer vc-viewer-image">
+        <img src={doc.archiveUrl} alt={doc.title} onError={() => setFailed(true)} />
+      </div>
+    );
+  }
   if (!needText && fileUrl) {
     return (
       <div className="vc-viewer">
@@ -89,6 +97,25 @@ function Viewer({ doc, page, setPage, highlight }: { doc: DocumentDetail; page: 
     );
   if (text.status === 'error') return <div className="vc-empty">This record could not be displayed here. Try the original source.</div>;
   return <TextPages pages={text.data} page={page} />;
+}
+
+/** Report a resident submission (two reports from different people hide it until the owner looks). */
+function ReportButton({ documentId }: { documentId: string }) {
+  const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+  const send = () => {
+    if (state === 'sending' || state === 'done') return;
+    if (!window.confirm('Report this item as wrong, harmful or not about Vineyard?')) return;
+    setState('sending');
+    fetch('/api/add/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ documentId }) }).then(
+      (r) => setState(r.ok ? 'done' : 'error'),
+      () => setState('error'),
+    );
+  };
+  return (
+    <button type="button" className="vc-secondary" onClick={send} disabled={state === 'sending' || state === 'done'}>
+      <Flag size={15} strokeWidth={1.8} /> {state === 'done' ? 'Reported' : state === 'error' ? 'Try again' : 'Report'}
+    </button>
+  );
 }
 
 const touchDevice = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
@@ -248,6 +275,8 @@ export default function DocumentView() {
   const original = safeHttp(doc.originalUrl);
   const highlight = q.split(/\s+/).filter((w) => w.length > 2).slice(0, 8);
   const facts = [TYPE_LABEL[doc.documentType] ?? 'Record', formatDate(doc.date), doc.governmentBodyName, doc.pageCount ? `${doc.pageCount} pages` : null].filter(Boolean);
+  const label = sourceLabel(doc.sourceId);
+  const resident = doc.sourceId === 'resident-submitted';
 
   return (
     <Frame wide>
@@ -259,6 +288,7 @@ export default function DocumentView() {
           ))}
         </p>
         <h1 className="vc-page-title">{doc.title}</h1>
+        {label && <p className="vc-source-label vc-doc-source">{label}</p>}
         <div className="vc-mtg-actions">
           {doc.meeting && (
             <Link to={meetingHref(doc.meeting)} className="vc-secondary">
@@ -298,6 +328,7 @@ export default function DocumentView() {
           <Link to={`/?q=${encodeURIComponent(`Summarize ${doc.title}`)}`} className="vc-primary">
             <MessageSquare size={15} strokeWidth={1.8} /> Ask about this
           </Link>
+          {resident && <ReportButton documentId={doc.id} />}
         </div>
       </header>
       <FullScreenShell title={doc.title}>

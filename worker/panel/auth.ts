@@ -68,13 +68,20 @@ async function hmac(key: string, data: string): Promise<string> {
   return b64url(await crypto.subtle.sign('HMAC', k, enc.encode(data)));
 }
 
-export async function issueSession(owner: Owner): Promise<{ value: string; maxAge: number }> {
+export interface SessionAccount {
+  id: number;
+  role: 'owner' | 'uploader';
+}
+
+/** A signed session naming the account and its role. The signing key is the owner's session key, so rotating it signs everyone out. */
+export async function issueSession(owner: Owner, account: SessionAccount = { id: 1, role: 'owner' }): Promise<{ value: string; maxAge: number }> {
   const maxAge = SESSION_HOURS * 3600;
-  const payload = b64url(enc.encode(JSON.stringify({ e: owner.email, x: Math.floor(Date.now() / 1000) + maxAge })));
+  const payload = b64url(enc.encode(JSON.stringify({ a: account.id, r: account.role, x: Math.floor(Date.now() / 1000) + maxAge })));
   return { value: `${payload}.${await hmac(owner.session_key, payload)}`, maxAge };
 }
 
-export async function readSession(env: Env, request: Request): Promise<Owner | null> {
+/** The account named by a valid session cookie (signature and expiry checked; the account row is checked by the caller). */
+export async function readSession(env: Env, request: Request): Promise<{ owner: Owner; account: SessionAccount } | null> {
   const cookie = request.headers.get('cookie') ?? '';
   const m = new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+)`).exec(cookie);
   if (!m) return null;
@@ -83,12 +90,13 @@ export async function readSession(env: Env, request: Request): Promise<Owner | n
   const [payload, sig] = m[1].split('.');
   if (!sameString(await hmac(owner.session_key, payload), sig)) return null;
   try {
-    const data = JSON.parse(new TextDecoder().decode(fromB64url(payload))) as { e?: string; x?: number };
-    if (data.e !== owner.email || typeof data.x !== 'number' || data.x < Date.now() / 1000) return null;
+    const data = JSON.parse(new TextDecoder().decode(fromB64url(payload))) as { a?: unknown; r?: unknown; x?: unknown };
+    if (typeof data.x !== 'number' || data.x < Date.now() / 1000) return null;
+    if (typeof data.a !== 'number' || !Number.isInteger(data.a) || (data.r !== 'owner' && data.r !== 'uploader')) return null;
+    return { owner, account: { id: data.a, role: data.r } };
   } catch {
     return null;
   }
-  return owner;
 }
 
 export function sessionCookie(prefix: string, value: string, maxAge: number): string {

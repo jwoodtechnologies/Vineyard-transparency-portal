@@ -111,13 +111,13 @@ export interface RegisterInput {
   name?: string;
 }
 
-export async function registerPasskey(env: Env, input: RegisterInput, origin: string, rpId: string): Promise<void> {
+export async function registerPasskey(env: Env, input: RegisterInput, origin: string, rpId: string, accountId: number): Promise<void> {
   if (!/^[A-Za-z0-9_-]{16,512}$/.test(input.id)) throw new Error('Bad credential id.');
   if (input.alg !== -7 && input.alg !== -257) throw new Error('Unsupported passkey type.');
   const { signCount } = await checkCommon(env, 'register', input.clientDataJSON, input.authenticatorData, origin, rpId);
   await importKey(input.publicKey, input.alg); // proves the key parses
-  await env.CATALOG_DB.prepare('INSERT INTO panel_passkeys (id, public_key, alg, sign_count, name, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .bind(input.id, input.publicKey, input.alg, signCount, (input.name ?? '').slice(0, 60) || 'Passkey', new Date().toISOString())
+  await env.CATALOG_DB.prepare('INSERT INTO panel_passkeys (id, public_key, alg, sign_count, name, created_at, account_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(input.id, input.publicKey, input.alg, signCount, (input.name ?? '').slice(0, 60) || 'Passkey', new Date().toISOString(), accountId)
     .run();
 }
 
@@ -128,8 +128,9 @@ export interface LoginInput {
   signature: string;
 }
 
-export async function verifyPasskey(env: Env, input: LoginInput, origin: string, rpId: string): Promise<void> {
-  const row = await env.CATALOG_DB.prepare('SELECT public_key, alg, sign_count FROM panel_passkeys WHERE id = ?').bind(input.id).first<{ public_key: string; alg: number; sign_count: number }>();
+/** Verifies a sign-in and returns the account the passkey belongs to. */
+export async function verifyPasskey(env: Env, input: LoginInput, origin: string, rpId: string): Promise<{ accountId: number }> {
+  const row = await env.CATALOG_DB.prepare('SELECT public_key, alg, sign_count, account_id FROM panel_passkeys WHERE id = ?').bind(String(input.id ?? '')).first<{ public_key: string; alg: number; sign_count: number; account_id: number | null }>();
   if (!row) throw new Error('This passkey is not registered here.');
   const { authData, signCount } = await checkCommon(env, 'login', input.clientDataJSON, input.authenticatorData, origin, rpId);
   const clientHash = new Uint8Array(await crypto.subtle.digest('SHA-256', b64urlToBytes(input.clientDataJSON)));
@@ -141,6 +142,7 @@ export async function verifyPasskey(env: Env, input: LoginInput, origin: string,
   if (row.alg === -7) sig = derToRaw(sig);
   if (!(await crypto.subtle.verify(params, key, sig, signed))) throw new Error('The passkey signature did not verify.');
   // A counter that goes backwards suggests a cloned authenticator (synced passkeys report 0).
-  if (signCount !== 0 && row.sign_count !== 0 && signCount <= row.sign_count) throw new Error('This passkey looks cloned. Sign in with your password.');
+  if (signCount !== 0 && row.sign_count !== 0 && signCount <= row.sign_count) throw new Error('This passkey looks cloned. Use another passkey.');
   await env.CATALOG_DB.prepare('UPDATE panel_passkeys SET sign_count = ?, last_used_at = ? WHERE id = ?').bind(signCount, new Date().toISOString(), input.id).run();
+  return { accountId: Number(row.account_id ?? 1) };
 }

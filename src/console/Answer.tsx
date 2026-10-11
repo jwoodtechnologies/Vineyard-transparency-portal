@@ -23,6 +23,7 @@ export function Sources({ citations, onCite }: { citations: Citation[]; onCite: 
               <span>{TYPE_LABEL[c.documentType] ?? 'Record'}</span>
             </span>
             <span className="vc-source-title">{c.documentTitle}</span>
+            {c.sourceLabel && <span className="vc-source-label">{c.sourceLabel}</span>}
             <span className="vc-source-meta">
               {[formatDate(c.date), c.page ? `Page ${c.page}` : null].filter(Boolean).join(' · ')}
             </span>

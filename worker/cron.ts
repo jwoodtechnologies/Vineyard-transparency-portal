@@ -17,6 +17,7 @@ import { UCSO_ARCHIVE, UCSO_SOURCE, cleanText, mentionsVineyard, recent, release
 import { processVotes } from './api/votes';
 import { track } from './sync/checks';
 import { runSync } from './sync/run';
+import { drainContribQueue } from './contrib/indexing';
 
 const UA = { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org; public records archive)', accept: 'application/json, text/html;q=0.9' };
 
@@ -132,6 +133,8 @@ export async function runFrequent(env: Env, scheduledTime = Date.now()): Promise
   // that changes. Meetings arrive meanwhile from the Utah Public Notice Website and the GitHub job.
   Object.assign(summary, await runSync(env, scheduledTime, budget));
   summary.votes = await track(env, 'votes', () => processVotes(env, 6_000, 20));
+  // Big PDFs added on the portal: their full text (the title is searchable from the start).
+  summary.portalUploads = await track(env, 'portal-uploads', () => drainContribQueue(env, budget, Date.now() + 60_000));
   return summary;
 }
 
@@ -148,6 +151,7 @@ export async function runHourly(env: Env, scheduledTime = Date.now()): Promise<R
   // New minutes become voting records within the hour.
   Object.assign(summary, await runSync(env, scheduledTime, budget));
   summary.votes = await track(env, 'votes', () => processVotes(env, 8_000, 40));
+  summary.portalUploads = await track(env, 'portal-uploads', () => drainContribQueue(env, budget, Date.now() + 60_000));
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('INSERT INTO cron_runs (started_at, finished_at, summary_json) VALUES (?, ?, ?)').bind(started, new Date().toISOString(), JSON.stringify(summary)),
     env.CATALOG_DB.prepare('DELETE FROM cron_runs WHERE id <= (SELECT max(id) - 500 FROM cron_runs)'),
