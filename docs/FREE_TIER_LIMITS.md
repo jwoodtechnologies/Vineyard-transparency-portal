@@ -1,6 +1,17 @@
-# Free-tier limits and safeguards
+# Plan limits and safeguards
 
-The project must cost $0. Nothing here enables billing; every guard fails closed.
+The account is on Workers Paid ($5/month, shared with the owner's other projects). The project must
+cause zero overage: every guard keeps usage inside the plan's included amounts and fails closed.
+
+| Included (Workers Paid, per account) | Project setting |
+| --- | --- |
+| Workers AI: 10,000 Neurons/day | `AI_NEURONS_PER_DAY=8000`: every model call is estimated before it runs (worker/ai/meter.ts); at the cap Ask falls back to search |
+| D1 rows written: 50 million/month | `MAX_D1_INGEST_ROWS_PER_DAY=1000000` |
+| D1 storage: 5 GB | `SEARCH_SHARD_MAX_BYTES=2000000000` per shard (2 shards) |
+| Workers CPU: 30 million ms/month | `limits.cpu_ms=120000` per invocation; five-minute ticks stop new work after 3.5 minutes |
+| R2: 10 GB storage | `ARCHIVE_STORAGE_HARD_STOP_BYTES=6000000000` (unchanged). Archive policy: minutes, agendas, ordinances, resolutions, notices, budgets and audits only (worker/lib/archivePolicy.ts) |
+
+The table below is the original free-plan design, kept for reference.
 
 | Service | Free allowance (Workers Free) | Project safeguard |
 | --- | --- | --- |
