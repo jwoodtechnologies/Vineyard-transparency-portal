@@ -9,7 +9,7 @@
 import '@fontsource-variable/inter';
 import '@fontsource-variable/source-serif-4';
 import './console.css';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronDown, ChevronRight, History, Plus, RotateCcw } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
@@ -24,13 +24,15 @@ import { EventCard } from './EventCard';
 import { SeriesPanel } from './SeriesPanel';
 import { PersonCard } from './PersonCard';
 import { peopleIn, usePeople, type Person } from './people';
-import { MotionCard } from './VotesPage';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HeaderSearch } from './HeaderSearch';
 import { HistoryPanel } from './HistoryPanel';
 import { getChat, newChatId, saveChat, type SavedChat } from './history';
 import type { ConsoleAnswer, Preview, Turn } from './types';
+
+// Recorded-vote cards load with the first answer that has votes, not with the home page.
+const MotionCard = lazy(() => import('./MotionCard'));
 
 const PAGE = 8;
 const STEPS = ['Searching the archive', 'Reading the records', 'Checking every source'];
@@ -436,9 +438,11 @@ export default function ConsolePage() {
                       <Link to={`/votes?${new URLSearchParams({ ...(t.answer.votes.member ? { member: t.answer.votes.member } : {}), ...(t.answer.votes.q ? { q: t.answer.votes.q } : {}) })}`}>See all</Link>
                     </div>
                     <ol className="vc-mos">
-                      {t.answer.votes.items.slice(0, 3).map((m) => (
-                        <MotionCard key={m.id} m={m} member={t.answer?.votes?.member ?? null} recorded />
-                      ))}
+                      <Suspense fallback={null}>
+                        {t.answer.votes.items.slice(0, 3).map((m) => (
+                          <MotionCard key={m.id} m={m} member={t.answer?.votes?.member ?? null} recorded />
+                        ))}
+                      </Suspense>
                     </ol>
                   </section>
                 )}

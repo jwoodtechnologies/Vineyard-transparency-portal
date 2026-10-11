@@ -19,6 +19,14 @@ The full request/response contract is [API_CONTRACT.md](API_CONTRACT.md); types 
 | `GET /api/bodies[/:id]`, `/api/categories`, `/api/browse/facets`, `/api/suggestions` | From indexed data only. |
 | `GET /api/topics`, `/api/code` | Empty until curated / crawled (never invented). |
 | `POST /api/reports` | Stores only the submitted fields. |
+| `GET /api/pages/votes[?body=redevelopment-agency][&year=]` | Everything the voting recap shows in one response: `years`, the year's `motions`, the calendar's `meetings`, which minutes are `read`, and `people`. Stored per data version in `page_cache` (worker/api/pages.ts). |
+| `GET /api/pages/planning[?year=]` | The same for the Planning Commission, plus `attendance` and `drafts` (draft minutes printed in a later packet, keyed `body\|date`; no per-meeting calls). |
+| `GET /api/pages/construction` | The city's Construction Projects page (`construction`, as `/api/construction`) and the project list (`projects`). |
+
+Edge cache: public GET responses are stored at the edge keyed by the URL (without the client's `_` marker) and the
+archive's data version (`data_version`, raised by the cron when it writes, by the votes reader, and by admin and
+panel writes; worker/lib/dataVersion.ts). A copy from an older version, or older than an hour (five minutes for
+date-bound lists), is served at once and refreshed in the background.
 
 Errors always use `{ "error": { "kind", "message", "retryAfterSeconds?" } }`.
 

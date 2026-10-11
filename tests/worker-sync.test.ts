@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { canonicalUrl, categorize, urlKey } from '../worker/sync/urls';
 import { chunkPages } from '../worker/sync/chunk';
 import { extractHtml, looksScanned } from '../worker/sync/extract';
-import { parsePmnResults } from '../worker/sync/pmnParse';
+import { noticeBody, parsePmnResults } from '../worker/sync/pmnParse';
 import { findGlance, glanceText } from '../worker/lib/glance';
 import { shouldArchive } from '../worker/lib/archivePolicy';
 import { estimateNeurons } from '../worker/ai/meter';
@@ -202,5 +202,19 @@ describe('CivicClerk copies set on other dates', () => {
     const m = mapEvent({ id: 1425, eventName: 'Active Transportation Commission Meeting 12-09-2025', startDateTime: '2026-12-08T17:30:00Z', categoryName: 'Active Transportation Commission', isPublished: 'Published', agendaId: 0, publishedFiles: [] }, new Date('2026-10-11T00:00:00Z'));
     expect(m?.meeting.status).toBe('unconfirmed');
     expect(m?.meeting.date).toBe('2026-12-08');
+  });
+});
+
+describe('public notice body', () => {
+  it('uses the body the title names when the notice is filed under another', () => {
+    // The notice site files ARCH Commission meetings under "City Council" (notice 1110699, September 24, 2026).
+    expect(noticeBody('City Council', 'ARCH Commission Meeting')).toBe('ARCH Commission');
+    expect(noticeBody('City Council', 'Planning Commission Work Session')).toBe('Planning Commission');
+  });
+  it('keeps the filing body when the title names it or names no other', () => {
+    expect(noticeBody('City Council', 'City Council and RDA Joint Meeting')).toBe('City Council');
+    expect(noticeBody('Redevelopment Agency', 'Redevelopment Agency Board Meeting')).toBe('Redevelopment Agency');
+    expect(noticeBody('City Council', 'Regular Meeting')).toBe('City Council');
+    expect(noticeBody('Planning Commission', 'Planning Commission Meeting')).toBe('Planning Commission');
   });
 });

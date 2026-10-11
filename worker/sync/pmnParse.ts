@@ -49,3 +49,38 @@ export function parsePmnResults(html: string): PmnNotice[] {
   return out;
 }
 
+
+/**
+ * Bodies a notice title can name, as the agenda portal (CivicClerk) names them. The notice site files
+ * some commissions' notices under another public body: ARCH Commission meetings are posted under
+ * "City Council". The title names the body that meets.
+ */
+const TITLE_BODIES: Array<[RegExp, string]> = [
+  [/\bARCH\b/, 'ARCH Commission'],
+  [/\bactive transportation\b/i, 'Active Transportation Commission'],
+  [/\bplanning commission\b/i, 'Planning Commission'],
+  [/\bredevelopment agency\b|\bRDA\b/, 'Redevelopment Agency'],
+  [/\bdevelopment review committee\b/i, 'Development Review Committee'],
+  [/\btechnical advisory committee\b/i, 'Technical Advisory Committee'],
+  [/\blibrary board\b/i, 'Vineyard Library Board'],
+  [/\byouth council\b/i, 'Youth Council'],
+  [/\bcommunities that care\b/i, 'Communities That Care Commission'],
+  [/\bboard of appeals\b/i, 'Board of Appeals - Building Department'],
+  [/\bvineyard cares\b/i, 'Vineyard Cares Coalition'],
+  [/\bhearing officer\b|\badministrative law judge\b/i, 'Administrative Law Judge/Hearing Officer'],
+];
+
+/**
+ * The public body a notice is for: the body its title names when that differs from the body it was
+ * filed under ("ARCH Commission Meeting" filed under City Council is the ARCH Commission), else the
+ * body it was filed under. A title that names its own filing body ("City Council and RDA Joint
+ * Meeting" under City Council) keeps it.
+ */
+export function noticeBody(publicBody: string, title: string): string {
+  const filed = publicBody.trim();
+  const t = title.replace(/\s+/g, ' ');
+  if (filed && t.toLowerCase().includes(filed.toLowerCase())) return filed;
+  const named = TITLE_BODIES.filter(([re]) => re.test(t)).map(([, name]) => name);
+  if (named.length === 1 && named[0].toLowerCase() !== filed.toLowerCase()) return named[0];
+  return filed;
+}

@@ -45,6 +45,11 @@ export function loadPeople(): Promise<Person[]> {
   return cache;
 }
 
+/** People already loaded with a page's own response (the voting pages carry them), so no separate request is made. */
+export function primePeople(list: Person[]): void {
+  if (!cache && list.length) cache = Promise.resolve(list);
+}
+
 export function usePeople(): Person[] {
   const [people, setPeople] = useState<Person[]>([]);
   useEffect(() => {

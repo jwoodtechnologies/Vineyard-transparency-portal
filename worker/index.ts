@@ -26,6 +26,8 @@ import { handleVotes } from './api/votes';
 import { listBoards } from './api/boards';
 import { getConstruction, getPageSource } from './api/construction';
 import { getProjectDetail } from './api/projects';
+import { handlePages } from './api/pages';
+import { bumpDataVersion, dataVersion } from './lib/dataVersion';
 import { runFrequent, runHourly } from './cron';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
@@ -41,12 +43,18 @@ function id(segment: string | undefined): string {
   return value;
 }
 
+/** A write by the ingest job (admin routes) or the owner's panel changes the data version, so cached pages refresh. */
+function changed(env: Env, ctx: ExecutionContext, method: string, res: Response): Response {
+  if (method !== 'GET' && method !== 'HEAD' && res.status >= 200 && res.status < 300) ctx.waitUntil(bumpDataVersion(env).catch(() => undefined));
+  return res;
+}
+
 async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const method = request.method;
 
-  if (path.startsWith('/api/admin/')) return handleAdmin(env, request, url);
-  if (path === PANEL_PREFIX || path.startsWith(`${PANEL_PREFIX}/`)) return handlePanel(env, request, url);
+  if (path.startsWith('/api/admin/')) return changed(env, ctx, method, await handleAdmin(env, request, url));
+  if (path === PANEL_PREFIX || path.startsWith(`${PANEL_PREFIX}/`)) return changed(env, ctx, method, await handlePanel(env, request, url));
 
   if (method === 'OPTIONS') return new Response(null, { status: 204, headers: { allow: 'GET, HEAD, POST, OPTIONS' } });
   if (!['GET', 'HEAD', 'POST'].includes(method)) throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
@@ -129,6 +137,8 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       if (b === 'detail' && !c) return getProjectDetail(env, url);
       break;
     case 'pages':
+      // One response per heavy page (worker/api/pages.ts).
+      if ((b === 'votes' || b === 'planning' || b === 'construction') && parts.length === 2) return handlePages(env, url, b, ctx);
       // The stored copy of a watched city page, exactly as read (text/plain, never rendered).
       if (b && /^[a-z]{2,20}$/.test(b) && c === 'source' && parts.length === 3) return getPageSource(env, b);
       break;
@@ -167,35 +177,82 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
 }
 
 /**
- * Public, read-only API responses are cached at Cloudflare's edge (free Cache API), keyed by the
- * full URL, for as long as each route's own Cache-Control allows. Repeat views of the same meeting
- * list, record or search skip D1 entirely. Nothing personal is ever cached: there are no cookies,
- * and POST /api/ask, admin, health and file streams are excluded.
+ * Public, read-only API responses are cached at Cloudflare's edge (free Cache API). The key is the URL
+ * without the client's five-minute marker (`_`), plus the archive's data version (worker/lib/dataVersion.ts),
+ * so a stored copy stays good until the data behind it changes. When the version moves on (or a copy is
+ * older than its route allows), the older copy is served at once and the new one is computed in the
+ * background (stale-while-revalidate): readers never wait on D1 after the first visit. Edge hits read
+ * nothing from D1. Nothing personal is ever cached: there are no cookies, and POST /api/ask, admin, panel,
+ * health and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|records\/(?:topics|ordinances|resolutions|rda-resolutions)|suggestions|stats|coverage\/summary)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|construction|pages\/(votes|planning|construction)|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|records\/(?:topics|ordinances|resolutions|rda-resolutions)|suggestions|stats|coverage\/summary)$/;
+/** Lists that depend on today's date (upcoming meetings, "today") are recomputed after five minutes; everything else after an hour, or as soon as the data version changes. */
+const TIME_BOUND = /^\/api\/(events|latest|meetings|stats)/;
+const STORE_SECONDS = 7 * 86400;
+const refreshing = new Map<string, Promise<void>>();
 
-async function cached(request: Request, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
+function cacheKey(url: URL, version: string): Request {
+  const u = new URL(url.toString());
+  u.searchParams.delete('_');
+  u.searchParams.sort();
+  u.searchParams.set('__v', version);
+  return new Request(u.toString(), { method: 'GET' });
+}
+
+/** The copy handed to the reader: a short browser cache time, the standing headers back, 304 on a matching ETag. */
+function serveStored(request: Request, hit: Response, stale: boolean): Response {
+  const headers = new Headers(hit.headers);
+  // A phone never keeps showing a list or count that has since changed for more than a minute.
+  headers.set('cache-control', 'public, max-age=60');
+  headers.delete('cf-cache-status');
+  headers.delete('expires');
+  headers.delete('x-stored-at');
+  headers.set('x-edge-cache', stale ? 'stale' : 'hit');
+  // The edge cache drops Strict-Transport-Security from stored copies: put the standing headers back.
+  for (const [k, v] of Object.entries(API_SECURITY_HEADERS)) if (!headers.has(k)) headers.set(k, v);
+  const etag = headers.get('etag');
+  if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
+  return new Response(hit.body, { status: hit.status, headers });
+}
+
+async function cached(request: Request, env: Env, url: URL, ctx: ExecutionContext, compute: () => Promise<Response>): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '');
   if (request.method !== 'GET' || !EDGE_CACHEABLE.test(path) || request.headers.has('range')) return compute();
   const cache = (caches as unknown as { default: Cache }).default;
-  const key = new Request(url.toString(), { method: 'GET' });
+  const version = String(await dataVersion(env).catch(() => 0));
+  const key = cacheKey(url, version);
+  const latestKey = cacheKey(url, 'latest');
+  const freshFor = (TIME_BOUND.test(path) ? 300 : 3600) * 1000;
+  const store = (res: Response) => {
+    const cc = res.headers.get('cache-control') ?? '';
+    if (res.status !== 200 || !/max-age=\d*[1-9]/.test(cc) || /no-store|private/.test(cc)) return null;
+    const copy = new Response(res.clone().body, res);
+    copy.headers.set('cache-control', `public, max-age=${STORE_SECONDS}`);
+    copy.headers.set('x-stored-at', String(Date.now()));
+    copy.headers.set('x-data-version', version);
+    const twin = copy.clone();
+    return Promise.all([cache.put(key, copy), cache.put(latestKey, twin)]).then(() => undefined, () => undefined);
+  };
   const hit = await cache.match(key).catch(() => undefined);
-  if (hit) {
-    // A stored copy comes back with the zone's browser cache time (hours). Browsers get a short one
-    // instead, so a phone never keeps showing a list or count that has since changed.
-    const headers = new Headers(hit.headers);
-    headers.set('cache-control', 'public, max-age=60');
-    headers.delete('cf-cache-status');
-    headers.delete('expires');
-    // The edge cache drops Strict-Transport-Security from stored copies: put the standing headers back.
-    for (const [k, v] of Object.entries(API_SECURITY_HEADERS)) if (!headers.has(k)) headers.set(k, v);
-    const etag = headers.get('etag');
-    if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
-    return new Response(hit.body, { status: hit.status, headers });
+  const age = (r: Response) => Date.now() - Number(r.headers.get('x-stored-at') ?? 0);
+  if (hit && age(hit) < freshFor) return serveStored(request, hit, false);
+  const old = hit ?? (await cache.match(latestKey).catch(() => undefined));
+  if (old) {
+    // Stale: serve it now, refresh once per location in the background.
+    const k = key.url;
+    if (!refreshing.has(k)) {
+      const p = compute()
+        .then((res) => store(res) ?? undefined)
+        .catch(() => undefined)
+        .finally(() => refreshing.delete(k));
+      refreshing.set(k, p);
+      ctx.waitUntil(p);
+    }
+    return serveStored(request, old, true);
   }
   const res = await compute();
-  const cc = res.headers.get('cache-control') ?? '';
-  if (res.status === 200 && /max-age=\d*[1-9]/.test(cc) && !/no-store|private/.test(cc)) ctx.waitUntil(cache.put(key, res.clone()).catch(() => undefined));
+  const put = store(res);
+  if (put) ctx.waitUntil(put);
   return res;
 }
 
@@ -231,7 +288,7 @@ export default {
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
     try {
-      return hardened(await cached(request, url, ctx, () => route(request, env, url, ctx)));
+      return hardened(await cached(request, env, url, ctx, () => route(request, env, url, ctx)));
     } catch (e) {
       if (e instanceof HttpError) return errorResponse(e);
       console.error(JSON.stringify({ event: 'api_error', path: url.pathname, message: e instanceof Error ? e.message : String(e) }));

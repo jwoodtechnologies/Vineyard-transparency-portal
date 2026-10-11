@@ -4939,3 +4939,39 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-idx-link { display: inline-flex; align-items: center; min-height: 32px; font-size: 13px; font-weight: 600; color: var(--vc-accent); text-decoration: none; }
 @media (max-width: 560px) { .vc-idx-row { grid-template-columns: 1fr; } .vc-topics { grid-template-columns: 1fr 1fr; } .vc-topic { padding: 12px; } .vc-topic-label { font-size: 14px; } }
 @media (max-width: 340px) { .vc-topics { grid-template-columns: 1fr; } }
+/* Voting charts: the full desktop width (up to 1200 px), titles at most three lines (the whole title shows
+   when the row is opened, and on hover), member columns narrow, equal and aligned, the tally compact. */
+.vc-page[data-wide='sheet'] {
+  width: min(1200px, 100%);
+}
+.vc-sh-title span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.vc-sh-table tbody[data-open='true'] .vc-sh-title span {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: none;
+}
+@container sh (min-width: 520px) {
+  .vc-sh-table thead th.vc-sh-th-who,
+  .vc-sh-cell,
+  .vc-sh-table td.vc-sh-cell {
+    width: 4.6rem;
+    min-width: 4.6rem;
+    max-width: 4.6rem;
+    overflow-wrap: anywhere;
+  }
+  .vc-sh-th-tally,
+  .vc-sh-tally {
+    padding: 0 8px;
+    font-size: 0.74rem;
+  }
+  .vc-sh-tally small {
+    max-width: 6.5rem;
+    margin: 0 auto;
+  }
+}

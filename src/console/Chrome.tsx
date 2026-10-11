@@ -205,7 +205,7 @@ export function BackButton({ fallback, label = 'Back' }: { fallback: string; lab
 }
 
 /** Full page frame for the secondary screens (meetings, a meeting, a document). */
-export function Frame({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+export function Frame({ children, wide = false }: { children: ReactNode; /** true: 1040 px; 'sheet': 1200 px (the voting charts). */ wide?: boolean | 'sheet' }) {
   return (
     <div className="vc" data-state="page">
       <div className="vc-atmosphere" aria-hidden="true" />
