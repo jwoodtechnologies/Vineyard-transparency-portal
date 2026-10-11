@@ -20,6 +20,7 @@ export function budgetFacts(): string {
     `Spending cuts: the August 25 amendment cut ${usd(GENERAL.cutByAmendment)}. General Fund spending is ${usd(GENERAL.tentativeTotal - GENERAL.amended.total)} below the ${usd(GENERAL.tentativeTotal)} in the tentative budget the council saw May 12, 2026. ${cutDepts.length} departments are budgeted ${usd(cutTotal)} below their fiscal 2026 budgets (${cutDepts.slice(0, 4).map((d) => `${d.name} ${usd(d.cut)}`).join('; ')}).`,
     `Departments after the amendment: ${depts.join('; ')}. Money sent from the General Fund to other funds: ${out.join('; ')}.`,
     `Taxes (property, sales, transportation and RAP) bring in ${usd(taxes)}, about ${Math.round((taxes / GENERAL.revenueTotal) * 100)} percent of General Fund revenue; the rest is fees, fines, franchise fees, state road money, grants and money moved in from other funds.`,
+    // 70_944_358 is ALL_FUNDS_TOTAL in budgetData.ts (FY 27 Final Budget, doc_2c248c52cbadfa22, page not recorded).
     `The nine city funds budgeted for fiscal 2027 are ${funds.join('; ')}; together ${usd(70_944_358)}. That total is not tax revenue: it adds up separate funds (water, sewer, storm water, the Redevelopment Agency, impact fees, capital projects and others) that run on their own charges, grants and fees, and it counts money moved between funds. When asked how big the city budget is or what residents pay, lead with the General Fund (${usd(GENERAL.amended.total)} of spending after the amendment), the everyday operating budget that taxes mainly pay for, and say the all-funds total is a different, larger figure that includes those separate funds.`,
     'Full detail, charts and every project: the portal’s Budget page at /budget.',
   ].join(' ');
@@ -36,6 +37,9 @@ export function projectFacts(): string {
   return [
     `Capital projects in the adopted fiscal year 2027 budget, as listed on the City Council's budget slides (${PROJECTS.length} projects, ${usd(total)} in all; each amount is the fiscal 2027 line item, some projects cost more over several years and some are paid partly by grants):`,
     groups.join('. ') + '.',
+    // Source: Fire Station 35 is feature 650/32 and New City Hall is feature 650/43 on the city's Capital Improvement
+    // Plan layer (see worker/lib/capitalPlan.ts); the water tank and booster station and the Orem wastewater plant
+    // upgrades are NOT TRACED - verify (no feature id or document recorded).
     'Only these projects are in the fiscal 2027 budget. The city’s older Capital Improvement Plan map and earlier budgets list other projects (for example Fire Station 35, a water tank and booster station, and Orem wastewater plant upgrades) that are finished, rolled over or not funded this year; do not present them as current unless a record says so. A new City Hall is not planned.',
   ].join(' ');
 }

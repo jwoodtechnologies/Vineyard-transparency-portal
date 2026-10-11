@@ -270,8 +270,14 @@ export interface Commissioner {
  * minutes or the website label them.
  */
 /** Website listings known to be out of date: Natalie Harbin was replaced by Daria Evans (2026). */
+// Source: NOT TRACED - verify. The listing being overridden is the city's Board & Commission Members page,
+// https://www.vineyardutah.gov/government/board___commission_members.php (as read October 1, 2026, when this was added).
+// No record of the replacement itself is cited; the May 6, 2026 Planning Commission minutes, as quoted in
+// tests/worker-votes.test.ts, list Daria Evans as present (document id and page not recorded). Check the council minutes or agenda for her appointment.
 const REPLACED = new Set(['natalie harbin']);
 /** Roles the sources do not print: Graden Ostler is an alternate. */
+// Source: NOT TRACED - verify. By its own comment no source prints this role; it was added October 1, 2026 with
+// no record named. Check the Planning Commission minutes for 2026 and the Board & Commission Members page above.
 const ROLE_OVERRIDES: Record<string, string> = { ostler: 'Alternate' };
 
 /**

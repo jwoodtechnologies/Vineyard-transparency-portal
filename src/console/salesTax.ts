@@ -7,6 +7,7 @@
 /** The city's FY25 Citizens Budget, in the portal's archive: page 5 explains the 50/50 split in the city's words. */
 export const CITIZENS_BUDGET_DOC = 'doc_7641f1c7d6958611';
 
+// Source: Utah State Tax Commission combined sales and use tax rates, "Rates in effect as of October 1, 2026", https://files.tax.utah.gov/tax/salestax/rate/26q4combined.pdf, Vineyard row (location code 25-117), page not recorded
 export const RATE_AS_OF = 'October 1, 2026';
 
 export const RATE_SOURCE = {
@@ -22,6 +23,7 @@ export interface RatePart {
   group: 'state' | 'city' | 'transit' | 'roads' | 'county';
 }
 
+// Source (every code and rate below): Utah State Tax Commission combined sales and use tax rates, "Rates in effect as of October 1, 2026", https://files.tax.utah.gov/tax/salestax/rate/26q4combined.pdf, Vineyard row (location code 25-117), page not recorded
 export const RATE_PARTS: RatePart[] = [
   { code: 'ST', name: 'State sales and use tax', rate: 4.85, group: 'state' },
   { code: 'LS', name: 'Local sales and use tax', rate: 1.0, group: 'city' },
@@ -35,14 +37,17 @@ export const RATE_PARTS: RatePart[] = [
 ];
 
 /** The rate on a purchase in Vineyard, as printed on the chart. */
+// Source: Utah State Tax Commission combined sales and use tax rates, "Rates in effect as of October 1, 2026", https://files.tax.utah.gov/tax/salestax/rate/26q4combined.pdf, Vineyard row (location code 25-117), page not recorded; also equals rateTotal() of the parts above
 export const COMBINED_RATE = 7.45;
 
 /** Food and food ingredients are taxed at a lower rate across Utah. */
+// Source: NOT TRACED - verify (no record named for it; the statewide food rate is usually printed on the same Tax Commission chart, 26q4combined.pdf)
 export const FOOD_RATE = 3.0;
 
 /** The groups the chart colors, in the order they are colored. */
 export const RATE_GROUPS: Array<{ key: RatePart['group']; name: string; note: string }> = [
   { key: 'state', name: 'State of Utah', note: 'Applies statewide.' },
+  // Source for "the maximum 1%": NOT TRACED - verify (the 1% rate is on the Tax Commission chart; that 1% is the most a city may levy is not tied to a record)
   { key: 'city', name: 'Vineyard', note: 'The local sales and use tax. Vineyard levies the maximum 1%.' },
   { key: 'transit', name: 'Public transit', note: 'Four transit taxes that fund public transit service.' },
   { key: 'roads', name: 'Roads and highways', note: 'Funds transportation and highway projects.' },
