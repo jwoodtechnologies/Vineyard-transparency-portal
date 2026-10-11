@@ -50,12 +50,15 @@ function parseSnapshot(row: Record<string, unknown>): Parsed {
 
 const good = (p: Parsed) => Boolean(p.glance?.rows.length) || p.documents.length > 0;
 
+/** The newest stored copy that parses into a table or documents; an unreadable copy never replaces a good one. */
+export async function bestConstruction(env: Env): Promise<Parsed | null> {
+  const rows = await recentSnapshots(env, 'construction', 12);
+  return rows.map(parseSnapshot).find(good) ?? null;
+}
+
 export async function getConstruction(env: Env): Promise<Response> {
   const page = WATCHED_PAGES.find((p) => p.id === 'construction')!;
-  const [rows, snap] = await Promise.all([recentSnapshots(env, 'construction', 12), latestSnapshot(env, 'construction')]);
-  // The newest version that parses into a table or documents; an unreadable copy never replaces a good one.
-  const parsed = rows.map(parseSnapshot);
-  const best = parsed.find(good) ?? null;
+  const [best, snap] = await Promise.all([bestConstruction(env), latestSnapshot(env, 'construction')]);
   if (!best) {
     return json({ available: false, sourceUrl: page.url, lastCheckedAt: snap.lastCheckedAt }, { cache: 'public, max-age=60' });
   }

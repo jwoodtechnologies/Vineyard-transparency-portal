@@ -21,6 +21,7 @@ import { ChevronDown, Crosshair, Layers, MessageSquare, Search, X } from 'lucide
 import { useTheme } from '@/hooks/useTheme';
 import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
+import { ProjectDetail } from './ProjectDetail';
 import { BASE_BG, blankStyle, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
@@ -989,18 +990,9 @@ export default function MapPage() {
                   </div>
                 ))}
             </dl>
-            {picked.layer === 'projects' && (() => {
-              const finish = Number(picked.props.Finish_Date);
-              const pct = String(picked.props.Phase_Status ?? '');
-              const thisYear = Number(new Date().toISOString().slice(0, 4));
-              return (
-                <p className="vc-map-note">
-                  Only projects in the adopted fiscal 2027 budget are shown. The amount is what the budget sets aside this year; a project can cost more over several years. Phase and schedule come from the city&apos;s project list, which gives years only and can lag behind.
-                  {finish && finish < thisYear && /^0%$/.test(pct) ? ' Its finish year has passed while it is still listed at 0%, so this schedule is out of date.' : ''}{' '}
-                  <Link to="/construction">Construction timelines</Link> · <Link to="/budget?view=projects">Every budget project</Link>
-                </p>
-              );
-            })()}
+            {picked.layer === 'projects' && typeof picked.props.Project_Name === 'string' && (
+              <ProjectDetail key={picked.props.Project_Name} project={{ gis: picked.props.Project_Name }} budget="source" />
+            )}
             <div className="vc-map-card-actions">
               <Link to={ask} className="vc-primary">
                 <MessageSquare size={15} strokeWidth={1.8} /> Ask about this
