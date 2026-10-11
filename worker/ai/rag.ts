@@ -33,7 +33,7 @@ import { citationLabel, withoutResidentFor } from './submissions';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
-import { carryOver, ellipticalFollowUp, keepsTopic } from './followup';
+import { carryOver, ellipticalFollowUp, keepsTopic, priorPassageScore } from './followup';
 import { BUDGET_DOC_TITLES, budgetAnswer, budgetIntent, type BudgetDocKey } from './budgetAnswer';
 import { isTaxRateQuestion, isTaxRateRecord, newerRateRecord, taxRateIntent, taxRateResponse, taxRateSentences } from './taxRateAnswer';
 import { citedMotions } from './voteMatch';
@@ -42,7 +42,9 @@ import { LATEST_ACTION_Q, SCOPE_FROM, councilName, currentCouncil, motionEvidenc
 import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
-import { BODY_LABEL, longDay, meetingBodyIn, meetingDateIn, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, type MeetingVotesIntent } from './meetingVotes';
+import { BODY_LABEL, longDay, meetingBodyIn, meetingDateIn, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, type MeetingBody, type MeetingVotesIntent } from './meetingVotes';
+import { measureVotesIntent, measureVotesText, motionIsAbout, type MeasureVotesIntent } from './measureVotes';
+import { officialRoster, TERM_FROM, titleOfficials } from './officials';
 import { isOffTopic, OFF_TOPIC_REPLY } from './offTopic';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
@@ -139,6 +141,57 @@ function excerptFor(h: ChunkHit, words: string[]): Citation['excerpt'] {
   }
   highlights.sort((a, b) => a[0] - b[0]);
   return { documentId: h.documentId, chunkId: h.chunkId, page: h.pageStart, sectionTitle: h.sectionTitle, text: snippet, highlights };
+}
+
+/** A record card from a search hit, for a record the catalog read did not return. */
+function hitSummary(h: ChunkHit): DocumentSummary {
+  let categories: unknown;
+  try {
+    categories = JSON.parse(h.categoriesJson || '[]');
+  } catch {
+    categories = [];
+  }
+  return {
+    id: h.documentId,
+    slug: h.documentId,
+    title: h.title,
+    description: null,
+    documentType: normalizeType(h.documentType),
+    documentNumber: h.documentNumber,
+    date: h.documentDate,
+    year: h.year,
+    governmentBodyId: h.governmentBodyId,
+    governmentBodyName: null,
+    meetingId: null,
+    sourceId: h.sourceId,
+    pageCount: null,
+    mimeType: 'application/pdf',
+    fileSize: null,
+    categories: Array.isArray(categories) ? categories : [],
+    currency: 'unknown',
+  } as DocumentSummary;
+}
+
+/**
+ * A follow-up reads the records the previous answer cited (their titles come with the conversation):
+ * each one's passages that hold that answer's figures or the follow-up's subject words, best first.
+ */
+async function priorRecordHits(repo: SearchRepository, retrieve: (text: string, f: SearchFilters) => Promise<ChunkHit[]>, sources: string[], previousAnswer: string, question: string, filters: SearchFilters): Promise<ChunkHit[]> {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const lists = await Promise.all(
+    [...new Set(sources)].slice(0, 4).map(async (title) => {
+      const found = (await retrieve(title, filters).catch(() => [] as ChunkHit[])).find((h) => norm(h.title) === norm(title));
+      if (!found) return [] as ChunkHit[];
+      const chunks = await repo.documentChunks(found.shard, found.documentId).catch(() => []);
+      return chunks
+        .map((c) => ({ c, score: priorPassageScore(c.text, previousAnswer, question) }))
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 2)
+        .map(({ c }): ChunkHit => ({ ...found, chunkId: c.id, pageStart: c.pageStart, pageEnd: c.pageEnd, sectionTitle: c.sectionTitle, text: c.text, excerpt: '', highlights: [] }));
+    }),
+  );
+  return lists.flat();
 }
 
 async function bumpQuota(env: Env, field: 'ai_requests' | 'ai_failures'): Promise<void> {
@@ -336,6 +389,74 @@ export async function budgetResponse(env: Env, base: { id: string; question: str
   } as AskResponse;
 }
 
+/** The minutes a recorded motion was read from, as the answer's citation (opens the document at that page). */
+async function minutesCitation(env: Env, docId: string, page: number | null, body: MeetingBody, date: string | null, meetingId: string | null): Promise<Citation> {
+  const row = await env.CATALOG_DB.prepare('SELECT d.title, d.document_date, d.document_type, d.original_url, d.archive_status, d.archive_key, d.meeting_id, m.title AS meeting_title FROM documents d LEFT JOIN meetings m ON m.id = d.meeting_id WHERE d.id = ?')
+    .bind(docId)
+    .first<{ title: string | null; document_date: string | null; document_type: string | null; original_url: string | null; archive_status: string | null; archive_key: string | null; meeting_id: string | null; meeting_title: string | null }>()
+    .catch(() => null);
+  return {
+    index: 1,
+    documentId: docId,
+    documentTitle: row?.title ?? `${BODY_LABEL[body]} minutes${date ? `, ${longDay(date)}` : ''}`,
+    documentType: 'minutes',
+    documentNumber: null,
+    date: row?.document_date ?? date,
+    governmentBodyName: BODY_LABEL[body],
+    meetingId: row?.meeting_id ?? meetingId,
+    meetingTitle: row?.meeting_title ?? null,
+    agendaItem: null,
+    page,
+    sectionTitle: null,
+    excerpt: { documentId: docId, chunkId: null, page, sectionTitle: null, text: '', highlights: [] },
+    archiveUrl: row?.archive_status === 'archived' && row.archive_key ? `/api/documents/${docId}/file` : null,
+    originalUrl: row?.original_url ?? null,
+  };
+}
+
+/**
+ * "How did the council vote on Ordinance 2026-07?", "how did McCumber vote on it?", "who broke the tie?":
+ * the recorded motion on that ordinance or resolution, written by code (result, tally, each member by
+ * title and last name, date) and cited to the minutes page. Null when the voting records hold no motion on it.
+ */
+export async function measureVotesResponse(env: Env, base: { id: string; question: string; relatedDocuments: DocumentSummary[]; suggestedFollowUps: string[]; generatedAt: string }, intent: MeasureVotesIntent, staff: StaffPerson[]): Promise<AskResponse | null> {
+  const r = await queryMotions(env, { q: String(intent.ref.year), pageSize: 400 });
+  // Oldest first: a first reading or an amendment comes before the final vote.
+  const found = r.items.filter((m) => motionIsAbout(m, intent.ref)).reverse();
+  if (!found.length) return null;
+  // The motion that decided it: the last one with a recorded result and roll call.
+  const newestFirst = [...found].reverse();
+  const decided = newestFirst.find((m) => m.result !== 'unknown' && m.votes.length) ?? newestFirst.find((m) => m.result !== 'unknown') ?? newestFirst[0];
+  // The mayor as of that meeting: the minutes' attendance list prints "Mayor <name>"; for a meeting in the
+  // current term with no such line, the directory's mayor.
+  const att = await env.CATALOG_DB.prepare("SELECT member FROM meeting_attendance WHERE document_id = ? AND member LIKE 'Mayor %' LIMIT 1")
+    .bind(decided.documentId)
+    .first<{ member: string }>()
+    .catch(() => null);
+  const dirMayor = staff.find((p) => /\bmayor\b/i.test(p.role) && !/deputy|pro tem/i.test(p.role))?.name ?? null;
+  const mayor = att?.member ? att.member.replace(/^Mayor\s+/, '') : decided.date && decided.date >= TERM_FROM ? dirMayor : null;
+  // The member the question names, by the name the record uses.
+  const words = ` ${base.question.toLowerCase().replace(/[^a-z' -]+/g, ' ')} `;
+  const lastOf = (n: string) => (n.trim().split(/\s+/).pop() ?? n).toLowerCase();
+  const named = decided.votes.map((v) => v.member).find((n) => lastOf(n).length >= 3 && words.includes(` ${lastOf(n)} `)) ?? null;
+  const sentences = measureVotesText(intent, decided, mayor, named);
+  const body: MeetingBody = decided.bodyId === 'redevelopment-agency' || decided.bodyId === 'planning-commission' ? decided.bodyId : 'city-council';
+  const citation = await minutesCitation(env, decided.documentId, decided.page, body, decided.date, decided.meetingId);
+  const segments = sentences.map((text) => ({ text, citations: [1] }));
+  const answer = segments.map((x) => `${x.text} [1]`).join(' ');
+  return {
+    ...base,
+    retrievalStatus: 'grounded',
+    answer,
+    paragraphs: [{ segments }],
+    citations: [citation],
+    notice: null,
+    engine: 'votes-measure',
+    section: { path: '/votes', label: 'Open voting records', hint: 'Every recorded vote, meeting by meeting' },
+    votes: { member: named, q: intent.ref.label, items: found.slice(-5) },
+  } as AskResponse;
+}
+
 /**
  * "What did the City Council vote on at the September 8 meeting?" / "did anyone vote no that night?":
  * every recorded motion of that meeting (same body, same date) from the voting records, written by
@@ -349,29 +470,8 @@ export async function meetingVotesResponse(env: Env, base: { id: string; questio
   if (!r.items.length) return final(`The portal's voting records have no recorded motions for a ${BODY_LABEL[intent.body]} meeting on ${longDay(intent.date)}. The minutes may not be posted yet.`);
   const mayor = staff.find((p) => /\bmayor\b/i.test(p.role) && !/deputy/i.test(p.role))?.name ?? null;
   const sentences = meetingVotesText(intent, r.items, mayor);
-  const docId = r.items[0].documentId;
-  const row = await env.CATALOG_DB.prepare('SELECT d.title, d.document_date, d.document_type, d.original_url, d.archive_status, d.archive_key, d.meeting_id, m.title AS meeting_title FROM documents d LEFT JOIN meetings m ON m.id = d.meeting_id WHERE d.id = ?')
-    .bind(docId)
-    .first<{ title: string | null; document_date: string | null; document_type: string | null; original_url: string | null; archive_status: string | null; archive_key: string | null; meeting_id: string | null; meeting_title: string | null }>()
-    .catch(() => null);
   const page = r.items.map((m) => m.page).find((p) => p != null) ?? null;
-  const citation: Citation = {
-    index: 1,
-    documentId: docId,
-    documentTitle: row?.title ?? `${BODY_LABEL[intent.body]} minutes, ${longDay(intent.date)}`,
-    documentType: 'minutes',
-    documentNumber: null,
-    date: row?.document_date ?? intent.date,
-    governmentBodyName: BODY_LABEL[intent.body],
-    meetingId: row?.meeting_id ?? r.items[0].meetingId,
-    meetingTitle: row?.meeting_title ?? null,
-    agendaItem: null,
-    page,
-    sectionTitle: null,
-    excerpt: { documentId: docId, chunkId: null, page, sectionTitle: null, text: '', highlights: [] },
-    archiveUrl: row?.archive_status === 'archived' && row.archive_key ? `/api/documents/${docId}/file` : null,
-    originalUrl: row?.original_url ?? null,
-  };
+  const citation = await minutesCitation(env, r.items[0].documentId, page, intent.body, intent.date, r.items[0].meetingId);
   const segments = sentences.map((text) => ({ text, citations: [1] }));
   const answer = segments.map((x) => `${x.text} [1]`).join(' ');
   const shown = intent.kind === 'no' ? r.items.filter((m) => m.votes.some((v) => v.vote === 'no')) : r.items;
@@ -418,12 +518,21 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const aiFollow = (body as { followUp?: boolean }).followUp;
   const retrievalText = aiFollow !== undefined ? body.question : isFollowUp(body.question) && history.length ? `${body.question} ${history[history.length - 1]}` : body.question;
 
-  const fallback = async (status: 'search_only' | 'no_results', notice: string | null): Promise<AskResponse> => ({
+  // The closest records a search found, as cards that open each record in the portal: an answer that
+  // could not be written still shows where to look. Empty only when the search found nothing.
+  const closestDocs = async (list: ChunkHit[]): Promise<DocumentSummary[]> => {
+    const ids = [...new Set(list.map((h) => h.documentId))].slice(0, 5);
+    if (!ids.length) return [];
+    const found = await summariesByIds(env, ids).catch(() => new Map<string, DocumentSummary>());
+    return ids.map((id) => found.get(id) ?? hitSummary(list.find((h) => h.documentId === id)!));
+  };
+  const fallback = async (status: 'search_only' | 'no_results', notice: string | null, closest: ChunkHit[] = []): Promise<AskResponse> => ({
     ...base,
     retrievalStatus: status,
     answer: status === 'no_results' ? NO_RESULTS_ANSWER : SEARCH_ONLY_NOTICE,
     paragraphs: status === 'no_results' ? [{ segments: [{ text: NO_RESULTS_ANSWER, citations: [] }] }] : [],
     citations: [],
+    relatedDocuments: await closestDocs(closest),
     // The client runs its own record search alongside every question, so no second search here.
     searchResults: [],
     notice,
@@ -448,6 +557,13 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // "What did the council vote on at the September 8 meeting?": every recorded motion of that
   // meeting, from the voting records, never a model summary that can leave one out.
   // A question about one member's votes ("how did Wood vote on September 8?") goes on to the member path.
+  // "How did the council vote on Ordinance 2026-07?", "who broke the tie on it?": that measure's recorded
+  // motion, every member by title and last name, written by code.
+  const mvi = measureVotesIntent(body.question);
+  if (mvi) {
+    const r = await measureVotesResponse(env, base, mvi, staff).catch(() => null);
+    if (r) return { kind: 'final', response: r };
+  }
   const mv = namedNow ? null : meetingVotesIntent(body.question, utahToday());
   if (mv) {
     const r = await meetingVotesResponse(env, base, mv, staff).catch(() => null);
@@ -657,6 +773,17 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       hits = interleave([inFrame, direct], 90);
     } else hits = direct;
   }
+  // "Is there a cap on what it can collect?" after an answer about the Geneva URA: the records that
+  // answer cited are read again, the passages holding its figures first, so a figure the follow-up
+  // repeats is checked against the record that states it.
+  const priorIds = new Set<string>();
+  const lastAnswer = !agendaLock && (aiFollow ?? retrievalText !== body.question) ? [...(body.conversation ?? [])].reverse().find((t) => t.role === 'assistant') : undefined;
+  if (lastAnswer?.sources?.length) {
+    const prior = await priorRecordHits(repo, retrieve, lastAnswer.sources, lastAnswer.content, body.question, filters).catch(() => [] as ChunkHit[]);
+    prior.forEach((h) => priorIds.add(h.chunkId));
+    const seenPr = new Set<string>();
+    hits = [...prior, ...hits].filter((h) => (seenPr.has(h.chunkId) ? false : (seenPr.add(h.chunkId), true)));
+  }
   // A question about a named official's votes or positions reads the minutes for their recorded
   // motions and votes (minutes list votes by last name).
   const pinnedVotes = new Set<string>();
@@ -810,7 +937,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
   if (!aiReady || budgetOk == null) {
     const why = !aiConfigured(env) ? 'AI not configured' : aiBreakerOpen() ? 'paused after a quota error' : 'daily answer limit reached';
-    const r = await fallback('search_only', SEARCH_ONLY_NOTICE);
+    const r = await fallback('search_only', SEARCH_ONLY_NOTICE, hits);
     return { kind: 'final', response: { ...r, engine: `search-fallback (${why})` } };
   }
 
@@ -835,6 +962,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       const ins = best.filter(inside);
       if (ins.length) best = [...ins, ...best.filter((h) => !inside(h))];
     }
+    lead(priorIds, 2);
     lead(govIds, 1);
     lead(topicIds, 3);
     lead(roadIds, 4);
@@ -862,9 +990,10 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // A property tax rate is answered only from tax rate records: never from a project's fiscal analysis
   // or any other record that happens to assume a rate.
   if (isTaxRateQuestion(body.question)) {
+    const searched = hits;
     hits = hits.filter((h) => isTaxRateRecord(h));
     if (!hits.length) {
-      const r = await fallback('no_results', null);
+      const r = await fallback('no_results', null, searched);
       const text = "I couldn't find a tax rate record that answers that. The closest records are below.";
       return { kind: 'final', response: { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: 'search-fallback (no tax rate record)' } as AskResponse };
     }
@@ -895,7 +1024,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     // just this one answer, and both models were already tried.
     if (/4006|daily free allocation|neuron|quota/i.test(msg)) breakerUntil = Date.now() + 30 * 60_000;
     await bumpQuota(env, 'ai_failures').catch(() => undefined);
-    const r = await fallback('search_only', SEARCH_ONLY_NOTICE);
+    const r = await fallback('search_only', SEARCH_ONLY_NOTICE, [...evidence, ...hits]);
     return { ...r, engine: `search-fallback (${msg.replace(/\s+/g, ' ').slice(0, 160)})` };
   };
 
@@ -918,7 +1047,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     await quotaP;
     // The model found nothing that answers the question: say so plainly, with the closest records below.
     if (/^\s*NO_RECORD\b/.test(raw) || /^\s*NO_RECORD\s*$/m.test(raw.slice(0, 40))) {
-      const r = await fallback('no_results', null);
+      const r = await fallback('no_results', null, [...evidence, ...hits]);
       const named = await namedMeeting();
       const text = named ? named.text : frame ? `I couldn't find a record that answers that for ${frame.label}. The closest records are below.` : "I couldn't find a record that answers that. The closest records are below.";
       return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `${engine ?? DEFAULT_AI_MODEL} (no record)`, ...(named ? { section: named.section } : {}) } as AskResponse;
@@ -933,7 +1062,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
     if (!seg.used.size) {
       // Nothing the model wrote could be tied to a source: show the records, never an unchecked answer.
-      const r = await fallback('no_results', null);
+      const r = await fallback('no_results', null, [...evidence, ...hits]);
       const named = await namedMeeting();
       const text = named ? named.text : "I couldn't find a record that answers that. The closest records are below.";
       return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `search-fallback (no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 220)})`, ...(named ? { section: named.section } : {}) } as AskResponse;
@@ -942,10 +1071,18 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     // Renumber cited sources 1..k in order of first use.
     const order = [...seg.used].sort((a, b) => a - b);
     const renumber = new Map(order.map((old, i) => [old, i + 1]));
-    const paragraphs = seg.paragraphs.map((p) => ({ segments: p.segments.map((s) => ({ text: s.text, citations: s.citations.map((c) => renumber.get(c) ?? c) })) }));
+    const cited = order.map((old) => evidence[old - 1]);
+    // Officials by title and last name ("Council Member Nair", "Mayor Stratton"), titles from the roster
+    // only, and only for records dated inside the person's seat.
+    const roster = officialRoster(staff);
+    const paragraphs = seg.paragraphs.map((p) => ({
+      segments: p.segments.map((s) => {
+        const citations = s.citations.map((c) => renumber.get(c) ?? c);
+        return { text: titleOfficials(s.text, roster, citations.map((c) => cited[c - 1]?.documentDate)), citations };
+      }),
+    }));
     // Unverified sentences are simply left out; the answer never adds a disclaimer about them.
 
-    const cited = order.map((old) => evidence[old - 1]);
     const [docs, rows] = await Promise.all([docsP, extraP]);
     const extra = new Map((rows.results ?? []).map((r) => [String(r.id), r]));
 
@@ -1105,7 +1242,7 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   const withContact = (r: AskResponse): AskResponse => {
     const x = r as AskResponse & { mode?: string; engine?: string; people?: string[] };
     // Only the motions the answer is about: the ones it cites, when it cites any.
-    if (x.engine === 'votes-meeting') return r;
+    if (x.engine === 'votes-meeting' || x.engine === 'votes-measure') return r;
     if (votes && x.mode !== 'conversation' && !isNextAgendaQuestion(body.question)) r = { ...r, votes: { ...votes, items: citedMotions(votes.items, (r.citations ?? []).map((c) => c.excerpt?.chunkId)) } } as AskResponse;
     // What the resident shared is acknowledged as theirs, after the answer from the records.
     if (shared && x.mode !== 'conversation') r = { ...r, answer: `${r.answer} ${shared}`.trim(), paragraphs: [...(r.paragraphs ?? []), { segments: [{ text: shared, citations: [] }] }] };

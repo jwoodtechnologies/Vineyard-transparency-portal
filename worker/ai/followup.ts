@@ -7,6 +7,8 @@
  * may do better; this is the floor it can never fall below. Pure: no Worker types.
  */
 
+import { hasFigure, sentenceNumbers } from './answer';
+
 export type ConvTurn = { role: 'user' | 'assistant'; content: string; sources?: string[] };
 
 /** Words that refer back to something said before. */
@@ -243,4 +245,17 @@ function substitute(question: string, prev: string): string | null {
 export function ellipticalFollowUp(question: string, conversation: ConvTurn[]): string | null {
   const prev = previousQuestion(conversation);
   return prev ? substitute(question, prev) : null;
+}
+
+/**
+ * How well a passage of a record the previous answer cited serves a follow-up: each figure of that
+ * answer the passage holds counts most (the follow-up may repeat it, and the source check needs the
+ * passage that states it), then each subject word of the follow-up. Zero when it holds neither.
+ */
+export function priorPassageScore(text: string, previousAnswer: string, question: string): number {
+  const flatText = text.replace(/(\d),(?=\d{3}\b)/g, '$1');
+  const figures = sentenceNumbers(previousAnswer.replace(/\[\d+(?:\s*,\s*\d+)*\]/g, ''));
+  const lower = ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `;
+  const subject = [...new Set(topicWords(question).map((w) => w.toLowerCase()))];
+  return figures.filter((forms) => hasFigure(flatText, forms)).length * 3 + subject.filter((w) => lower.includes(` ${w} `)).length;
 }

@@ -303,7 +303,7 @@ export function sentenceNumbers(sentence: string): string[][] {
   return out;
 }
 
-function has(text: string, forms: string[]): boolean {
+export function hasFigure(text: string, forms: string[]): boolean {
   return forms.some((f) => {
     const e = f.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
     return new RegExp(/^[./-]/.test(f) || /^FY/.test(f) ? `${e}(?!\\d)` : `(^|[^\\d.])${e}(?![\\d]|\\.\\d)`, 'i').test(text);
@@ -384,7 +384,7 @@ export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: Ground
       }
       const nums = sentenceNumbers(seg.text);
       const names = sentenceNames(seg.text);
-      const ok = (i: number) => nums.every((forms) => has(texts[i - 1] ?? '', forms)) && names.every((n) => new RegExp(`\\b${n}\\b`, 'i').test(texts[i - 1] ?? ''));
+      const ok = (i: number) => nums.every((forms) => hasFigure(texts[i - 1] ?? '', forms)) && names.every((n) => new RegExp(`\\b${n}\\b`, 'i').test(texts[i - 1] ?? ''));
       if ((!nums.length && !names.length) || seg.citations.every(ok)) {
         segments.push(seg);
         continue;

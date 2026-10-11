@@ -120,7 +120,7 @@ export interface MeetingMotion {
 /** A member as the answer names them: title and last name ("Council Member McCumber", "Mayor Stratton"). */
 export function memberTitle(name: string, body: MeetingBody, mayor: string | null): string {
   const last = name.trim().split(/\s+/).pop() ?? name;
-  if (mayor && (mayor === name || (mayor.split(/\s+/).pop() ?? '') === name)) return `Mayor ${last}`;
+  if (mayor && (mayor.trim().split(/\s+/).pop() ?? '').toLowerCase() === last.toLowerCase()) return `Mayor ${last}`;
   return `${body === 'planning-commission' ? 'Commissioner' : body === 'redevelopment-agency' ? 'Board Member' : 'Council Member'} ${last}`;
 }
 
