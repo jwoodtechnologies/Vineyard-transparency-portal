@@ -24,7 +24,8 @@ the records, not by the model. If AI is unavailable, search still works.
   every budgeted capital project with its funding vote and related records.
 - **Construction** (`/construction`): the city's construction page, read every five minutes and kept
   by version, with the project map.
-- **Map** (`/map`): city GIS layers, Utah County parcels (no owner data) and aerial imagery, UDOT projects.
+- **Map** (`/map`): city GIS layers, Utah County parcels (owner shown on the parcel card only for companies,
+  churches, HOAs and government, never for individuals or a business-held home) and aerial imagery, UDOT projects.
 - **Submit a public record** (`/add`): residents can submit a document, project, note or link. Nothing
   is public until the owner approves it in the panel; approved items are labeled "Resident submitted.
   Not a city record." and kept apart from official records. Adding records directly is staff only (panel).

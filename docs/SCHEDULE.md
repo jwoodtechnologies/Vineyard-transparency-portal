@@ -42,7 +42,7 @@ each hour is the hourly tick.
 | `doc-check.yml` | Document viewer on phone and desktop for a sample of records | Daily 10:23 UTC | Actions; Watchdog issue when it fails |
 | `watchdog.yml` | GET /api/health/jobs and the newest chat suite, document check and ingest runs | Hourly at minute 41, and after each chat suite or document check run | GitHub issues labeled `watchdog` |
 
-Run by hand (`workflow_dispatch`): `diagnostics.yml` (fixtures, logs, perf timings to the
+Run by hand (`workflow_dispatch`): `diagnostics.yml` (fixtures, logs, perf timings, parcel owner filter counts (task `owner-filter`) to the
 `diagnostics` branch), `add-e2e.yml` (end to end check of the submit page: pending, approval, reports; removes its own test item),
 `backfill.yml` (parallel indexing of the whole archive), and `ingest.yml` with any command
 (`run`, `crawl`, `migrate`, `archive-plan`, `archive-apply`, and others).

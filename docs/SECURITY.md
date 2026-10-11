@@ -115,6 +115,36 @@ Defences, detailed in [RAG_DESIGN.md](RAG_DESIGN.md):
   name, email, IP address or user agent is stored.
 - **No private-person dossiers.** The data model has no person entity; topics and entities are
   public-record subjects only ([DATA_MODEL.md](DATA_MODEL.md#principles)).
+- **Parcel owners: entities only, never individuals.** The map's parcel card may show the Utah County
+  owner of the tapped parcel (layer 2 field `OWNER_NAME`) only when `worker/lib/ownerFilter.ts` allows
+  it; otherwise the card has no owner line at all (no "withheld" label). The mailing address
+  (`OWN_FULL_ADDRESS`) is never read. The rules, all applied in the Worker:
+  - Shown only on positive evidence of an organization: a named public, church, HOA or utility owner
+    (STATE OF UTAH, VINEYARD CITY, UDOT, UTA, UNITED STATES, SCHOOL DISTRICT, UVU, REDEVELOPMENT AGENCY,
+    CORP OF THE PRESIDING BISHOP and its short forms, DIOCESE, OWNERS ASSOCIATION, HOA, UNION PACIFIC),
+    or an entity word (LLC, L.L.C., LC, INC, CORP, CO, COMPANY, LTD, LP, LLP, PLLC, PARTNERS, HOLDINGS,
+    PROPERTIES, DEVELOPMENT, INVESTMENTS, HOMES, BUILDERS, CONSTRUCTION, ASSOCIATION, CHURCH, CITY,
+    COUNTY, DISTRICT, AUTHORITY, BANK, CREDIT UNION, FOUNDATION, RAILROAD, POWER, GAS, UTILITIES).
+  - Withheld: LAST FIRST and FIRST LAST forms (no entity word); anything with TRUST, TRUSTEE, TTEE,
+    FAMILY, LIVING, REVOCABLE, ESTATE, HEIRS, ET AL, ETAL, ET UX, JT TEN, JR, SR, II, III, IV, C/O or a
+    personal title; AND or & next to a common first name, surname or lone initial (initials joined to
+    each other, "J AND M", are allowed); several owners in one field when any one is withheld.
+  - Name-only entities are withheld: leaving out the legal forms, the words must include a listed
+    business word (descriptive entity words, places such as GENEVA, business terms) that is not also a
+    common first name or surname (lists embedded in the module). JOHN SMITH LLC, SMITH LLC and J AND M
+    LLC are withheld; EDGE HOMES, ANDERSON GENEVA LLC and J AND M PROPERTIES LLC are shown. Unknown words
+    never count. DR HORTON is the one listed brand.
+  - Homes: on a parcel whose property type (the city's 2025 parcel layer, `PROP_TYPE_DESCR`, matched by
+    parcel number) is residential of any kind (single family, condo, townhome, PUD, duplex, multi-family,
+    mobile home), or a condominium subdivision, or whose type is unknown, only a government or an HOA is
+    shown. A vacant lot is not a home.
+  - The owner is read per tap with `cache: 'no-store'` (no Cloudflare fetch cache), never in bulk, and
+    never logged; a failed read leaves the line out. The tile, card and city queries that are cached
+    never ask for `OWNER_NAME`. `/api/map/parcel` responses are edge cached, so they carry only the
+    allowed name, the read date and the deed year. The chat never names a parcel owner: an owner question
+    gets the same sentence for every parcel (`worker/ai/place.ts`). Owner names are not indexed.
+  - Check: Diagnostics workflow, task `owner-filter`, writes counts by reason and 30 random shown names
+    to `diag/<run id>/owner-filter.json`; withheld names are never printed or written.
 - No third-party analytics, fonts or scripts are loaded (fonts are self-hosted via `@fontsource`;
   CSP forbids remote scripts).
 
