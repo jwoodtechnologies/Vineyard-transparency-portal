@@ -1,0 +1,799 @@
+<html>
+<head>
+  <title>Transparent Utah | Super User Instructions</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Utah.gov + OSA Header -->
+  <!-- <script type="text/javascript" src="/static/js/utah_header.js"></script>
+		<link rel="stylesheet" type="text/css" href="static/css/utah_header.css"> -->
+  <!-- Utah Header -->
+  <link rel="stylesheet" href="https://unpkg.com/@utahdts/utah-design-system-header/dist/style.css">
+
+  <!-- Override the default design system css -->
+  <style>
+    /* Override the default design system colors */
+
+    /* #utah-logo-svg {
+      background: transparent;
+    } */
+
+    .utah-design-system button,
+    .utah-design-system .button {
+
+      background-color: transparent;
+    }
+
+
+    #utah-logo-svg>svg {
+      background-color: transparent;
+    }
+
+    .utah-design-system {
+      background-color: #4a5568;
+      --primary-color: #f2f2f2;
+    }
+  </style>
+
+  <script src="https://unpkg.com/@utahdts/utah-design-system-header/dist/utah-design-system-header.umd.js"></script>
+  <script>
+    //wait for the utah header to be ready
+    document.addEventListener('utahHeaderLoaded', () => {
+      //set up the utah header
+      window["@utahdts/utah-design-system-header"].setUtahHeaderSettings({
+
+        "mainMenu": false,
+        "mediaSizes": {
+          "mobile": 640,
+          "tabletPortrait": 768,
+          "tabletLandscape": 1024
+        },
+        "showTitle": false,
+        "size": "SMALL",
+        "titleURL": "https://auditor.utah.gov/",
+        "utahId": false,
+        "footer": null,
+        "logo": {
+          "htmlString": "<img src=\"/static/img/auditor-logo-w-text-light.svg\" id=\"design-system-logo\" onClick=\"window.open('https://auditor.utah.gov/')\"/> "
+        },
+        "skipLinkUrl": '#nav-logo-link',
+        "actionItems": null,
+        "onSearch": false
+
+      });
+    });
+  </script>
+
+  <!-- Chart Library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
+
+  <!-- Project Specific Custom JS -->
+  <script type="text/javascript" src="static/js/alex_queries.js"></script>
+
+
+  <!-- Jquery -->
+  <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+
+  <!-- Bootstrap 4 -->
+  <script type="text/javascript" src="static/js/bootstrap.bundle.js"></script>
+  <!-- <script type="text/javascript" src="static/js/bootstrap.js"></script> -->
+  <!-- OSA Bootstrap CSS -->
+  <!-- <link rel="stylesheet" type="text/css" href="static/css/bootstrap.css"> -->
+  <link rel="stylesheet" type="text/css" href="static/css/bootstrap_46.css">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap Select-->
+  <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css'>
+  <script src='https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js'></script>
+
+  <!-- DataTables -->
+  <script type="text/javascript" src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
+  <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.7.0/js/dataTables.buttons.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.html5.min.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.print.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.7.0/css/buttons.dataTables.min.css">
+
+  <!-- Font Awesome Icons -->
+  <!-- <script src="https://kit.fontawesome.com/6d9afcf22b.js" crossorigin="anonymous"></script> -->
+  <script src="https://kit.fontawesome.com/78b37ddca4.js" crossorigin="anonymous"></script>
+
+  <!--Phosphor  -->
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+
+  <!-- JBox -->
+  <script src="https://cdn.jsdelivr.net/gh/StephanWagner/jBox@v1.3.2/dist/jBox.all.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/gh/StephanWagner/jBox@v1.3.2/dist/jBox.all.min.css" rel="stylesheet">
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=UA-167761260-1"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag("js", new Date());
+            gtag("config", "UA-167761260-1");
+        </script> -->
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-EHQ9WTV8K6"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag('js', new Date());
+
+    gtag('config', 'G-EHQ9WTV8K6');
+  </script>
+
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <!-- specific plugin -->
+  <script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script>
+  <script src="https://d3js.org/d3-array.v2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-scale@4"></script>
+
+  <script type='text/javascript' src='static/js/property.js'></script><link rel='stylesheet' type='text/css' href='static/css/property.css'>
+  
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+
+  <!-- <script type="module">
+
+            import * as d3 from "https://cdn.skypack.dev/d3@7";
+
+            // const div = d3.selectAll("div");
+
+        </script> -->
+
+  <script src="https://d3js.org/d3.v7.js"></script>
+
+  <script>
+    window.d3v7 = window.d3;
+    window.d3 = null;
+  </script>
+
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-color@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-scale@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-interpolate@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-scale-chromatic@3"></script>
+
+
+  <script>
+    window.d3v4 = window.d3;
+  </script>
+
+  <!-- <script src="https://unpkg.com/range-slider-input@2"></script> -->
+
+  <!-- <script src="https://d3js.org/d3-array.v2.min.js"></script> -->
+  <!-- <script src="//d3js.org/d3.v4.0.0-alpha.35.min.js"></script> -->
+
+  <!-- Bootstrap slider -->
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.2/bootstrap-slider.min.js" integrity="sha512-f0VlzJbcEB6KiW8ZVtL+5HWPDyW1+nJEjguZ5IVnSQkvZbwBt2RfCBY0CBO1PsMAqxxrG4Di6TfsCPP3ZRwKpA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.2/css/bootstrap-slider.css" integrity="sha512-SZgE3m1he0aEF3tIxxnz/3mXu/u/wlMNxQSnE0Cni9j/O8Gs+TjM9tm1NX34nRQ7GiLwUEzwuE3Wv2FLz2667w==" crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.1/bootstrap-slider.min.js" integrity="sha512-Ziq7V/ymz8j/+X/poJBWacqjruQTikYxd0I/W/1lXmIG/BpS1+WKAThV+OiUPRRhM43lGKA6CZdRj3gXlwuADg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.1/css/bootstrap-slider.min.css" integrity="sha512-PUsbmyb2iKhaA4+gzfEORM8MHnXG+BGh08SMkrzXpztJciik5spAFSsiKjhqJoFYRTENLT+0dD3znwxpMb/gfg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
+
+
+
+
+  <!-- Tabulator -->
+  <!-- <link href="https://unpkg.com/tabulator-tables@5.0.7/dist/css/tabulator.min.css" rel="stylesheet"> -->
+  <!-- <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.0.7/dist/js/tabulator.min.js"></script> -->
+  <!-- <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
+  <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script> -->
+
+  <link href="static/css/tabulator.css" rel="stylesheet">
+  <link href="static/css/tabulator_bootstrap4.css" rel="stylesheet">
+  <script type="text/javascript" src="static/js/tabulator.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.4/jspdf.min.js"></script>
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/2.3.2/jspdf.plugin.autotable.js"></script>
+
+
+
+  <!-- Moment JS -->
+
+  <script type="text/javascript" src="/static/js/luxon.js"></script>
+
+  <!-- SheetJs Library  - used for Excel Button Downloads -->
+  <script type="text/javascript" src="https://oss.sheetjs.com/sheetjs/xlsx.full.min.js"></script>
+
+
+
+  <!-- canvg -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/canvg/3.0.9/umd.js"
+    integrity="sha512-Wu9XXg78PiNE0DI4Z80lFKlEpLq7yGjquc0I35Nz+sYmSs4/oNHaSW8ACStXBoXciqwTLnSINqToeWP3iNDGmQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script type='text/javascript' src='static/js/simg.js'></script>
+  <script src="https://d3js.org/colorbrewer.v1.min.js"></script>
+
+
+  <!-- PDF and HTML2canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.3/jspdf.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.js"></script>
+
+  <!-- Pivot Table  -->
+  <!-- <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css'>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js'></script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js'></script>
+   		<script src='https://cdn.plot.ly/plotly-basic-latest.min.js'></script>
+    	<script src='https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.22.0/plotly_renderers.min.js'></script> -->
+
+  <!-- Bootstrap slider -->
+  <script src="static/js/bootstrap-slider.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="static/css/bootstrap-slider.min.css">
+
+  <!-- Bootstrap Picker -->
+
+  <link rel="stylesheet" type="text/css" href="static/css/bootstrap-datepicker3.min.css">
+  <script src="static/js/bootstrap-datepicker.min.js"></script>
+
+  <!-- Gzip lib -->
+  <!-- https://github.com/imaya/zlib.js/blob/develop/bin/gzip.min.js -->
+  <!-- <script type="text/javascript" src="static/js/gzip.min.js"></script> -->
+  <!-- <script type="text/javascript" src="static/js/jszip-utils.js"></script> -->
+
+  <!-- Echarts -->
+  <!-- <script src="static/js/echarts.common.js"></script> -->
+  <!-- <script src="static/js/echarts.common.js.map"></script> -->
+  <!-- <script src="static/js/echarts.common.min.js"></script> -->
+  <script src="static/js/echarts.min.js"></script>
+  <script src="static/js/osa_theme.js"></script>
+  <!-- <script src="static/js/echarts.js.map"></script> -->
+
+  <!-- Numerals -->
+  <script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+
+  <!-- Prism JS  - used for code highlighting-->
+  <link rel="stylesheet" href="static/css/prism.css">
+  <script src="static/js/prism.js"></script>
+
+  <!-- csv parser -->
+  <script src="static/js/papaparse.js"></script>
+
+  <!-- DOMPurify -->
+  <script type="text/javascript" src="static/js/purify.min.js"></script>
+
+  <!--upgrade to bs5 for https://tabler.io/icons  -->
+
+  <script type="text/javascript" src="static/js/nouislider.js"></script>
+  <link href="static/css/nouislider.css" rel="stylesheet">
+
+</head>
+<body>
+  <!-- Init the spinner object -->
+  <div class="spinner" id="spinner" hidden=true> </div>
+  
+	<nav id="navbar-main" class="navbar navbar-expand-lg navbar-light bg-light text-darkgrey text-uppercase py-2">
+			<div class="container-fluid">
+				<a class="navbar-brand pl-2" href="/main.php">
+					<img id="navbar-main-img" src="/static/img/tu_logo_yellow_horizontal.svg" width="262" height="75" alt="auditor-logo" class="d-inline-block align-center"">
+				</a>
+				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+					<span class="navbar-toggler-icon"></span>
+				</button>
+
+				<div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+					<ul class="navbar-nav ml-auto ">
+						<li class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle text-decoration-none" href="#" id="navbarDropdown_employee_payroll" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+								Compensation
+							</a>
+							<div class="dropdown-menu" aria-labelledby="navbarDropdown_employee_payroll">
+								
+								<h5 class="dropdown-header">Employee Compensation</h5>
+								<a class="dropdown-item text-decoration-none" href="empdet.php">
+									Employee Pay Search
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="emp.php">
+									Highest Paid Employees
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="entity_comp.php">
+									Compensation Downloader
+								</a>
+								<hr class="dropdown-divider">
+								<h5 class="dropdown-header">Job Title</h5>
+								<a class="dropdown-item text-decoration-none" href="job_title_search.php" title="" target="_blank">
+									Job Pay Search
+								</a>
+								<a class="dropdown-item text-decoration-none" href="job_title_compare.php" title="" target="_blank">
+									Compare Two Entities
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="job_title_wage_trends.php" title="" target="_blank">
+									Wage Trends
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="job_title_paid.php" title="" target="_blank">
+									Highest Paid Jobs
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="job_title_common.php" title="" target="_blank">
+									Most Common Jobs
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="job_title_lg.php" title="" target="_blank">
+									Local Gov. Jobs
+								</a>
+
+							</div>
+						</li>
+						<li class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle text-decoration-none" href="#" id="navbarDropdown_entity" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+								Governments
+							</a>
+
+							<div class="dropdown-menu" aria-labelledby="navbarDropdown_entity">
+								
+                
+              
+                
+                <h6 class="dropdown-header">Financial Tools</h6>
+
+                <a class="dropdown-item text-decoration-none" href="ven.php">
+									Highest Paid Vendors
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="vendet.php">
+									Vendor Payments Search
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="entity_details.php">
+									Entity Overview
+								</a>
+
+                <a class="dropdown-item text-decoration-none" href="transaction_details.php">
+									Transaction Details
+								</a>
+
+                <a class="dropdown-item text-decoration-none" href="cares_dashboard.php" title="">
+									CARES Dashboard
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="arpa_dashboard.php" title="">
+									ARPA Dashboard
+								</a>
+
+                
+
+
+                <hr class="dropdown-divider">
+                <h6 class="dropdown-header">Reporting & Oversight</h6>
+								<a class="dropdown-item text-decoration-none" href="https://reporting.auditor.utah.gov/">
+									Local Gov. Reporting System
+								</a>
+                <a class="dropdown-item text-decoration-none" href="https://reporting.auditor.utah.gov/searchreports/s/">
+									Search Financial Reports
+								</a>
+                <a class="dropdown-item text-decoration-none" href="compliance.php">
+									Compliance Report
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="batches.php">
+									Submission List
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="fdd.php">
+									Fiscal Distress Dashboard
+								</a>
+
+								<a class="dropdown-item text-decoration-none" href="dqi_dashboard.php">
+									Data Quality Dashboard
+								</a>
+
+								
+
+
+							</div>
+						</li>
+
+
+
+
+						<li class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle text-decoration-none" href="#" id="navbarDropdown_education" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+								Education
+							</a>
+
+							<div class="dropdown-menu text-decoration-none" aria-labelledby="navbarDropdown_education">
+							
+
+                <h6 class="dropdown-header">Higher Education</h6>
+							
+                
+                <a class="dropdown-item" href="higher_ed_v2.php" title="" target="_blank">
+									Higher Education Expenditure
+								</a>
+
+                <a class="dropdown-item" href="higher_ed_ce.php" title="" target="_blank">
+									Higher Education - Cash
+								</a>
+
+                
+
+								<hr class="dropdown-divider">
+								<h6 class="dropdown-header">Public Education (K-12)</h6>
+							
+                <a class="dropdown-item" href="https://spending-map-dash-main-976765884517.us-west3.run.app" title="" target="_blank">
+									Performance and Spending
+								</a>
+
+								<a class="dropdown-item" href="https://teacher-pay-dash-prod-976765884517.us-central1.run.app/" title="" target="_blank">
+									Teacher Pay
+								</a>
+
+
+								<a class="dropdown-item" href="https://lea-pay-dash-778714388561.us-west3.run.app/" title="" target="_blank">
+									Administrator & Teacher Pay
+								</a>
+
+								<a class="dropdown-item" href="https://lea-revenue-dash-main-976765884517.us-west3.run.app" title="" target="_blank">
+									Education Funding
+								</a>
+
+								<a class="dropdown-item" href="entity_details.php" title="" target="_blank">
+									Entity Overview
+								</a>
+
+                <a class="dropdown-item" href="pkids_title_i.php" title="" target="_blank">
+									Title I Program Effectiveness
+								</a>
+							
+
+							</div>
+						</li>
+            
+
+
+
+            <li class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle text-decoration-none" href="#" id="navbarDropdown_covid" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+								Curated Reports
+							</a>
+
+							<div class="dropdown-menu dropdown-menu-right text-decoration-none" aria-labelledby="navbarDropdown_covid">
+							
+                <h6 class="dropdown-header">Taxpayer/Public Interest</h6>
+                <a class="dropdown-item" href="state_rvex.php" title="" target="_blank">
+									State Revenues & Expenditures
+								</a>
+
+                <a class="dropdown-item" href="https://specialty-license-report-main-778714388561.us-west3.run.app/" title="" target="_blank">
+									Speciality License Plates
+								</a>
+
+                <a class="dropdown-item" href="property.php" title="" target="_blank">
+									Property Values
+								</a>
+                
+
+                <hr class="dropdown-divider">
+								<h6 class="dropdown-header">Public Health Data</h6>
+							
+                <a class="dropdown-item" href="https://healthcost.utah.gov/" title="" target="_blank">
+									Health Cost Compare
+								</a>
+
+								<a class="dropdown-item" href="https://healthcost.utah.gov/cannabis.php" title="" target="_blank">
+									Medical Cannabis Visit Cost
+								</a>
+
+
+
+								
+
+							</div>
+						</li>
+
+
+
+
+						<li class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle text-decoration-none" href="#" id="navbarDropdown_covid" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-display="static">
+								Help
+							</a>
+
+              
+
+							<div class="dropdown-menu text-decoration-none dropdown-menu-right" aria-labelledby="navbarDropdown_covid">
+								
+                <h6 class="dropdown-header">Site Information</h6>
+
+                <a class="dropdown-item" href="help.php" title="" target="_blank">
+                  Help
+                </a>
+
+                <a class="dropdown-item" href="resources.php" title="" target="_blank">
+                  Resources
+                </a>
+
+                <a class="dropdown-item" href="disclaimers.php" title="" target="_blank">
+                  Disclaimers
+                </a>
+
+                
+
+                <hr class="dropdown-divider">
+								<h6 class="dropdown-header">Super Users</h6>
+							
+                <a class="dropdown-item" href="superuser.php" title="" target="_blank">
+									Super User Resource Center
+								</a>
+
+								<a class="dropdown-item" href="how_to_become_superuser.php" title="" target="_blank">
+									How to Become a Super User
+								</a>
+
+								<a class="dropdown-item" href="database_schema.php" title="" target="_blank">
+									Available Fields
+								</a>
+
+								<a class="dropdown-item" href="superuser_scripts.php" title="" target="_blank">
+									Example SQL Scripts
+								</a>
+
+								<a class="dropdown-item" href="superuser_query_with_r.php" title="" target="_blank">
+									Query with Python/R
+								</a>
+
+							</div>
+						</li>
+
+					</ul>
+				</div>
+			</div>
+		</nav>
+	  <nav id = "breadcrumb" class ="py-0 mt-2 mb-2 text-sm" aria-label="breadcrumb">	<ol class="breadcrumb small mb-2 py-2"><li class='breadcrumb-item small'><a href='/'>Home</a></li><li class='breadcrumb-item small' aria-current='page'>Disclaimers</li>	</ol></nav>  <div class="row">
+    <div class="col-12">
+      <!-- Create the jumbotron at the top with all necessary user interface instructions.  -->
+      <div class="jumbotron bg-primary text-white mb-2 mx-4 pt-2 pb-2 px-0" id="jumbo-main">
+        <div class="row px-4 py-2" id="header-container">
+          <div id="header-title-box" class="text-xs-center text-sm-center text-md-center text-lg-left text-xl-left">
+            <h1>Disclaimers</h1>
+          </div>
+          <div id="header-description" class="collapse py-2">
+            <p class="lead">
+
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row my-3">
+    <div class="col-12">
+      <div class="card shadow border mx-4">
+        <div class="card-header">
+          <h2>Periodic Upload of All Transactions</h2>
+        </div>
+        <div class="card-body lead">
+          <p class="lead mt-2">
+            This website, transparent.utah.gov, contains detailed transactions which are uploaded to the website
+            periodically by the individual entity. Revenue and expense transactions are uploaded at least quarterly.
+            When
+            data is uploaded during the year, the transactions will not be audited and will not "tie," that is will not
+            perfectly agree with, year end audited financial statements. This is not a flaw in the system, but rather a
+            reflection of the fact that the goal is timely and frequent access to data by the public, while accounting
+            reconciliations are performed annually.
+          </p>
+
+          <p class="lead mt-2">
+            Also, all expenditure transactions are posted to the website such as internal transactions which do not
+            relate
+            to any payee/vendor/customer. These non-vendor transactions will display "Not Applicable" in the vendor
+            field
+            on the detail transaction page. During the year, more and more transactions will be loaded to the website,
+            including correcting entries which may reverse or change the effect of previous entries. The original entry
+            is
+            not modified on the website but both the original and subsequent correcting entry will be included.
+          </p>
+
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row my-3">
+    <div class="col-12">
+      <div class="card shadow border mx-4">
+        <div class="card-header">
+          <h2>Protected and Excluded Data</h2>
+        </div>
+        <div class="card-body lead">
+          <p class="card-text">
+            The expenditure data includes payments to vendors and employees whose names are considered protected due to
+            one or more of the following reasons:
+          </p>
+          <ul>
+            <li>Legal protective orders.</li>
+            <li>Federal or State privacy laws.</li>
+            <li>Vendors who are not corporations.</li>
+          </ul>
+          <p>
+            An example of this are law enforcement officers who work undercover or whose identity otherwise needs to be
+            protected.
+          </p>
+          <p>
+            All expenditure transactions are included on the website, however if the vendor or employee name is
+            protected for any of the reasons listed above, the vendor name on the specific transaction will be displayed
+            as "REDACTED." At this time, customer names are not required for revenue transactions - though many entities provide them.
+          </p>
+          <p>
+            The following State Independent Entities are not required by statute to send information to the website:
+          </p>
+          <ul>
+            <li>Utah State Retirement Office</li>
+            <li>Worker's Compensation Fund</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row my-3">
+    <div class="col-12">
+      <div class="card shadow border mx-4">
+        <div class="card-header">
+          <h2>Employee Compensation</h2>
+        </div>
+        <div class="card-body lead">
+
+          <p>
+            The salaries or wages shown in the Employee Compensation transaction type are the actual amounts paid to an
+            employee during the annual reporting period and may only reflect a portion of the reporting period due to
+            timing of hiring or leaving employment or other reasons.
+          </p>
+
+          <p>
+            The actual amount paid may also only be for part-time employment, job sharing (multiple positions), or for a
+            position occupied only a portion of the annual reporting period due to a change in status such as a
+            promotion.
+          </p>
+
+          <p>
+            The amounts shown should not be construed to represent the budgeted, contracted, or negotiated wage or
+            salary for an employee. The amount should also not be used in an attempt to determine weekly, monthly or
+            other periodic payments made to an employee.
+          </p>
+
+          <p>
+            Employee Compensation amounts shown are not necessarily comparable between entities. Job descriptions in one
+            entity may be different than that of another entity for the same job titles, causing a corresponding
+            difference in salary. Length of service and previous experience upon hire are other factors that may cause
+            differences.
+          </p>
+
+          <p>
+            In addition to salary information, employee compensation amounts include benefit amounts paid on behalf of,
+            but not necessarily to, the employee, such as health and dental insurance, FICA, unemployment tax,
+            retirement rates, etc. Employee Compensation transactions are uploaded annually.
+          </p>
+
+          <p>
+            Employee Compensation amounts include only taxable employee reimbursements. Nontaxable employee
+            reimbursements are included in the Expense transaction type.
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+  <!-- Footer -->
+        <footer class="text-center text-lg-start  text-white bg-primary">
+            <!-- <br> -->
+            <!-- Section: Links  -->
+            <section>
+                <div class="container text-center text-md-start mt-2">
+                    <br>
+                    <!-- Grid row -->
+                    <div class="row mt-3">
+                        <!-- Grid column -->
+                        <div class="col-sm-12 col-md-3 col-lg-3 col-xl-3 mx-auto mb-4">
+                        <!-- Content -->
+                        <h6 class="text-uppercase fw-bold mb-4 text-white">
+                            Questions?
+                        </h6>
+                        <a href="resources.php" target="_blank">Resources</a><br>
+                        <a href="/">Home</a><br>
+                        <a href="https://www.utah.gov/disclaimer.html" target="_blank">Terms of Use</a><br>
+                        <a href="https://auditor.utah.gov/privacy-policy" target="_blank">Privacy Policy</a><br>
+                        <a href="help.php" target="_blank">Help & FAQs</a><br>
+                    </div>
+                    <!-- Grid column -->
+
+                    <!-- Grid column -->
+                    <div class=" col-sm-12 col-md-6 col-lg-6 col-xl-6 mx-auto mb-4">
+                        <!-- Links -->
+                        <h6 class="text-uppercase fw-bold mb-4 text-white">
+                            Disclaimers
+                        </h6>
+                        <p class="text-center">
+                                Please note that the data contained on this website is raw, unaudited, and unconsolidated data
+                                and
+                                therefore may not match any audited or printed financial statements. Also, this website does not
+                                contain information that is considered private or protected by state or federal law.
+                        </p>
+                        <div style="text-align: center; height: 2em; margin-top: 2em;">
+                            <a href="disclaimers.php">View all Disclaimers</a>
+                        </div>
+                        
+                    </div>
+                    <!-- Grid column -->
+
+                    <!-- Grid column -->
+                    <div class=" col-sm-12 col-md-3 col-lg-3 col-xl-3 mx-auto mb-md-0 mb-4">
+                        <!-- Links -->
+                        <h6 class="text-uppercase fw-bold mb-4 text-white">
+                            Contact
+                        </h6>
+                        <p>
+                            Office of the State Auditor<br>
+                            Utah State Capitol Complex<br>
+                            Utah State Capitol, Suite 260<br>
+                            Salt Lake City, Utah 84114<br>
+                        </p>
+                        <p>
+                            <i class="fas fa-phone-alt"></i>&nbsp; 
+							801-538-1025 
+                            
+                        </p>
+						<p>
+							<i class="fas fa-envelope me-3"></i> &nbsp;
+                            <a href="mailto:transparent@utah.gov">transparent@utah.gov</a><br>
+						</p>
+                    
+                    </div>
+                    <!-- Grid column -->
+                </div>
+                <!-- Grid row -->
+            </section>
+            <!-- Section: Links  -->
+
+            <!-- Copyright -->
+            <div class="text-center p-3 bg-light text-dark">
+                <b style="color:#212529;">Copyright © 2024 State of Utah - Office of the State Auditor - Certain rights reserved, data may be used
+                <a style="color:#212529;"href="https://creativecommons.org/licenses/by/4.0/">(CC BY 4.0)</a></b>
+            </div>
+            <!-- Copyright -->
+        </footer>				<!-- Error Modal -->
+		<div id="errorModal" class="modal fade" role="dialog">
+			<div class="modal-dialog modal-dialog-centered">
+				<!-- Modal content-->
+				<div class="modal-content">
+					<div class="modal-header justify-content-center bg-info text-white" >
+                        <h4 id="errorModalTitle">Error!</h4>	
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+					</div>
+					<div class="modal-body text-center">
+						<!-- <h4 id="errorModalTitle">Error!</h4>	 -->
+						<p id="errorModalMessage">Put error message here.</p>
+						<button class="btn btn-info text-white" data-dismiss="modal">Ok</button>
+					</div>
+				</div>
+			</div>
+		</div></body>
+
+</html>

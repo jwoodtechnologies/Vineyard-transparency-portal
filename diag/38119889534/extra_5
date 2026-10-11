@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+	<head>
+
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<meta name="description" content="The Official Website of the State of Utah">
+		<meta name="keywords" content="utah, utah government, state of utah">
+
+		<title data-title="Utah.gov">Disclaimer | Utah.gov</title>
+
+		<link rel="stylesheet" href="../css/styles.css?v=20260423">
+
+		
+		<meta property="og:title" content="Disclaimer | Utah.gov">
+		<meta property="og:description" content="The Official Website of the State of Utah">
+		<meta property="og:image" content="/img/deviceIcons/apple-icon-152x152.png">
+
+		
+		<link rel="apple-touch-icon" sizes="57x57" href="../img/deviceIcons/apple-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="../img/deviceIcons/apple-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="../img/deviceIcons/apple-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="../img/deviceIcons/apple-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="../img/deviceIcons/apple-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="../img/deviceIcons/apple-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="../img/deviceIcons/apple-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="../img/deviceIcons/apple-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../img/deviceIcons/apple-icon-180x180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../img/deviceIcons/android-icon-192x192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../img/deviceIcons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="../img/deviceIcons/favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../img/deviceIcons/favicon-16x16.png">
+<link rel="shortcut icon" type="image/jpg" href="../img/deviceIcons/favicon-32x32.png">
+<link rel="manifest" href="../img/deviceIcons/manifest.json">
+<meta name="msapplication-TileColor" content="#175264">
+<meta name="msapplication-TileImage" content="../img/deviceIcons/ms-icon-144x144.png">
+<meta name="theme-color" content="#175264">
+
+		
+		<script async src="https://www.googletagmanager.com/gtag/js?id=G-621Q114PFJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-621Q114PFJ');
+</script>
+
+		
+		<script type="text/javascript">
+	(function(){var g=function(e,h,f,g){
+	this.get=function(a){for(var a=a+"=",c=document.cookie.split(";"),b=0,e=c.length;b<e;b++){for(var d=c[b];" "==d.charAt(0);)d=d.substring(1,d.length);if(0==d.indexOf(a))return d.substring(a.length,d.length)}return null};
+	this.set=function(a,c){var b="",b=new Date;b.setTime(b.getTime()+6048E5);b="; expires="+b.toGMTString();document.cookie=a+"="+c+b+"; path=/; "};
+	this.check=function(){var a=this.get(f);if(a)a=a.split(":");else if(100!=e)"v"==h&&(e=Math.random()>=e/100?0:100),a=[h,e,0],this.set(f,a.join(":"));else return!0;var c=a[1];if(100==c)return!0;switch(a[0]){case "v":return!1;case "r":return c=a[2]%Math.floor(100/c),a[2]++,this.set(f,a.join(":")),!c}return!0};
+	this.go=function(){if(this.check()){var a=document.createElement("script");a.type="text/javascript";a.src=g;document.body&&document.body.appendChild(a)}};
+	this.start=function(){var t=this;"complete"!==document.readyState?window.addEventListener?window.addEventListener("load",function(){t.go()},!1):window.attachEvent&&window.attachEvent("onload",function(){t.go()}):t.go()};};
+	try{(new g(100,"r","QSI_S_ZN_bPzG8VFyVvBeKxw","https://znbpzg8vfyvvbekxw-utconcierge.siteintercept.qualtrics.com/SIE/?Q_ZID=ZN_bPzG8VFyVvBeKxw")).start()}catch(i){}})();
+</script>
+<div id="ZN_bPzG8VFyVvBeKxw"></div>
+
+
+		
+		
+
+	</head>
+
+	<body class="" data-type="secondary" data-section="support" data-page="disclaimer">
+
+		
+
+		<header>
+
+			<div id="header--brandContainer">
+				<a href=".." aria-label="Home">Utah.gov - An official website</a>
+			</div>
+
+			<nav>
+
+
+	<button class="User-Confuser" id="menuActivator" type="button" aria-label="Menu">
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+	<line class="hiveburger__line" id="line3" x1="22" y1="61.5" x2="73" y2="61.5"></line>
+	<line class="hiveburger__line" id="line3-2" x1="22" y1="49.5" x2="73" y2="49.5"></line>
+	<line class="hiveburger__line" id="line3-1" x1="22" y1="37.5" x2="73" y2="37.5"></line>
+	
+	<line class="hiveburger__line" id="lineX1" x1="29.97" y1="31.97" x2="66.03" y2="68.03"></line>
+	<line class="hiveburger__line" id="lineX2" x1="29.97" y1="68.03" x2="66.03" y2="31.97"></line>
+</svg>
+	</button>
+
+	<form id="nav--searchForm" action="../search/" method="get">
+		<p class="searchField">
+			<label for="nav--search">Search Utah.gov</label>
+			<input type="search" name="q" id="nav--search" placeholder="Search" aria-label="Search Utah.gov">
+			<button type="submit" aria-label="Submit Search">Search</button>
+		</p>
+	</form>
+
+	<ul id="nav--main">
+		<li><a href="../services/">Services</a></li>
+		<li><a href="../government/">Government</a></li>
+		<li><a href="../business/">Business</a></li>
+		<li><a href="../employment/">Employment</a></li>
+		<li><a href="../education/">Education</a></li>
+		<li><a href="../visit/">Visit</a></li>
+		<li><a href="../local/">Residents</a></li>
+		<li><a href="../about/">About</a></li>
+	</ul>
+
+	<ul id="nav--support">
+		<li><a href="../support/">Support</a></li>
+		
+		<li><button id="nav--settings-toggle" aria-label="Site Settings"><svg version="1.1" id="settings" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 50 50" style="enable-background:new 0 0 50 50;" xml:space="preserve">
+
+	<style type="text/css">
+		.white{fill:#fff;}
+	</style>
+
+	<filter id="dropshadow" height="130%">
+		<feGaussianBlur in="SourceAlpha" stdDeviation="3"/> 
+		<feOffset dx="0" dy="0" result="offsetblur"/> 
+		<feComponentTransfer>
+			<feFuncA type="linear" slope="0.35"/> 
+		</feComponentTransfer>
+		<feMerge>
+			<feMergeNode/> 
+			<feMergeNode in="SourceGraphic"/> 
+		</feMerge>
+	</filter>
+
+	<g transform="matrix(1, 0, 0, 1, 0, 0)">
+		<path style="filter:url(#dropshadow)" id="Path_34-2" class="white" d="M44.1,27.4c0.1-0.8,0.2-1.6,0.2-2.4c0-0.8-0.1-1.6-0.2-2.4l5.4-4.1c0.5-0.4,0.6-1.1,0.3-1.6
+			l-5.1-8.7c-0.3-0.5-1-0.8-1.6-0.6l-6.4,2.5c-1.3-1-2.8-1.8-4.3-2.4l-1-6.6C31.3,0.4,30.8,0,30.1,0H19.9c-0.6,0-1.2,0.4-1.3,1.1
+			l-1,6.6c-1.5,0.6-3,1.4-4.3,2.4L6.9,7.6c-0.6-0.2-1.3,0-1.6,0.6l-5.2,8.7c-0.3,0.5-0.2,1.2,0.3,1.6l5.4,4.1c-0.3,1.6-0.3,3.3,0,4.9
+			l-5.4,4.1c-0.5,0.4-0.6,1.1-0.3,1.6l5.2,8.7c0.3,0.5,1,0.8,1.6,0.6l6.4-2.5c1.3,1,2.8,1.8,4.3,2.4l1,6.6c0.1,0.6,0.7,1.1,1.3,1.1
+			h10.3c0.6,0,1.2-0.4,1.3-1.1l1-6.6c1.5-0.6,3-1.4,4.3-2.4l6.4,2.5c0.6,0.2,1.3,0,1.6-0.6l5.1-8.7c0.3-0.5,0.2-1.2-0.3-1.6
+			L44.1,27.4L44.1,27.4z M25,34.4c-5.2,0.1-9.6-4.1-9.6-9.4c0.2-5.3,4.6-9.5,9.9-9.3c5.1,0.2,9.2,4.3,9.3,9.3
+			C34.6,30.2,30.2,34.4,25,34.4L25,34.4z"/>
+	</g>
+</svg></button>
+		</li>
+	</ul>
+
+	<ul id="nav--settings">
+		<li>
+			<h3>Text Size</h3>
+			<ul id="settings--text">
+				<li><button type="button" data-text="small">Aa-</button></li>
+				<li><button type="button" data-text="default">Default</button></li>
+				<li><button type="button" data-text="large">Aa+</button></li>
+			</ul>
+		</li>
+		<li>
+			<h3>Contrast</h3>
+			<ul id="settings--contrast">
+				<li><button type="button" data-contrast="high">High</button></li>
+				<li><button type="button" data-contrast="default">Default</button></li>
+			</ul>
+		</li>
+		<li>
+			<h3>Appearance</h3>
+			<ul id="settings--appearance">
+				<li><button type="button" data-appearance="light">Light</button></li>
+				<li><button type="button" data-appearance="dark">Dark</button></li>
+				<li><button type="button" data-appearance="auto">Auto</button></li>
+			</ul>
+		</li>
+		<li>
+			<h3>Chatbot</h3>
+			<ul id="settings--chatbot">
+				<li><button type="button" data-chatbot="on">On</button></li>
+				<li><button type="button" data-chatbot="off">Off</button></li>
+			</ul>
+		</li>
+	</ul>
+	
+
+</nav>
+
+		</header>
+
+		
+		<div id="uds-header"></div>
+
+<link rel="stylesheet" href="https://unpkg.com/@utahdts/utah-design-system-header@v5/dist/style.css">
+<script src="https://unpkg.com/@utahdts/utah-design-system-header@v5/dist/utah-design-system-header.umd.js"></script>
+
+
+<style>
+	.utah-design-system {
+		--primary-color: #071D49; /* Navy Blue */
+		--primary-color-dark: #135264;
+		--primary-color-light: #f0f0f0;
+
+		--header-primary-color: var(--primary-color);
+		background-color: white;
+	}
+</style>
+
+<script>
+	const isHome = () => {
+		const page = document.getElementsByTagName('body')[0].dataset.page;
+		let check = false;
+		if (page === 'home') check = true;
+		return check;
+	};
+
+	const udsMenuItems = [
+		{
+			title: 'Services',
+			actionUrl: { 'url': '../services/' }
+		},
+		{
+			title: 'Government',
+			actionUrl: { 'url': '../government/' }
+		},
+		{
+			title: 'Business',
+			actionUrl: { 'url': '../business/' }
+		},
+		{
+			title: 'Employment',
+			actionUrl: { 'url': '../employment/' }
+		},
+		{
+			title: 'Education',
+			actionUrl: { 'url': '../education/' }
+		},
+		{
+			title: 'Visit',
+			actionUrl: { 'url': '../visit/' }
+		},
+		{
+			title: 'Residents',
+			actionUrl: { 'url': '../local/' }
+		},
+		{
+			title: 'About',
+			actionUrl: { 'url': '../about/' }
+		}
+	];
+
+	if (!isHome()) {
+		const menuHome = {
+			title: 'Home',
+			actionUrl: { 'url': '../' }
+		}
+		udsMenuItems.unshift(menuHome);
+	}
+
+	// wait for the utah header to be ready
+	document.addEventListener('utahHeaderLoaded', () => {
+		// set up the utah header
+		window["@utahdts/utah-design-system-header"].setUtahHeaderSettings({
+			domLocationTarget: { cssSelector: '#uds-header' },
+			title: '',
+			footer: {
+				domLocationTarget: { cssSelector: 'footer' },
+				showHorizontalRule: false
+			},
+			logo: {
+				'htmlString': '<img src="../img/logos/utah-dot-gov.png" id="Utah.gov" alt="Utah.gov" />'
+			},
+			mainMenu: {
+				menuItems: udsMenuItems,
+				title: 'Menu'
+			},
+			actionItems: [
+				{
+					showTitle: false,
+					title: 'Help',
+					actionDom: '<a href="../support/">Support</a>',
+					icon: '<span class="utds-icon-before-help" aria-hidden="true" />'
+				}
+			],
+			mediaSizes: {
+				mobile: 640,
+				tabletPortrait: 912,
+				tabletLandscape: 1024
+			},
+			utahId: true,
+			notifications: true
+		});
+	});
+
+</script>
+
+
+		<div id="main-content"></div>	
+
+
+<main>
+
+	<div id="breadcrumbs">
+		<a href="../support/" rel="noopener noreferrer">Support</a>
+	</div>
+
+	<h1>
+		Disclaimer
+		<button id="submenu--open" aria-label="Open Submenu"></button>
+	</h1>
+
+	<section>
+		<h2>Utah.gov Terms of Use</h2>
+		<p>INFORMATION ON THE STATE OF UTAH'S COMPUTER SYSTEMS IS MADE AVAILABLE AS A PUBLIC SERVICE, WITHOUT EXPRESS OR IMPLIED WARRANTIES OF ANY KIND, AND IS SUBJECT TO THE FOLLOWING DISCLAIMERS:</p>
+		<ol>
+			<li>
+				<p><b>ACCURACY, CHANGES, AND CONTINUITY OF SERVICE</b></p>
+				<p>The State of Utah (State) tries to ensure that the information made available on Utah.gov Web sites is accurate and complete. Due to factors beyond the control of the State, however, it cannot guarantee against unauthorized modifications of information or errors made in inputting and posting data. The State may make changes to a Web page at any time to update, add, or correct the information made available. The State may elect to charge a fee for accessing or using information from the State's computer system, or may suspend or discontinue making the information available.</p>
+			</li>
+			<li>
+				<p><b>NO WARRANTIES</b></p>
+				<p>The State disclaims any express or implied warranties related to making its computer system available for public use, and for any materials, information, graphics, products, or processes contained within its computer system. It makes no warranty, express or implied, nor assumes any responsibility for the use of information on the State's Web sites or computer system/s, or for the computer system's fitness for any general or particular purpose. Nor does the State warrant that the use of information on the State's system will not infringe or violate the rights of others. The public is granted access to information on the State's computer system on a strictly "as is" basis. The State denies responsibility for the conduct of its users.</p>
+			</li>
+			<li>
+				<p><b>SUBMISSIONS</b></p>
+				<p>Certain Utah.gov websites invite users to submit content to Utah.gov that Utah.gov may include on Utah.gov websites.  In these circumstances, Utah.gov invites users to submit content solely for the purpose of identifying content that Utah.gov can use to communicate Utah.gov's and the State's messages.  Utah.gov is not a public forum and users should not expect that content submitted will be posted on Utah.gov websites.  If Utah.gov chooses to post any content, it does so solely at its own discretion and for the purpose of communicating the messages of Utah.gov and the State of Utah.  Utah.gov exercises final approval authority over any content it chooses to post to Utah.gov and may remove submitted content at any time at its discretion.</p>
+				<p>While Utah.gov may choose to post submitted content for the purpose of communicating Utah.gov's and the State's messages, the State disclaims any responsibility for any information, materials, opinions, endorsements of products or services, or any other content located or made available on external sites.</p>
+			</li>
+			<li>
+				<p><b>EXTERNAL LINKS; PERSONAL OPINIONS</b></p>
+				<p>Utah.gov may choose to provide hypertext or other links to non-Utah.gov websites.  As with circumstances where Utah.gov chooses to post content submitted by users, Utah.gov posts these links for the purpose of communicating Utah.gov's and the State's messages.  If Utah.gov chooses to provide a link to any non-Utah.gov website, it does so solely at its own discretion.  Utah.gov is not a public forum and users submitting links to Utah.gov should not expect that any link submitted will be posted on Utah.gov websites.  Utah.gov exercises final approval authority over any links to non-Utah.gov websites it chooses to post and may remove links at any time at its discretion. While Utah.gov may provide a link to these sites for its own purpose of communicating Utah.gov's and the State's messages, the State disclaims legal responsibility for any information, materials, opinions, endorsements of products or services, or any other content located or made available on external sites.No other sections of this disclaimer statement are applicable to external sites beyond the control of the State.</p>
+			</li>
+			<li>
+				<p><b>COPYRIGHT LIMITATIONS</b></p>
+				<p>The State has made the content of certain pages of its Web sites available to the public. Anyone may view, copy, or distribute information found within these web pages (not including the design or layout of the pages) for personal or informational use without owing an obligation to the State if the documents are not modified in any respect, and unless otherwise stated on the particular materials or information to which a restriction on free use applies. The State makes no warranty, however, that the materials contained within these pages are free from copyright claims, or other restrictions or limitations on free use or display. The State disclaims any liability for the improper or incorrect use of information obtained from its Web sites.</p>
+				<ul>
+					<li><a href="../support/infringement-notice.html" style="text-decoration: underline;">If you believe that any material contained on the Site infringes your copyright or other intellectual property rights, please follow these instructions.</a></li>
+				</ul>
+			</li>
+			<li>
+				<p><b>ASSUMPTION OF RISK OF USE</b></p>
+				<p>One who uses the information available for public use on the State's computer system assumes the risk of using or relying on such information. Neither the State, its employees, nor its agents shall be liable for any damages, including indirect, special, incidental, or consequential damages a user incurs as a result of viewing, distributing, or copying materials on the sites made available to the public, even if advised of the possibility of such damages.</p>
+			</li>
+			<li>
+				<p><b>MONITORING AND PROTECTING THE SYSTEM FROM INTRUSION</b></p>
+				<p>All State computer systems are subject to monitoring to assure proper functioning of the system and to provide security for the computer system's operation. By using the computer systems you are consenting to the exercise of such monitoring practices. The State reserves the right to use any legally appropriate measures to prevent and investigate anyone attempting to modify, deface, delete, or otherwise tamper with or abuse a State Web site, server, database, information system, or other State technology asset.</p>
+			</li>
+			<li>
+				<p><b>UTAH LAW AND JURISDICTION</b></p>
+				<p>The materials made available for public use on the State's Web sites are from computer systems located within the State, and are for the use and benefit of the citizens of Utah. Any person who uses these systems or attempts to gain access to information or materials on these systems is subject to the jurisdiction of the State of Utah. Any dispute arising from a person using or attempting to use information or materials on the State's Web sites shall be determined in accordance with Utah laws and in the courts of Utah.</p>
+			</li>
+			<li>
+				<p><b>CONDITIONAL SERVICES AMENDMENT TO THE STATE OF UTAH DISCLAIMER STATEMENT ON UTAH.GOV</b></p>
+				<p>Certain services and features on the Utah.gov Internet sites are labeled as "conditional services." This signifies that the service or feature may be a pilot project or makes use of publicly available external Web services offered by governmental or commercial entities. These external resources are used to provide specific services to State of Utah Web users that the State is unable to offer/host/configure locally due to resource limitations. Some conditional services may require specific browser configurations (e.g., JavaScript-support, cookies, etc.) and are provided "as is" without support from the State. Conditional services offered on the Utah.gov Internet site may be removed at any time without notice if the external service is determined to not meet the needs of Utah.gov. Use of a commercial Web service does not serve as an endorsement by the State of Utah, nor is the State responsible for any data inaccuracies or omissions provided by external services.</p>
+			</li>
+		</ol>
+	</section>
+
+</main>
+
+<aside>
+
+	<h2>
+		<a href="./">Support</a>
+		<button id="submenu--close" aria-label="Close Submenu"><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 24 24" style="enable-background:new 0 0 24 24;" xml:space="preserve">
+
+	<style type="text/css">
+		.st0{fill:#fff;}
+	</style>
+
+	<path class="st0" d="M23.5,0.6c-0.7-0.7-1.9-0.7-2.6,0L12,9.4L3.1,0.5c-0.7-0.7-1.9-0.7-2.6,0s-0.7,1.9,0,2.6L9.4,12l-8.9,8.9
+	c-0.7,0.7-0.7,1.9,0,2.6c0.7,0.7,1.9,0.7,2.6,0l8.9-8.9l8.9,8.9c0.7,0.7,1.9,0.7,2.6,0c0.7-0.7,0.7-1.9,0-2.6L14.6,12l8.9-8.9
+	C24.2,2.4,24.2,1.2,23.5,0.6z"/>
+</svg></button>
+	</h2>
+
+	<nav>
+		<ul>
+			<li><a href="../support/accessibility.html">Accessibility</a></li>
+			<li><a href="../support/disclaimer.html">Disclaimer</a></li>
+			<li><a href="../support/feedback.html">Feedback</a></li>
+			<li><a href="../support/faq.html">Frequently Asked Questions</a></li>
+			<li><a href="../support/infringement-notice.html">Infringement Notice</a></li>
+			<li><a href="../support/privacypolicy.html">Privacy Policy</a></li>
+			<li><a href="../support/security.html">Security</a></li>
+			
+			<li><a href="../support/translate.html">Translate</a></li>
+		</ul>
+	</nav>
+
+</aside>
+		<footer></footer>
+	
+
+		<script src="../js/scripts.min.js?v=20260423"></script>
+
+	</body>
+</html>
