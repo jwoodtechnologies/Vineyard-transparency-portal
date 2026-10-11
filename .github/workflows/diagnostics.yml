@@ -72,19 +72,28 @@ jobs:
             save portal_health.json "$P/health"
             save portal_meetings_upcoming.json "$P/meetings?upcoming=1&pageSize=50"
             save portal_meetings_2026.json "$P/meetings?year=2026&pageSize=100"
+            save portal_events.json "$P/events"
+            # Is the city site refusing this network, or this user agent?
+            BUA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
+            curl -sSL --max-time 60 -A "$BUA" -o "$OUT/construction_browser_ua.html" -w "construction_browser_ua.html %{http_code} %{size_download}\n" "$G/government/construction_projects.php" >> "$OUT/index.txt" 2>>"$OUT/errors.txt" || true
+            curl -sSI --max-time 30 -A "$BUA" "$G/" > "$OUT/city_headers_browser_ua.txt" 2>&1 || true
+            curl -sSI --max-time 30 -A "$UA" "$G/" > "$OUT/city_headers_portal_ua.txt" 2>&1 || true
+            curl -sS --max-time 20 https://api.ipify.org > "$OUT/runner_ip.txt" 2>&1 || true
             i=0; for u in $EXTRA; do i=$((i+1)); save "extra_$i" "$u"; done
           else
-            sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > /dev/null
-            pip install -q -r requirements-ingest.txt
+            sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > "$OUT/setup.txt" 2>&1 || true
+            pip install -q -r requirements-ingest.txt >> "$OUT/setup.txt" 2>&1 || true
             if [[ "$TASK" == "crawl-log" ]]; then CMD=(run --limit 5 --hours 0.25); else CMD=(ingest --limit 10 --hours 0.25); fi
-            python -m ingest "${CMD[@]}" > "$OUT/log.txt" 2>&1; echo "exit=$?" >> "$OUT/log.txt"
+            python -m ingest "${CMD[@]}" > "$OUT/log.txt" 2>&1 || echo "exit=$?" >> "$OUT/log.txt"
             tail -c 400000 "$OUT/log.txt" > "$OUT/log.tmp" && mv "$OUT/log.tmp" "$OUT/log.txt"
           fi
       - name: Save to the diagnostics branch
+        if: always()
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          [[ -d diag ]] || exit 0
           mv diag "$RUNNER_TEMP/diag"
           if git fetch -q origin diagnostics; then git checkout -q -B diagnostics origin/diagnostics; else git checkout -q --orphan diagnostics && git rm -rq --cached . && git clean -fdq; fi
           mkdir -p diag && cp -r "$RUNNER_TEMP/diag/." diag/
