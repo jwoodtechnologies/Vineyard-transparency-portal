@@ -141,7 +141,7 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <p class="hint hidden" id="noPk">This browser cannot use passkeys. Try Safari or Chrome.</p>
     <div class="or hidden" id="orLine">or</div>
     <form id="loginForm" class="hidden">
-      <label for="lEmail">Email</label><input id="lEmail" type="email" autocomplete="username" required>
+      <label for="lEmail">Email</label><input id="lEmail" type="email" autocomplete="username webauthn" required>
       <label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password" required>
       <button class="btn big" id="lBtn" type="submit">Sign in</button>
     </form>
@@ -179,7 +179,7 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <div id="v-add" class="view hidden">
       <div class="head"><h1>Add</h1>
         <div class="seg" id="addKind"><button data-k="files" aria-pressed="true">Files</button><button data-k="project" aria-pressed="false">Project</button><button data-k="note" aria-pressed="false">Note</button><button data-k="link" aria-pressed="false">Link</button></div></div>
-      <p class="notice hidden" id="pkNudge">Add a passkey now. Password sign-in turns off once you have one.</p>
+      <p class="notice hidden" id="pkNudge"></p>
 
       <div id="k-files">
         <label class="drop" id="drop" for="fileInput"><b>Drop files here</b><span>or tap to choose. PDF, PNG, JPG, TXT or CSV, up to 25 MB each.</span></label>
@@ -254,7 +254,6 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <p class="err" id="pkErr"></p>
   </div>
   <div class="sec hidden" id="pwSec"><p class="label">Password</p>
-    <p class="hint">Password sign-in turns off once you add a passkey.</p>
     <form id="pwForm">
       <label for="pCur">Current password</label><input id="pCur" type="password" autocomplete="current-password" required>
       <label for="pNew">New password</label><input id="pNew" type="password" autocomplete="new-password" minlength="10" required>

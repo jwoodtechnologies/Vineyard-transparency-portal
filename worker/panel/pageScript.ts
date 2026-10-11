@@ -48,7 +48,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
     Array.prototype.forEach.call($('nav').children, function(b){ b.setAttribute('aria-pressed', String(b.dataset.v === v)); });
     Array.prototype.forEach.call(document.querySelectorAll('.view'), function(x){ x.classList.toggle('hidden', x.id !== 'v-' + v); });
     if (v === 'activity') { loadSummary(); setTab(state.tab); }
-    if (v === 'add') { $('pkNudge').classList.toggle('hidden', !(me.role === 'owner' && passwordAllowed)); loadProjects(); }
+    if (v === 'add') { loadProjects(); }
     if (v === 'uploads') loadUploads();
     if (v === 'subs') loadSubs();
     if (v === 'people') loadPeople();

@@ -6,7 +6,7 @@
  *
  * Accounts: one owner (account 1) and uploaders the owner invites with a one-time link
  * (PANEL_PREFIX/invite/<token>, 72 hours). Uploaders sign in with a passkey only. The owner's
- * password works only until the owner has a passkey; after that, passkey only. Sessions name the
+ * signs in with email and password (passkeys optional), unchanged; uploaders use passkeys only. Sessions name the
  * account and role, and the account is checked (exists, role, not turned off) on every request.
  *
  * Public:  POST /api/visit     (page view beacon)   POST /api/feedback  (thumbs up or down)
@@ -131,10 +131,13 @@ async function passkeyCount(env: Env, accountId: number): Promise<number> {
   return Number(r?.n ?? 0);
 }
 
-/** The owner's password works only until the owner has a passkey. */
-export async function passwordAllowed(env: Env): Promise<boolean> {
-  await ensureContribTables(env);
-  return (await passkeyCount(env, 1)) === 0;
+/**
+ * The owner signs in with email and password, with or without passkeys, exactly as before uploader
+ * accounts existed. Do not change the owner's sign-in without the owner's say.
+ */
+export async function passwordAllowed(env?: Env): Promise<boolean> {
+  void env;
+  return true;
 }
 
 function limitOf(url: URL): number {
@@ -281,8 +284,6 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
 
     if (route === '/login') {
       if (await lockedOut(env, ip)) throw new HttpError(429, 'rate_limited', 'Too many attempts. Try again in 15 minutes.', 900);
-      // Once the owner has a passkey, the password is never accepted again.
-      if (!(await passwordAllowed(env))) throw new HttpError(403, 'unauthorized', 'Sign in with your passkey.');
       const owner = await getOwner(env);
       const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
       const password = typeof b.password === 'string' ? b.password : '';
@@ -379,16 +380,18 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     }
 
     if (route === '/passkey/delete') {
-      // Lockout-safe: an account always keeps at least one passkey.
-      if ((await passkeyCount(env, s.me.id)) <= 1) throw badRequest('Keep at least one passkey. Add another before removing this one.');
-      const r = await db.prepare('DELETE FROM panel_passkeys WHERE id = ? AND account_id = ? AND (SELECT count(*) FROM panel_passkeys WHERE account_id = ?) > 1').bind(String(b.id ?? ''), s.me.id, s.me.id).run();
+      // Uploaders sign in only with passkeys, so they always keep one. The owner also has a password.
+      const keepOne = s.me.role !== 'owner';
+      if (keepOne && (await passkeyCount(env, s.me.id)) <= 1) throw badRequest('Keep at least one passkey. Add another before removing this one.');
+      const r = keepOne
+        ? await db.prepare('DELETE FROM panel_passkeys WHERE id = ? AND account_id = ? AND (SELECT count(*) FROM panel_passkeys WHERE account_id = ?) > 1').bind(String(b.id ?? ''), s.me.id, s.me.id).run()
+        : await db.prepare('DELETE FROM panel_passkeys WHERE id = ? AND account_id = ?').bind(String(b.id ?? ''), s.me.id).run();
       if (!Number(r.meta?.changes ?? 0)) throw notFound('That passkey was not found.');
       return reply({ ok: true });
     }
 
     if (route === '/password') {
       owner();
-      if (!(await passwordAllowed(env))) throw new HttpError(403, 'unauthorized', 'Passwords are off once you have a passkey.');
       const current = typeof b.current === 'string' ? b.current : '';
       if (!sameString(await hashPassword(current, s.owner.salt, s.owner.iterations), s.owner.pass_hash)) throw new HttpError(403, 'unauthorized', 'The current password is not right.');
       if (!validPassword(b.next)) throw badRequest('Use a password of at least 10 characters.');

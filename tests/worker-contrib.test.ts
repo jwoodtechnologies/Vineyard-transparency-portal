@@ -198,27 +198,26 @@ describe('chat exclusion helper', () => {
 // ------------------------------------------------------------------ accounts
 
 describe('panel accounts', () => {
-  it('owner password works only until the owner has a passkey', async () => {
+  it('owner password keeps working after a passkey is added (sign-in unchanged)', async () => {
     const env = testEnv();
     const cookie = await setupOwner(env);
     expect((await panel(env, 'POST', '/api/login', { body: { email: 'owner@example.org', password: 'correct horse battery' } })).status).toBe(200);
     const device = await addOwnerPasskey(env, cookie);
-    const refused = await panel(env, 'POST', '/api/login', { body: { email: 'owner@example.org', password: 'correct horse battery' } });
-    expect(refused.status).toBe(403);
+    const again = await panel(env, 'POST', '/api/login', { body: { email: 'owner@example.org', password: 'correct horse battery' } });
+    expect(again.status).toBe(200);
     const state = (await (await panel(env, 'GET', '/api/state')).json()) as { passwordAllowed: boolean };
-    expect(state.passwordAllowed).toBe(false);
+    expect(state.passwordAllowed).toBe(true);
     const pk = await signIn(env, device);
     expect(pk.status).toBe(200);
-    expect(cookieOf(pk)).not.toBe('');
   });
 
-  it('never removes the last passkey', async () => {
+  it('the owner may remove a passkey (the password remains)', async () => {
     const env = testEnv();
     const cookie = await setupOwner(env);
     const device = await addOwnerPasskey(env, cookie);
     const r = await panel(env, 'POST', '/api/passkey/delete', { body: { id: device.id }, cookie });
-    expect(r.status).toBe(400);
-    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM panel_passkeys').get()!.n).toBe(1);
+    expect(r.status).toBe(200);
+    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM panel_passkeys').get()!.n).toBe(0);
   });
 
   it('invite links work once', async () => {
