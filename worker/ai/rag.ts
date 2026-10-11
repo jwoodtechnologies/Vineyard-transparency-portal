@@ -433,6 +433,25 @@ export function reprintedMinutes(h: { documentType: string; text?: string | null
 
 const CURRENT = /\b(who is|who's|who are|current|currently|now|today|as of|latest|presently|still|this year|right now)\b/i;
 const ROLE = /\b(mayor|deputy mayor|council ?(member|man|woman)s?|city council|city manager|recorder|city attorney|director|department head|staff|employees?|who works|chief|official|commissioners?)\b/i;
+/** "Is the city building...", "are they still...": a question about now, asked in the present tense. */
+const NOW_Q = /^\s*(?:is|are|does|do|will|has|have)\s+(?:the\s+)?(?:city|council|vineyard|they|it|there|anyone|udot|county)\b|\b(?:being built|under construction|is (?:the city )?building)\b/i;
+
+/**
+ * The line added when a question about now is answered only from records more than 18 months old:
+ * "These records are from 2019. The portal has nothing newer on this, so the current status may differ."
+ */
+export function staleNote(question: string, dates: Array<string | null | undefined>, today: string): string | null {
+  if (!(NOW_Q.test(question) || PRESENT_Q.test(question))) return null;
+  const known = dates.filter((d): d is string => Boolean(d && /^\d{4}-\d{2}-\d{2}/.test(d))).sort();
+  if (!known.length) return null;
+  const newest = known[known.length - 1];
+  const ageDays = (Date.parse(today) - Date.parse(newest.slice(0, 10))) / 86_400_000;
+  if (!(ageDays > 548)) return null;
+  const years = [...new Set(known.map((d) => d.slice(0, 4)))];
+  const span = years.length === 1 ? years[0] : `${years[0]} to ${years[years.length - 1]}`;
+  return `These records are from ${span}. The portal has nothing newer on this, so the current status may differ.`;
+}
+
 const PRESENT_Q = /\b(now|current|currently|today|this year|latest|recent|recently|right now|going on|happening|doing|working on|plans?|planned|planning|upcoming|status|still|update|progress)\b/i;
 const HOWTO = /\b(how (do|can|should|would) (i|we|you|residents?)|where (do|can) i|how to|sign up|apply for|register for|reserve|reservation|get a (permit|pass|license|meter|card)|request a|schedule an?)\b/i;
 const RULE = /\b(can i|can we|can you|am i allowed|is it (legal|allowed|permitted)|allowed|permitted|prohibited|illegal|rules?|regulations?|required|requirements?|do i need|need a permit|code says|setbacks?|how (many|tall|high|far))\b/i;
@@ -1495,6 +1514,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
         return { text: titleOfficials(s.text, roster, citations.map((c) => cited[c - 1]?.documentDate)), citations };
       }),
     }));
+    // A question about now ("is the city building...") answered only from old records says how old they are.
+    const age = staleNote(body.question, cited.map((c) => c.documentDate), todayUT);
+    if (age) paragraphs.push({ segments: [{ text: age, citations: [] }] });
     // Unverified sentences are simply left out; the answer never adds a disclaimer about them.
 
     const [docs, rows] = await Promise.all([docsP, extraP]);
