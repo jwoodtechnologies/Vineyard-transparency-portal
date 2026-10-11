@@ -6,6 +6,7 @@ import { CATEGORY_DEFS, DOCUMENT_TYPE_LABELS, normalizeType } from '../lib/taxon
 import { clampInt, nowIso, randomId } from '../lib/util';
 import { SearchRepository } from '../search/SearchRepository';
 import { aiBreakerOpen, aiConfigured } from '../ai/rag';
+import { neuronUsage } from '../ai/meter';
 import { listChecks } from '../sync/checks';
 import { jobHealth } from '../sync/jobHealth';
 
@@ -38,6 +39,9 @@ export async function handleHealth(env: Env): Promise<Response> {
   const ai = aiConfigured(env) && !aiBreakerOpen();
   const archive = Boolean(env.ARCHIVE);
   const checks = await listChecks(env).catch(() => []);
+  // Today's estimated Workers AI Neurons by spender, each cap and the reset time (numbers only). The chat
+  // suite reads tests.used and tests.cap before it starts.
+  const aiNeurons = database ? await neuronUsage(env).catch(() => null) : null;
   const status = database && search ? 'ok' : 'degraded';
   return json(
     {
@@ -54,6 +58,7 @@ export async function handleHealth(env: Env): Promise<Response> {
       indexedDocuments: indexed,
       lastCrawl: lastCrawl ? { kind: lastCrawl.trigger === 'worker-site-pass' ? 'city website pass' : 'nightly crawl', status: lastCrawl.status, startedAt: lastCrawl.started_at, finishedAt: lastCrawl.finished_at } : null,
       checks,
+      aiNeurons,
     },
     { cache: CACHE.none },
   );

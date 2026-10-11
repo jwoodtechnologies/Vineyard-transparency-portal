@@ -1,15 +1,25 @@
 # Chat regression suite (scripts/chat-suite/run.mjs, cases in tests/chat-suite/cases.json) against the
-# live site. Read only: it asks questions through POST /api/ask like a resident would.
+# live site. Read only: it asks questions through POST /api/ask like a resident would, but every request
+# carries the header x-vtp-suite: 1, so its Workers AI use is billed to its own bucket.
 #
-# Workers AI budget (8,000 Neurons a day, see worker/ai/meter.ts and scripts/chat-suite/lib.mjs):
-#   - push to main: after the new deploy is live, the deterministic cases (no model, a few ~11 Neuron
-#     follow-up rewrites) plus 2 model cases rotating by run number: about 280 Neurons.
-#   - schedule: the full suite once a day at 22:53 UTC (4:53 pm in Vineyard), near the end of the UTC
-#     metering day so it never takes the day's larger-model answers or Neurons ahead of residents:
-#     about 1,430 Neurons (worst case about 2,070), under a fifth of the daily cap.
-#   - workflow_dispatch: full=true runs the full suite, full=false the post-deploy subset.
-# The runner refuses to start above --max-neurons. Every case runs: an answer that dead-ends ("couldn't find",
-# "unavailable") or has no source fails, so a model outage shows up as failures, never as skips.
+# Workers AI budget (worker/ai/meter.ts; the account includes 10,000 Neurons a UTC day and anything above is
+# billed, so the Worker never passes 10,000): residents 9,000 a day (AI_NEURONS_PUBLIC_PER_DAY), this suite
+# 1,000 a day (AI_NEURONS_TESTS_PER_DAY). When the suite's bucket is spent its answers go without the model;
+# residents are unaffected. The day resets at 00:00 UTC (6 PM Mountain in summer, 5 PM in winter).
+#   - push to main: after the new deploy is live, only the 132 cases answered by code with no model call
+#     and no follow-up rewrite: 0 Neurons. Pushes never spend the bucket, however many there are.
+#   - schedule: once a day at 22:53 UTC (4:53 PM Mountain in summer, 3:53 PM in winter): every
+#     deterministic case plus one of 3 groups of model cases (by UTC day), each group sized to fit the
+#     bucket at worst case cost, so all 20 model cases run every 3 days: about 590 to 670 Neurons
+#     (worst 870 to 990). Kept late in the UTC day because the Worker's per-day answer counters (larger
+#     model answers, AI_MAX_REQUESTS_PER_DAY) are not split by spender: a run just after the reset would
+#     take the day's first larger-model answers ahead of residents. The bucket is still whole at 22:53
+#     because pushes spend nothing, and the run (about 25 minutes) ends before the reset.
+#   - workflow_dispatch: full=true is the same as the scheduled run and spends the same bucket (a second
+#     full run on a day gets only what is left, and runs fewer model cases); full=false is the push subset.
+# The runner reads what is left of the bucket from GET /api/health (aiNeurons.tests) and refuses to start
+# (exit 2) when the bucket cannot cover the run at worst case cost. Every case runs: an answer that dead-ends
+# ("couldn't find", "unavailable") or has no source fails, so a model outage shows up as failures, never as skips.
 name: Chat suite
 
 on:
@@ -20,7 +30,7 @@ on:
   workflow_dispatch:
     inputs:
       full:
-        description: Run the full suite (about 1,430 Neurons) instead of the post-deploy subset
+        description: Run the daily suite (up to 1,000 Neurons from the tests bucket) instead of the post-push subset (0 Neurons)
         type: choice
         default: "false"
         options: ["true", "false"]
@@ -77,7 +87,8 @@ jobs:
           set -uo pipefail
           if [[ "$FULL" == "true" ]]; then MODE=full; else MODE=deploy; fi
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          node scripts/chat-suite/run.mjs --base "$BASE" --mode "$MODE" --seed "${{ github.run_number }}" --out chat-suite-results.json
+          # The seed defaults to the UTC day number, which picks the day's group of model cases.
+          node scripts/chat-suite/run.mjs --base "$BASE" --mode "$MODE" --out chat-suite-results.json
       - name: Keep the results
         if: always()
         uses: actions/upload-artifact@v4

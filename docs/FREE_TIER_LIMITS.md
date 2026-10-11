@@ -5,7 +5,7 @@ cause zero overage: every guard keeps usage inside the plan's included amounts a
 
 | Included (Workers Paid, per account) | Project setting |
 | --- | --- |
-| Workers AI: 10,000 Neurons/day | `AI_NEURONS_PER_DAY=8000`: every model call is estimated before it runs (worker/ai/meter.ts); at the cap Ask falls back to search |
+| Workers AI: 10,000 Neurons/day | Two buckets per UTC day (worker/ai/meter.ts): `AI_NEURONS_PUBLIC_PER_DAY=9000` for residents and `AI_NEURONS_TESTS_PER_DAY=1000` for the chat suite (requests with `x-vtp-suite: 1`). The public cap is clamped to 10,000 minus the tests cap, so the total never passes 10,000. Every model call is estimated before it runs and reserved with one conditional write. At the public cap Ask answers from the records until 00:00 UTC (6 PM Mountain in summer, 5 PM in winter); at the tests cap only suite answers lose the model. Usage by spender: `/api/health` `aiNeurons` and the owner panel |
 | D1 rows written: 50 million/month | `MAX_D1_INGEST_ROWS_PER_DAY=1000000` |
 | D1 storage: 5 GB | `SEARCH_SHARD_MAX_BYTES=2000000000` per shard (2 shards) |
 | Workers CPU: 30 million ms/month | `limits.cpu_ms=120000` per invocation; five-minute ticks stop new work after 3.5 minutes |

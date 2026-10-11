@@ -37,13 +37,39 @@ each hour is the hourly tick.
 | `ingest.yml` (`gis`) | City GIS records (roads, capital projects, zoning, parks, schools) | Mondays 10:37 UTC | Actions, Sources |
 | `ingest.yml` (`backup`) | Catalog backup to R2 | Sundays 11:07 UTC | Actions |
 | `ci.yml` | Typecheck, lint, tests, build, Python tests | Every push | Actions |
+| `chat-suite.yml` (push) | POST /api/ask on the live site: the 132 cases answered by code, with no model call and no follow-up rewrite | Every push to main, after the deploy is live | Actions; `suite/<run id>/` on the `diagnostics` branch |
+| `chat-suite.yml` (daily) | POST /api/ask: every deterministic case plus one of 3 groups of model cases (all 20 every 3 days) | Daily 22:53 UTC (4:53 PM Mountain in summer, 3:53 PM in winter) | Actions; `diagnostics` branch; Watchdog issue when it fails |
+| `doc-check.yml` | Document viewer on phone and desktop for a sample of records | Daily 10:23 UTC | Actions; Watchdog issue when it fails |
+| `watchdog.yml` | GET /api/health/jobs and the newest chat suite, document check and ingest runs | Hourly at minute 41, and after each chat suite or document check run | GitHub issues labeled `watchdog` |
 
 Run by hand (`workflow_dispatch`): `diagnostics.yml` (fixtures, logs, perf timings to the
 `diagnostics` branch), `add-e2e.yml` (end to end check of the submit page: pending, approval, reports; removes its own test item),
 `backfill.yml` (parallel indexing of the whole archive), and `ingest.yml` with any command
 (`run`, `crawl`, `migrate`, `archive-plan`, `archive-apply`, and others).
 
+## Workers AI budget and the chat suite
+
+Workers AI Neurons are counted per UTC day by spender (`worker/ai/meter.ts`). Residents (`public`) get
+9,000 a day; the chat suite (`tests`, requests with the header `x-vtp-suite: 1`) gets 1,000. Together
+they never pass the 10,000 included. The day resets at 00:00 UTC: 6 PM Mountain in summer (MDT), 5 PM
+in winter (MST).
+
+| Run | Neurons | Bucket |
+| --- | --- | --- |
+| Chat suite after a push | 0 (code answers only) | tests |
+| Chat suite daily, 22:53 UTC | about 590 to 670, at worst 870 to 990 | tests |
+| Chat suite by hand, `full=true` | same as daily, from what is left of the day's bucket | tests |
+
+The runner reads `aiNeurons.tests` from `/api/health` and refuses to start (exit 2) when what is left of
+the bucket cannot cover the run at worst case cost. When the bucket is spent, suite answers go without
+the model and residents are unaffected. The daily run stays late in the UTC day because the Worker's
+per-day answer counters (larger model answers, `AI_MAX_REQUESTS_PER_DAY`) are not split by spender. No
+other workflow calls `/api/ask` (diagnostics, doc-check, watchdog and add-e2e read other endpoints).
+
+Today's Neurons by spender, each cap and the reset time show in `/api/health` (`aiNeurons`) and on the
+owner panel's Activity tab.
+
 ## Limits
 
-The daily AI cap (8,000 neurons), D1 write budget and R2 6 GB stop are enforced by the Worker. See
-[FREE_TIER_LIMITS.md](FREE_TIER_LIMITS.md).
+The daily AI caps (9,000 public, 1,000 tests), D1 write budget and R2 6 GB stop are enforced by the
+Worker. See [FREE_TIER_LIMITS.md](FREE_TIER_LIMITS.md).

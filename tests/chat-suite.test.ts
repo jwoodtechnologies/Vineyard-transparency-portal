@@ -1,13 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  DAILY_CAP,
   DEAD_END,
+  SUITE_HEADER,
+  TESTS_CAP,
+  caseCost,
   constructionLines,
   estimate,
   evalTurn,
   globalChecks,
   historyFor,
+  modelGroups,
   nameProblems,
   nextMeetingDates,
   normalizeCases,
@@ -66,19 +69,36 @@ describe('cases.json', () => {
         }
   });
 
-  it('keeps a full run well under the daily Neuron cap, and a deploy run small', () => {
-    const full = estimate(cases);
-    expect(full.neurons).toBeLessThan(DAILY_CAP * 0.25);
-    expect(full.worstNeurons).toBeLessThan(DAILY_CAP * 0.35);
-    const deploy = estimate(selectCases(cases, { mode: 'deploy', sample: 2, seed: 1 }));
-    expect(deploy.modelTurns).toBeLessThanOrEqual(4);
-    expect(deploy.neurons).toBeLessThan(DAILY_CAP * 0.05);
+  it('spends nothing after a push: only cases answered by code, with no rewrite', () => {
+    const deploy = selectCases(cases, { mode: 'deploy', seed: 1 });
+    const e = estimate(deploy);
+    expect(e.modelTurns).toBe(0);
+    expect(e.rewrites).toBe(0);
+    expect(e.worstNeurons).toBe(0);
+    expect(deploy.length).toBeGreaterThanOrEqual(100);
   });
 
-  it('rotates the model sample through every model case across deploys', () => {
+  it('fits the daily run in the tests bucket at worst case cost, whatever is left of it', () => {
+    for (let seed = 0; seed < 6; seed++) {
+      const full = estimate(selectCases(cases, { mode: 'full', seed, budget: TESTS_CAP }));
+      expect(full.worstNeurons).toBeLessThanOrEqual(TESTS_CAP);
+      expect(full.modelTurns).toBeGreaterThan(0);
+    }
+    const half = estimate(selectCases(cases, { mode: 'full', seed: 0, budget: 400 }));
+    expect(half.worstNeurons).toBeLessThanOrEqual(400);
+    // No room for any model case: the deterministic cases only.
+    const det = cases.filter((c) => c.tier === 'deterministic');
+    expect(selectCases(cases, { mode: 'full', seed: 0, budget: 0 }).filter((c) => c.tier === 'model')).toEqual([]);
+    expect(det.reduce((n, c) => n + caseCost(c, true), 0)).toBeLessThan(TESTS_CAP / 4);
+  });
+
+  it('covers every model case within a few days, once each', () => {
+    const groups = modelGroups(cases);
     const model = cases.filter((c) => c.tier === 'model');
+    expect(groups.flat().map((c) => c.id).sort()).toEqual(model.map((c) => c.id).sort());
+    expect(groups.length).toBeLessThanOrEqual(4);
     const seen = new Set<string>();
-    for (let seed = 0; seed < model.length; seed++) for (const c of selectCases(cases, { mode: 'deploy', sample: 2, seed })) if (c.tier === 'model') seen.add(c.id);
+    for (let seed = 0; seed < groups.length; seed++) for (const c of selectCases(cases, { mode: 'full', seed, budget: TESTS_CAP })) if (c.tier === 'model') seen.add(c.id);
     expect(seen.size).toBe(model.length);
     expect(selectCases(cases, { only: ['budget-police'] }).map((c) => c.id)).toEqual(['budget-police']);
   });
@@ -235,6 +255,7 @@ describe('runSuite', () => {
         }
         const body = JSON.parse(String(init?.body)) as { question: string; conversation?: unknown[]; stream?: boolean };
         expect(body.stream).toBe(false);
+        expect((init?.headers as Record<string, string>)[SUITE_HEADER]).toBe('1');
         asked.push(body);
         return json(answers[body.question] ?? { answer: 'Nothing in the archive matches that yet.', engine: 'search-fallback', citations: [] });
       }

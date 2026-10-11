@@ -69,8 +69,20 @@ export const PANEL_SCRIPT = String.raw`(function(){
     var top = (s.topQuestions || []).slice(0, 8);
     if (!top.length) ol.appendChild(el('li', null, 'No questions yet.'));
     top.forEach(function(t){ var li = el('li'); li.appendChild(el('span', 'c', t.n + 'x')); li.appendChild(el('span', null, t.q)); ol.appendChild(li); });
+    renderAi(s.ai);
     var st = s.storage || {}; var ar = s.archive || {};
     $('foot').textContent = 'Kept permanently. Database ' + bytes(st.bytes || 0) + ' of ' + bytes(st.ceiling || 0) + '. Archive files ' + bytes(ar.bytes || 0) + ' of ' + bytes(ar.ceiling || 0) + '.' + (st.paused ? ' Logging is paused because storage is nearly full.' : '');
+  }
+  // Today's Workers AI Neurons by spender (worker/ai/meter.ts neuronUsage), whatever window is chosen.
+  function renderAi(ai){
+    var card = $('aiCard'); if (!ai) { card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+    var ol = $('aiUse'); ol.textContent = '';
+    var n = function(v){ return Math.round(v).toLocaleString(); };
+    [['Public', ai.public], ['Tests', ai.tests], ['Total', ai.total]].forEach(function(r){
+      var li = el('li'); li.appendChild(el('span', null, r[0])); li.appendChild(el('span', 'v', n(r[1].used) + ' of ' + n(r[1].cap) + (r[1].used >= r[1].cap ? ', cap reached' : ''))); ol.appendChild(li);
+    });
+    $('aiReset').textContent = 'Resets at ' + ai.resetsAtMountain + ' (00:00 UTC). Daily allowance ' + n(ai.total.allowance) + '.';
   }
   function item(r){
     var li = el('li', 'item'); li.appendChild(whenEl(r.at));

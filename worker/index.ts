@@ -16,6 +16,7 @@ import { getDocumentDetail, getDocumentFile, getDocumentText, getRelated, listDo
 import { filtersFromUrl, handleSearch } from './api/search';
 import { browseFacets, getMeeting, handleHealth, handleHealthJobs, handleStats, listBodies, listCategories, listMeetings, listSources, notImplementedYet, submitReport, suggestions } from './api/misc';
 import { handleAsk } from './ai/rag';
+import { spenderEnv } from './ai/meter';
 import { listEvents } from './api/events';
 import { getMapLayer, getParcelAt, getParcelLines, getParcelOutlines, listMapLayers } from './api/map';
 import { getLatest } from './api/latest';
@@ -66,7 +67,8 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
   if (method === 'POST') {
     if (a === 'ask' && parts.length === 1) {
       const w = who(request);
-      return handleAsk(env, request, ctx, (r, ms) =>
+      // Spender hook (worker/ai/meter.ts): the chat suite's x-vtp-suite header bills its own Neuron bucket.
+      return handleAsk(await spenderEnv(env, request), request, ctx, (r, ms) =>
         ctx.waitUntil(
           logQuestion(env, w, {
             askId: r.id,

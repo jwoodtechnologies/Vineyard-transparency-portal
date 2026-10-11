@@ -68,6 +68,8 @@ html.dark .seg button[aria-pressed=true]{background:rgba(255,255,255,.1)}
 .top-q ol{list-style:none;margin:0;padding:0}
 .top-q li{display:flex;gap:14px;align-items:baseline;padding:11px 0;border-top:1px solid var(--line);font-size:15px}
 .top-q li:first-child{border-top:0}
+.ai-use{margin-bottom:14px}.ai-use li{justify-content:space-between}.ai-use .v{font-variant-numeric:tabular-nums;color:var(--muted)}
+.ai-reset{font-size:12px;color:var(--faint);margin:0;padding:4px 0 10px}
 .top-q .c{flex:none;min-width:30px;font-size:12px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
 .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .bar input[type=search]{width:260px;min-height:38px;border-radius:999px;font-size:14px}
@@ -174,6 +176,7 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
       <div class="head"><h1>Activity</h1>
         <div class="seg" id="win"><button data-w="day" aria-pressed="false">Today</button><button data-w="week" aria-pressed="true">7 days</button><button data-w="month" aria-pressed="false">30 days</button><button data-w="all" aria-pressed="false">All time</button></div></div>
       <div class="stats" id="stats"></div>
+      <div class="card top-q ai-use hidden" id="aiCard"><p class="label">AI Neurons today</p><ol id="aiUse"></ol><p class="ai-reset" id="aiReset"></p></div>
       <div class="card top-q"><p class="label">Most asked this month</p><ol id="topq"></ol></div>
       <div class="bar">
         <div class="seg" id="tabs"><button data-t="questions" aria-pressed="true">Questions</button><button data-t="feedback" aria-pressed="false">Ratings</button><button data-t="visits" aria-pressed="false">Visits</button></div>

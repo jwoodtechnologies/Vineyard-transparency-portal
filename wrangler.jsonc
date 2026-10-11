@@ -29,7 +29,8 @@
   ],
   // Standard storage class bucket. Uploads stop at ARCHIVE_STORAGE_HARD_STOP_BYTES.
   "r2_buckets": [{ "binding": "ARCHIVE", "bucket_name": "vtp-public-records" }],
-  // Workers AI on the Free plan (10,000 neurons/day). Over the allowance requests fail; they are never billed on Free.
+  // Workers AI on Workers Paid: 10,000 Neurons/day included, shared with the account's other projects.
+  // Use above that is billed, so worker/ai/meter.ts keeps this Worker's total at or under 10,000.
   "ai": { "binding": "AI" },
   "vars": {
     "SEARCH_SHARDS": "0,1",
@@ -38,8 +39,10 @@
     "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fp8",
     "AI_MAX_REQUESTS_PER_DAY": "220",
     "AI_BIG_PER_DAY": "35",
-    // Hard cap on estimated Workers AI Neurons per UTC day (included: 10,000/day per account).
-    "AI_NEURONS_PER_DAY": "8000",
+    // Hard caps on estimated Workers AI Neurons per UTC day, by spender (worker/ai/meter.ts). Residents
+    // get 9,000; the chat suite (requests with x-vtp-suite: 1) gets 1,000. The sum never passes 10,000.
+    "AI_NEURONS_PUBLIC_PER_DAY": "9000",
+    "AI_NEURONS_TESTS_PER_DAY": "1000",
     // D1 storage included: 5 GB per account. Two shards at 2 GB leave room for the catalog and other projects.
     "SEARCH_SHARD_MAX_BYTES": "2000000000",
     // D1 rows written included: 50 million per month per account. 1 million a day leaves room for other projects.

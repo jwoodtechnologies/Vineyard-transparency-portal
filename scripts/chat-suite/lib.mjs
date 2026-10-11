@@ -12,10 +12,19 @@
  *     passages (bge-reranker-base: ~11) and the answer (qwen3-30b, 6.4k character system prompt plus up to
  *     15.5k characters of sources, 900 tokens out: ~56): ~76, rounded to 80. When qwen fails and the
  *     llama-3.1-8b-fp8 fallback also runs, add ~40 (worst case 120).
+ *
+ * Every request carries `x-vtp-suite: 1` (SUITE_HEADER), so the Worker bills it to the tests bucket
+ * (worker/ai/meter.ts): 1,000 Neurons a UTC day, apart from the 9,000 residents get. When the bucket is
+ * spent, suite answers go without the model and residents are unaffected. GET /api/health reports
+ * aiNeurons.tests.used and .cap; run.mjs reads them and fits or refuses the run.
  */
 
 export const NEURONS = { modelTurn: 80, modelTurnWorst: 120, rewrite: 11 };
-export const DAILY_CAP = 8000;
+/** The tests bucket per UTC day (worker/ai/meter.ts DEFAULT_CAPS.tests, wrangler AI_NEURONS_TESTS_PER_DAY). */
+export const TESTS_CAP = 1000;
+/** Workers AI Neurons included per account per day (public + tests never pass it). */
+export const DAILY_ALLOWANCE = 10000;
+export const SUITE_HEADER = 'x-vtp-suite';
 export const OFF_TOPIC_REPLY = 'This portal covers Vineyard city records only.';
 
 const norm = (s) =>
@@ -73,23 +82,59 @@ export function estimate(cases) {
       if (t.model) modelTurns += 1;
       if ((i > 0 || c.conversation.length > 0) && !t.elliptical && !t.standalone) rewrites += 1;
     });
-  return { cases: cases.length, requests, modelTurns, rewrites, neurons: Math.round(expected), worstNeurons: Math.round(worst), shareOfCap: Math.round((expected / DAILY_CAP) * 1000) / 10 };
+  return { cases: cases.length, requests, modelTurns, rewrites, neurons: Math.round(expected), worstNeurons: Math.round(worst), shareOfCap: Math.round((expected / TESTS_CAP) * 1000) / 10 };
+}
+
+/** Neurons for one case: expected, or at worst (`worst` true). */
+export function caseCost(c, worst = false) {
+  return c.turns.reduce((n, t, i) => n + turnCost(t, i, c.conversation.length > 0)[worst ? 'worst' : 'expected'], 0);
 }
 
 /**
- * Which cases to run. full: all. deploy: every deterministic case plus `sample` model cases, rotating
- * through the model cases by `seed` (the workflow passes its run number) so every model case is
- * covered across deploys.
+ * Which cases to run.
+ *  - deploy (after a push): only the cases answered by code with no model call at all, follow-up
+ *    rewrites included: 0 Neurons, so pushes never spend the tests bucket.
+ *  - full (once a day): every deterministic case, then one group of model cases. The model cases (sorted
+ *    by id) are packed into groups that each fit a full tests bucket at worst case cost; `seed` (the UTC
+ *    day number) picks the group, so every model case runs once every `groups` days. From that group,
+ *    cases run while they fit in `budget` (what is left of today's bucket), so the bucket never runs out
+ *    mid-run. budget Infinity runs every case.
  */
-export function selectCases(cases, { mode = 'full', sample = 2, seed = 0, only = null } = {}) {
+export function modelGroups(cases, capacity = TESTS_CAP) {
+  const det = cases.filter((c) => c.tier === 'deterministic').reduce((n, c) => n + caseCost(c, true), 0);
+  const room = Math.max(NEURONS.modelTurnWorst, capacity - det);
+  const groups = [];
+  let cur = [];
+  let used = 0;
+  for (const c of cases.filter((x) => x.tier === 'model').sort((a, b) => a.id.localeCompare(b.id))) {
+    const cost = caseCost(c, true);
+    if (cur.length && used + cost > room) {
+      groups.push(cur);
+      cur = [];
+      used = 0;
+    }
+    cur.push(c);
+    used += cost;
+  }
+  if (cur.length) groups.push(cur);
+  return groups;
+}
+
+export function selectCases(cases, { mode = 'full', seed = 0, only = null, budget = Infinity } = {}) {
   if (only?.length) return cases.filter((c) => only.includes(c.id));
-  if (mode === 'full') return cases;
+  if (mode === 'deploy') return cases.filter((c) => c.tier === 'deterministic' && caseCost(c) === 0);
+  if (!Number.isFinite(budget)) return cases;
   const det = cases.filter((c) => c.tier === 'deterministic');
-  const model = cases.filter((c) => c.tier === 'model').sort((a, b) => a.id.localeCompare(b.id));
-  const n = model.length;
-  const take = Math.min(sample, n);
-  const start = n ? (((seed * take) % n) + n) % n : 0;
-  const picked = Array.from({ length: take }, (_, k) => model[(start + k) % n]);
+  const groups = modelGroups(cases);
+  const group = groups.length ? groups[((seed % groups.length) + groups.length) % groups.length] : [];
+  let left = budget - det.reduce((n, c) => n + caseCost(c, true), 0);
+  const picked = [];
+  for (const c of group) {
+    const cost = caseCost(c, true);
+    if (cost > left) break;
+    picked.push(c);
+    left -= cost;
+  }
   return [...det, ...picked];
 }
 
@@ -300,7 +345,7 @@ export async function ask(fetchFn, base, body, { sleep = sleepMs, timeoutMs = 90
     try {
       res = await fetchFn(`${base}/api/ask`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', accept: 'application/json', 'user-agent': 'VineyardPortalChatSuite/1.0' },
+        headers: { 'content-type': 'application/json', accept: 'application/json', 'user-agent': 'VineyardPortalChatSuite/1.0', [SUITE_HEADER]: '1' },
         body: JSON.stringify({ ...body, stream: false }),
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -381,7 +426,7 @@ export async function runSuite({ base, cases, officials, fetchFn = fetch, sleep 
     log(`${status.padEnd(5)} ${c.id}${status === 'fail' ? `: ${turns.flatMap((x) => x.failures.map((f) => `[turn ${x.turn}] ${f}`)).join('; ')}` : ''}`);
   }
   const count = (s) => results.filter((r) => r.status === s).length;
-  return { base, today, health: { ai: health.ai ?? null, status: health.status ?? null, error: health.error ?? null }, summary: { total: results.length, pass: count('pass'), fail: count('fail'), skip: count('skip') }, results };
+  return { base, today, health: { ai: health.ai ?? null, status: health.status ?? null, error: health.error ?? null, aiNeurons: health.aiNeurons ?? null }, summary: { total: results.length, pass: count('pass'), fail: count('fail'), skip: count('skip') }, results };
 }
 
 /* ------------------------------------------------------------------------------------------------ */
@@ -399,7 +444,7 @@ export function renderTable(run) {
 
 export function renderMarkdown(run, title = 'Chat suite') {
   const esc = (s) => String(s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
-  const out = [`## ${title}: ${run.summary.fail ? `${run.summary.fail} failing` : 'all passing'}`, '', `${run.base}, ${run.today}. pass ${run.summary.pass}, fail ${run.summary.fail}, skip ${run.summary.skip} of ${run.summary.total}.${run.estimate ? ` Estimated Workers AI use: ${run.estimate.neurons} Neurons (worst ${run.estimate.worstNeurons}) of the ${DAILY_CAP} daily cap.` : ''}`, ''];
+  const out = [`## ${title}: ${run.summary.fail ? `${run.summary.fail} failing` : 'all passing'}`, '', `${run.base}, ${run.today}. pass ${run.summary.pass}, fail ${run.summary.fail}, skip ${run.summary.skip} of ${run.summary.total}.${run.estimate ? ` Estimated Workers AI use: ${run.estimate.neurons} Neurons (worst ${run.estimate.worstNeurons}) of the ${TESTS_CAP} Neuron daily tests bucket.` : ''}`, ''];
   const bad = run.results.filter((r) => r.status !== 'pass');
   if (bad.length) {
     out.push('| Case | Status | Turn | Problem | Answer |', '| --- | --- | --- | --- | --- |');

@@ -30,8 +30,11 @@ export interface Env {
   AI_MAX_REQUESTS_PER_DAY?: string;
   /** Answers per day from the larger model before the small one takes over. */
   AI_BIG_PER_DAY?: string;
-  /** Hard daily cap on estimated Workers AI Neurons (zero overage; the account allowance is 10,000). */
-  AI_NEURONS_PER_DAY?: string;
+  /** Daily caps on estimated Workers AI Neurons by spender (worker/ai/meter.ts; together never above the 10,000 included). */
+  AI_NEURONS_PUBLIC_PER_DAY?: string;
+  AI_NEURONS_TESTS_PER_DAY?: string;
+  /** Set per request by spenderEnv (worker/ai/meter.ts), never in config: 'public' or 'tests'. */
+  AI_SPENDER?: string;
   ARCHIVE_STORAGE_HARD_STOP_BYTES?: string;
   ARCHIVE_MAX_OBJECT_BYTES?: string;
   MAX_D1_INGEST_ROWS_PER_DAY?: string;

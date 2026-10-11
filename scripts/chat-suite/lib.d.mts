@@ -84,7 +84,7 @@ export interface CaseResult {
 export interface SuiteRun {
   base: string;
   today: string;
-  health: { ai: boolean | null; status: string | null; error: string | null };
+  health: { ai: boolean | null; status: string | null; error: string | null; aiNeurons?: unknown };
   summary: { total: number; pass: number; fail: number; skip: number };
   results: CaseResult[];
   estimate?: Estimate;
@@ -93,14 +93,18 @@ export interface SuiteRun {
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export const NEURONS: { modelTurn: number; modelTurnWorst: number; rewrite: number };
-export const DAILY_CAP: number;
+export const TESTS_CAP: number;
+export const DAILY_ALLOWANCE: number;
+export const SUITE_HEADER: string;
+export function caseCost(c: SuiteCase, worst?: boolean): number;
+export function modelGroups(cases: SuiteCase[], capacity?: number): SuiteCase[][];
 export const OFF_TOPIC_REPLY: string;
 export function utahToday(now?: Date): string;
 export function longDate(iso: string): string;
 export function normalizeCases(data: { cases: Array<Record<string, unknown>> }): SuiteCase[];
 export function turnCost(turn: TurnSpec, index: number, staticConversation?: boolean): { expected: number; worst: number };
 export function estimate(cases: SuiteCase[]): Estimate;
-export function selectCases(cases: SuiteCase[], opts?: { mode?: 'full' | 'deploy'; sample?: number; seed?: number; only?: string[] | null }): SuiteCase[];
+export function selectCases(cases: SuiteCase[], opts?: { mode?: 'full' | 'deploy'; seed?: number; only?: string[] | null; budget?: number }): SuiteCase[];
 export function historyFor(done: Array<{ question: string; response: AskLike | null }>): Array<{ role: string; content: string; sources?: string[] }>;
 export function portalLinks(r: AskLike | null): string[];
 export function nameProblems(text: string, officials: Officials): string[];

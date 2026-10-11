@@ -25,6 +25,7 @@ import { auditLog, listUploads, lookupMeetings, lookupProjects, staffDelete, sta
 import { approveSubmission, hideSubmission, listSubmissions, rejectSubmission, removeSubmission, restoreSubmission, setSubmissionsOpen, submissionFile, submissionLog } from '../contrib/resident';
 import { coverage, refreshCoverage } from '../lib/coverage';
 import { jobHealth } from '../sync/jobHealth';
+import { neuronUsage } from '../ai/meter';
 
 export const PANEL_PREFIX = '/api/k/x79k82r8fjjz9ki9b3dpi2';
 export const INVITE_HOURS = 72;
@@ -177,6 +178,7 @@ async function summary(env: Env): Promise<unknown> {
   out.storage = { bytes: size, ceiling: STORAGE_CEILING_BYTES, paused: size > STORAGE_CEILING_BYTES };
   const room = await archiveRoom(env).catch(() => ({ stored: 0, hardStop: 0 }));
   out.archive = { bytes: room.stored, ceiling: room.hardStop };
+  out.ai = await neuronUsage(env).catch(() => null);
   return out;
 }
 
