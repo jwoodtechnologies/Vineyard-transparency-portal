@@ -179,6 +179,8 @@ export function portalLinks(r) {
 
 const TITLE_BEFORE = /(Mayor(?: Pro Tem(?:p|pore)?)?|Council ?Members?|Councilmembers?|Council(?:wo)?man|Board Members?|Commissioner|Chair|Vice Chair|Member)\s*$/i;
 const TITLE_IN_SENTENCE = /\b(Mayor|City Council|Council Member|Councilmember|Board Member|Redevelopment Agency board)\b/;
+/** A list of election candidates names people as they appeared on the ballot, title or not. */
+const CANDIDATES = /\b(candidates?|ran for|running for|on the ballot|filed (?:for|to run))\b/i;
 
 /**
  * Council members and the mayor are named by title and last name ("Council Member McCumber").
@@ -206,6 +208,7 @@ export function nameProblems(text, officials) {
       const before = t.slice(Math.max(0, m.index - 30), m.index);
       if (TITLE_BEFORE.test(before)) continue;
       if (TITLE_IN_SENTENCE.test(sentenceAt(m.index).replace(m[0], ''))) continue;
+      if (CANDIDATES.test(t.slice(Math.max(0, m.index - 220), m.index))) continue;
       problems.push(`"${m[0]}" named without a title (write "Council Member ${p.last}" or "Mayor ${p.last}")`);
     }
   }

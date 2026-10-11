@@ -133,6 +133,8 @@ describe('global checks', () => {
     expect(nameProblems('Tie Vote resolved by Mayor Stratton’s vote of Yes.', officials)).toEqual([]);
     expect(nameProblems('Parker McCumber is a member of the City Council for Vineyard.', officials)).toEqual([]);
     expect(nameProblems('Zack Stratton is the Mayor for Vineyard.', officials)).toEqual([]);
+    // Election candidates are listed as they were on the ballot.
+    expect(nameProblems('Six candidates ran for City Council in the 2025 primary. They were Brett Clawson, Parker McCumber and David Lauret.', officials)).toEqual([]);
     expect(nameProblems('Parker McCumber has 124 recorded votes on policy items.', officials)).toHaveLength(1);
     expect(nameProblems('McCumber seconded the motion.', officials)).toHaveLength(1);
     expect(nameProblems('Jacob Holdaway voted no.', officials)).toHaveLength(1);
