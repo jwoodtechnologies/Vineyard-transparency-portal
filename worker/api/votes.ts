@@ -6,13 +6,13 @@
  */
 import type { Env } from '../env';
 import { SearchRepository } from '../search/SearchRepository';
-import { parseMinutes, rosterFrom, type ParsedMotion } from '../lib/votes';
+import { motionPages, parseMinutes, rosterFrom, type ParsedMotion } from '../lib/votes';
 import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 import { motionMatches, placeWords, termTries } from '../ai/voteMatch';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 17;
+export const VOTES_PARSER = 18;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -39,7 +39,6 @@ export async function ensureVotesTables(env: Env): Promise<void> {
 }
 
 const rankOf = (title: string) => (/\b(approved|final|adopted)\b/i.test(title) ? 3 : /\bdraft\b/i.test(title) ? 1 : 2);
-const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 type DocRow = { id: string; title: string; document_date: string | null; government_body_id: string | null; meeting_id: string | null; search_shard: number };
 
@@ -158,12 +157,9 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
     stmts.push(db.prepare('UPDATE vote_docs SET motions = 0 WHERE document_id = ?').bind(other.document_id));
   }
   let votes = 0;
-  const pageOf = (m: ParsedMotion): number | null => {
-    const probe = squash(m.text).slice(0, 40);
-    if (probe.length < 8) return null;
-    const hit = chunks.find((c) => squash(c.text).includes(probe));
-    return hit?.pageStart ?? null;
-  };
+  // The page where each motion starts (worker/lib/votes.ts motionPages), not where its wording first appears.
+  const found = motionPages(chunks, motions);
+  const pageOf = (m: ParsedMotion): number | null => found[motions.indexOf(m)] ?? null;
   for (const m of motions) {
     const id = `${d.id}:${m.seq}`;
     stmts.push(

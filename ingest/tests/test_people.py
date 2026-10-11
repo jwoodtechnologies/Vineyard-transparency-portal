@@ -63,3 +63,27 @@ class PhotoUrlTests(__import__("unittest").TestCase):
         html = """<div class="rz-business-block"><div style="background: url('bus-directory/Christopher Chip Price (1).png?t=2') center center / cover no-repeat;"></div><h2>Council Member Chip Price</h2><a class="rz-bus-readmore" href="x.php">Read More</a></div>"""
         cards = _cards(BeautifulSoup(html, "html.parser"))
         self.assertEqual(cards[0]["photo"], "https://www.vineyardutah.gov/bus-directory/Christopher%20Chip%20Price%20(1).png?t=2")
+
+
+class AuditOct2026Tests(__import__("unittest").TestCase):
+    """October 2026 accuracy audit (docs/audits/2026-10-accuracy.md): /api/people printed "Recorder'S Office"."""
+
+    def test_department_with_an_apostrophe(self):
+        from ingest.people import _dept_case
+
+        self.assertEqual(_dept_case("RECORDER'S OFFICE"), "Recorder's Office")
+        self.assertEqual(_dept_case("Recorder's Office"), "Recorder's Office")
+        self.assertEqual(_dept_case("Engineering & Planning"), "Engineering & Planning")
+        self.assertEqual(_dept_case("officials & executive staff"), "Officials & Executive Staff")
+
+    def test_staff_count_is_the_city_page_count(self):
+        from ingest import people
+
+        staff = """<article><div class="rz-business-block"><ul class="category-list"><li>RECORDER'S OFFICE</li></ul><h2>Tony Lara</h2><span class="rz-business-desc">Deputy Recorder</span><a href="tel:3854327214">(385) 432-7214</a></div></article>"""
+        client = FakeClient({people.PAGES["council"]: COUNCIL, people.PAGES["staff"]: staff})
+        out = []
+        recs = {k: txt for k, _t, _u, txt in people.build(client, "2026-10-05", out)}
+        self.assertIn("1 staff members are listed there.", recs["people:staff"])
+        self.assertIn("Recorder's Office:", recs["people:staff"])
+        self.assertIn("Jesse Riddle, City Attorney; not on the City Staff page", recs["people:staff"])
+        self.assertEqual({p["slug"]: p for p in out}["tony-lara"]["department"], "Recorder's Office")

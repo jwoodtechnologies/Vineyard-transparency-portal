@@ -34,6 +34,8 @@ export interface ParsedMotion {
   items: string[];
   /** Character offset in the text (used for the page). */
   at: number;
+  /** The first words of the motion as printed ("Motion: Council Member Wood motioned to ..."), used to find its page. */
+  lead: string;
 }
 
 export interface ParsedMinutes {
@@ -48,7 +50,7 @@ export interface ParsedMinutes {
   motions: ParsedMotion[];
 }
 
-const TITLE = String.raw`(?:mayor pro tem(?:pore)?|deputy mayor|mayor|council ?members?|councilm[ae]n|councilwoman|councilors?|commissioners?|vice[- ]chair(?:man|woman|person)?|chair(?:man|woman|person)?|board ?members?|members?|director|mr\.?|mrs\.?|ms\.?|dr\.?)`;
+const TITLE = String.raw`(?:mayor pro tem(?:pore)?|deputy mayor|mayor|council ?members?|councilm[ae]n|councilwoman|councilors?|com+is+ion+er+s?|vice[- ]chair(?:man|woman|person)?|chair(?:man|woman|person)?|board ?members?|members?|director|mr\.?|mrs\.?|ms\.?|dr\.?)`;
 const NAME = String.raw`([A-Z][A-Za-z'’-]+(?:\s+[A-Z][A-Za-z'’-]+)?)`;
 const STOP = new Set(['the', 'and', 'none', 'all', 'motion', 'council', 'city', 'members', 'member', 'mayor', 'vote', 'yes', 'no', 'aye', 'nay', 'absent', 'abstain', 'present', 'roll', 'call', 'item', 'items', 'a', 'an', 'to', 'of', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'approved', 'seconded', 'carried', 'passed', 'failed', 'staff', 'public', 'hearing', 'commission', 'committee', 'agency', 'board', 'chair', 'vice', 'secretary', 'clerk', 'recorder', 'planning', 'development']);
 
@@ -319,9 +321,20 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
   starts.forEach((at, i) => {
     const end = Math.min(starts[i + 1] ?? flat.length, at + 2200);
     const seg = flat.slice(at, end).replace(/\s+/g, ' ');
-    const mover = seg.match(new RegExp(`${TITLE}\\s+${NAME}\\s+(?:made a motion|moved|motioned|nominated|motions? to)`, 'i'));
-    const wording = seg.match(/\b(made a motion|moved|motioned|nominated|motions?(?=\s+to\b))\s+(?:to\s+|that\s+|the\s+)?([\s\S]{3,900}?)(?=\.\s+(?:[A-Z][A-Za-z]*\s+){0,3}[A-Za-z'-]+\s+seconded|\.?\s+seconded by\b|\s+(?:council ?members?|councilm[ae]n|councilwoman|commissioners?|board ?members?|chair(?:man|woman|person)?|vice[- ]chair|mayor)\s+[A-Z][A-Za-z'-]+\s+seconded|\s+seconded\b|\.\s+(?:the )?motion (?:was )?seconded|\.\s+vote\b|\.\s+roll call|\.\s+all\b|$)/i);
-    const seconder = seg.match(new RegExp(`${TITLE}\\s+${NAME}\\s+seconded`, 'i')) ?? seg.match(new RegExp(`seconded by\\s+${TITLE}?\\s*${NAME}`, 'i'));
+    // "Board Member Lauret.motioned to approve" (a scan that lost the space) names the mover too.
+    const mover =
+      seg.match(new RegExp(`${TITLE}\\s+${NAME}(?:\\s+|\\.(?=motioned|moved))(?:made a motion|moved|motioned|nominated|motions? to)`, 'i')) ??
+      // "Mayor Pro Tempore Lauret brought back the original motion presented by Councilmember McCumber."
+      seg.slice(0, 300).match(new RegExp(`\\bmotion\\s+(?:presented|made)\\s+by\\s+${TITLE}\\s+${NAME}`, 'i'));
+    // "motioned, in honor of ..., that ..." puts a comma after the verb; "Second: Council Member Wood" ends the wording.
+    const wording = seg.match(/\b(made a motion|moved|motioned|nominated|motions?(?=\s+to\b))[,:]?\s+(?:to\s+|that\s+|the\s+)?([\s\S]{3,900}?)(?=\.\s+(?:[A-Z][A-Za-z]*\s+){0,3}[A-Za-z'-]+\s+seconded|\.?\s+seconded by\b|\s+(?:council ?members?|councilm[ae]n|councilwoman|commissioners?|board ?members?|chair(?:man|woman|person)?|vice[- ]chair|mayor)\s+[A-Z][A-Za-z'-]+\s+seconded|\s+seconded\b|\.?\s+second\s*:|\.\s+(?:the )?motion (?:was )?seconded|\.\s+vote\b|\.\s+roll call|\.\s+all\b|$)/i);
+    // A motion with no verb the reader knows: its first sentence, as printed.
+    const plain = wording ? null : /^motion:\s*([^.]{4,300})\./i.exec(seg)?.[1] ?? null;
+    // "Seconded by Council Member Lauret", "Council Member Lauret seconded", "Seconded: David Lauret", "Second: Council Member Wood".
+    const seconder =
+      seg.match(new RegExp(`${TITLE}\\s+${NAME}\\s+seconded`, 'i')) ??
+      seg.match(new RegExp(`seconded by\\s+${TITLE}?\\s*${NAME}`, 'i')) ??
+      seg.match(new RegExp(`\\bsecond(?:ed)?\\s*:\\s*(?:${TITLE}\\s+)?${NAME}`, 'i'));
     const votes: Array<{ member: string; vote: VoteValue }> = [];
     const add = (names: string[], vote: VoteValue) => names.forEach((n) => !votes.some((v) => v.member === n.replace(/^Mayor /, '')) && votes.push({ member: n.replace(/^Mayor /, ''), vote }));
     let inferred = false;
@@ -385,7 +398,7 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     const no = votes.filter((v) => v.vote === 'no').length;
     const result: ParsedMotion['result'] = /carried|passed|approved/.test(word) ? 'carried' : /failed|died|denied|defeated/.test(word) ? 'failed' : votes.length ? (yes > no ? 'carried' : 'failed') : 'unknown';
     // "Councilmember Holdaway nominated Councilmember Wood to serve as Mayor Pro Temp" is a motion to nominate.
-    const textOut = `${/^nominated$/i.test(wording?.[1] ?? '') ? 'nominate ' : ''}${wording?.[2] ?? ''}`.replace(/\s+/g, ' ').trim();
+    const textOut = `${/^nominated$/i.test(wording?.[1] ?? '') ? 'nominate ' : ''}${wording?.[2] ?? plain ?? ''}`.replace(/\s+/g, ' ').trim();
     if (!mover && !votes.length && !res) return; // a stray "motion" with nothing recorded
     if (textOut.length < 4 && !votes.length) return;
     const refs = [...new Set([...seg.slice(0, 900).matchAll(/\b(resolution|ordinance)\s+(?:no\.?\s*)?((?:19|20)\d{2}\s*-\s*\d{1,3}[A-Z]?)/gi)].map((m) => `${titleCase(m[1])} ${m[2].replace(/\s+/g, '')}`))];
@@ -399,7 +412,8 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
       })(),
       text: sentenceCase(textOut).slice(0, 700),
       mover: mover ? namesIn(mover[1])[0] ?? null : null,
-      seconder: seconder ? namesIn(seconder[1])[0] ?? null : null,
+      // "Seconded: Council Member Holdaway The meeting adjourned" runs into the next sentence: the member is the first word.
+      seconder: seconder ? (namesIn(seconder[1])[0] ?? (known.some((k) => k.toLowerCase() === seconder[1].split(/\s+/)[0].toLowerCase()) ? titleCase(seconder[1].split(/\s+/)[0]) : null)) : null,
       result,
       tally: tally ? `${tally[1]}-${tally[2]}` : null,
       tieBreak: Boolean(tie),
@@ -409,6 +423,7 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
       refs,
       items: /\bconsent\b/i.test(textOut) ? consentItems(flat.slice(Math.max(0, at - 8000), at), textOut) : [],
       at,
+      lead: seg.slice(0, 160),
     });
   });
   // One spelling per person in a document: minutes sometimes misspell a name once ("Rassmussen",
@@ -499,4 +514,50 @@ export function rosterFrom(head: string): RosterEntry[] {
     if (!out.some((x) => x.name === name)) out.push({ name, role });
   }
   return out;
+}
+
+/** Words only, lower case, with bare numbers dropped (line numbers in drafts, page numbers in footers). */
+const pageKey = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b\d+\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * The page each motion is printed on, read from where the motion itself starts ("Motion: Council Member
+ * Wood motioned to approve the First Amendment ..."), not from the first place its wording appears: an
+ * item heading often repeats the wording a page earlier. Motions are searched in order, each after the
+ * last, so a repeated sentence lands on the right page. A motion that starts in one chunk and ends in the
+ * next is still found (the chunks are searched as one text).
+ */
+export function motionPages(chunks: Array<{ pageStart: number | null; text: string }>, motions: Array<Pick<ParsedMotion, 'lead' | 'text'>>): Array<number | null> {
+  let joined = '';
+  const starts: Array<{ at: number; page: number | null }> = [];
+  for (const c of chunks) {
+    starts.push({ at: joined.length, page: c.pageStart });
+    joined += `${pageKey(c.text)} `;
+  }
+  const pageAt = (i: number) => {
+    let p: number | null = null;
+    for (const s of starts) {
+      if (s.at > i) break;
+      p = s.page;
+    }
+    return p;
+  };
+  let cursor = 0;
+  return motions.map((m) => {
+    const lead = pageKey(m.lead);
+    const probes = [lead.slice(0, 60), lead.slice(0, 30), pageKey(m.text).slice(0, 40)].filter((p) => p.length >= 12);
+    for (const probe of probes) {
+      const i = joined.indexOf(probe, cursor);
+      const hit = i >= 0 ? i : joined.indexOf(probe);
+      if (hit < 0) continue;
+      cursor = hit + 1;
+      return pageAt(hit);
+    }
+    return null;
+  });
 }

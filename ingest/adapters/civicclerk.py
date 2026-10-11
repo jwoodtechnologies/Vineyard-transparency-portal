@@ -37,6 +37,13 @@ FILE_TYPES = {"agenda": ("agenda", "agenda", "MEETING_HAS_AGENDA"), "agenda pack
 BODY_KIND = [("council", "council"), ("commission", "commission"), ("redevelopment", "agency"), ("rda", "agency"), ("board", "board"), ("committee", "committee")]
 
 
+def event_address(loc: dict) -> str | None:
+    """The place as CivicClerk lists it, every line kept (the street is sometimes on address2), stray commas dropped.
+    Same as eventAddress in worker/lib/civicclerk.ts."""
+    parts = [re.sub(r"\s+", " ", (loc.get(k) or "")).strip(" ,") for k in ("address1", "address2", "city", "state")]
+    return ", ".join(p for p in parts if p) or None
+
+
 def body_for(category: str | None) -> dict | None:
     if not category:
         return None
@@ -128,7 +135,7 @@ class CivicClerkAdapter(SourceAdapter):
             if ev.get("youtubeVideoId"):
                 media.append({"kind": "video", "label": "Meeting video (YouTube)", "url": f"https://www.youtube.com/watch?v={ev['youtubeVideoId']}", "sourceId": self.source_id})
             loc = ev.get("eventLocation") or {}
-            location = ", ".join(x for x in [loc.get("address1"), loc.get("city"), loc.get("state")] if x) or None
+            location = event_address(loc)
             date_str = local.date().isoformat() if local else None
             title = agenda_name if agenda_name and agenda_name.lower() != name.lower() else name
             self.meetings.append(

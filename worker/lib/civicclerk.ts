@@ -99,7 +99,7 @@ export interface CcEvent {
   isPublished?: string | null;
   externalMediaUrl?: string | null;
   youtubeVideoId?: string | null;
-  eventLocation?: { address1?: string; city?: string; state?: string } | null;
+  eventLocation?: { address1?: string | null; address2?: string | null; city?: string | null; state?: string | null } | null;
   publishedFiles?: Array<{ fileId?: number; type?: string; name?: string; url?: string; publishOn?: string }>;
   agendaId?: number | null;
 }
@@ -125,6 +125,16 @@ export function unconfirmedCopy(name: string, date: string | null, hasAgenda: bo
   return named !== date;
 }
 
+/**
+ * The place as CivicClerk lists it, every line kept: the street is sometimes on the second line
+ * ("City Council Chambers" / "125 South Main Street"; "707 E Mill Road," / "HBA Building Suite 202,").
+ * Stray commas the city typed at the end of a line are dropped.
+ */
+export function eventAddress(loc: { address1?: string | null; address2?: string | null; city?: string | null; state?: string | null }): string | null {
+  const parts = [loc.address1, loc.address2, loc.city, loc.state].map((x) => (x ?? '').replace(/[\s,]+$/g, '').replace(/^[\s,]+/g, '').replace(/\s+/g, ' ')).filter(Boolean);
+  return parts.join(', ') || null;
+}
+
 export function mapEvent(ev: CcEvent, now = new Date()): MappedEvent | null {
   if (ev.isDeleted || !(ev.isPublished == null || ev.isPublished === 'Published')) return null;
   const local = localParts(ev.startDateTime ?? ev.eventDate);
@@ -138,7 +148,7 @@ export function mapEvent(ev: CcEvent, now = new Date()): MappedEvent | null {
   if (ev.externalMediaUrl) media.push({ kind: 'video', label: 'Meeting video', url: ev.externalMediaUrl, sourceId: CC_SOURCE });
   if (ev.youtubeVideoId) media.push({ kind: 'video', label: 'Meeting video (YouTube)', url: `https://www.youtube.com/watch?v=${ev.youtubeVideoId}`, sourceId: CC_SOURCE });
   const loc = ev.eventLocation ?? {};
-  const location = [loc.address1, loc.city, loc.state].filter(Boolean).join(', ') || null;
+  const location = eventAddress(loc);
   const title = agendaName && agendaName.toLowerCase() !== name.toLowerCase() ? agendaName : name;
   let held = false;
   if (local) {

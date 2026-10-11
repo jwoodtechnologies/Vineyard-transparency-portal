@@ -55,6 +55,12 @@ def _clean(t: str | None) -> str:
     return re.sub(r"\s+", " ", (t or "")).strip()
 
 
+def _dept_case(name: str | None) -> str:
+    """Department in title case, never capitalizing after an apostrophe ("RECORDER'S OFFICE" -> "Recorder's Office").
+    str.title() gave "Recorder'S Office"."""
+    return re.sub(r"[A-Za-z]+(?:['’][A-Za-z]+)?", lambda m: m.group(0)[0].upper() + m.group(0)[1:].lower(), name or "")
+
+
 def _titlecase(name: str) -> str:
     return " ".join(w.capitalize() if w.isupper() and len(w) > 1 else w for w in name.split())
 
@@ -159,27 +165,30 @@ def build(client: PoliteClient, today: str | None = None, people_out: list | Non
 
     soup = _soup(client, PAGES["staff"])
     staff = _cards(soup) if soup else []
+    listed = len(staff)
     # The city attorney serves the city but is not on the City Staff page; listed so the directory is complete.
     if staff and not any(re.search(r"attorney", p["title"] or "", re.I) for p in staff):
-        staff.append({"name": "Jesse Riddle", "title": "City Attorney", "department": "Executive", "email": None, "phone": None, "photo": None, "detail": None})
+        staff.append({"name": "Jesse Riddle", "title": "City Attorney", "department": "Executive", "email": None, "phone": None, "photo": None, "detail": None, "note": "not on the City Staff page; the City Council approved the mayor's appointment of Jesse Riddle as legal counsel on March 10, 2026"})
     elected = {p["slug"] for p in people_out}
     for p in staff:
         if slugify(p["name"]) in elected:
             continue
-        people_out.append({"slug": slugify(p["name"]), "name": p["name"], "kind": "staff", "role": p["title"] or "Staff", "title": p["title"] or None, "department": p["department"].title() or None, "term": None, "email": p["email"], "phone": p["phone"], "photoUrl": p.get("photo"), "sourceUrl": PAGES["staff"]})
+        people_out.append({"slug": slugify(p["name"]), "name": p["name"], "kind": "staff", "role": p["title"] or "Staff", "title": p["title"] or None, "department": _dept_case(p["department"]) or None, "term": None, "email": p["email"], "phone": p["phone"], "photoUrl": p.get("photo"), "sourceUrl": PAGES["staff"]})
     if staff:
         by_dept: dict[str, list[dict]] = {}
         for p in staff:
             by_dept.setdefault(p["department"] or "Other", []).append(p)
-        lines = [f"Vineyard City staff directory as of {today}, from the city's City Staff page ({PAGES['staff']}). {len(staff)} staff members are listed."]
+        lines = [f"Vineyard City staff directory as of {today}, from the city's City Staff page ({PAGES['staff']}). {listed} staff members are listed there."]
         for dept in sorted(by_dept):
-            lines.append(f"\n{dept.title()}:")
+            lines.append(f"\n{_dept_case(dept)}:")
             for p in sorted(by_dept[dept], key=lambda x: x["name"]):
                 bits = [f"{p['name']}, {p['title'] or 'staff'}"]
                 if p["email"]:
                     bits.append(f"email {p['email']}")
                 if p["phone"]:
                     bits.append(f"phone {p['phone']}")
+                if p.get("note"):
+                    bits.append(p["note"])
                 lines.append("; ".join(bits) + ".")
         lines.append("\nCity Hall: 125 S Main St, Vineyard, UT 84059. Main phone 801-226-1929. Hours Monday to Thursday 8am to 5pm, Friday 8am to noon.")
         records.append(("people:staff", "City staff directory (current)", PAGES["staff"], "\n".join(lines)))
@@ -188,7 +197,7 @@ def build(client: PoliteClient, today: str | None = None, people_out: list | Non
         if leaders:
             lines = [f"Vineyard City leadership and department heads as of {today}, from the city's City Staff page."]
             for p in sorted(leaders, key=lambda x: (x["department"], x["name"])):
-                lines.append(f"{p['title'] or 'Staff'}: {p['name']} ({p['department'].title() or 'Vineyard City'})" + (f", email {p['email']}" if p["email"] else "") + (f", phone {p['phone']}" if p["phone"] else "") + ".")
+                lines.append(f"{p['title'] or 'Staff'}: {p['name']} ({_dept_case(p['department']) or 'Vineyard City'})" + (f", email {p['email']}" if p["email"] else "") + (f", phone {p['phone']}" if p["phone"] else "") + ".")
             records.append(("people:leadership", "City leadership and department heads (current)", PAGES["staff"], "\n".join(lines)))
 
     soup = _soup(client, PAGES["boards"])
