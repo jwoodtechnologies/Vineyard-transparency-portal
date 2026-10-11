@@ -273,6 +273,8 @@ export function evalTurn(spec, r, ctx) {
 /* ------------------------------------------------------------------------------------------------ */
 
 const QUOTA = /4006|neuron cap|daily allowance|quota/i;
+/** The site's own notice when the model is down or its breaker is open: a skip for model cases, never a pass. */
+const AI_DOWN = /AI answers are temporarily unavailable/i;
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function getJson(fetchFn, url) {
@@ -368,10 +370,11 @@ export async function runSuite({ base, cases, officials, fetchFn = fetch, sleep 
         fails = [`request failed: ${String(e?.message ?? e)}`];
       }
       const engine = String(r?.engine ?? '');
-      if ((t.model || t.needsRewrite) && QUOTA.test(engine)) {
+      const aiDown = QUOTA.test(engine) || AI_DOWN.test(String(r?.answer ?? '')) || AI_DOWN.test(String(r?.notice ?? ''));
+      if ((t.model || t.needsRewrite) && aiDown) {
         aiAvailable = false;
         status = 'skip';
-        reason = `AI quota reached during the run (${engine.slice(0, 120)})`;
+        reason = `AI unavailable during the run (${(engine || String(r?.notice ?? '')).slice(0, 120)})`;
       } else if (fails.length) status = 'fail';
       turns.push({ turn: i + 1, question: t.question, engine, ms: Date.now() - started, failures: fails, answer: String(r?.answer ?? '').slice(0, 1500), citations: (r?.citations ?? []).map((x) => ({ documentId: x.documentId, page: x.page ?? null })) });
       done.push({ question: t.question, response: r });
