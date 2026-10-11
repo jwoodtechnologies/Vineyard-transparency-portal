@@ -1,0 +1,242 @@
+{
+  "base": "https://vineyardportal.org",
+  "today": "2026-10-11",
+  "health": {
+    "ai": true,
+    "status": "ok",
+    "error": null,
+    "aiNeurons": {
+      "day": "2026-10-11",
+      "public": {
+        "used": 8501.3,
+        "cap": 9000
+      },
+      "tests": {
+        "used": 131.6,
+        "cap": 1000
+      },
+      "total": {
+        "used": 8632.9,
+        "cap": 10000,
+        "allowance": 10000
+      },
+      "resetsAt": "2026-10-12T00:00:00.000Z",
+      "resetsAtMountain": "6 PM Mountain"
+    }
+  },
+  "summary": {
+    "total": 7,
+    "pass": 6,
+    "fail": 1,
+    "skip": 0
+  },
+  "results": [
+    {
+      "id": "votes-mayor-pro-tem-2026-04-14",
+      "category": "votes-member",
+      "tier": "model",
+      "status": "pass",
+      "reason": null,
+      "turns": [
+        {
+          "turn": 1,
+          "question": "Who seconded the motion on April 14, 2026 to make Parker McCumber Mayor Pro Tem?",
+          "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+          "ms": 5180,
+          "failures": [],
+          "answer": "The motion to make Council Member McCumber Mayor Pro Tem on April 14, 2026, was seconded by Council Member Wood. [1]\n\nThis occurred during a City Council meeting where Council Member Nair moved the motion, and it passed 5-0. [1]",
+          "citations": [
+            {
+              "documentId": "doc_750d956cc3d5a4a2",
+              "page": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "elections-next",
+      "category": "elections",
+      "tier": "model",
+      "status": "pass",
+      "reason": null,
+      "turns": [
+        {
+          "turn": 1,
+          "question": "When is the next city election?",
+          "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+          "ms": 3879,
+          "failures": [],
+          "answer": "The next city election in Vineyard is in November 2027. [2]\n\nIn general, municipal elections in Utah include voting for city council seats and the mayor when the term ends. [1] The 2025 primary election was held in August 2025, and the next one will be in August 2027, with the general election following in November 2027. [1]",
+          "citations": [
+            {
+              "documentId": "doc_3b9a5837a3a12d01",
+              "page": 1
+            },
+            {
+              "documentId": "doc_0dde66061ec77687",
+              "page": 38
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rda-what-is",
+      "category": "rda",
+      "tier": "model",
+      "status": "pass",
+      "reason": null,
+      "turns": [
+        {
+          "turn": 1,
+          "question": "What does the Redevelopment Agency do?",
+          "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+          "ms": 2480,
+          "failures": [],
+          "answer": "The Redevelopment Agency in Vineyard is responsible for managing and overseeing redevelopment projects, including property acquisition, planning, and real estate transactions. [3] It works to revitalize areas, manage development agreements, and ensure that projects align with long-term community goals. [3] The agency also handles financial aspects, such as budgeting and compliance with legal requirements. [2] In addition, the agency is subject to internal audits to ensure proper governance and financial controls. [1]",
+          "citations": [
+            {
+              "documentId": "doc_29227f9539fa2a7a",
+              "page": 86
+            },
+            {
+              "documentId": "doc_9fb92410174def11",
+              "page": 9
+            },
+            {
+              "documentId": "doc_2f6e8324293b6c20",
+              "page": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "elections-candidates-2025",
+      "category": "elections",
+      "tier": "model",
+      "status": "fail",
+      "reason": null,
+      "turns": [
+        {
+          "turn": 1,
+          "question": "Who ran for city council in 2025?",
+          "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+          "ms": 4628,
+          "failures": [
+            "\"David Lauret\" named without a title (write \"Council Member Lauret\" or \"Mayor Lauret\")",
+            "\"Jacob Wood\" named without a title (write \"Council Member Wood\" or \"Mayor Wood\")",
+            "\"Parker McCumber\" named without a title (write \"Council Member McCumber\" or \"Mayor McCumber\")",
+            "\"Ezra Nair\" named without a title (write \"Council Member Nair\" or \"Mayor Nair\")"
+          ],
+          "answer": "Six candidates ran for the office of City Council in the 2025 Municipal Primary Election. [1] They were Brett Clawson, Jacob Wood, Caden Rhoton, Ezra Nair, Parker McCumber, and David Lauret. [1]\n\nIn the primary election, voters selected up to three candidates to move on to the General Election. [2] The final results of the General Election, held on November 4, 2025, showed that Council Member Lauret, Council Member McCumber, and Council Member Wood were elected to the City Council. [3]",
+          "citations": [
+            {
+              "documentId": "doc_1e061308f931d78e",
+              "page": 18
+            },
+            {
+              "documentId": "doc_a06c260d38225a6f",
+              "page": null
+            },
+            {
+              "documentId": "doc_a06c260d38225a6f",
+              "page": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tone-overpass-railroad",
+      "category": "tone",
+      "tier": "model",
+      "status": "pass",
+      "reason": null,
+      "turns": [
+        {
+          "turn": 1,
+          "question": "Is the city building an overpass over the railroad tracks?",
+          "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+          "ms": 3514,
+          "failures": [],
+          "answer": "Yes, the city is building an overpass over the railroad tracks at Center Street. [1] The project was approved in 2019, and the construction was awarded to Wadsworth Brothers Construction with a total cost of $7,994,984.57. [2] The overpass was planned to be completed by 2020, and the city's general plan outlines the importance of such infrastructure to mitigate the railroad's impact on city circulation. [1]",
+          "citations": [
+            {
+              "documentId": "doc_dd2fe7a05b7a26c3",
+              "page": 78
+            },
+            {
+              "documentId": "doc_64c9778a81657401",
+              "page": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tone-rda-why-it-matters",
+      "category": "tone",
+      "tier": "model",
+      "status": "pass",
+      "reason": null,
+      "turns": [
+        {
+          "turn": 1,
+          "question": "What is the RDA and why does it matter?",
+          "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+          "ms": 2980,
+          "failures": [],
+          "answer": "The RDA stands for Redevelopment Agency, a public body created to manage and oversee redevelopment projects in Vineyard, Utah. [2] It matters because it plays a key role in urban development, including issuing bonds, managing tax increment financing, and entering into agreements with developers to promote growth and infrastructure improvements. [1]",
+          "citations": [
+            {
+              "documentId": "doc_a6163e582ab966eb",
+              "page": 34
+            },
+            {
+              "documentId": "doc_fd03e54fdf448473",
+              "page": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tone-speak-at-meeting",
+      "category": "tone",
+      "tier": "model",
+      "status": "pass",
+      "reason": null,
+      "turns": [
+        {
+          "turn": 1,
+          "question": "How do I speak at a city council meeting?",
+          "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+          "ms": 4329,
+          "failures": [],
+          "answer": "To speak at a city council meeting, you need to sign up during the designated public comment period. [1] Members of the public wishing to speak must provide their name and the topic they wish to discuss. [1] During the public comment period, the mayor or chair may allot each speaker a maximum amount of time to present their comments, subject to extension by the mayor or by a majority vote of the council. [1]\n\nIn general, city council meetings include a period for public comment, allowing residents to share their views on agenda items. In Vineyard, the rules for public comment are outlined in the Municipal Code, which requires a designated period for public comment at every regular City Council meeting that includes a business item. [1] The specific procedures for public comment may vary slightly depending on the meeting, but the core process remains the same.",
+          "citations": [
+            {
+              "documentId": "doc_0eac11c8966b9d4f",
+              "page": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "mode": "full",
+  "seed": 20737,
+  "startedAt": "2026-10-11T22:16:22.322Z",
+  "finishedAt": "2026-10-11T22:17:31.453Z",
+  "estimate": {
+    "cases": 7,
+    "requests": 7,
+    "modelTurns": 7,
+    "rewrites": 0,
+    "neurons": 560,
+    "worstNeurons": 840,
+    "shareOfCap": 56
+  }
+}
