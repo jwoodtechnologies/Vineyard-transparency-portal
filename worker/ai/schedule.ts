@@ -213,3 +213,23 @@ export async function nextAgenda(env: Env, question: string): Promise<NextAgenda
 
 /** What is said when the next meeting has no posted agenda: when and where, and nothing about content. */
 export const AGENDA_NOT_POSTED = 'The agenda for this meeting is not posted yet.';
+
+/** "Where is the November 17 meeting", "what time does it start": asks for the place or time, not what happened. */
+export const PLACE_TIME_Q = /\b(where(?:'s| is| will| does)?|location|located|address|what time|which room|start time|starts?)\b/i;
+
+/** "6:00 PM" from "18:00" or "18:00:00"; null when the time is not a clock time. */
+export function clockLabel(t: string | null): string | null {
+  const m = t?.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+/** One sentence with where and when a meeting is held, from the meeting record. Null without a location or time. */
+export function meetingPlaceText(name: string, title: string | null, startTime: string | null, location: string | null): string | null {
+  const loc = location?.replace(/\s+/g, ' ').trim() || null;
+  const time = clockLabel(startTime);
+  if (!loc && !time) return null;
+  const what = title && /\bjoint\b/i.test(title) && !/\bjoint\b/i.test(name) ? `${name} (${title.replace(/\s+/g, ' ').trim()})` : name;
+  return `The ${what}${loc ? ` is at ${loc}` : ' starts'}${time ? `${loc ? ', starting at' : ' at'} ${time}` : ''}.`;
+}

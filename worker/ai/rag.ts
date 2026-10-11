@@ -22,7 +22,7 @@ import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
 import { readAiStream } from './sse';
 import { asksCurrentValue, interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
-import { AGENDA_NOT_POSTED, AGENDA_TYPES, countAnswer, countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion, meetingsInFrame, nextAgenda, scheduleAnswer, type ScheduleAnswer } from './schedule';
+import { AGENDA_NOT_POSTED, AGENDA_TYPES, PLACE_TIME_Q, meetingPlaceText, countAnswer, countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion, meetingsInFrame, nextAgenda, scheduleAnswer, type ScheduleAnswer } from './schedule';
 import { bodyOf } from './scheduleIntent';
 import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
@@ -996,6 +996,18 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const bodies = await bodiesOnDate(env, dated.date).catch(() => [] as MeetingBody[]);
     const c = bodyClarify(body.question, dated.date, bodies);
     if (c) return { kind: 'final', response: clarifyResponse(base, c, { path: '/meetings?view=past', label: 'Open past meetings', hint: 'Agendas, packets, minutes and video' }) };
+  }
+  // "Where is the November 17 joint meeting with Orem?": the place and time from the meeting record.
+  if (dated && dated.meetingIds.length && !dated.outcome && PLACE_TIME_Q.test(body.question)) {
+    const row = await env.CATALOG_DB.prepare('SELECT id, title, start_time, location FROM meetings WHERE id IN (SELECT value FROM json_each(?)) ORDER BY CASE WHEN location IS NULL OR location = \'\' THEN 1 ELSE 0 END LIMIT 1')
+      .bind(JSON.stringify(dated.meetingIds))
+      .first<{ id: string; title: string | null; start_time: string | null; location: string | null }>()
+      .catch(() => null);
+    const text = row ? meetingPlaceText(dated.name, row.title, row.start_time, row.location) : null;
+    if (row && text) {
+      const section = { path: `/meetings/${row.id}`, label: `Open the ${dated.name}`, hint: 'Agenda, packet, minutes and video' };
+      return { kind: 'final', response: codeResponse(base, 'meeting-place', [{ segments: [{ text, citations: [] }] }], { section }) };
+    }
   }
   const focus = agendaLock || dated ? null : await meetingFocus(env, body.question).catch(() => null);
   let hits: ChunkHit[] = [];
