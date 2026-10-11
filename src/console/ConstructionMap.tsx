@@ -10,7 +10,7 @@ import type { LngLatBoundsLike } from 'maplibre-gl';
 import type { FeatureCollection, Geometry } from 'geojson';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { blankStyle, streetsBg, streetsStyle, whenBasePainted } from './mapBase';
+import { blankStyle, byZoom, CASING, firstLabelLayer, streetsBg, streetsStyle, whenBasePainted } from './mapBase';
 import { STAGES, STAGE_COLOR, type ActiveProject, type Stage } from './construction';
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -108,15 +108,19 @@ export default function ConstructionMap({ plans, active, dark, focus, selected, 
         const k = dark ? 'dark' : 'light';
         const color = [...(['match', ['get', 'Project_Phase']] as unknown[]), ...STAGES.flatMap((s: Stage) => [s, STAGE_COLOR[s][k]]), STAGE_COLOR.Planning[k]] as unknown as maplibregl.ExpressionSpecification;
         m.addSource('plans', { type: 'geojson', data: (pending.current ?? { type: 'FeatureCollection', features: [] }) as FeatureCollection });
-        m.addLayer({ id: 'plans-fill', type: 'fill', source: 'plans', paint: { 'fill-color': color, 'fill-opacity': dark ? 0.55 : 0.5 } });
-        m.addLayer({ id: 'plans-line', type: 'line', source: 'plans', paint: { 'line-color': color, 'line-width': 1.6, 'line-opacity': 0.95 } });
+        // Above the streets but under their names; each outline is a bright line on a dark casing.
+        const before = firstLabelLayer(m, (id) => id.startsWith('plans-'));
+        m.addLayer({ id: 'plans-fill', type: 'fill', source: 'plans', paint: { 'fill-color': color, 'fill-opacity': dark ? 0.55 : 0.5 } }, before);
+        m.addLayer({ id: 'plans-casing', type: 'line', source: 'plans', layout: { 'line-join': 'round' }, paint: { 'line-color': CASING.color, 'line-opacity': CASING.opacity, 'line-width': byZoom([[11, 3.2], [14, 4.2], [17, 6.4]]) } }, before);
+        m.addLayer({ id: 'plans-line', type: 'line', source: 'plans', layout: { 'line-join': 'round' }, paint: { 'line-color': color, 'line-width': byZoom([[11, 1.4], [14, 2], [17, 3.4]]), 'line-opacity': 1 } }, before);
         m.addLayer({
           id: 'plans-sel',
           type: 'line',
           source: 'plans',
           filter: ['==', ['get', 'Project_Name'], chosen.current ?? ''],
-          paint: { 'line-color': dark ? '#ffffff' : '#0b0b0d', 'line-width': 3.2 },
-        });
+          layout: { 'line-join': 'round' },
+          paint: { 'line-color': dark ? '#ffffff' : '#0b0b0d', 'line-width': byZoom([[11, 2.6], [14, 3.4], [17, 5]]) },
+        }, before);
         m.on('click', 'plans-fill', (e) => {
           const name = e.features?.[0]?.properties?.Project_Name;
           if (typeof name === 'string') cb.current.onPlan(name);

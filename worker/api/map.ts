@@ -5,13 +5,14 @@
  * services for GeoJSON with an allowlisted set of fields (no parcel owner names or mailing
  * addresses, no private business licenses) and exact, unsimplified shapes, then streams the body straight through with long
  * edge caching, so the Worker does almost no CPU work and the city's servers see one request per
- * layer page per cache period, not one per visitor. Utah County's parcel boundaries come through
- * as image tiles of the boundary line layer alone (no fields, no owner names).
+ * layer page per cache period, not one per visitor. Utah County's current parcels come through as
+ * zoom 16 GeoJSON tiles with the parcel number only, and a point lookup for the parcel card, both
+ * stripped to field allowlists here (never owner names or mailing addresses).
  */
 import type { Env } from '../env';
 import { HttpError, json, notFound } from '../lib/http';
 import { budgetForFeature } from '../lib/capitalPlan';
-import { BASE, byKey, MAP_LAYERS, parcelTileUrl, type MapLayerDef } from '../lib/mapLayers';
+import { BASE, byKey, cityParcelAtUrl, COUNTY_PAGE, countyParcelAtUrl, countyParcelTileUrl, MAP_LAYERS, PARCEL_TILE_PAGES, parcelCard, parcelPoint, parcelTileBody, type MapLayerDef } from '../lib/mapLayers';
 
 export { MAP_LAYERS, type MapLayerDef };
 
@@ -41,8 +42,7 @@ export function upstreamUrl(layer: MapLayerDef, page: number): string {
 /** GET /api/map/layers/:key?page=0 → GeoJSON FeatureCollection, cached for 12 hours. */
 export async function getMapLayer(_env: Env, key: string, url: URL): Promise<Response> {
   const layer = byKey.get(key);
-  // Raster layers (the county parcel lines) are image tiles only: never queried for features.
-  if (!layer || layer.geometry === 'raster' || !layer.path) throw notFound('Unknown map layer.');
+  if (!layer || !layer.path) throw notFound('Unknown map layer.');
   const page = Math.max(0, Math.min((layer.pages ?? 1) - 1, Number(url.searchParams.get('page') ?? 0) || 0));
   const upstream = await fetch(upstreamUrl(layer, page), {
     headers: { accept: 'application/geo+json, application/json', 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)' },
@@ -70,32 +70,59 @@ export async function getMapLayer(_env: Env, key: string, url: URL): Promise<Res
   });
 }
 
-/**
- * GET /api/map/tiles/parcels/:z/:x/:y.png → one image tile of Utah County's parcel boundary lines,
- * cached for a day. Only images pass through: an ArcGIS error (or anything else that is not a
- * picture) is refused, so no feature data or owner names can ever be relayed.
- */
-export async function getParcelTile(z: string, x: string, yPng: string): Promise<Response> {
-  const m = /^(\d{1,7})\.png$/.exec(yPng);
-  const url = m && /^\d{1,2}$/.test(z) && /^\d{1,7}$/.test(x) ? parcelTileUrl(Number(z), Number(x), Number(m[1])) : null;
-  if (!url) throw notFound('No parcel tile here.');
-  const upstream = await fetch(url, {
-    headers: { accept: 'image/png,image/*', 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)' },
-    cf: { cacheTtl: 86400, cacheEverything: true },
-  } as RequestInit);
-  const type = upstream.headers.get('content-type') ?? '';
-  if (!upstream.ok || !upstream.body || !/^image\/png\b/i.test(type)) {
-    void upstream.body?.cancel();
-    throw new HttpError(502, 'backend_unavailable', 'The county parcel map did not respond. Try again shortly.');
+const UA = 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)';
+const DAY = 'public, max-age=86400, stale-while-revalidate=604800';
+
+/** One ArcGIS GeoJSON query, cached at the edge for a day. Null for any failure (ArcGIS reports errors with HTTP 200). */
+async function arcgisJson(url: string): Promise<{ features?: unknown; exceededTransferLimit?: boolean; properties?: { exceededTransferLimit?: boolean } } | null> {
+  try {
+    const res = await fetch(url, { headers: { accept: 'application/geo+json, application/json', 'user-agent': UA }, cf: { cacheTtl: 86400, cacheEverything: true } } as RequestInit);
+    if (!res.ok) {
+      void res.body?.cancel();
+      return null;
+    }
+    const data = (await res.json()) as { error?: unknown; features?: unknown } | null;
+    if (!data || data.error || !Array.isArray(data.features)) return null;
+    return data;
+  } catch {
+    return null;
   }
-  return new Response(upstream.body, {
-    status: 200,
-    headers: {
-      'content-type': 'image/png',
-      'cache-control': 'public, max-age=86400, stale-while-revalidate=604800',
-      'x-content-type-options': 'nosniff',
-    },
-  });
+}
+
+/**
+ * GET /api/map/parcels/16/:x/:y.json → Utah County's current parcel outlines in one zoom 16 tile,
+ * with the parcel number as the only field (everything else is stripped here, whatever the county
+ * returns). Other zoom levels and tiles away from Vineyard are refused. Cached for a day.
+ */
+export async function getParcelOutlines(z: string, x: string, yJson: string): Promise<Response> {
+  const m = /^(\d{1,7})\.json$/.exec(yJson);
+  const ok = m && /^\d{1,2}$/.test(z) && /^\d{1,7}$/.test(x);
+  const first = ok ? countyParcelTileUrl(Number(z), Number(x), Number(m[1]), 0) : null;
+  if (!ok || !first) throw notFound('No parcel tile here.');
+  const pages: unknown[] = [];
+  const page0 = await arcgisJson(first);
+  if (!page0) throw new HttpError(502, 'backend_unavailable', 'The county parcel map did not respond. Try again shortly.');
+  pages.push(page0);
+  const more = page0.exceededTransferLimit || page0.properties?.exceededTransferLimit || (Array.isArray(page0.features) && page0.features.length >= COUNTY_PAGE);
+  for (let p = 1; more && p < PARCEL_TILE_PAGES; p++) {
+    const next = await arcgisJson(countyParcelTileUrl(Number(z), Number(x), Number(m[1]), p) as string);
+    if (!next) break; // keep what the first page drew
+    pages.push(next);
+    if (!Array.isArray(next.features) || next.features.length < COUNTY_PAGE) break;
+  }
+  return json(parcelTileBody(pages), { cache: DAY, headers: { 'content-type': 'application/geo+json; charset=utf-8' } });
+}
+
+/**
+ * GET /api/map/parcel?lng=..&lat=.. → the parcel card for the parcel under a point: current Utah
+ * County fields (allowlisted) and, from the city's 2025 parcel layer, property type and year built.
+ */
+export async function getParcelAt(url: URL): Promise<Response> {
+  const pt = parcelPoint(Number(url.searchParams.get('lng') ?? ''), Number(url.searchParams.get('lat') ?? ''));
+  if (!url.searchParams.get('lng') || !url.searchParams.get('lat') || !pt) throw new HttpError(400, 'bad_request', 'Give a point in Vineyard as lng and lat.');
+  const [county, city] = await Promise.all([arcgisJson(countyParcelAtUrl(pt[0], pt[1])), arcgisJson(cityParcelAtUrl(pt[0], pt[1]))]);
+  if (!county) throw new HttpError(502, 'backend_unavailable', 'The county parcel records did not respond. Try again shortly.');
+  return json(parcelCard(county, city), { cache: DAY });
 }
 
 /**

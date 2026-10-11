@@ -130,6 +130,24 @@ export function streetsStyle(dark: boolean): Promise<maplibregl.StyleSpecificati
   return p;
 }
 
+/* Outlines: a bright line over a dark casing, so shapes read at a glance on streets and imagery. */
+
+/** The casing drawn under every outline. */
+export const CASING = { color: '#000000', opacity: 0.6 } as const;
+
+/** A line width that grows with zoom: [[zoom, width], ...]. */
+export function byZoom(stops: Array<[number, number]>): maplibregl.ExpressionSpecification {
+  return ['interpolate', ['linear'], ['zoom'], ...stops.flat()] as unknown as maplibregl.ExpressionSpecification;
+}
+
+/**
+ * The basemap's first label layer: overlays go just under it, so outlines sit above the map but
+ * below street and place names. Undefined for a basemap with no labels (imagery).
+ */
+export function firstLabelLayer(map: maplibregl.Map, isOverlay: (id: string) => boolean): string | undefined {
+  return (map.getStyle()?.layers ?? []).find((l) => l.type === 'symbol' && !isOverlay(l.id))?.id;
+}
+
 function pick(o: Json, keys: string[]): Json {
   const out: Json = {};
   for (const k of keys) if (o[k] !== undefined && o[k] !== null) out[k] = o[k];
