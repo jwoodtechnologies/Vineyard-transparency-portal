@@ -12,7 +12,8 @@ const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KH
 
 describe('viewer per device', () => {
   it('uses the browser PDF viewer on a computer and pdf.js on phones and tablets', () => {
-    expect(viewerMode({ userAgent: CHROME_MAC, pdfViewerEnabled: true, maxTouchPoints: 0 })).toBe('native');
+    expect(viewerMode({ userAgent: CHROME_MAC, pdfViewerEnabled: true, maxTouchPoints: 0 })).toBe('pdfjs');
+    expect(viewerMode({ userAgent: CHROME_MAC, pdfViewerEnabled: true }, 'native')).toBe('native');
     expect(viewerMode({ userAgent: CHROME_MAC, pdfViewerEnabled: false })).toBe('pdfjs');
     expect(viewerMode({ userAgent: IPHONE, pdfViewerEnabled: true, maxTouchPoints: 5 })).toBe('pdfjs');
     expect(viewerMode({ userAgent: ANDROID, pdfViewerEnabled: false, maxTouchPoints: 5 })).toBe('pdfjs');

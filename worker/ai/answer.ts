@@ -667,3 +667,17 @@ export function dropRestatement(paragraphs: AnswerParagraph[]): AnswerParagraph[
   if (!keyTerms(last.text).every((w) => seenTerms.has(w) || seenStems.has(stem(w)))) return paragraphs;
   return paragraphs.map((p) => ({ segments: p.segments.filter((s) => s !== last) })).filter((p) => p.segments.length);
 }
+
+/** A first word that points back to a sentence before it: "This can lead to...", "However, ...", "They ...". */
+const ORPHAN_LEAD = /^(?:this|that|these|those|it|its|they|their|them|such|he|she|his|her|however|additionally|also|moreover|furthermore|in addition|as a result|therefore|thus|so|but|and|which|still|instead)\b/i;
+/** "This year", "That week": a time, not a pointer back. */
+const TIME_LEAD = /^(?:this|that)\s+(?:year|week|month|morning|afternoon|evening|spring|summer|fall|winter|season)\b/i;
+
+/**
+ * True when the answer's first sentence leans on one that is not there (the source check removed the
+ * lead, or the model began mid-thought): such an answer never reaches a resident.
+ */
+export function orphanLead(paragraphs: AnswerParagraph[]): boolean {
+  const first = paragraphs.flatMap((p) => p.segments)[0]?.text.trim() ?? '';
+  return Boolean(first) && ORPHAN_LEAD.test(first) && !TIME_LEAD.test(first);
+}

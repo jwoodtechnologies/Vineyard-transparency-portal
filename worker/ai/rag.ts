@@ -12,7 +12,7 @@ import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, DocumentType, SearchFilters } from '../../src/types/models';
 import { ensurePeopleTable } from '../api/people';
-import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, LITE_AI_MODEL, LITE_MAX_SOURCES, LITE_MAX_TOKENS, modelChain, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, dropRestatement, finishedSentences, generalQuestion, needsCitation, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, LITE_AI_MODEL, LITE_MAX_SOURCES, LITE_MAX_TOKENS, modelChain, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, dropRestatement, finishedSentences, generalQuestion, needsCitation, orphanLead, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -244,21 +244,24 @@ async function aiBudgetLeft(env: Env): Promise<number | null> {
 
 type Msg = { role: string; content: string };
 const MAX_TOKENS = 400;
-const AI_TIMEOUT_MS = 25_000;
+/** The longest one model may take, and the longest the whole chain may take, before Ask moves on. */
+const AI_TIMEOUT_MS = 14_000;
+const LITE_TIMEOUT_MS = 8_000;
+const CHAIN_BUDGET_MS = 22_000;
 /**
  * The larger model costs about 200 Neurons an answer, so it answers the first 35 questions of the
  * day (about 7,000 of the 10,000 free daily Neurons) and the small model answers the rest.
  */
 const BIG_MODEL_PER_DAY = 35;
 
-async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: number, temperature: number): Promise<string> {
+async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: number, temperature: number, waitMs = AI_TIMEOUT_MS): Promise<string> {
   const big = model.includes('gpt-oss');
   const qwen = model.includes('qwen');
   // Qwen 3 thinks out loud unless told not to; answers here need no visible reasoning.
   const msgs = qwen ? messages.map((m, i) => (i === 0 && m.role === 'system' ? { ...m, content: `${m.content}\n/no_think` } : m)) : messages;
   const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : qwen ? { messages: msgs, max_tokens: 900, temperature: 0 } : { messages, max_tokens: maxTokens, temperature };
   const run = meteredRun(env, model, input);
-  const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), AI_TIMEOUT_MS));
+  const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), waitMs));
   const text = aiText(await Promise.race([run, timeout]))
     .replace(/<think>[\s\S]*?<\/think>/g, '')
     .replace(/<think>[\s\S]*$/, '')
@@ -273,14 +276,21 @@ async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: numb
  * when the first model errors or the day's Neurons are nearly spent. Only when every model fails does
  * Ask fall back to the plain line with record cards.
  */
-async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number; useBig?: boolean; lite?: Msg[] } = {}): Promise<{ text: string; engine: string }> {
+async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number; useBig?: boolean; lite?: Msg[]; budgetMs?: number } = {}): Promise<{ text: string; engine: string }> {
   const primary = env.AI_MODEL && env.AI_MODEL !== FALLBACK_AI_MODEL ? env.AI_MODEL : DEFAULT_AI_MODEL;
   const models = modelChain(primary, opts.useBig !== false, env.AI_LITE_MODEL || LITE_AI_MODEL);
   let last: unknown = null;
+  const deadline = Date.now() + (opts.budgetMs ?? CHAIN_BUDGET_MS);
   for (const [i, model] of models.entries()) {
     const isLite = i === models.length - 1 && i > 0;
+    // Each model gets its own cap, and never more than what is left of the chain's budget.
+    const left = deadline - Date.now();
+    if (left < 2_000) {
+      last ??= new Error('AI timeout');
+      break;
+    }
     try {
-      const text = await runOnce(env, model, isLite && opts.lite ? opts.lite : messages, isLite ? LITE_MAX_TOKENS : (opts.maxTokens ?? MAX_TOKENS), opts.temperature ?? 0);
+      const text = await runOnce(env, model, isLite && opts.lite ? opts.lite : messages, isLite ? LITE_MAX_TOKENS : (opts.maxTokens ?? MAX_TOKENS), opts.temperature ?? 0, Math.min(isLite ? LITE_TIMEOUT_MS : AI_TIMEOUT_MS, left));
       const note = i > 0 && last ? ` (after ${String(last instanceof Error ? last.message : last).slice(0, 120)})` : '';
       return { text, engine: model + note };
     } catch (e) {
@@ -1445,7 +1455,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     return { ...r, section: named.section } as AskResponse;
   };
 
-  const finish = async (raw: string, engine?: string): Promise<AskResponse> => {
+  const finish = async (raw: string, engine?: string, rewritten = false): Promise<AskResponse> => {
     await quotaP;
     // The model found nothing that answers the question: say so plainly, with the closest records below.
     if (/^\s*NO_RECORD\b/.test(raw) || /^\s*NO_RECORD\s*$/m.test(raw.slice(0, 40))) return noAnswer(`${engine ?? DEFAULT_AI_MODEL}: no record`);
@@ -1462,6 +1472,15 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const general = !seg.used.size && generalQuestion(body.question) && seg.paragraphs.flatMap((p) => p.segments).filter((x) => !x.citations.length && !needsCitation(x.text)).length >= 2;
     // Otherwise nothing the model wrote could be tied to a source: a plain line with record cards, never an unchecked answer.
     if (!seg.used.size && !general) return noAnswer(`no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 200)}`);
+    // The first sentence leans on one the check removed ("This can lead to..."): written again once, asking
+    // for a lead that names its subject, else the plain line with record cards. Never a half answer.
+    if (orphanLead(seg.paragraphs)) {
+      if (rewritten) return noAnswer(`lead sentence removed: ${raw.replace(/\s+/g, ' ').slice(0, 160)}`);
+      const again: Msg[] = [...messages.slice(0, -1), { role: 'user', content: `${messages[messages.length - 1].content}\n\nStart with one full sentence that directly answers the question and names its subject. Do not begin with "This", "It", "They" or a connecting word. Give every fact about Vineyard its source number.` }];
+      const r = await callModel(env, again, { useBig: false, lite, budgetMs: 12_000 }).catch(() => null);
+      if (!r) return noAnswer(`lead sentence removed: ${raw.replace(/\s+/g, ' ').slice(0, 160)}`);
+      return finish(r.text, `${r.engine} (rewritten: lead removed)`, true);
+    }
 
     // Renumber cited sources 1..k in order of first use.
     const order = [...seg.used].sort((a, b) => a - b);
