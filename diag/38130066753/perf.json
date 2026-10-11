@@ -1,0 +1,236 @@
+{
+  "base": "https://vineyardportal.org",
+  "at": "2026-10-11T09:58:23.937Z",
+  "desktop": false,
+  "net": "fast4g",
+  "cpu": 4,
+  "runs": 3,
+  "results": {
+    "/": {
+      "cold": {
+        "fcp": 480,
+        "header": 480,
+        "title": 480,
+        "content": 1016,
+        "lcp": 1028,
+        "api": 1,
+        "jsKB": 164,
+        "totalKB": 304,
+        "apiUrls": [
+          "/api/people"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 280,
+        "header": 280,
+        "title": 280,
+        "content": 633,
+        "lcp": 644,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 5,
+        "apiUrls": [
+          "/api/people"
+        ],
+        "errors": []
+      }
+    },
+    "/construction": {
+      "cold": {
+        "fcp": 476,
+        "header": 476,
+        "title": 476,
+        "content": 1254,
+        "lcp": 1080,
+        "api": 1,
+        "jsKB": 427,
+        "totalKB": 594,
+        "apiUrls": [
+          "/api/pages/construction"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 280,
+        "header": 280,
+        "title": 280,
+        "content": 719,
+        "lcp": 744,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 5,
+        "apiUrls": [
+          "/api/pages/construction"
+        ],
+        "errors": []
+      }
+    },
+    "/add": {
+      "cold": {
+        "fcp": 468,
+        "header": 468,
+        "title": 468,
+        "content": 1217,
+        "lcp": 1028,
+        "api": 1,
+        "jsKB": 119,
+        "totalKB": 255,
+        "apiUrls": [
+          "/api/add/status"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 264,
+        "header": 264,
+        "title": 264,
+        "content": 806,
+        "lcp": 616,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 6,
+        "apiUrls": [
+          "/api/add/status"
+        ],
+        "errors": []
+      }
+    },
+    "/votes": {
+      "cold": {
+        "fcp": 472,
+        "header": 472,
+        "title": 472,
+        "content": 1559,
+        "lcp": 472,
+        "api": 1,
+        "jsKB": 140,
+        "totalKB": 189,
+        "apiUrls": [
+          "/api/pages/votes"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 276,
+        "header": 276,
+        "title": 276,
+        "content": 1001,
+        "lcp": 276,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 5,
+        "apiUrls": [
+          "/api/pages/votes"
+        ],
+        "errors": []
+      }
+    },
+    "/planning": {
+      "cold": {
+        "fcp": 472,
+        "header": 472,
+        "title": 472,
+        "content": 1219,
+        "lcp": 472,
+        "api": 1,
+        "jsKB": 141,
+        "totalKB": 181,
+        "apiUrls": [
+          "/api/pages/planning"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 268,
+        "header": 268,
+        "title": 268,
+        "content": 648,
+        "lcp": 268,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 5,
+        "apiUrls": [
+          "/api/pages/planning"
+        ],
+        "errors": []
+      }
+    },
+    "/map": {
+      "cold": {
+        "fcp": 464,
+        "header": 464,
+        "title": 1113,
+        "content": 1253,
+        "lcp": 1124,
+        "api": 9,
+        "jsKB": 429,
+        "totalKB": 626,
+        "apiUrls": [
+          "/api/map/layers/boundary?page=0&v=8",
+          "/api/map/layers?v=8",
+          "/api/map/layers/projects?page=0&v=8",
+          "/api/map/layers/subdivisions?page=0&v=8",
+          "/api/map/layers/ura?page=0&v=8",
+          "/api/map/layers/roads?page=0&v=8",
+          "/api/map/layers/parks?page=0&v=8",
+          "/api/map/layers/schools?page=0&v=8",
+          "/api/map/layers/businesses?page=0&v=8"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 272,
+        "header": 272,
+        "title": 627,
+        "content": 690,
+        "lcp": 636,
+        "api": 9,
+        "jsKB": 0,
+        "totalKB": 5,
+        "apiUrls": [
+          "/api/map/layers/boundary?page=0&v=8",
+          "/api/map/layers?v=8",
+          "/api/map/layers/projects?page=0&v=8",
+          "/api/map/layers/subdivisions?page=0&v=8",
+          "/api/map/layers/ura?page=0&v=8",
+          "/api/map/layers/roads?page=0&v=8",
+          "/api/map/layers/parks?page=0&v=8",
+          "/api/map/layers/schools?page=0&v=8",
+          "/api/map/layers/businesses?page=0&v=8"
+        ],
+        "errors": []
+      }
+    },
+    "/budget": {
+      "cold": {
+        "fcp": 476,
+        "header": 476,
+        "title": 476,
+        "content": 1132,
+        "lcp": 1016,
+        "api": 1,
+        "jsKB": 147,
+        "totalKB": 287,
+        "apiUrls": [
+          "/api/budget"
+        ],
+        "errors": []
+      },
+      "repeat": {
+        "fcp": 276,
+        "header": 276,
+        "title": 276,
+        "content": 682,
+        "lcp": 696,
+        "api": 1,
+        "jsKB": 0,
+        "totalKB": 5,
+        "apiUrls": [
+          "/api/budget"
+        ],
+        "errors": []
+      }
+    }
+  }
+}

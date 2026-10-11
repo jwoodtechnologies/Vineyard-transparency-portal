@@ -1,0 +1,15 @@
+/              cold   fcp 480  header 480  title 480  content 1016  lcp 1028  api 1  js 164 KB
+/              repeat fcp 280  header 280  title 280  content 633  lcp 644  api 1  js 0 KB
+/construction  cold   fcp 476  header 476  title 476  content 1254  lcp 1080  api 1  js 427 KB
+/construction  repeat fcp 280  header 280  title 280  content 719  lcp 744  api 1  js 0 KB
+/add           cold   fcp 468  header 468  title 468  content 1217  lcp 1028  api 1  js 119 KB
+/add           repeat fcp 264  header 264  title 264  content 806  lcp 616  api 1  js 0 KB
+/votes         cold   fcp 472  header 472  title 472  content 1559  lcp 472  api 1  js 140 KB
+/votes         repeat fcp 276  header 276  title 276  content 1001  lcp 276  api 1  js 0 KB
+/planning      cold   fcp 472  header 472  title 472  content 1219  lcp 472  api 1  js 141 KB
+/planning      repeat fcp 268  header 268  title 268  content 648  lcp 268  api 1  js 0 KB
+/map           cold   fcp 464  header 464  title 1113  content 1253  lcp 1124  api 9  js 429 KB
+/map           repeat fcp 272  header 272  title 627  content 690  lcp 636  api 9  js 0 KB
+/budget        cold   fcp 476  header 476  title 476  content 1132  lcp 1016  api 1  js 147 KB
+/budget        repeat fcp 276  header 276  title 276  content 682  lcp 696  api 1  js 0 KB
+wrote diag/38130066753/perf.json
