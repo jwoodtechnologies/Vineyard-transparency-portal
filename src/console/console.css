@@ -4975,3 +4975,4 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
     margin: 0 auto;
   }
 }
+.vc-sh-note { margin: 0.6rem 0 0; font-size: 0.8rem; color: var(--vc-muted); }

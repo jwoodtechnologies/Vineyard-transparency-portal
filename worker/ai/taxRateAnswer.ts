@@ -59,6 +59,9 @@ export interface NewerRateRecord {
   /** The rate read from the record's text, with the page it is on; null when it could not be read exactly. */
   rate: string | null;
   page: number | null;
+  /** Utah County records: the tax year they print, and the day the portal last read the county page. */
+  taxYear?: number | null;
+  readOn?: string | null;
 }
 
 /** One sentence and the records it cites. */
@@ -67,7 +70,11 @@ export interface RateSentence {
   cite: Array<{ id: string; title: string; date: string | null; type: DocumentType; page: number | null }>;
 }
 
-const plainRate = (r: string) => (r.startsWith('.') ? `0${r}` : r);
+/** "0.0034600" (the county's seven places) is written "0.003460", the six places city records print. */
+const plainRate = (r: string) => {
+  const z = r.startsWith('.') ? `0${r}` : r;
+  return /^0\.\d{6}0$/.test(z) ? z.slice(0, -1) : z;
+};
 
 function tableCite(e: CertifiedTaxRate): RateSentence['cite'][number] {
   return { id: e.docId, title: e.docTitle, date: e.adopted, type: e.docKind, page: e.page };
@@ -89,7 +96,12 @@ export function taxRateSentences(intent: TaxRateIntent, today: string, newer: Ne
   const newerFirst = (n: NewerRateRecord) => {
     const date = longDate(n.date) ?? n.date;
     const cite = [{ id: n.id, title: n.title, date: /^\d{4}-/.test(n.date) ? n.date : null, type: (n.documentType === 'tax_rate' ? 'other' : n.documentType) as DocumentType, page: n.page }];
-    if (n.rate) out.push({ text: `The newest certified tax rate on file for Vineyard is ${n.rate} for fiscal ${n.fiscalYear} (${n.title}, ${date}${n.page ? `, page ${n.page}` : ''}).`, cite });
+    if (n.rate && n.taxYear)
+      out.push({
+        text: `Vineyard City's property tax rate for tax year ${n.taxYear} is ${n.rate}, the rate for the city's fiscal ${n.fiscalYear} (Utah County Treasurer tax rates${n.readOn ? `, read ${longDate(n.readOn)}` : ''}).`,
+        cite,
+      });
+    else if (n.rate) out.push({ text: `The newest certified tax rate on file for Vineyard is ${n.rate} for fiscal ${n.fiscalYear} (${n.title}, ${date}${n.page ? `, page ${n.page}` : ''}).`, cite });
     else {
       out.push({ text: `A fiscal ${n.fiscalYear} tax rate record is in the archive: ${n.title}, ${date}. Open it for the rate.`, cite });
       out.push({ text: `The newest certified tax rate the portal has read is ${tableRate(top)}.`, cite: [tableCite(top)] });
@@ -100,7 +112,7 @@ export function taxRateSentences(intent: TaxRateIntent, today: string, newer: Ne
   if (intent.kind === 'current') {
     if (newer && newer.fiscalYear > top.fiscalYear) {
       newerFirst(newer);
-      if (newer.rate) out.push({ text: `The fiscal ${top.fiscalYear} rate was ${top.rate} (adopted ${longDate(top.adopted)}; ${top.docKind} page ${top.page}).`, cite: [tableCite(top)] });
+      // Last year's rate is given only when asked for (a named year).
       if (newer.fiscalYear < current) out.push({ text: `The fiscal ${current} rate is not in the archive yet.`, cite: [] });
       return out;
     }
@@ -147,7 +159,7 @@ const OTHER_TITLE = /\b(sales|transient|room|energy|franchise|telecom\w*|resort|
 /** The rate a record's text states for Vineyard, with its page; null when no rate can be read exactly. */
 export function rateInText(chunks: Array<{ pageStart: number | null; text: string }>, countyRecord: boolean): { rate: string; page: number | null } | null {
   const pats = countyRecord
-    ? [/\bvineyard\s+(?:city|town)\b[^\n]{0,80}?(?:^|[\s:$])(0?\.\d{4,6})\b/i, /\bvineyard\b(?![^\n]{0,40}\b(?:rda|redevelopment|sid|special)\b)[^\n]{0,80}?(?:^|[\s:$])(0?\.\d{4,6})\b/i]
+    ? [/\bvineyard\s+(?:city|town)\b[^\n]{0,80}?(?:^|[\s:$])(0?\.\d{4,7})\b/i, /\bvineyard\b(?![^\n]{0,40}\b(?:rda|redevelopment|sid|special)\b)[^\n]{0,80}?(?:^|[\s:$])(0?\.\d{4,7})\b/i]
     : [/certified\s+(?:property\s+)?tax\s+rate[^.]{0,200}?(?:^|[\s:$(])(0?\.\d{4,6})\b/i];
   for (const re of pats)
     for (const c of chunks) {
@@ -167,14 +179,14 @@ export async function newerRateRecord(env: Env): Promise<NewerRateRecord | null>
   // Rates for the fiscal year after the table's newest are adopted from May of that year on.
   const since = `${top.fiscalYear}-05-01`;
   const rows = await env.CATALOG_DB.prepare(
-    `SELECT id, title, document_date, document_type, source_id, search_shard, year FROM documents
+    `SELECT id, title, document_date, document_type, source_id, search_shard, year, last_seen_at FROM documents
      WHERE (document_date >= ? OR (document_date IS NULL AND document_type = 'tax_rate' AND source_id = ? AND year >= ?))
        AND (document_type = 'tax_rate' OR source_id = ?
             OR (document_type IN ('resolution', 'ordinance') AND (lower(title) LIKE '%certified tax rate%' OR lower(title) LIKE '%property tax rate%' OR lower(title) LIKE '%tax rate%')))
      ORDER BY coalesce(document_date, (year + 1) || '-01-01') DESC LIMIT 10`,
   )
     .bind(since, COUNTY_TAX_SOURCE, top.fiscalYear, COUNTY_TAX_SOURCE)
-    .all<{ id: string; title: string; document_date: string | null; document_type: string; source_id: string; search_shard: number | null; year: number | null }>()
+    .all<{ id: string; title: string; document_date: string | null; document_type: string; source_id: string; search_shard: number | null; year: number | null; last_seen_at: string | null }>()
     .then((r) => r.results ?? [])
     .catch(() => []);
   const repo = new SearchRepository(env);
@@ -192,11 +204,20 @@ export async function newerRateRecord(env: Env): Promise<NewerRateRecord | null>
       found = rateInText(chunks, county);
     }
     // A year the county lists before setting rates prints zeros: never quote a zero rate.
-    if (found && !(Number(found.rate) > 0)) {
-      if (county) continue;
-      found = null;
-    }
-    return { id: row.id, title: row.title, date: row.document_date ?? `tax year ${taxYear}`, documentType: row.document_type, fiscalYear, rate: found?.rate ?? null, page: found?.page ?? null };
+    // A county record whose Vineyard rate cannot be read exactly is passed over for the next one.
+    if (found && !(Number(found.rate) > 0)) found = null;
+    if (county && !found) continue;
+    return {
+      id: row.id,
+      title: row.title,
+      date: row.document_date ?? `tax year ${taxYear}`,
+      documentType: row.document_type,
+      fiscalYear,
+      rate: found?.rate ?? null,
+      page: found?.page ?? null,
+      taxYear,
+      readOn: row.last_seen_at ? row.last_seen_at.slice(0, 10) : null,
+    };
   }
   return null;
 }

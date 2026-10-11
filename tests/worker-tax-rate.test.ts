@@ -68,25 +68,24 @@ describe('property tax rate answers, from the certified rate table', () => {
     expect(taxRateSentences({ kind: 'year', fiscalYear: 2019, calendar: true }, '2026-10-11', null)).toEqual([]);
   });
 
-  it('uses a fiscal 2027 Utah County tax rate record when the archive holds one', async () => {
+  it('passes over a county record whose Vineyard rate cannot be read, and never sends the reader to open it', async () => {
     const county: DocRow = { id: 'doc_county2026', title: 'Utah County 2026 Tax Rates', document_date: '2026-06-15', document_type: 'tax_rate', source_id: 'utah-county-tax-rates', search_shard: null };
     const r = await ask({ CATALOG_DB: catalog([county]) as never }, 'what is the property tax rate');
     expect(r.engine).toBe('tax-rate-data');
-    // The rate could not be read (no text here): the record is named and cited, and the fiscal 2026 rate given as the newest read.
-    expect(r.answer).toContain('A fiscal 2027 tax rate record is in the archive: Utah County 2026 Tax Rates, June 15, 2026.');
-    expect(r.answer).toContain('The newest certified tax rate the portal has read is 0.003796 for fiscal 2026');
-    expect(r.answer).not.toContain('not in the archive yet');
-    expect(r.citations.map((c) => c.documentId)).toEqual(['doc_county2026', 'doc_1ef855677abe2a0b']);
+    expect(r.answer).not.toContain('Open it for the rate');
+    expect(r.answer).toContain('0.003796 for fiscal 2026');
   });
 
-  it('gives the newer record its own rate when the text states one for Vineyard', () => {
+  it('says the county rate for the tax year in one sentence, last year only when asked', () => {
     const text = rateInText([{ pageStart: 3, text: 'ALPINE SCHOOL DISTRICT 0.005123\nVINEYARD RDA 0.000000\nVINEYARD CITY 0.003512\nOREM CITY 0.001900' }], true);
     expect(text).toEqual({ rate: '0.003512', page: 3 });
+    expect(rateInText([{ pageStart: null, text: 'Vineyard City rate (tax unit VINE), tax areas 95, 96: 0.003460' }], true)).toEqual({ rate: '0.003460', page: null });
+    expect(rateInText([{ pageStart: null, text: 'VINE VINEYARD: 0.0034600' }], true)).toEqual({ rate: '0.003460', page: null });
     expect(rateInText([{ pageStart: 2, text: 'ADOPTING THE CERTIFIED TAX RATE OF .003401 FOR FISCAL YEAR 2026-2027' }], false)).toEqual({ rate: '0.003401', page: 2 });
-    const out = taxRateSentences({ kind: 'current' }, '2026-10-11', { id: 'doc_res', title: 'Resolution 2026-30 Certified Tax Rate', date: '2026-06-23', documentType: 'resolution', fiscalYear: 2027, rate: '0.003401', page: 2 }).map((s) => s.text);
-    expect(out[0]).toBe('The newest certified tax rate on file for Vineyard is 0.003401 for fiscal 2027 (Resolution 2026-30 Certified Tax Rate, June 23, 2026, page 2).');
-    expect(out[1]).toBe('The fiscal 2026 rate was 0.003796 (adopted June 25, 2025; minutes page 9).');
-    expect(out.join(' ')).not.toContain('not in the archive yet');
+    const county = taxRateSentences({ kind: 'current' }, '2026-10-11', { id: 'doc_c', title: 'Utah County tax rates 2026, Vineyard tax areas', date: 'tax year 2026', documentType: 'tax_rate', fiscalYear: 2027, rate: '0.003460', page: null, taxYear: 2026, readOn: '2026-10-11' }).map((x) => x.text);
+    expect(county).toEqual(["Vineyard City's property tax rate for tax year 2026 is 0.003460, the rate for the city's fiscal 2027 (Utah County Treasurer tax rates, read October 11, 2026)."]);
+    const res = taxRateSentences({ kind: 'current' }, '2026-10-11', { id: 'doc_res', title: 'Resolution 2026-30 Certified Tax Rate', date: '2026-06-23', documentType: 'resolution', fiscalYear: 2027, rate: '0.003401', page: 2 }).map((x) => x.text);
+    expect(res).toEqual(['The newest certified tax rate on file for Vineyard is 0.003401 for fiscal 2027 (Resolution 2026-30 Certified Tax Rate, June 23, 2026, page 2).']);
   });
 
   it('reads a rate record dated May or later as the next fiscal year', () => {

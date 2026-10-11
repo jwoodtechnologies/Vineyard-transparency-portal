@@ -89,9 +89,14 @@ function rowsOf(r: Resp, searching: boolean): Row[] {
 const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 const monthOf = (d: string | null, y: number | null) => (d && /^\d{4}-\d{2}/.test(d) ? MONTH.format(new Date(`${d.slice(0, 7)}-01T00:00:00Z`)) : y ? `${y}, day not stated` : 'Undated');
 
-function RecordList({ rows, q, grouped }: { rows: Row[]; q: string; grouped: boolean }) {
+/** The day a record sorts and groups by: its own date, else the meeting that adopted it, else its year. */
+const effectiveDate = (r: Row) => r.date ?? r.adoption?.date ?? (r.year ? `${r.year}-00-00` : '');
+
+function RecordList({ rows, q, grouped, oldest = false }: { rows: Row[]; q: string; grouped: boolean; oldest?: boolean }) {
   const groups: Array<{ label: string; rows: Row[] }> = [];
-  for (const r of rows) {
+  // The server orders by the stored date; an ordinance dated only by its adopting meeting is moved to that day.
+  const ordered = grouped ? [...rows].sort((a, b) => (oldest ? effectiveDate(a).localeCompare(effectiveDate(b)) : effectiveDate(b).localeCompare(effectiveDate(a)))) : rows;
+  for (const r of ordered) {
     // An undated ordinance or resolution is grouped by the meeting that adopted it, from the minutes.
     const label = grouped ? monthOf(r.date ?? r.adoption?.date ?? null, r.year) : '';
     const last = groups[groups.length - 1];
@@ -498,7 +503,7 @@ function RecordsList() {
       ) : state.rows.length === 0 ? (
         cat?.topics && !filtered ? null : <div className="vc-empty">No records match these filters.</div>
       ) : (
-        <RecordList rows={state.rows} q={q} grouped={sort !== 'title'} />
+        <RecordList rows={state.rows} q={q} grouped={sort !== 'title'} oldest={sort === 'date_asc'} />
       )}
         </>
       )}

@@ -17,15 +17,18 @@ describe('sources registry', () => {
     expect(s.documentCount).toBe(3);
   });
 
-  it('lists outside systems by name and leaves out portal entries', () => {
+  it('lists outside systems after their first successful run, newest record first, and leaves out portal entries', () => {
     const base = { baseUrl: 'https://x', sourceType: 'other', authority: 'A', discoveredFrom: null, archiveEnabled: false, documentDiscoveryEnabled: false, lastChecked: null, notes: '' } as const;
+    const ok = (at: string) => ({ status: 'active', lastCheckedAt: at, lastSuccessfulCheckAt: at });
     const rows = sourceRows([
-      { ...base, id: 'udot-projects', name: 'UDOT projects', crawlEnabled: true },
+      { ...base, id: 'udot-projects', name: 'UDOT projects', crawlEnabled: true, health: ok('2026-10-11T09:00:00Z'), lastNewRecordAt: '2026-10-11T09:00:00Z' },
+      { ...base, id: 'utah-auditor-reports', name: 'State Auditor', crawlEnabled: true },
       { ...base, id: 'resident-submitted', name: 'Residents', crawlEnabled: false, documentCount: 4 },
       { ...base, id: 'old', name: 'Old source', crawlEnabled: false, documentCount: 0 },
-      { ...base, id: 'utah-county-parcels', name: 'Utah County parcels', crawlEnabled: true },
+      { ...base, id: 'utah-county-parcels', name: 'Utah County parcels', crawlEnabled: true, health: ok('2026-10-11T08:00:00Z') },
+      { ...base, id: 'utah-pmn-vineyard', name: 'Public notices', crawlEnabled: true, health: ok('2026-10-11T09:30:00Z'), lastNewRecordAt: '2026-10-11T09:30:00Z' },
     ] as SourceRegistryEntry[]);
-    expect(rows.map((r) => r.id)).toEqual(['udot-projects', 'utah-county-parcels']);
+    expect(rows.map((r) => r.id)).toEqual(['utah-pmn-vineyard', 'udot-projects', 'utah-county-parcels']);
     expect(MAP_ONLY.has('utah-county-parcels')).toBe(true);
   });
 
