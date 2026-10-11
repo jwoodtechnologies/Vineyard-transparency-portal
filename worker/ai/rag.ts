@@ -571,11 +571,30 @@ export async function itemVotesResponse(env: Env, base: { id: string; question: 
   const words = itemWords(item.phrase).sort((a, b) => b.length - a.length).slice(0, 5);
   if (words.length < 2) return null;
   const r = await queryMotions(env, { q: words.join(' '), pageSize: 12 });
-  const recorded = r.items.filter((m) => m.result !== 'unknown');
+  const all = r.items.filter((m) => m.result !== 'unknown');
   const key = (m: MotionOut) => (m.item ?? m.motion).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  if (!recorded.length || new Set(recorded.map(key)).size !== 1) return null;
+  const recorded = pickItem(all, key, item.phrase);
+  if (!recorded.length) return null;
   const decided = recorded.find((m) => m.votes.length) ?? recorded[0];
   return motionVotesResponse(env, base, { ref: { label: item.label }, focus: 'vote' }, [...recorded].reverse(), decided, staff);
+}
+
+/**
+ * The motions of the one agenda item the question names: when several items hold the search words
+ * ("Holdaway Fields development agreement amendment" in June and the "First Amendment" in September), the
+ * item whose title and motion share the most of the question's words ("first"), and none when that ties.
+ */
+export function pickItem<T extends { item: string | null; motion: string }>(motions: T[], key: (m: T) => string, phrase: string): T[] {
+  const groups = new Map<string, T[]>();
+  for (const m of motions) groups.set(key(m), [...(groups.get(key(m)) ?? []), m]);
+  if (groups.size <= 1) return motions;
+  const words = [...new Set(phrase.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !/^(the|and|for|with|from|that|this)$/.test(w)))];
+  const score = (ms: T[]) => {
+    const text = ` ${ms.map((m) => `${m.item ?? ''} ${m.motion}`).join(' ').toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `;
+    return words.filter((w) => text.includes(` ${w} `)).length;
+  };
+  const ranked = [...groups.values()].map((ms) => ({ ms, n: score(ms) })).sort((a, b) => b.n - a.n);
+  return ranked[0].n > ranked[1].n ? ranked[0].ms : [];
 }
 
 async function motionVotesResponse(env: Env, base: { id: string; question: string; relatedDocuments: DocumentSummary[]; suggestedFollowUps: string[]; generatedAt: string }, intent: { ref: { label: string }; focus: MeasureVotesIntent['focus'] }, found: MotionOut[], decided: MotionOut, staff: StaffPerson[]): Promise<AskResponse | null> {
