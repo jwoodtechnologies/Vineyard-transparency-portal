@@ -34,7 +34,7 @@ Phase 2 backend. Related documents:
                      │ StorageProvider (filesystem / S3-compatible)  ◄─┤ ingest    │
                      └────────────────────────────────────────────────┴───────────┘
                                                                       ▲
-               scripts/ (discover-sources → discover-documents → ingest → reindex → validate)
+               ingest/ (Python: crawl → download → extract → index)
                                                                       ▲
                     PRIMARY SEED: https://www.vineyardutah.gov/transparency_portal/index.php
 ```
@@ -42,21 +42,18 @@ Phase 2 backend. Related documents:
 ## Frontend layering
 
 ```
-pages/ & components/     React UI — never touches HTTP, databases, or storage vendors
+console/ & components/   React UI: never touches HTTP, databases, or storage vendors
         │
 services/                AskService, SearchService, DocumentService, MeetingService,
         │                BrowseService, SourceService, StatisticsService, ReportService
         │                (tab-local response cache, AI circuit breaker)
         ▼
 data/adapters/           DataAdapter interface
-   ├─ MockDataAdapter        VITE_DATA_MODE=mock — clearly labeled demo data, in memory
-   └─ ProductionApiAdapter   VITE_DATA_MODE=api  — REST contract, timeouts, typed errors
+   └─ ProductionApiAdapter   REST contract, timeouts, typed errors
 ```
 
-* **Adapters** (`src/data/adapters/DataAdapter.ts`) define every operation the UI needs. Switching
-  from demo data to production is configuration only (`VITE_DATA_MODE=api`, optional
-  `VITE_API_BASE_URL`). The mock adapter and its dataset are code-split and never loaded in `api`
-  mode.
+* **Adapters** (`src/data/adapters/DataAdapter.ts`) define every operation the UI needs. The only
+  adapter is the production API (optional `VITE_API_BASE_URL`).
 * **Errors** are normalized to `DataError` with a `kind` (`offline`, `backend_unavailable`,
   `not_found`, `ai_unavailable`, `rate_limited`, `search_unavailable`, `timeout`, …) so every screen
   renders a precise, calm error state instead of a broken page.
@@ -67,23 +64,18 @@ data/adapters/           DataAdapter interface
 
 ## Routes
 
+Routes live in `src/app/router.tsx`; every screen is in `src/console/`.
+
 | Route | Screen |
 | --- | --- |
-| `/` | Home — the Ask box, example questions, collections, recent meetings, archive status |
-| `/ask?q=` | Threaded question → grounded answer, inline citations, source panel, follow-ups |
-| `/search?q=&type=&category=&year=&body=&source=&from=&to=&meeting=&match=&title=&sort=&page=` | Traditional search; every state is a shareable URL |
-| `/documents` | All documents, by collection |
-| `/documents/:documentId?page=&q=` | Document viewer (PDF + extracted text), provenance, versions, relationships |
-| `/browse` | By year, type, public body, subject, meeting, source, topic, code |
-| `/meetings`, `/meetings/:meetingId` | Meeting model: agenda, packet, minutes, media, agenda items, motions |
-| `/bodies/:bodyId` | Public body (bodies come from data, not a hard-coded list) |
-| `/topics/:topicId` | Evidence-linked timeline ("what happened with X?") |
-| `/code` | Municipal code with current / superseded labeling and history |
-| `/sources`, `/sources/:sourceId` | Source manifest & provenance |
-| `/saved` | Saved on this device + local history + history toggle |
-| `/status` | Service health, archive statistics, source health, demo scenarios |
-| `/about` | Independence, discovery, archiving, AI, citations, privacy |
-| `*` | 404 |
+| `/` | Ask: grounded answers with citations |
+| `/meetings`, `/calendar`, `/meetings/:meetingId` | Meetings calendar and one meeting |
+| `/documents/:documentId` | Document viewer |
+| `/services`, `/services/:id` | City services |
+| `/latest`, `/budget`, `/map`, `/construction`, `/records` | Latest, budget, map, construction, records |
+| `/votes`, `/boards`, `/planning`, `/people`, `/people/:slug` | Voting records, boards, Planning Commission, people |
+| `/search`, `/ask` | Redirect to `/` with the question |
+| `*` | Redirect to `/` |
 
 All non-API paths fall back to `index.html` on Cloudflare (`not_found_handling:
 "single-page-application"`), so every URL above is a stable, shareable link.
@@ -104,11 +96,6 @@ question ─► AskService.ask ─► adapter.ask (POST /api/ask)
   rendering is injection-safe and every statement carries its citation markers.
 * Retrieval status is always shown: `grounded`, `partial`, `no_results`, `ai_unavailable`,
   `search_only`.
-* In demo mode the `demo-extractive` engine (`src/data/mock/askEngine.ts`) answers **only by
-  quoting** retrieved demo passages. It returns the exact refusal sentence when the records do not
-  support an answer, and downgrades to `partial` when any question term is absent from the archive.
-  Tests (`tests/mock-engines.test.ts`) assert that every citation excerpt literally occurs on the
-  cited page.
 
 ## Document viewer
 
@@ -130,24 +117,8 @@ question ─► AskService.ask ─► adapter.ask (POST /api/ask)
 | Recent questions & searches (toggleable) | IndexedDB, max 50 entries |
 | Theme preference | `localStorage['vtp:theme']` (applied pre-paint by `public/theme-init.js`) |
 | AI circuit breaker | `sessionStorage['vtp:ai-breaker-until']` |
-| Demo scenario (mock mode only) | `localStorage['vtp:demo-scenario']` |
 
 Nothing above is sent to a server. There are no accounts, cookies, or analytics.
-
-## Demo data rules
-
-The mock dataset (`src/data/mock/`) exists so every screen can be exercised before the production
-archive is connected. It never fabricates real Vineyard actions:
-
-* Titles carry DEMO / SAMPLE / EXAMPLE; numbers carry a `DEMO-` prefix; public bodies are named
-  "Demo …"; vendors, streets, parks and projects are fictional; amounts are labeled placeholders.
-* Original URLs point to `example.org`, never a government domain (asserted by tests).
-* Sample questions that mention real topics (e.g. "300 West", "Holdaway") intentionally have no demo
-  records, so demo mode demonstrates the honest "could not verify" path.
-* Demo PDFs in `public/demo-files/` are generated by `npm run generate-demo-files`; every page is
-  stamped "DEMO DOCUMENT – NOT A GOVERNMENT RECORD". Their real SHA-256 checksums are recorded in
-  `src/data/mock/demo-files-manifest.json`.
-* A slim, persistent strip labels the whole site as demo data; stats are labeled "Demo figures".
 
 ## Performance
 
@@ -178,7 +149,6 @@ GitHub Actions / workstation ─► ingest/ (Python) ─► /api/admin/* (OIDC-a
 ```
 
 The Phase 1 gateway (`API_ORIGIN` proxy) is replaced by the in-Worker API; the REST contract in
-API_CONTRACT.md is unchanged, so the frontend switches with `VITE_DATA_MODE=api` (`.env.production`).
+API_CONTRACT.md is unchanged, so the frontend reads it directly.
 Production docs: [CLOUDFLARE.md](CLOUDFLARE.md), [INGESTION.md](INGESTION.md), [SOURCES.md](SOURCES.md),
 [API.md](API.md), [SEARCH.md](SEARCH.md), [AI_RAG.md](AI_RAG.md), [FREE_TIER_LIMITS.md](FREE_TIER_LIMITS.md).
-The Phase 1 TypeScript tooling in `scripts/` remains for local archives (`npm run ingest:local`).

@@ -22,7 +22,7 @@ follow.
   so **no API keys, tokens or credentials** may be placed there (`.env.example` contains only mode,
   API base URL and timeout).
 - The Cloudflare Worker (`worker/index.ts`) holds no secrets; `API_ORIGIN` is a public URL.
-- Backend secrets (model API keys, S3/R2 credentials — see `scripts/lib/storage/S3CompatibleStorage.ts`)
+- Backend secrets (model API keys, R2 credentials, the ingest token)
   live only in the backend environment (`wrangler secret put`, the host's secret store, or an
   uncommitted `.env`). `.gitignore` excludes `.env`, `.env.*` and `.dev.vars`.
 
@@ -45,9 +45,8 @@ excerpts, link texts, even file names — is **untrusted**:
 - **PDF rendering (pdf.js).** `pdfjs-dist` v6 no longer contains the `eval`/`new Function` font
   rendering path (the `isEvalSupported` option — the mitigation for CVE-2024-4367 in older versions —
   was removed upstream; we checked the shipped build). If the dependency is ever pinned below 4.2.67,
-  pass `isEvalSupported: false`. Both the viewer (`src/components/documents/PdfViewer.tsx`) and the
-  extractor (`scripts/lib/pdf.ts`) set `enableXfa: false`; the viewer uses `withCredentials: false`;
-  the extractor passes bytes in memory (no network), disables font-face injection and caps pages.
+  pass `isEvalSupported: false`. The viewer (`src/components/documents/PdfViewer.tsx`) sets `enableXfa: false` and
+  `withCredentials: false`.
   The pdf.js worker is served from the portal origin (CSP `worker-src 'self' blob:`).
 - **Content-Security-Policy** (`public/_headers`): `default-src 'self'`, `script-src 'self'` (no
   inline or remote scripts), `object-src 'none'`, `frame-src 'none'`, `frame-ancestors 'none'`,
@@ -57,7 +56,7 @@ excerpts, link texts, even file names — is **untrusted**:
 
 ## Crawler and ingest safety
 
-Implemented in `scripts/lib/http.ts`, `scripts/lib/ingest.ts` and `scripts/lib/storage/`:
+These rules were written for the removed TypeScript pipeline; the current crawler and ingest live in `ingest/` (Python):
 
 - **Never executes content.** Pages are parsed as text by a small scanner; scripts are discarded, no
   headless browser, no JavaScript evaluation. Files are stored as bytes.
@@ -81,7 +80,7 @@ Implemented in `scripts/lib/http.ts`, `scripts/lib/ingest.ts` and `scripts/lib/s
   redirects to unapproved hosts are not followed; non-http schemes are never fetched.
 - **Politeness** (also a safety property): robots.txt per RFC 9309, per-host delay, capped
   Crawl-delay, timeouts, bounded retries honouring `Retry-After`, identifying User-Agent.
-- **Integrity.** SHA-256 for every version; `npm run validate-archive` re-hashes all files.
+- **Integrity.** SHA-256 for every version.
 
 ## Prompt-injection defence (AI answers)
 

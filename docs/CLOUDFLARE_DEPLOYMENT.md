@@ -60,7 +60,7 @@ into public JavaScript.
 1. *Workers & Pages → Create → Pages → Connect to Git*, select the repository.
 2. Build settings: **Build command** `npm run build`, **Build output directory** `dist`,
    Node version ≥ 20 (set `NODE_VERSION=22` if needed).
-3. Environment variables (Production and Preview): `VITE_DATA_MODE`, `VITE_API_BASE_URL`,
+3. Environment variables (Production and Preview): `VITE_API_BASE_URL`,
    optionally `VITE_API_TIMEOUT_MS`.
 4. SPA routing: Pages serves `index.html` for unknown paths when the project has no `404.html`
    (the build does not produce one).
@@ -75,11 +75,8 @@ From [`.env.example`](../.env.example); read in `src/config/env.ts`:
 
 | Variable | Values | Meaning |
 | --- | --- | --- |
-| `VITE_DATA_MODE` | `mock` (default) \| `api` | `mock`: built-in, clearly labeled demo records and the deterministic `demo-extractive` ask engine, no backend. `api`: use the REST contract in [API_CONTRACT.md](API_CONTRACT.md). |
 | `VITE_API_BASE_URL` | empty or an origin | Empty = same-origin `/api` (the Worker gateway). |
 | `VITE_API_TIMEOUT_MS` | integer, default `20000` | Client request timeout. |
-
-Switching from demo to production is configuration only: build with `VITE_DATA_MODE=api`.
 
 ## Security headers (`public/_headers`)
 
@@ -111,7 +108,6 @@ Notes:
 | `/assets/*` | `public, max-age=31536000, immutable` | Vite fingerprints file names. |
 | `/index.html` | `no-cache` | Always revalidate so new deploys take effect. |
 | `/theme-init.js` | `public, max-age=300` | Small, not fingerprinted. |
-| `/demo-files/*` | `public, max-age=3600`, `Content-Disposition: inline` | Demo PDFs for mock mode. |
 | `/api/*` | set by the backend per [API_CONTRACT.md](API_CONTRACT.md#caching) | Search/list short TTLs; versioned files immutable; ask/reports `no-store`. |
 
 Cloudflare's edge cache honours these headers. Purge is not needed for assets (new names each
@@ -128,7 +124,6 @@ portal is independent. Keep HSTS (already in `_headers`) and enable "Always Use 
 ## Checklist
 
 - [ ] `npm run check` passes (typecheck, lint, tests, build).
-- [ ] `VITE_DATA_MODE` set as intended; demo banner visible in `mock` mode.
 - [ ] `API_ORIGIN` set (Workers) or `VITE_API_BASE_URL` + CSP `connect-src` updated (Pages).
 - [ ] `/api/health` returns the expected status.
 - [ ] Deep link refresh (e.g. `/documents/<id>`) serves the app, not a 404.

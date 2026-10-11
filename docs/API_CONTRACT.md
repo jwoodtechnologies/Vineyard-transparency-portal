@@ -415,8 +415,7 @@ buckets (`{ value, label, count }`) over the canonical archive.
 
 `SourceRegistryEntry[]` with `health` (`SourceHealth`: `active | degraded | unreachable | changed |
 authentication_required | blocked | unknown`, `lastCheckedAt`, `lastSuccessfulCheckAt`) and
-`documentCount`. Built from `config/source-seeds.json` + `data/source-health.json`
-(`npm run source-health`).
+`documentCount`.
 
 ```json
 [{

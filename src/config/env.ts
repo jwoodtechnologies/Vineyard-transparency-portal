@@ -1,10 +1,6 @@
 /** Runtime configuration derived from Vite env variables (see .env.example). */
-export type DataMode = 'mock' | 'api';
-
-function readMode(): DataMode {
-  const raw = (import.meta.env.VITE_DATA_MODE ?? 'mock').toString().trim().toLowerCase();
-  return raw === 'api' ? 'api' : 'mock';
-}
+/** The portal always reads the production API; there is no bundled demo dataset. */
+export type DataMode = 'api';
 
 function readTimeout(): number {
   const n = Number(import.meta.env.VITE_API_TIMEOUT_MS);
@@ -12,7 +8,7 @@ function readTimeout(): number {
 }
 
 export const config = {
-  dataMode: readMode(),
+  dataMode: 'api' as DataMode,
   apiBaseUrl: (import.meta.env.VITE_API_BASE_URL ?? '').toString().replace(/\/+$/, ''),
   apiTimeoutMs: readTimeout(),
   siteName: 'Vineyard Transparency Portal',

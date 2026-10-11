@@ -1,8 +1,7 @@
 # Data Model
 
 The canonical definitions live in [`src/types/models.ts`](../src/types/models.ts) and are shared by
-the frontend, the API contract ([API_CONTRACT.md](API_CONTRACT.md)) and the ingestion scripts
-(`scripts/lib/types.ts` re-exports them). This document explains the models, how they relate, and
+the frontend and the API contract ([API_CONTRACT.md](API_CONTRACT.md)). This document explains the models, how they relate, and
 the rules the data must follow.
 
 ## Principles
@@ -45,8 +44,7 @@ FinanceRecord (separate dataset) ── evidence? → Document
 
 ### SourceRegistryEntry
 
-A public-record **system** the archive monitors (seeded from `config/source-seeds.json`, extended by
-`npm run discover-sources` after human review).
+A public-record **system** the archive monitors.
 
 | Field | Notes |
 | --- | --- |
@@ -56,11 +54,8 @@ A public-record **system** the archive monitors (seeded from `config/source-seed
 | `discoveredFrom` | Page the system was found on; `null` for manually configured seeds. |
 | `crawlEnabled`, `archiveEnabled`, `documentDiscoveryEnabled` | Independent switches. Newly discovered systems start with all three `false` until reviewed. |
 | `lastChecked`, `notes`, `description` | |
-| `health` | `SourceHealth` from `npm run source-health`. |
+| `health` | `SourceHealth`. |
 | `documentCount` | Canonical documents whose primary source is this system. |
-
-`config/source-seeds.json` adds tooling fields (`adapter`, `primary`, `pathPrefix`, `maxDepth`,
-`discoveryHints`, `adapterOptions`) — see `SourceSeed` in `scripts/lib/types.ts`.
 
 ### SourceHealth
 
@@ -124,7 +119,7 @@ municipal code.
 | `note` | Human-readable explanation. |
 
 Archive records add `storageKey` (content-addressed: `documents/<aa>/<sha256>/<file>`) and
-`mimeType` per version (`ArchivedVersion` in `scripts/lib/types.ts`). Because keys are derived from
+`mimeType` per version. Because keys are derived from
 the SHA-256, a new version can never overwrite a prior one. If a URL reverts to an older version's
 bytes, that is recorded as a new `replaced` version pointing at the existing stored file.
 
@@ -219,9 +214,11 @@ adapters, which only discover report *files*. Amounts are stored exactly as publ
 - **IssueReport** — `issueType`, `description`, `context` (document/answer/citation ids, page URL).
   No personal information fields exist.
 - **HealthStatus** — `ok | degraded | backend_not_connected | offline`, with `search`/`ai` flags.
-- **ArchiveStatistics** — computed counts; `isDemo` must be true for mock data.
+- **ArchiveStatistics**: computed counts.
 
 ## Archive record (on disk)
+
+> This section describes the removed TypeScript pipeline in `scripts/`; it is historical. Records are now collected by the Python ingest in `ingest/` (see [INGESTION.md](INGESTION.md)).
 
 `npm run ingest` writes one JSON file per document at `data/archive/records/<id>.json`
 (`ArchiveRecord` in `scripts/lib/types.ts`):
