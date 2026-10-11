@@ -10,7 +10,7 @@ on:
         description: What to capture
         type: choice
         default: fixtures
-        options: [fixtures, crawl-log, ingest-log, archive-plan]
+        options: [fixtures, crawl-log, ingest-log, archive-plan, perf]
       urls:
         description: Extra URLs to save (space separated, optional)
         default: ""
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: inputs.task != 'fixtures'
+        if: inputs.task != 'fixtures' && inputs.task != 'perf'
         with:
           python-version: "3.12"
           cache: pip
@@ -90,6 +90,13 @@ jobs:
             n=0; for u in $FIRST; do n=$((n+1)); case "$u" in http*) ;; /*) u="https://www.utah.gov$u";; *) u="https://www.utah.gov/pmn/$u";; esac; save "pmn_notice_$n.html" "$u"; done
             save pmn_rss.html "https://www.utah.gov/pmn/rss.html"
             i=0; for u in $EXTRA; do i=$((i+1)); save "extra_$i" "$u"; done
+          elif [[ "$TASK" == "perf" ]]; then
+            # Page load timings for the main pages, phone (Fast 4G, CPU 4x) and desktop, cold and repeat (scripts/perf/perf.mjs).
+            PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
+            (cd "$PW" && npm init -y > /dev/null && npm i -s playwright@1.56.1 && npx playwright install --with-deps chromium) > "$OUT/setup.txt" 2>&1 || true
+            PERF=(node scripts/perf/perf.mjs --base https://vineyardportal.org --runs 3 --pw "$PW/node_modules/playwright/index.mjs")
+            "${PERF[@]}" --out "$OUT/perf.json" > "$OUT/perf.txt" 2>&1 || echo "exit=$?" >> "$OUT/perf.txt"
+            "${PERF[@]}" --desktop --out "$OUT/perf-desktop.json" > "$OUT/perf-desktop.txt" 2>&1 || echo "exit=$?" >> "$OUT/perf-desktop.txt"
           else
             sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > "$OUT/setup.txt" 2>&1 || true
             pip install -q -r requirements-ingest.txt >> "$OUT/setup.txt" 2>&1 || true
