@@ -79,6 +79,12 @@ jobs:
             curl -sSI --max-time 30 -A "$BUA" "$G/" > "$OUT/city_headers_browser_ua.txt" 2>&1 || true
             curl -sSI --max-time 30 -A "$UA" "$G/" > "$OUT/city_headers_portal_ua.txt" 2>&1 || true
             curl -sS --max-time 20 https://api.ipify.org > "$OUT/runner_ip.txt" 2>&1 || true
+            # Portal caching headers: pages revalidate, hashed assets are immutable, API keyed to build and data.
+            for u in "https://vineyardportal.org/" "https://vineyardportal.org/votes" "https://vineyardportal.org/theme-init.js" "https://vineyardportal.org/api/records/ordinances?year=2026"; do
+              echo "== $u" >> "$OUT/portal_headers.txt"; curl -sSI --max-time 30 "$u" >> "$OUT/portal_headers.txt" 2>&1 || true
+            done
+            A=$(curl -sS --max-time 30 https://vineyardportal.org/ | grep -oE '/assets/[^"]+\.js' | head -1)
+            if [[ -n "$A" ]]; then echo "== $A" >> "$OUT/portal_headers.txt"; curl -sSI --max-time 30 "https://vineyardportal.org$A" >> "$OUT/portal_headers.txt" 2>&1 || true; fi
             # Utah Public Notice Website: entity search for Vineyard (POST form with a CSRF token).
             J="$RUNNER_TEMP/pmn.cookies"
             curl -sS -c "$J" -b "$J" -A "$UA" "https://www.utah.gov/pmn/search.html" -o "$OUT/pmn_form.html" || true
