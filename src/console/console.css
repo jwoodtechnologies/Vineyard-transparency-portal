@@ -3210,7 +3210,9 @@ html.vc-locked .vc-landing {
     font-size: 0.95rem;
   }
   .vc-map-wrap[data-panel='true'] .vc-map .maplibregl-ctrl-bottom-right,
-  .vc-map-wrap[data-panel='true'] .vc-map .maplibregl-ctrl-bottom-left {
+  .vc-map-wrap[data-panel='true'] .vc-map .maplibregl-ctrl-bottom-left,
+  .vc-map-wrap[data-card='true'] .vc-map .maplibregl-ctrl-bottom-right,
+  .vc-map-wrap[data-card='true'] .vc-map .maplibregl-ctrl-bottom-left {
     display: none;
   }
   .vc-map-close {
@@ -4666,6 +4668,7 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
   .vc-mic,
   .vc-act,
   .vc-chip,
+  .vc-primary,
   .vc-wordmark-home,
   .maplibregl-ctrl-group button,
   .maplibregl-ctrl-attrib-button {

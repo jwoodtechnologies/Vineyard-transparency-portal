@@ -313,7 +313,7 @@ interface Picked {
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
-const DATA_VERSION = 6;
+const DATA_VERSION = 7;
 const loaded = new Map<string, Promise<FC>>();
 /** Maps whose style has finished loading (tiles may still be streaming; layers can be added). */
 const styleReady = new WeakSet<maplibregl.Map>();
@@ -964,7 +964,7 @@ export default function MapPage() {
   return (
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
-      <div className="vc-map-wrap" data-panel={panel}>
+      <div className="vc-map-wrap" data-panel={panel} data-card={Boolean(picked)}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
         {!painted && (
           <div className="vc-map-loading" role="status">
@@ -1133,7 +1133,7 @@ export default function MapPage() {
                 {picked.props.__loading
                   ? 'Loading parcel details.'
                   : picked.props.__src === 'county+city'
-                    ? 'Current Utah County GIS records. Property type and year built are from 2025 city parcel data.'
+                    ? `Current Utah County GIS records. ${[picked.props.PROP_TYPE_DESCR != null && 'Property type', picked.props.GLA_WEIGHTED_YRBLT != null && 'year built'].filter(Boolean).join(' and ').replace(/^y/, 'Y')} ${picked.props.PROP_TYPE_DESCR != null && picked.props.GLA_WEIGHTED_YRBLT != null ? 'are' : 'is'} from 2025 city parcel data.`
                     : picked.props.__src === 'county'
                       ? 'Current Utah County GIS records.'
                       : picked.props.__src === 'city'
