@@ -476,3 +476,52 @@ export function tidyOpeners(paragraphs: AnswerParagraph[]): AnswerParagraph[] {
     }),
   }));
 }
+
+/** Words a summary sentence adds without saying anything new. */
+const RESTATE_FILLER = new Set(
+  (
+    'the a an and or but so of on in at to for from with by as is are was were be been this that these those it its they their there ' +
+    'which who whom what when where while also both each all total totals combined together overall altogether summary sum respectively ' +
+    'approximately about around roughly nearly some figure figures amount amounts number numbers including include includes included ' +
+    'means mean therefore thus short conclusion budget budgeted fiscal year city vineyard has have had will would ' +
+    'receive receives received get gets got allocated allocate allocation goes going account accounts accounted make makes made ' +
+    'come comes came spend spends spending spent set aside respective million billion thousand dollars percent'
+  ).split(/\s+/),
+);
+
+/** The numbers in a sentence, written the same way whatever the commas, dollar signs or "million". */
+function plainNumbers(text: string): string[] {
+  return sentenceNumbers(text).map((forms) => forms.find((f, i) => i > 0 && /^\d+$/.test(f)) ?? forms[0]);
+}
+
+function keyTerms(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/\[[\d,\s]+\]/g, ' ')
+    .replace(/[^a-z\s'-]+/g, ' ')
+    .split(/\s+/)
+    .map((w) => w.replace(/^['-]+|['-]+$/g, '').replace(/'s$/, ''))
+    .filter((w) => w.length >= 3 && !RESTATE_FILLER.has(w));
+}
+
+const stem = (w: string) => w.replace(/(ies|es|s|ed|ing)$/, '');
+
+/**
+ * Drops a final sentence that only restates figures given earlier ("In total, Police receives
+ * $4,705,075 and Fire $2,873,462."): every number and every key word in it already appeared in the
+ * answer. A last sentence with any new number or new word stays.
+ */
+export function dropRestatement(paragraphs: AnswerParagraph[]): AnswerParagraph[] {
+  const all = paragraphs.flatMap((p) => p.segments);
+  if (all.length < 2) return paragraphs;
+  const last = all[all.length - 1];
+  const nums = plainNumbers(last.text);
+  if (!nums.length) return paragraphs;
+  const earlier = all.slice(0, -1).map((s) => s.text).join(' ');
+  const seenNums = new Set(plainNumbers(earlier));
+  if (!nums.every((n) => seenNums.has(n))) return paragraphs;
+  const seenTerms = new Set(keyTerms(earlier));
+  const seenStems = new Set([...seenTerms].map(stem));
+  if (!keyTerms(last.text).every((w) => seenTerms.has(w) || seenStems.has(stem(w)))) return paragraphs;
+  return paragraphs.map((p) => ({ segments: p.segments.filter((s) => s !== last) })).filter((p) => p.segments.length);
+}
