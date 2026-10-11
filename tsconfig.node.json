@@ -19,5 +19,5 @@
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["vite.config.ts", "vitest.config.ts", "scripts", "tests"],
-  "exclude": ["tests/worker-ask-followup.test.ts", "tests/worker-ask-meeting-votes.test.ts", "tests/worker-current-rate-ura.test.ts", "tests/worker-contrib.test.ts", "tests/helpers"]
+  "exclude": ["tests/worker-ask-followup.test.ts", "tests/worker-ask-meeting-votes.test.ts", "tests/worker-current-rate-ura.test.ts", "tests/worker-contrib.test.ts", "tests/worker-tax-rate.test.ts", "tests/helpers"]
 }

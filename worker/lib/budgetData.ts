@@ -22,6 +22,10 @@ export const BUDGET_FISCAL_YEAR = 2027;
 export const BUDGET_ADOPTED = '2026-06-23';
 // Source: FY 27 First Budget Amendment (August 25, 2026), page not recorded (doc_3931ec08b88d5fbf)
 export const BUDGET_AMENDED = '2026-08-25';
+// Source: 08/25/2026 City Council minutes, page 5 (doc_7a0b2b44683f4559), item 8.1 "Approve Ordinance 2026-10
+// Budget Amendments to the Fiscal Year 2026-2027 Budget": motion to "adopt Ordinance 2026-10 amending the Fiscal
+// Year 2026-2027 budget", carried (GET /api/votes, motion doc_7a0b2b44683f4559:9).
+export const BUDGET_AMENDMENT_ORDINANCE = 'Ordinance 2026-10';
 
 export const BUDGET_DOCS = {
   book: 'doc_2c248c52cbadfa22',
@@ -53,8 +57,8 @@ export const FUNDS: BudgetFund[] = [
   { key: 'transport', name: 'Transportation', about: 'Street maintenance and improvements.', total: 1_743_994 },
   { key: 'storm', name: 'Stormwater', about: 'Storm drains and flood control.', total: 821_707 },
 ];
-// Source: FY 27 Final Budget, page not recorded (doc_2c248c52cbadfa22); the fund list it totals is on page 3 and the nine totals add to it within 3 dollars
-export const ALL_FUNDS_TOTAL = 70_944_358;
+// The portal never shows or states a total of all funds added together (owner rule): the budget is
+// presented fund by fund, as each fund's own total above.
 
 export interface BudgetLine {
   name: string;
@@ -299,8 +303,8 @@ export interface BudgetPayload {
   label: string;
   adopted: string;
   amended: string;
+  amendmentOrdinance: string;
   docs: typeof BUDGET_DOCS;
-  allFundsTotal: number;
   funds: BudgetFund[];
   general: typeof GENERAL;
   departments: BudgetLine[];
@@ -323,8 +327,8 @@ export function budgetPayload(): BudgetPayload {
     label: 'Fiscal year 2027 (July 1, 2026 to June 30, 2027)',
     adopted: BUDGET_ADOPTED,
     amended: BUDGET_AMENDED,
+    amendmentOrdinance: BUDGET_AMENDMENT_ORDINANCE,
     docs: BUDGET_DOCS,
-    allFundsTotal: ALL_FUNDS_TOTAL,
     funds: FUNDS,
     general: GENERAL,
     departments: DEPARTMENTS,

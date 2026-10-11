@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { topicsFor } from '../worker/ai/topics';
-import { ALL_FUNDS_TOTAL, DEPARTMENTS, FUNDS, GENERAL, PROJECTS, PROJECT_FUNDS, REVENUE, REVENUE_GROUPS, SPEND_GROUPS, TRANSFERS_IN, TRANSFERS_OUT } from '../worker/lib/budgetData';
+import { DEPARTMENTS, FUNDS, GENERAL, PROJECTS, PROJECT_FUNDS, REVENUE, REVENUE_GROUPS, SPEND_GROUPS, TRANSFERS_IN, TRANSFERS_OUT } from '../worker/lib/budgetData';
 import { budgetForFeature, FY27_PLAN, FY27_PROJECTS_WHERE } from '../worker/lib/capitalPlan';
 
 const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
@@ -15,7 +15,8 @@ describe('fiscal 2027 budget data', () => {
     expect(sum(TRANSFERS_IN.map((r) => r.amount))).toBe(GENERAL.transfersIn);
     expect(GENERAL.revenueBeforeTransfers + GENERAL.transfersIn).toBe(GENERAL.revenueTotal);
     expect(Math.abs(GENERAL.adopted.total - GENERAL.amended.total - GENERAL.cutByAmendment)).toBeLessThanOrEqual(1);
-    expect(Math.abs(sum(FUNDS.map((f) => f.total)) - ALL_FUNDS_TOTAL)).toBeLessThanOrEqual(3);
+    // The book's All Funds Summary total (FY 27 Final Budget, doc_2c248c52cbadfa22): a data check only, never shown.
+    expect(Math.abs(sum(FUNDS.map((f) => f.total)) - 70_944_358)).toBeLessThanOrEqual(3);
   });
   it('puts every department, transfer and revenue line in exactly one group', () => {
     const spend = SPEND_GROUPS.flatMap((g) => g.depts);
