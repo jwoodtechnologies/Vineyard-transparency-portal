@@ -11,6 +11,7 @@ import type { ConvTurn } from './followup';
 import { BODY_LABEL, longDay, meetingBodyIn, meetingDateIn, MOVER_Q, type MeetingBody } from './meetingVotes';
 import { measureRefIn } from './measureVotes';
 import { questionWords } from './quotes';
+import { titleDate } from '../lib/adoptionDate';
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Numbered records                                                                               */
@@ -94,6 +95,49 @@ export interface DocLookup {
   body: MeetingBody | null;
   /** "the last council meeting": the newest meeting of that body with this document. */
   latest: boolean;
+}
+
+/** A minutes record that may be the minutes of a meeting: filed under it, dated for it, or filed later. */
+export interface MinutesCandidate {
+  id: string;
+  title: string;
+  /** Filed under the meeting asked about. */
+  inMeeting: boolean;
+}
+
+/** "8.25.26 CC Minutes - Draft (City Council, 2026-09-08, item 1)": an agenda item attachment, with the packet it came in. */
+const ATTACHMENT = /\s*\([^()]*\d{4}-\d{2}-\d{2}[^()]*\)\s*$/;
+
+/**
+ * The minutes of the meeting held on `date`. Minutes are titled by the meeting they record ("9.8.26
+ * APPROVED CC Minutes"), and a draft is often filed under a later meeting, where it is approved. Minutes
+ * titled with another date are that other meeting's (earlier minutes reprinted in a packet), never this
+ * one's. A record with no date in its title counts only when filed under this meeting, named as minutes,
+ * and not an agenda item attachment. Approved before draft, then a record of its own before an
+ * attachment. Null when none is this meeting's.
+ */
+export function minutesOf<T extends MinutesCandidate>(date: string, candidates: T[]): T | null {
+  const rank = (c: T): number | null => {
+    const attached = ATTACHMENT.test(c.title);
+    const own = c.title.replace(ATTACHMENT, '');
+    const d = titleDate(own);
+    if (d && d !== date) return null;
+    if (!d && (!c.inMeeting || attached || !/minute/i.test(own))) return null;
+    return (d ? 0 : 4) + (/\bdraft\b/i.test(own) ? 2 : 0) + (attached ? 1 : 0);
+  };
+  const ranked = candidates.map((c) => ({ c, r: rank(c) })).filter((x): x is { c: T; r: number } => x.r != null);
+  ranked.sort((a, b) => a.r - b.r || a.c.title.localeCompare(b.c.title));
+  return ranked[0]?.c ?? null;
+}
+
+/** The newest meeting date (on or before today) that a set of minutes titles names, or null. */
+export function latestMinutesDate(titles: string[], today: string): string | null {
+  const dates = titles
+    .map((t) => t.replace(ATTACHMENT, ''))
+    .filter((t) => /minute/i.test(t))
+    .map((t) => titleDate(t))
+    .filter((x): x is string => Boolean(x) && (x as string) <= today);
+  return dates.sort().pop() ?? null;
 }
 
 const SHOW = /\b(show|find|where|get|link|open|see|read|pull up|look up|view|download|is there|are there|posted|available|have|copy of|send)\b/i;
@@ -323,7 +367,28 @@ export function bodyClarify(q: string, date: string, bodies: MeetingBody[]): Cla
     else text = `${text} at the ${label} meeting`;
     return { label, question: `${text.replace(/\bthey\b/i, `the ${label}`)}?` };
   });
-  return { prompt: `${bodies.length === 2 ? 'Two' : bodies.length === 3 ? 'Three' : 'Several'} bodies met on ${longDay(date)}. Which meeting do you mean?`, choices };
+  const names = choices.map((c) => `the ${c.label}`);
+  const who = andList(names);
+  return { prompt: `${who[0].toUpperCase()}${who.slice(1)} ${names.length === 2 ? 'both' : 'all'} met on ${longDay(date)}. Which meeting do you mean?`, choices };
+}
+
+/** "A and B", "A, B and C". */
+export function andList(xs: string[]): string {
+  return xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+}
+
+/**
+ * "What did the City Council vote on in March 2026?" when votes were recorded at several meetings that
+ * month: the dates in the question itself, each one also a tappable choice.
+ */
+export function monthClarify(label: string, month: string, dates: string[]): Clarify {
+  const shown = dates.slice(-6);
+  const days = shown.map(longDay);
+  const list = days.length <= 2 ? days.join(' and ') : `${days.slice(0, -1).join('; ')}; and ${days[days.length - 1]}`;
+  return {
+    prompt: `The ${label} recorded votes at ${dates.length} meetings in ${month}: ${list}. Which meeting do you mean?`,
+    choices: shown.map((d) => ({ label: longDay(d), question: `What did the ${label} vote on at the ${longDay(d)} meeting?` })),
+  };
 }
 
 /**
@@ -344,12 +409,13 @@ export function personClarify(q: string, officials: Array<{ name: string; title:
     const lasts = list.map((o) => o.name.trim().split(/\s+/).pop()!.toLowerCase());
     if (lasts.some((l) => text.includes(` ${l} `) || text.includes(` ${l}'`))) continue;
     const re = new RegExp(`\\b${first}\\b`, 'i');
+    const choices = list.slice(0, 4).map((o) => {
+      const who = `${o.title} ${o.name.trim().split(/\s+/).pop()}`;
+      return { label: who, question: q.replace(re, who) };
+    });
     return {
-      prompt: `${list.length === 2 ? 'Two' : 'Several'} officials are named ${list[0].name.split(/\s+/)[0]}. Which one do you mean?`,
-      choices: list.slice(0, 4).map((o) => {
-        const who = `${o.title} ${o.name.trim().split(/\s+/).pop()}`;
-        return { label: who, question: q.replace(re, who) };
-      }),
+      prompt: `${list.length === 2 ? 'Two' : 'Several'} officials are named ${list[0].name.split(/\s+/)[0]}: ${andList(choices.map((c) => c.label))}. Which one do you mean?`,
+      choices,
     };
   }
   return null;

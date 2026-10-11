@@ -296,6 +296,19 @@ export function joinNumbers(text: string): string {
   return out.join('\n');
 }
 
+/** An agenda heading on a line of its own ("8.1. Approve Ordinance 2026-09 ...", "8. BUSINESS ITEMS"): the next item starts there. */
+const NEXT_HEADING = /\n[ \t]*\d{1,2}(?:\.\d{1,2}){0,2}[.,]?[ \t]+[A-Z]/;
+
+/**
+ * The resolutions and ordinances a motion names, read from the motion's own words and roll call only:
+ * a consent motion followed by "8.1. Approve Ordinance 2026-09" is not about Ordinance 2026-09.
+ */
+export function motionRefs(raw: string): string[] {
+  const cut = raw.search(NEXT_HEADING);
+  const own = (cut > 0 ? raw.slice(0, cut) : raw).slice(0, 900);
+  return [...new Set([...own.matchAll(/\b(resolution|ordinance)\s+(?:no\.?\s*)?((?:19|20)\d{2}\s*-\s*\d{1,3}[A-Z]?)/gi)].map((m) => `${titleCase(m[1])} ${m[2].replace(/\s+/g, '')}`))];
+}
+
 export function parseMinutes(text: string, date: string | null = null): ParsedMinutes {
   const head = text.slice(0, 2500);
   const { present, absent, full: listedFull } = attendance(head);
@@ -401,7 +414,7 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     const textOut = `${/^nominated$/i.test(wording?.[1] ?? '') ? 'nominate ' : ''}${wording?.[2] ?? plain ?? ''}`.replace(/\s+/g, ' ').trim();
     if (!mover && !votes.length && !res) return; // a stray "motion" with nothing recorded
     if (textOut.length < 4 && !votes.length) return;
-    const refs = [...new Set([...seg.slice(0, 900).matchAll(/\b(resolution|ordinance)\s+(?:no\.?\s*)?((?:19|20)\d{2}\s*-\s*\d{1,3}[A-Z]?)/gi)].map((m) => `${titleCase(m[1])} ${m[2].replace(/\s+/g, '')}`))];
+    const refs = motionRefs(flat.slice(at, end));
     motions.push({
       seq: motions.length + 1,
       item: (() => {
@@ -455,7 +468,8 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
   const titled: Record<string, string> = {};
   for (const m of head.replace(/\s+/g, ' ').matchAll(new RegExp(`\\b(?:[Mm]ayor|MAYOR|[Cc]ouncil ?[Mm]ember|COUNCIL ?MEMBER|[Cc]ouncilm[ae]n|[Cc]ouncilwoman|[Cc]ommissioner|COMMISSIONER|[Cc]hair(?:man|woman|person)?|[Vv]ice[- ][Cc]hair|[Bb]oard ?[Mm]ember)\\s+([A-Z][A-Za-z'-]+)\\s+(?:[A-Z]\\.\\s+)?([A-Z][A-Za-z'-]+)\\b`, 'g'))) {
     const last = canon(titleCase(m[2])) as string;
-    if (!STOP.has(m[1].toLowerCase()) && !titled[last]) titled[last] = `${titleCase(m[1])} ${last}`;
+    // "Council Member McCumber Council Member Holdaway" (a list of titles and last names) is no full name.
+    if (!STOP.has(m[1].toLowerCase()) && !STOP.has(m[2].toLowerCase()) && !titled[last]) titled[last] = `${titleCase(m[1])} ${last}`;
   }
   for (const [last, n] of Object.entries(listedFull)) if (!titled[canon(last) as string]) fullNames[canon(last) as string] = n;
   Object.assign(fullNames, titled);

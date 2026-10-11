@@ -12,7 +12,7 @@ import { json } from '../lib/http';
 import { motionMatches, placeWords, termTries } from '../ai/voteMatch';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 18;
+export const VOTES_PARSER = 19;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
@@ -250,6 +250,19 @@ export function councilName(member: string, council: string[]): string | null {
   const m = member.toLowerCase();
   return council.find((n) => n.toLowerCase() === m) ?? (!member.includes(' ') ? (council.find((n) => (n.split(' ').pop() ?? '').toLowerCase() === m) ?? null) : null);
 }
+/**
+ * A former member a recorded name refers to: the full name itself when it has five or more recorded votes,
+ * or for a last name alone ("Nair") the one such full name that ends in it ("Ezra Nair"), or the last name
+ * itself when it alone has five or more votes. Null for anything else (a word a scan garbled is not a voter).
+ */
+export function pastMember(member: string, past: string[]): string | null {
+  if (member.includes(' ')) return past.includes(member) ? member : null;
+  const m = member.toLowerCase();
+  const full = past.filter((p) => p.includes(' ') && (p.split(' ').pop() ?? '').toLowerCase() === m);
+  if (full.length === 1) return full[0];
+  if (full.length > 1) return null;
+  return past.includes(member) ? member : null;
+}
 const SCOPE_SQL = `m.body_id IN ('city-council', 'redevelopment-agency') AND m.meeting_date >= '${SCOPE_FROM}'`;
 const scopeSql = (body: string | null | undefined) => (body === PC ? `m.body_id = '${PC}' AND m.meeting_date >= '${SCOPE_FROM}'` : SCOPE_SQL);
 
@@ -377,6 +390,21 @@ const bodyName = (id: string | null) => (id ? (BODY_NAMES[id] ?? id.replace(/-/g
 /** Housekeeping motions: approving minutes or the agenda, adjourning, closed sessions, opening and closing hearings. */
 export const PROCEDURAL = /^(?:to\s+)?(?:(?:approve|accept|adopt)\s+(?:the\s+)?(?:(?:[\w,']+\s+){0,6})?(?:minutes|agenda)\b(?![^.]*\b(?:and|with)\b[^.]*(?:resolution|ordinance|item|consent))|adjourn|recess|(?:go|move|enter|convene|went)\s+(?:in)?to\s+(?:a\s+)?(?:closed|executive|regular|work)\s+(?:session|meeting)|(?:close|end|leave|exit|return from)\s+(?:the\s+)?(?:closed|executive)\s+(?:session|meeting)|(?:return|reconvene|go back)\s+(?:in)?to\s+(?:the\s+)?(?:regular|open)|(?:open|close|continue)\s+(?:the\s+)?public hearing|excuse\b|take a (?:short )?(?:break|recess)|nominate\b(?!.*commission))/i;
 
+/** Housekeeping motions left out of every vote list (see PROCEDURAL for the rest). */
+const NOT_PROCEDURAL_SQL = " AND m.motion NOT LIKE 'approve the minutes%' AND m.motion NOT LIKE 'adjourn%' AND lower(m.motion) NOT LIKE '%closed session%' AND lower(m.motion) NOT LIKE '%public hearing%' AND lower(m.motion) NOT LIKE 'approve the agenda%'";
+
+/**
+ * The dates in a month ("2026-09") on which a body recorded a motion the vote lists show: a meeting whose
+ * only motions approve minutes, adjourn or open a hearing is not a meeting with votes to offer.
+ */
+export async function motionDates(env: Env, body: string, month: string): Promise<string[]> {
+  await ensureVotesTables(env);
+  const rows = await env.CATALOG_DB.prepare(`SELECT DISTINCT m.meeting_date AS d, m.motion FROM motions m WHERE m.body_id = ? AND substr(m.meeting_date, 1, 7) = ?${NOT_PROCEDURAL_SQL} ORDER BY m.meeting_date`)
+    .bind(body, month)
+    .all<{ d: string; motion: string | null }>();
+  return [...new Set((rows.results ?? []).filter((r) => !PROCEDURAL.test(String(r.motion ?? '').trim())).map((r) => String(r.d)))].sort();
+}
+
 export interface MotionOut {
   id: string;
   meetingId: string | null;
@@ -434,7 +462,7 @@ export async function queryMotions(env: Env, f: { all?: boolean; member?: string
     sql += " AND (lower(m.motion) LIKE ? OR lower(coalesce(m.item, '')) LIKE ? OR lower(coalesce(m.refs, '')) LIKE ?)";
     params.push(`%${w}%`, `%${w}%`, `%${w}%`);
   }
-  if (!f.all) sql += " AND m.motion NOT LIKE 'approve the minutes%' AND m.motion NOT LIKE 'adjourn%' AND lower(m.motion) NOT LIKE '%closed session%' AND lower(m.motion) NOT LIKE '%public hearing%' AND lower(m.motion) NOT LIKE 'approve the agenda%'";
+  if (!f.all) sql += NOT_PROCEDURAL_SQL;
   const pageSize = Math.min(400, Math.max(1, f.pageSize ?? 30));
   const page = Math.max(1, f.page ?? 1);
   const [rows, count] = await Promise.all([
@@ -471,11 +499,10 @@ export async function queryMotions(env: Env, f: { all?: boolean; member?: string
   const council = await officialsFor(env, f.body);
   // Members who sat this year and have since left (a resignation) still show in the votes they cast,
   // by the full name the minutes print; they are not offered as a filter.
-  const past = new Set(
-    ((await env.CATALOG_DB.prepare(`SELECT member FROM motion_votes m WHERE ${scopeSql(f.body)} AND member LIKE '% %' GROUP BY member HAVING count(*) >= 5`).all<{ member: string }>().catch(() => ({ results: [] }))).results ?? []).map((r) => r.member),
-  );
-  const named = (n: string | null) => (n ? (councilName(n, council) ?? n) : null);
-  const voter = (n: string) => councilName(n, council) ?? (past.has(n) ? n : '');
+  // A set of minutes that prints last names only ("Nair") is the same former member as the full name elsewhere ("Ezra Nair").
+  const past = ((await env.CATALOG_DB.prepare(`SELECT member FROM motion_votes m WHERE ${scopeSql(f.body)} GROUP BY member HAVING count(*) >= 5`).all<{ member: string }>().catch(() => ({ results: [] }))).results ?? []).map((r) => r.member);
+  const named = (n: string | null) => (n ? (councilName(n, council) ?? pastMember(n, past) ?? n) : null);
+  const voter = (n: string) => councilName(n, council) ?? pastMember(n, past) ?? '';
   return {
     total: Number(count?.n ?? 0),
     items: list.map((r) => ({

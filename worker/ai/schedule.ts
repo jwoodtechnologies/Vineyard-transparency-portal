@@ -43,6 +43,23 @@ export interface ScheduleAnswer {
   event: ScheduleEvent;
 }
 
+/** The repeating calendar entry an event was expanded from: "city-215-2026-10-15" is entry 215. */
+const seriesOf = (id: string) => id.replace(/-\d{4}-\d{2}-\d{2}$/, '');
+
+/**
+ * True when the meeting portal's posted meeting (on `posted`) replaces the calendar event: the event comes
+ * from a repeating calendar entry that falls once a month, and the portal has the meeting on another day
+ * of that same month (and none on the calendar's day, since `posted` is the portal's next meeting).
+ */
+export function postedReplacesRepeat(ev: Pick<PortalEvent, 'id' | 'start'>, events: Array<Pick<PortalEvent, 'id' | 'start'>>, posted: string): boolean {
+  const day = ev.start.slice(0, 10);
+  const month = day.slice(0, 7);
+  if (posted === day || posted.slice(0, 7) !== month) return false;
+  const series = events.filter((e) => seriesOf(e.id) === seriesOf(ev.id));
+  if (series.length < 2) return false;
+  return series.filter((e) => e.start.slice(0, 7) === month).length === 1;
+}
+
 export async function scheduleAnswer(env: Env, question: string): Promise<ScheduleAnswer | null> {
   if (unknownBody(question)) return null;
   const body = bodyOf(question);
@@ -71,8 +88,11 @@ export async function scheduleAnswer(env: Env, question: string): Promise<Schedu
 
   const evDate = ev?.start.slice(0, 10) ?? null;
   const mDate = meeting?.meeting_date ? meeting.meeting_date.slice(0, 10) : null;
+  // A monthly meeting the meeting portal has posted for another day that month (the ARCH Commission on October 29, 2026,
+  // while the calendar's repeating entry still shows the usual third Thursday, October 15) is held on the posted day.
+  const moved = Boolean(ev && mDate && postedReplacesRepeat(ev, events, mDate));
   // The earlier of the two; the city calendar wins a tie (it carries the time and place).
-  if (ev && (!mDate || evDate! <= mDate)) {
+  if (ev && !moved && (!mDate || evDate! <= mDate)) {
     const loc = ev.location ? ev.location.replace(/\s+/g, ' ').trim() : null;
     const meetingId = meeting && mDate === evDate ? meeting.id : null;
     return {
@@ -85,7 +105,7 @@ export async function scheduleAnswer(env: Env, question: string): Promise<Schedu
     const time = meeting.start_time && /^\d{1,2}:\d{2}/.test(meeting.start_time) ? `${mDate}T${meeting.start_time.slice(0, 5)}` : mDate;
     const loc = meeting.location ? meeting.location.replace(/\s+/g, ' ').trim() : null;
     return {
-      text: `The next ${noun(body.label)} is ${when(time)}${loc ? ` at ${loc}` : ''}${/hearing/i.test(body.label) ? `: ${meeting.title}` : ''}, according to the city's meeting portal.`,
+      text: `The next ${noun(body.label)} is ${when(time)}${loc ? ` at ${loc}` : ''}${/hearing/i.test(body.label) ? `: ${meeting.title}` : ''}, according to the city's meeting portal.${moved && ev ? ` The city calendar still shows its repeating date, ${when(ev.start, true)}.` : ''}`,
       meetingId: meeting.id,
       event: { title: `${body.label} meeting`, start: time, allDay: !time.includes('T'), location: loc, meetingId: meeting.id, source: 'meeting-portal', url: 'https://vineyardut.portal.civicclerk.com/' },
     };

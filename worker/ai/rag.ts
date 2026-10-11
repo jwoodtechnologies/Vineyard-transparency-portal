@@ -38,15 +38,15 @@ import { BUDGET_DOC_TITLES, budgetAnswer, budgetIntent, type BudgetDocKey } from
 import { isTaxRateQuestion, isTaxRateRecord, newerRateRecord, taxRateIntent, taxRateResponse, taxRateSentences } from './taxRateAnswer';
 import { citedMotions } from './voteMatch';
 import { placeAnswer, placeIntent, resolvePlace } from './place';
-import { LATEST_ACTION_Q, SCOPE_FROM, councilName, currentCouncil, motionEvidence, queryMotions, votesFor, type MotionOut } from '../api/votes';
+import { LATEST_ACTION_Q, SCOPE_FROM, councilName, currentCouncil, motionDates, motionEvidence, queryMotions, votesFor, type MotionOut } from '../api/votes';
 import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
 import { BODY_LABEL, longDay, meetingBodyIn, meetingDateIn, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, motionLine, MOVER_Q, type MeetingBody, type MeetingVotesIntent } from './meetingVotes';
-import { measureRefIn, measureVotesIntent, measureVotesText, motionIsAbout, type MeasureVotesIntent } from './measureVotes';
+import { decidingMotion, measureRefIn, measureVotesIntent, measureVotesText, motionIsAbout, type MeasureVotesIntent } from './measureVotes';
 import { officialRoster, TERM_FROM, titleOfficials } from './officials';
 import { isOffTopic, OFF_TOPIC_REPLY } from './offTopic';
-import { bodyClarify, CONTACT_Q, docLookupIntent, feeIntent, lastMeetingIntent, monthVotesIntent, motionSearchWords, personClarify, recordLookupIntent, resolveFollowUp, suggestFollowUps } from './lookups';
+import { bodyClarify, CONTACT_Q, docLookupIntent, feeIntent, lastMeetingIntent, monthClarify, monthVotesIntent, motionSearchWords, personClarify, recordLookupIntent, resolveFollowUp, suggestFollowUps } from './lookups';
 import { routeFor } from './quotes';
 import { bodiesOnDate, clarifyResponse, codeResponse, docLookupResponse, feeResponse, lastVotesDate, quotesResponse, recordLookupResponse, recordsAnswer, routeResponse } from './lookupAnswers';
 import { BUDGET_AMENDED } from '../lib/budgetData';
@@ -558,7 +558,7 @@ export async function measureVotesResponse(env: Env, base: { id: string; questio
   if (!found.length) return null;
   // The motion that decided it: the last one with a recorded result and roll call.
   const newestFirst = [...found].reverse();
-  const decided = newestFirst.find((m) => m.result !== 'unknown' && m.votes.length) ?? newestFirst.find((m) => m.result !== 'unknown') ?? newestFirst[0];
+  const decided = decidingMotion(newestFirst, intent.ref) ?? newestFirst[0];
   // The mayor as of that meeting: the minutes' attendance list prints "Mayor <name>"; for a meeting in the
   // current term with no such line, the directory's mayor.
   const att = await env.CATALOG_DB.prepare("SELECT member FROM meeting_attendance WHERE document_id = ? AND member LIKE 'Mayor %' LIMIT 1")
@@ -760,19 +760,14 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // "What did the council vote on in September?": one meeting that month is answered; several are offered as choices.
   const mvm = monthVotesIntent(body.question, todayQ);
   if (mvm) {
-    const dates = await env.CATALOG_DB.prepare('SELECT DISTINCT meeting_date AS d FROM motions WHERE body_id = ? AND substr(meeting_date, 1, 7) = ? ORDER BY meeting_date')
-      .bind(mvm.body, mvm.month)
-      .all<{ d: string }>()
-      .then((x) => (x.results ?? []).map((y) => String(y.d)))
-      .catch(() => [] as string[]);
+    const dates = await motionDates(env, mvm.body, mvm.month).catch(() => [] as string[]);
     const label = BODY_LABEL[mvm.body];
     if (dates.length === 1) {
       const r = await meetingVotesResponse(env, base, { date: dates[0], body: mvm.body, kind: 'all' }, staff).catch(() => null);
       if (r) return { kind: 'final', response: r };
     } else if (dates.length > 1) {
       const month = longDay(`${mvm.month}-01`).replace(/ 1,/, '');
-      const choices = dates.slice(-4).map((d) => ({ label: longDay(d), question: `What did the ${label} vote on at the ${longDay(d)} meeting?` }));
-      return { kind: 'final', response: clarifyResponse(base, { prompt: `The ${label} has recorded votes from ${dates.length} meetings in ${month}. Which meeting do you mean?`, choices }, { path: '/votes', label: 'Open voting records', hint: 'Every recorded vote, meeting by meeting' }) };
+      return { kind: 'final', response: clarifyResponse(base, monthClarify(label, month, dates), { path: '/votes', label: 'Open voting records', hint: 'Every recorded vote, meeting by meeting' }) };
     }
   }
 

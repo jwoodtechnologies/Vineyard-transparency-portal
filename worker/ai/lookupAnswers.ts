@@ -12,7 +12,7 @@ import { normalizeType } from '../lib/taxonomy';
 import { recordIndex } from '../api/records';
 import { citationLabel } from './submissions';
 import { BODY_LABEL, longDay, type MeetingBody } from './meetingVotes';
-import { DOC_LABEL, recordLookupText, suggestFollowUps, type DocLookup, type IndexRow, type RecordLookup } from './lookups';
+import { DOC_LABEL, latestMinutesDate, minutesOf, recordLookupText, suggestFollowUps, type DocLookup, type IndexRow, type RecordLookup } from './lookups';
 import { pickQuotes, plainRecordText, QUOTES_LEAD, quoteLine, routeFor, sentenceScore, recordSentences, type Quote } from './quotes';
 import { officialRoster, titleOfficials } from './officials';
 import type { StaffPerson } from './contacts';
@@ -147,6 +147,8 @@ export async function recordLookupResponse(env: Env, base: Base, r: RecordLookup
 /* A meeting's documents                                                                          */
 /* ---------------------------------------------------------------------------------------------- */
 
+const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
 const BODY_IDS: MeetingBody[] = ['city-council', 'redevelopment-agency', 'planning-commission'];
 
 /** The bodies (of the three with voting records) that met, or recorded motions, on a date. */
@@ -167,6 +169,14 @@ export async function docLookupResponse(env: Env, base: Base, d: DocLookup, toda
   const body = d.body ?? 'city-council';
   const types = d.kind === 'agenda_packet' ? ['agenda_packet'] : d.kind === 'agenda' ? ['agenda', 'agenda_packet'] : ['minutes'];
   let date = d.date;
+  if (!date && d.kind === 'minutes') {
+    // The newest meeting with minutes is the newest date a minutes title carries (a draft is filed under the next meeting's packet).
+    const recent = await env.CATALOG_DB.prepare(`SELECT title FROM documents WHERE government_body_id = ? AND document_type = 'minutes' AND document_date <= ? ORDER BY document_date DESC LIMIT 30`)
+      .bind(body, addDays(today, 150))
+      .all<{ title: string }>()
+      .catch(() => ({ results: [] as Array<{ title: string }> }));
+    date = latestMinutesDate((recent.results ?? []).map((x) => String(x.title ?? '')), today);
+  }
   if (!date) {
     const row = await env.CATALOG_DB.prepare(
       `SELECT max(document_date) AS d FROM documents WHERE government_body_id = ? AND document_type IN (SELECT value FROM json_each(?)) AND document_date <= ?`,
@@ -186,12 +196,23 @@ export async function docLookupResponse(env: Env, base: Base, d: DocLookup, toda
     `SELECT id, document_type, title FROM documents
      WHERE (meeting_id IN (SELECT value FROM json_each(?)) OR (document_date = ? AND government_body_id = ?))
        AND document_type IN ('minutes', 'agenda', 'agenda_packet')
-     ORDER BY CASE document_type WHEN 'minutes' THEN 0 WHEN 'agenda' THEN 1 ELSE 2 END, title LIMIT 20`,
+     ORDER BY CASE document_type WHEN 'minutes' THEN 0 WHEN 'agenda' THEN 1 ELSE 2 END, title LIMIT 40`,
   )
     .bind(JSON.stringify(meetingIds), date, body)
     .all<{ id: string; document_type: string; title: string }>()
     .catch(() => ({ results: [] as Array<{ id: string; document_type: string; title: string }> }));
-  const list = docs.results ?? [];
+  // The minutes of a meeting are titled with its date and are often filed under a later meeting, where they were approved;
+  // minutes filed under this meeting but titled with an earlier date are that earlier meeting's.
+  const later = await env.CATALOG_DB.prepare(
+    `SELECT id, document_type, title, meeting_id FROM documents
+     WHERE document_type = 'minutes' AND government_body_id = ? AND document_date > ? AND document_date <= ? LIMIT 60`,
+  )
+    .bind(body, date, addDays(date, 150))
+    .all<{ id: string; document_type: string; title: string; meeting_id: string | null }>()
+    .catch(() => ({ results: [] as Array<{ id: string; document_type: string; title: string; meeting_id: string | null }> }));
+  const inMeeting = (docs.results ?? []).map((x) => ({ ...x, inMeeting: true }));
+  const minutes = minutesOf(date, [...inMeeting.filter((x) => x.document_type === 'minutes'), ...(later.results ?? []).filter((x) => !inMeeting.some((y) => y.id === x.id)).map((x) => ({ ...x, inMeeting: Boolean(x.meeting_id && meetingIds.includes(x.meeting_id)) }))]);
+  const list = [...inMeeting.filter((x) => x.document_type !== 'minutes'), ...(minutes ? [minutes] : [])];
   if (!meetingIds.length && !list.length) return null;
   const name = `${longDay(date)} ${BODY_LABEL[body]} meeting`;
   const wanted = list.filter((x) => types.includes(x.document_type));
@@ -199,7 +220,7 @@ export async function docLookupResponse(env: Env, base: Base, d: DocLookup, toda
   const rows = await docRows(env, pick ? [pick.id] : []);
   const section = meetingIds[0] ? { path: `/meetings/${meetingIds[0]}`, label: `Open the ${name}`, hint: 'Agenda, packet, minutes and video' } : undefined;
   const meeting = { date, body };
-  const hasMinutes = list.some((x) => x.document_type === 'minutes');
+  const hasMinutes = Boolean(minutes);
   if (pick) {
     const what = pick.document_type === d.kind ? DOC_LABEL[d.kind] : DOC_LABEL[pick.document_type as keyof typeof DOC_LABEL];
     const verb = pick.document_type === 'minutes' ? 'are' : 'is';

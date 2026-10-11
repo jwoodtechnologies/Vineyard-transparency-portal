@@ -124,6 +124,25 @@ export function taxRateSentences(intent: TaxRateIntent, today: string, newer: Ne
 
   // A named year. A bare calendar year is the year the rate was adopted ("the 2025 tax rate" is the
   // rate adopted June 2025, for fiscal 2026); a fiscal year is matched as written.
+  // A bare year can mean the tax year (the rate adopted that year, for the fiscal year after) or the fiscal year
+  // ending that June. When the records hold both rates, both are given, each with its label.
+  if (intent.calendar) {
+    const y = intent.fiscalYear;
+    const taxYear = newer && newer.fiscalYear === y + 1 && newer.rate ? newer : null;
+    const fiscal = CERTIFIED_TAX_RATES.find((x) => x.fiscalYear === y);
+    if (taxYear && fiscal) {
+      out.push({ text: `${y} has two rates: the tax year ${y} rate and the fiscal ${y} rate.`, cite: [] });
+      if (taxYear.taxYear) newerFirst(taxYear);
+      else
+        out.push({
+          text: `The rate adopted in ${y}, for tax year ${y} and fiscal ${y + 1}, is ${taxYear.rate} (${taxYear.title}, ${longDate(taxYear.date) ?? taxYear.date}${taxYear.page ? `, page ${taxYear.page}` : ''}).`,
+          cite: [{ id: taxYear.id, title: taxYear.title, date: /^\d{4}-/.test(taxYear.date) ? taxYear.date : null, type: (taxYear.documentType === 'tax_rate' ? 'other' : taxYear.documentType) as DocumentType, page: taxYear.page }],
+        });
+      out.push({ text: `Vineyard's certified tax rate for fiscal ${y} (July 1, ${y - 1} to June 30, ${y}) is ${fiscal.rate} (adopted ${longDate(fiscal.adopted)}; ${fiscal.docKind} page ${fiscal.page}).`, cite: [tableCite(fiscal)] });
+      withResolution(fiscal);
+      return out;
+    }
+  }
   const fy = intent.calendar ? intent.fiscalYear + 1 : intent.fiscalYear;
   const say = intent.calendar ? `The rate adopted in ${intent.fiscalYear} is the fiscal ${fy} rate (July 1, ${fy - 1} to June 30, ${fy}).` : null;
   if (newer && newer.fiscalYear === fy && newer.rate) {

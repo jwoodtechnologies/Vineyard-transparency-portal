@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { consentItems, headingAt, namesIn, parseMinutes } from '../worker/lib/votes';
+import { consentItems, headingAt, motionRefs, namesIn, parseMinutes } from '../worker/lib/votes';
 
 const v = (m: { votes: Array<{ member: string; vote: string }> }) => Object.fromEntries(m.votes.map((x) => [x.member, x.vote]));
 
@@ -373,5 +373,79 @@ describe('sub-item numbers set on their own line', () => {
   it('joins a title that runs through the number', () => {
     const minutes = `Present: Councilmember Nair, Councilmember Lauret\n10. BUSINESS ITEMS\n\nApprove Holdaway Fields Development Agreement Amendment (Anthony\n\n10.2. Fletcher and David Herring)\n\nThe Council considered a proposed amendment.\n${vote('THE AMENDMENT')}`;
     expect(parseMinutes(minutes, '2026-06-09').motions[0]?.item).toBe('10.2 Approve Holdaway Fields Development Agreement Amendment (Anthony Fletcher and David Herring)');
+  });
+});
+
+// June 23, 2026 City Council minutes (doc_f7aa0533b44d693c), pages 1 to 3 as the archive's scan reads them, abridged.
+describe('a motion names only the measures in its own words', () => {
+  const minutes = `NOTICE OF A REGULAR
+
+CITY COUNCIL MEETING
+
+June 23, 2026, at 6:00 PM
+
+Present: Absent:
+
+Mayor Zack Stratton Council Member McCumber
+
+Council Member Holdaway
+
+Council Member Lauret
+
+Council Member Nair
+
+Council Member Wood
+
+7, CONSENT ITEMS
+
+7.1. Approval of the June 9, 2026, City Council Meeting Minutes
+
+7.2. Ordinance 2026-06, Floodplain Ordinance Update
+
+MOTION: Council Member Holdaway motioned to approve the consentitems as
+
+presented. Council Member Wood seconded,the-motion. Yes: Counéil Members
+
+Holdaway, Lauret, Nair, and Wood. No: None. Motion. passed 4-0.
+
+8. BUSINESS ITEMS
+
+8.1. Approve Ordinance 2026-09, Stormwater Management Code Update (Naseem
+
+Ghandour)
+
+Naseem Ghandour presented a PowerPoint presentation on the needed code updates.
+
+MOTION: Council Member Holdaway motioned to approve Ordinance 2026-09,
+
+Stormwater Management Code Update as presented. Seconded by Council Member
+
+Lauret. Yes: Council Members Holdaway, Lauret, Nair, and Wood. No: None. Motion
+
+Passed 4-0.
+
+3.2. Bb Accept the Final FY 2026-2027 Budget (Evan Smith)
+
+MOTION: Council Member Holdaway motioned to-approve the Fiscal' Year 2026-2027
+Budget with an amendment for the road project suggested by Couricil Member Lauret.
+
+Seconded by Council Member Wood. Yes: Council Member Holdaway, Lauret, and
+
+Wood. No: Nair. MOTION PASSED 3-1,`;
+
+  it('leaves the next agenda heading out of a motion\'s references', () => {
+    const p = parseMinutes(minutes, '2026-06-23');
+    expect(p.motions.map((m) => [m.seconder, m.refs])).toEqual([
+      ['Wood', []],
+      ['Lauret', ['Ordinance 2026-09']],
+      ['Wood', []],
+    ]);
+    expect(v(p.motions[2])).toMatchObject({ Holdaway: 'yes', Lauret: 'yes', Wood: 'yes', Nair: 'no' });
+    expect(motionRefs('MOTION: approve item 5.4 as presented. (Ordinance 2026-07) Yes: Nair.\n\n5.5. Approve Resolution 2026-34')).toEqual(['Ordinance 2026-07']);
+  });
+
+  it('never takes a list of titles and last names for a full name', () => {
+    const p = parseMinutes(minutes, '2026-06-23');
+    expect(p.fullNames).toEqual({ Stratton: 'Zack Stratton' });
   });
 });

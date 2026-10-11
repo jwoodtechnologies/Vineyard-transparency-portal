@@ -372,3 +372,96 @@ describe('pure parts', () => {
     expect(suggestFollowUps({ engine: 'gpt' })).toEqual([]);
   });
 });
+
+// Chat suite run 38155123085 (October 11, 2026): the fixes below, each checked against the record named.
+describe('clarifying questions, month counts, minutes and motions read from the records', () => {
+  const addMotion = (env: Awaited<ReturnType<typeof seed>>, m: MotionSeed, votes: Array<[string, string]>) => {
+    const db = env.CATALOG_DB.db;
+    db.prepare(`INSERT INTO motions (id, document_id, meeting_id, body_id, meeting_date, seq, item, motion, mover, seconder, result, tally, unanimous, refs, page) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(m.id, m.doc, m.meeting, m.body, m.date, m.seq, m.item, m.motion, m.mover, m.seconder, m.result, m.tally, votes.every(([, v]) => v === 'yes') ? 1 : 0, JSON.stringify(m.refs ?? []), m.page);
+    for (const [member, vote] of votes) db.prepare(`INSERT INTO motion_votes (motion_id, member, vote, meeting_date, body_id) VALUES (?, ?, ?, ?, ?)`).run(m.id, member, vote, m.date, m.body);
+  };
+  const addDoc = (env: Awaited<ReturnType<typeof seed>>, id: string, title: string, date: string, body: string, meetingId: string) =>
+    env.CATALOG_DB.db
+      .prepare(
+        `INSERT INTO documents (id, slug, title, document_type, document_date, year, government_body_id, government_body_name, meeting_id, source_id, created_at, updated_at, first_seen_at, last_seen_at)
+         VALUES (?, ?, ?, 'minutes', ?, ?, ?, ?, ?, 'civicclerk', ?, ?, ?, ?)`,
+      )
+      .run(id, id, title, date, Number(date.slice(0, 4)), body, body === 'city-council' ? 'City Council' : 'Redevelopment Agency', meetingId, now, now, now, now);
+
+  it('names the bodies, the officials and the meeting dates in the question itself, and keeps the choices', async () => {
+    const env = await seed();
+    const bodies = await ask(env as unknown as Env, { question: 'What was approved at the September 15, 2026 meeting?' });
+    expect(bodies.answer).toBe('The City Council and the Redevelopment Agency both met on September 15, 2026. Which meeting do you mean?');
+    expect(bodies.clarify?.choices).toHaveLength(2);
+    const jacob = await ask(env as unknown as Env, { question: 'How did Jacob vote on Ordinance 2026-09?' });
+    expect(jacob.answer).toBe('Two officials are named Jacob: Council Member Holdaway and Council Member Wood. Which one do you mean?');
+    env.CATALOG_DB.db.prepare(`INSERT INTO motions (id, document_id, meeting_id, body_id, meeting_date, seq, item, motion, mover, seconder, result, tally, unanimous, refs, page) VALUES ('x:1', 'x', 'm', 'city-council', '2026-09-22', 1, 'Consent items', 'approve the consent items', null, null, 'carried', '4-0', 1, '[]', 1)`).run();
+    const month = await ask(env as unknown as Env, { question: 'What did the City Council vote on in September 2026?' });
+    expect(month.engine).toBe('clarify');
+    expect(month.answer).toBe('The City Council recorded votes at 3 meetings in September 2026: September 8, 2026; September 15, 2026; and September 22, 2026. Which meeting do you mean?');
+    expect(month.clarify?.choices.map((c) => c.label)).toEqual(['September 8, 2026', 'September 15, 2026', 'September 22, 2026']);
+    for (const r of [bodies, jacob, month]) expect(r.answer).not.toMatch(/[–—]/);
+  });
+
+  it('does not count a meeting whose only motions approve minutes or adjourn as a meeting with votes', async () => {
+    const env = await seed();
+    // The September 8, 2026 RDA meeting with only housekeeping motions recorded.
+    addMotion(env, { id: 'doc_d32abfbdbbab1c76:1', doc: 'doc_d32abfbdbbab1c76', meeting: 'mtg_cc_1674', body: 'redevelopment-agency', date: '2026-09-08', seq: 1, item: '2.1 Approval of the August 25, 2026 Minutes', motion: 'approve the minutes of August 25, 2026', mover: 'Parker McCumber', seconder: 'Jacob Wood', result: 'carried', tally: '5-0', page: 1 }, MEMBERS.map((m) => [m, 'yes']));
+    addMotion(env, { id: 'doc_d32abfbdbbab1c76:2', doc: 'doc_d32abfbdbbab1c76', meeting: 'mtg_cc_1674', body: 'redevelopment-agency', date: '2026-09-08', seq: 2, item: '4 Adjournment', motion: 'adjourn', mover: 'David Lauret', seconder: 'Jacob Wood', result: 'carried', tally: '5-0', page: 1 }, MEMBERS.map((m) => [m, 'yes']));
+    const r = await ask(env as unknown as Env, { question: 'What did the RDA vote on in September 2026?' });
+    expect(r.engine).toBe('votes-meeting');
+    expect(r.answer).toContain('September 15, 2026');
+    expect(r.answer).toContain('Rob Sant');
+  });
+
+  it('finds the minutes titled with the meeting date, not earlier minutes reprinted in its packet, and minutes filed under a later meeting', async () => {
+    const env = await seed();
+    // Filed under the September 8, 2026 meeting: the August 25 draft (an agenda item) beside the September 8 minutes.
+    addDoc(env, 'doc_7a0b2b44683f4559', '8.25.26 CC Minutes - Draft (City Council, 2026-09-08, item 1)', '2026-09-08', 'city-council', 'mtg_cc_1442');
+    const sep8 = await ask(env as unknown as Env, { question: 'Find the minutes for the September 8, 2026 City Council meeting' });
+    expect(sep8.citations[0]).toMatchObject({ documentId: 'doc_87aac14fa329d527', page: 1 });
+    // The September 15, 2026 RDA minutes: a draft filed under the October 13 meeting; the September 15 meeting holds only the September 8 draft.
+    env.CATALOG_DB.db.prepare(`INSERT INTO meetings (id, slug, title, government_body_id, government_body_name, meeting_type, meeting_date, source_id, created_at, updated_at) VALUES ('mtg_cc_1706', 'mtg_cc_1706', 'Redevelopment Agency Meeting', 'redevelopment-agency', 'Redevelopment Agency', 'regular', '2026-10-13', 'civicclerk', ?, ?)`).run(now, now);
+    addDoc(env, 'doc_f90799c6e8f89b75', '9.8.26 DRAFT RDA Minutes (Redevelopment Agency Board Meeting, 2026-09-15, item 1)', '2026-09-15', 'redevelopment-agency', 'mtg_cc_1677');
+    addDoc(env, 'doc_65bbcb853249cc0d', '9.15.26 DRAFT RDA Minutes FIN (Redevelopment Agency Board Meeting, 2026-10-13, item 1)', '2026-10-13', 'redevelopment-agency', 'mtg_cc_1706');
+    addDoc(env, 'doc_29fa094146ef6037', 'RDA September 2026 Advisor Report-Jared Tamez (Redevelopment Agency Board Meeting, 2026-10-13, item 1)', '2026-10-13', 'redevelopment-agency', 'mtg_cc_1706');
+    const rda = await ask(env as unknown as Env, { question: 'Find the minutes for the September 15, 2026 RDA meeting' });
+    expect(rda.engine).toBe('meeting-docs');
+    expect(rda.answer).toContain('9.15.26 DRAFT RDA Minutes FIN');
+    expect(rda.citations[0]).toMatchObject({ documentId: 'doc_65bbcb853249cc0d', page: 1 });
+    expect(rda.section?.path).toBe('/meetings/mtg_cc_1677');
+  });
+
+  it("says the minutes are not posted when the only minutes filed under a meeting are an earlier meeting's", async () => {
+    const env = await seed();
+    env.CATALOG_DB.db.exec("DELETE FROM documents WHERE id = 'doc_87aac14fa329d527'");
+    addDoc(env, 'doc_7a0b2b44683f4559', '8.25.26 CC Minutes - Draft (City Council, 2026-09-08, item 1)', '2026-09-08', 'city-council', 'mtg_cc_1442');
+    const r = await ask(env as unknown as Env, { question: 'Find the minutes for the September 8, 2026 City Council meeting' });
+    expect(r.engine).toBe('meeting-docs');
+    expect(r.answer).toContain('not posted yet');
+    expect(r.answer).not.toContain('8.25.26');
+    expect(r.answer).not.toMatch(DEAD_END);
+  });
+
+  it('answers who moved an ordinance from its own motion, not a consent motion printed above its heading', async () => {
+    const env = await seed();
+    // June 23, 2026 minutes (doc_f7aa0533b44d693c): the consent motion (Wood seconded) is printed just above "8.1. Approve Ordinance 2026-09";
+    // parser 18 stored it with that ordinance among its references.
+    addMotion(env, { id: 'doc_f7aa0533b44d693c:1', doc: 'doc_f7aa0533b44d693c', meeting: 'mtg_cc_1430', body: 'city-council', date: '2026-06-23', seq: 1, item: '7.2 Ordinance 2026-06, Floodplain Ordinance Update', motion: 'approve the consentitems as presented', mover: 'Jacob Holdaway', seconder: 'Jacob Wood', result: 'carried', tally: '4-0', refs: ['Ordinance 2026-09'], page: 2 }, MEMBERS.map((m) => [m, 'yes']));
+    const r = await ask(env as unknown as Env, { question: 'Who made the motion on Ordinance 2026-09?' });
+    expect(r.engine).toBe('votes-measure');
+    expect(r.answer.startsWith('Council Member Holdaway moved Ordinance 2026-09 and Council Member Lauret seconded.')).toBe(true);
+  });
+
+  it("keeps a former member's No vote when a set of minutes prints only the last name", async () => {
+    const env = await seed();
+    // Ezra Nair left the council in September 2026; earlier minutes print his full name.
+    for (let i = 0; i < 5; i++) addMotion(env, { id: `old:${i}`, doc: 'old', meeting: 'mtg_old', body: 'city-council', date: '2026-03-10', seq: i + 1, item: `7.${i + 1} Appointment`, motion: `approve appointment ${i}`, mover: 'Ezra Nair', seconder: 'David Lauret', result: 'carried', tally: '5-0', page: 3 }, [['Ezra Nair', 'yes']]);
+    // June 23, 2026 minutes, page 3: "Yes: Council Member Holdaway, Lauret, and Wood. No: Nair. MOTION PASSED 3-1".
+    addMotion(env, { id: 'doc_f7aa0533b44d693c:3', doc: 'doc_f7aa0533b44d693c', meeting: 'mtg_cc_1430', body: 'city-council', date: '2026-06-23', seq: 3, item: '3.2 Bb Accept the Final FY 2026-2027 Budget (Evan Smith)', motion: 'to-approve the Fiscal Year 2026-2027 Budget with an amendment for the road project', mover: 'Jacob Holdaway', seconder: 'Jacob Wood', result: 'carried', tally: '3-1', page: 3 }, [['David Lauret', 'yes'], ['Jacob Holdaway', 'yes'], ['Jacob Wood', 'yes'], ['Nair', 'no']]);
+    const r = await ask(env as unknown as Env, { question: 'Did anyone vote no at the June 23, 2026 City Council meeting?' });
+    expect(r.engine).toBe('votes-meeting');
+    expect(r.answer).toContain('2026-2027 Budget');
+    expect(r.answer).toContain('Voting No: Council Member Nair.');
+  });
+});

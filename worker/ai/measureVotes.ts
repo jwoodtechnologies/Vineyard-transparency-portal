@@ -57,10 +57,24 @@ export interface MeasureMotion {
   votes: Array<{ member: string; vote: string }>;
 }
 
+const refRe = (ref: MeasureRef) => new RegExp(`\\b(${ref.kind === 'Ordinance' ? 'ordinance|ord\\.?' : 'resolution|res\\.?'})\\s*(?:no\\.?\\s*)?${ref.year}\\s*[-\\u2010-\\u2015]\\s*0*${ref.seq}(?![\\d])`, 'i');
+
 /** True when the motion is about this ordinance or resolution (its recorded refs, agenda item or wording). */
 export function motionIsAbout(m: Pick<MeasureMotion, 'refs' | 'item' | 'motion'>, ref: MeasureRef): boolean {
-  const re = new RegExp(`\\b(${ref.kind === 'Ordinance' ? 'ordinance|ord\\.?' : 'resolution|res\\.?'})\\s*(?:no\\.?\\s*)?${ref.year}\\s*[-\\u2010-\\u2015]\\s*0*${ref.seq}(?![\\d])`, 'i');
+  const re = refRe(ref);
   return [...m.refs, m.item ?? '', m.motion].some((t) => re.test(t));
+}
+
+/**
+ * The motion that decided a measure, from the motions about it, newest first: one whose agenda item or
+ * wording names the measure comes before one that only lists it among its references, then the newest
+ * with a recorded result and roll call.
+ */
+export function decidingMotion<T extends Pick<MeasureMotion, 'refs' | 'item' | 'motion' | 'result' | 'votes'>>(newestFirst: T[], ref: MeasureRef): T | null {
+  const re = refRe(ref);
+  const direct = newestFirst.filter((m) => re.test(m.item ?? '') || re.test(m.motion));
+  const pool = direct.length ? direct : newestFirst;
+  return pool.find((m) => m.result !== 'unknown' && m.votes.length) ?? pool.find((m) => m.result !== 'unknown') ?? pool[0] ?? null;
 }
 
 const bodyOf = (id: string | null): MeetingBody => (id === 'redevelopment-agency' || id === 'planning-commission' ? id : 'city-council');
