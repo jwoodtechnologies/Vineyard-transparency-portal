@@ -106,6 +106,7 @@ export function toSource(row: Row): SourceRegistryEntry {
       ...(row.status_message ? { message: String(row.status_message) } : {}),
     },
     documentCount: num(row.document_count),
+    lastNewRecordAt: str(row.last_new_record_at),
   };
 }
 

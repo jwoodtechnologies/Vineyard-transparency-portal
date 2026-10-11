@@ -50,6 +50,8 @@ export type DocumentType =
   | 'note'
   | 'web_link'
   | 'resident_submission'
+  | 'tax_rate'
+  | 'election_result'
   | 'other';
 
 export type CategoryId =
@@ -137,6 +139,8 @@ export interface SourceRegistryEntry {
   description?: string;
   health?: SourceHealth;
   documentCount?: number | null;
+  /** When the newest record from this source was first seen (documents.first_seen_at). */
+  lastNewRecordAt?: ISODateTime | null;
   isDemo?: boolean;
 }
 

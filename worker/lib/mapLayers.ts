@@ -28,7 +28,21 @@ export interface MapLayerDef {
   offset?: number;
   on?: boolean;
   minZoom?: number;
+  /** Service root when the layer is not one of the city's (default BASE). */
+  base?: string;
+  /** Only features crossing this box, [west, south, east, north] in degrees. */
+  envelope?: [number, number, number, number];
 }
+
+/**
+ * UDOT's public project list (UDOT Open Data, "Projects as Lines"): projects in or touching Vineyard.
+ * The same keywords and box are used by the nightly records job (ingest/statesources.py UDOT_KEYWORDS;
+ * a test keeps the two lists equal). Abandoned and finished projects are left off the map.
+ */
+export const UDOT_BASE = 'https://services.arcgis.com/pA2nEVnB6tquxgOW/arcgis/rest/services/';
+export const UDOT_KEYWORDS = ['VINEYARD', 'GENEVA', 'SR-114', 'SR-176', '800 N', '1600 N', 'SR-241', 'FRONTRUNNER', 'FRONT RUNNER', 'COMMUTER RAIL', 'DOUBLE TRACK'];
+export const UDOT_ENVELOPE: [number, number, number, number] = [-111.8, 40.26, -111.69, 40.345];
+export const UDOT_WHERE = `pin_stat_nm NOT IN ('Abandoned', 'Closed', 'Close Out') AND (${UDOT_KEYWORDS.flatMap((k) => ['pin_desc', 'proj_loc'].map((f) => `UPPER(${f}) LIKE '%${k}%'`)).join(' OR ')})`;
 
 export const MAP_LAYERS: MapLayerDef[] = [
   { key: 'boundary', label: 'City boundary', group: 'Land', path: 'Vineyard_City_Boundary/FeatureServer/0', fields: ['NAME'], geometry: 'polygon', on: true },
@@ -82,6 +96,19 @@ export const MAP_LAYERS: MapLayerDef[] = [
   { key: 'parks', label: 'Parks', group: 'Places', path: 'VNY_PWPR_Park/FeatureServer/7', fields: ['NAME', 'ACRES', 'TYPE', 'STATUS'], geometry: 'polygon' },
   { key: 'amenities', label: 'Park amenities', group: 'Places', path: 'VNY_PWPR_Amenities/FeatureServer/122', fields: ['Facility', 'Notes'], geometry: 'point', minZoom: 14 },
   { key: 'schools', label: 'Schools', group: 'Places', path: 'VNY_AD_Schools/FeatureServer/0', fields: ['Name', 'Address'], geometry: 'point' },
+  {
+    key: 'udot',
+    label: 'UDOT projects',
+    group: 'Streets',
+    base: UDOT_BASE,
+    path: 'Projects_as_Lines/FeatureServer/0',
+    // Public project fields only (no contact names, phone numbers or emails).
+    fields: ['pin', 'pin_desc', 'pin_stat_nm', 'proj_loc', 'public_desc', 'planned_construction_year'],
+    where: UDOT_WHERE,
+    envelope: UDOT_ENVELOPE,
+    geometry: 'line',
+    attribution: 'Projects: UDOT Open Data',
+  },
   {
     key: 'businesses',
     label: 'Businesses',
@@ -279,6 +306,6 @@ export function layerQueryUrl(key: string, where: string, fields?: string[]): st
   if (!layer || !layer.path) return null;
   const outFields = (fields ?? layer.fields).filter((f) => layer.fields.includes(f));
   const p = new URLSearchParams({ where, outFields: outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '6', f: 'geojson', resultRecordCount: '200' });
-  return `${BASE}${layer.path}/query?${p.toString()}`;
+  return `${layer.base ?? BASE}${layer.path}/query?${p.toString()}`;
 }
 

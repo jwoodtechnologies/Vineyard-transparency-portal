@@ -88,7 +88,7 @@ export function taxRateSentences(intent: TaxRateIntent, today: string, newer: Ne
   };
   const newerFirst = (n: NewerRateRecord) => {
     const date = longDate(n.date) ?? n.date;
-    const cite = [{ id: n.id, title: n.title, date: n.date, type: (n.documentType === 'tax_rate' ? 'other' : n.documentType) as DocumentType, page: n.page }];
+    const cite = [{ id: n.id, title: n.title, date: /^\d{4}-/.test(n.date) ? n.date : null, type: (n.documentType === 'tax_rate' ? 'other' : n.documentType) as DocumentType, page: n.page }];
     if (n.rate) out.push({ text: `The newest certified tax rate on file for Vineyard is ${n.rate} for fiscal ${n.fiscalYear} (${n.title}, ${date}${n.page ? `, page ${n.page}` : ''}).`, cite });
     else {
       out.push({ text: `A fiscal ${n.fiscalYear} tax rate record is in the archive: ${n.title}, ${date}. Open it for the rate.`, cite });
@@ -167,29 +167,31 @@ export async function newerRateRecord(env: Env): Promise<NewerRateRecord | null>
   // Rates for the fiscal year after the table's newest are adopted from May of that year on.
   const since = `${top.fiscalYear}-05-01`;
   const rows = await env.CATALOG_DB.prepare(
-    `SELECT id, title, document_date, document_type, source_id, search_shard FROM documents
-     WHERE document_date >= ?
+    `SELECT id, title, document_date, document_type, source_id, search_shard, year FROM documents
+     WHERE (document_date >= ? OR (document_date IS NULL AND document_type = 'tax_rate' AND source_id = ? AND year >= ?))
        AND (document_type = 'tax_rate' OR source_id = ?
             OR (document_type IN ('resolution', 'ordinance') AND (lower(title) LIKE '%certified tax rate%' OR lower(title) LIKE '%property tax rate%' OR lower(title) LIKE '%tax rate%')))
-     ORDER BY document_date DESC LIMIT 10`,
+     ORDER BY coalesce(document_date, (year + 1) || '-01-01') DESC LIMIT 10`,
   )
-    .bind(since, COUNTY_TAX_SOURCE)
-    .all<{ id: string; title: string; document_date: string | null; document_type: string; source_id: string; search_shard: number | null }>()
+    .bind(since, COUNTY_TAX_SOURCE, top.fiscalYear, COUNTY_TAX_SOURCE)
+    .all<{ id: string; title: string; document_date: string | null; document_type: string; source_id: string; search_shard: number | null; year: number | null }>()
     .then((r) => r.results ?? [])
     .catch(() => []);
   const repo = new SearchRepository(env);
   for (const row of rows) {
-    if (!row.document_date) continue;
+    // Utah County's tax rate pages print the tax year, not a date: tax year 2026 rates are the fiscal 2027 rates.
+    const taxYear = !row.document_date && row.document_type === 'tax_rate' && row.year ? Number(row.year) : null;
+    if (!row.document_date && !taxYear) continue;
     const county = row.document_type === 'tax_rate' || row.source_id === COUNTY_TAX_SOURCE;
     if (!county && (!RATE_TITLE.test(row.title) || OTHER_TITLE.test(row.title))) continue;
-    const fiscalYear = rateFiscalYear(row.document_date);
+    const fiscalYear = taxYear ? taxYear + 1 : rateFiscalYear(row.document_date as string);
     if (fiscalYear <= top.fiscalYear) continue;
     let found: { rate: string; page: number | null } | null = null;
     if (row.search_shard != null && repo.activeShards.includes(Number(row.search_shard))) {
       const chunks = await repo.documentChunks(Number(row.search_shard), row.id).catch(() => []);
       found = rateInText(chunks, county);
     }
-    return { id: row.id, title: row.title, date: row.document_date, documentType: row.document_type, fiscalYear, rate: found?.rate ?? null, page: found?.page ?? null };
+    return { id: row.id, title: row.title, date: row.document_date ?? `tax year ${taxYear}`, documentType: row.document_type, fiscalYear, rate: found?.rate ?? null, page: found?.page ?? null };
   }
   return null;
 }

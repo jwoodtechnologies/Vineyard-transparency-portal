@@ -4762,6 +4762,13 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 }
 .dark .vc-add-error { color: #ff9b8f; }
 
+/* Sources */
+.vc-source-intro { font-size: 0.88rem; color: var(--vc-muted); margin: 0 0 12px; }
+.vc-source-desc { font-size: 0.88rem; color: var(--vc-ink); margin: 0 0 10px; }
+.vc-source-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+.vc-source-facts dt { font-size: 0.72rem; color: var(--vc-muted); }
+.vc-source-facts dd { margin: 0; font-size: 0.86rem; color: var(--vc-ink); }
+@media (max-width: 420px) { .vc-source-facts { grid-template-columns: 1fr 1fr; } }
 /* ---------------------------------------------------------------- header search, result chips, CSV, RSS */
 .vc-hsearch {
   position: relative;

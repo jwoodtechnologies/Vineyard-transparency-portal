@@ -1,0 +1,148 @@
+{
+ "features": [
+  {
+   "attributes": {
+    "pin": 21883,
+    "pin_desc": "UTN: Vineyard Connector Trail",
+    "pin_stat_nm": "Active",
+    "proj_loc": "Vineyard Connector Rd in Orem - Trail (separated from roadway)",
+    "public_desc": "Trail - New Facility",
+    "concept_desc": "Trail - New Facility",
+    "planned_construction_year": 2025,
+    "forecast_st_yr": 2027,
+    "project_value": 6500000,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": null,
+    "substantially_complete_date": null
+   }
+  },
+  {
+   "attributes": {
+    "pin": 18428,
+    "pin_desc": "SR-241;Orem 1600 N from 1200 W to State Street",
+    "pin_stat_nm": "Under Construction",
+    "proj_loc": "Cnty:FA-2946; MP 5.24 - 5.25 & SR-241; MP .50 - 1.56",
+    "public_desc": "Widen SR-241 to increase capacity between I-15 and US-89",
+    "concept_desc": "Widen Existing Facility",
+    "planned_construction_year": 2024,
+    "forecast_st_yr": 2025,
+    "project_value": 64314315,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": null,
+    "substantially_complete_date": null
+   }
+  },
+  {
+   "attributes": {
+    "pin": 16790,
+    "pin_desc": "Vineyard Commuter Rail Station",
+    "pin_stat_nm": "Closed",
+    "proj_loc": "New Commuter Rail Station Near Vineyard Connector Rd.",
+    "public_desc": "Build new commuter rail station in Vineyard",
+    "concept_desc": "Other",
+    "planned_construction_year": 2019,
+    "forecast_st_yr": 2021,
+    "project_value": 20442375.56,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": 1,
+    "substantially_complete_date": "2022-04-15T00:00:00+00:00"
+   }
+  },
+  {
+   "attributes": {
+    "pin": 18428,
+    "pin_desc": "SR-241;Orem 1600 N from 1200 W to State Street",
+    "pin_stat_nm": "Under Construction",
+    "proj_loc": "Cnty:FA-2946; MP 5.24 - 5.25 & SR-241; MP .50 - 1.56",
+    "public_desc": "Widen SR-241 to increase capacity between I-15 and US-89",
+    "concept_desc": "Widen Existing Facility",
+    "planned_construction_year": 2024,
+    "forecast_st_yr": 2025,
+    "project_value": 64314315,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": null,
+    "substantially_complete_date": null
+   }
+  },
+  {
+   "attributes": {
+    "pin": 16790,
+    "pin_desc": "Vineyard Commuter Rail Station",
+    "pin_stat_nm": "Closed",
+    "proj_loc": "New Commuter Rail Station Near Vineyard Connector Rd.",
+    "public_desc": "Build new commuter rail station in Vineyard",
+    "concept_desc": "Other",
+    "planned_construction_year": 2019,
+    "forecast_st_yr": 2021,
+    "project_value": 20442375.56,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": 1,
+    "substantially_complete_date": "2022-04-15T00:00:00+00:00"
+   }
+  },
+  {
+   "attributes": {
+    "pin": 21883,
+    "pin_desc": "UTN: Vineyard Connector Trail",
+    "pin_stat_nm": "Active",
+    "proj_loc": "Vineyard Connector Rd in Orem - Trail (separated from roadway)",
+    "public_desc": "Trail - New Facility",
+    "concept_desc": "Trail - New Facility",
+    "planned_construction_year": 2025,
+    "forecast_st_yr": 2027,
+    "project_value": 6500000,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": null,
+    "substantially_complete_date": null
+   }
+  },
+  {
+   "attributes": {
+    "pin": 21883,
+    "pin_desc": "UTN: Vineyard Connector Trail",
+    "pin_stat_nm": "Active",
+    "proj_loc": "Vineyard Connector Rd in Orem - Trail (separated from roadway)",
+    "public_desc": "Trail - New Facility",
+    "concept_desc": "Trail - New Facility",
+    "planned_construction_year": 2025,
+    "forecast_st_yr": 2027,
+    "project_value": 6500000,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": null,
+    "substantially_complete_date": null
+   }
+  },
+  {
+   "attributes": {
+    "pin": 19890,
+    "pin_desc": "Vineyard Connector Overpass",
+    "pin_stat_nm": "Under Construction",
+    "proj_loc": "ped structure over future Vineyard connector road",
+    "public_desc": "This project will construct a pedestrian structure in Vineyard over the new Vineyard Connector segment from 800 N to 1600N. This ped structure will connect the Vineyard Frontrunner Station to Utah Lake.\n",
+    "concept_desc": "New Capacity",
+    "planned_construction_year": 2023,
+    "forecast_st_yr": 2024,
+    "project_value": 7000000,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": 1,
+    "substantially_complete_date": null
+   }
+  },
+  {
+   "attributes": {
+    "pin": 12156,
+    "pin_desc": "Vineyard Connector; Main St. to 2000 W",
+    "pin_stat_nm": "Abandoned",
+    "proj_loc": "Vineyard Connector; Main St. to 2000 W",
+    "public_desc": "New Capacity",
+    "concept_desc": "New Capacity",
+    "planned_construction_year": 2020,
+    "forecast_st_yr": 2020,
+    "project_value": 0,
+    "sponsor_name": "UTAH DEPT. OF TRANSPORTATION",
+    "pct_complete": null,
+    "substantially_complete_date": null
+   }
+  }
+ ]
+}

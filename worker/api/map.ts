@@ -36,7 +36,13 @@ export function upstreamUrl(layer: MapLayerDef, page: number): string {
   // Paging needs a stable order; only multi-page layers ask for it (some layers' ID field is FID, not OBJECTID).
   if ((layer.pages ?? 1) > 1) p.set('orderByFields', 'OBJECTID');
   if (layer.offset) p.set('maxAllowableOffset', String(layer.offset));
-  return `${BASE}${layer.path}/query?${p.toString()}`;
+  if (layer.envelope) {
+    p.set('geometry', layer.envelope.join(','));
+    p.set('geometryType', 'esriGeometryEnvelope');
+    p.set('inSR', '4326');
+    p.set('spatialRel', 'esriSpatialRelIntersects');
+  }
+  return `${layer.base ?? BASE}${layer.path}/query?${p.toString()}`;
 }
 
 /** GET /api/map/layers/:key?page=0 → GeoJSON FeatureCollection, cached for 12 hours. */

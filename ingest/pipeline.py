@@ -72,7 +72,9 @@ def new_run_id() -> str:
 # --------------------------------------------------------------------------------------------- crawl
 
 def sync_sources(api: PortalApi) -> None:
-    api.post("/sources", {"sources": SOURCES, "retire": RETIRED_SOURCES})
+    from .statesources import SOURCES as STATE_SOURCES
+
+    api.post("/sources", {"sources": SOURCES + STATE_SOURCES, "retire": RETIRED_SOURCES})
 
 
 def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | None = None, manifest_path: str | None = None, civicclerk_since: str | None = None) -> RunCounts:
@@ -160,6 +162,13 @@ def crawl(api: PortalApi, client: PoliteClient, run_id: str, only: set[str] | No
         except (HttpFailure, RobotsDisallowed) as e:
             statuses.append({"id": "ucso-press-releases", "status": "blocked" if isinstance(e, RobotsDisallowed) else "unreachable", "message": str(e)[:300]})
             log(f"Sheriff's Office feed failed: {e}")
+
+    # County and state sources (tax rates, county parcels, UDOT projects, State Auditor filed reports).
+    from . import statesources
+
+    state_ids = {x["id"] for x in statesources.SOURCES}
+    if not only or only & state_ids:
+        statuses += statesources.run(api, client, enqueue, (only & state_ids) if only else None)
 
     api.post("/sources/status", {"statuses": statuses})
     log(f"Queued/refreshed {counts.discovered} document URLs")

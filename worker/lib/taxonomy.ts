@@ -31,6 +31,8 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   note: 'Note',
   web_link: 'Link',
   resident_submission: 'Resident submission',
+  tax_rate: 'Tax rates',
+  election_result: 'Election results',
   other: 'Other record',
 };
 
@@ -45,14 +47,14 @@ export const CATEGORY_DEFS: Array<Omit<Category, 'documentCount'> & { id: Catego
   { id: 'resolutions', label: 'Resolutions', description: 'Resolutions.', documentTypes: ['resolution'] },
   { id: 'contracts', label: 'Contracts & agreements', description: 'Contracts, interlocal and professional services agreements.', documentTypes: ['contract', 'interlocal_agreement', 'professional_services_agreement'] },
   { id: 'development_agreements', label: 'Development agreements', description: 'Development agreements.', documentTypes: ['development_agreement'] },
-  { id: 'budgets_finance', label: 'Budgets & finance', description: 'Budgets, amendments and financial reports.', documentTypes: ['budget', 'financial_report'] },
+  { id: 'budgets_finance', label: 'Budgets & finance', description: 'Budgets, amendments and financial reports.', documentTypes: ['budget', 'financial_report', 'tax_rate'] },
   { id: 'audits', label: 'Audits', description: 'Independent and state audits.', documentTypes: ['audit'] },
   { id: 'planning_land_use', label: 'Planning & land use', description: 'Plans, staff reports and land-use records.', documentTypes: ['plan', 'staff_report'] },
   { id: 'public_notices', label: 'Public notices', description: 'Published public notices.', documentTypes: ['public_notice'] },
   { id: 'reports_studies', label: 'Reports & studies', description: 'Studies, reports, memoranda and presentations.', documentTypes: ['study', 'memorandum', 'presentation'] },
   { id: 'procurement', label: 'Procurement', description: 'Bids, RFPs and procurement records.', documentTypes: ['procurement'] },
   { id: 'maps', label: 'Maps', description: 'Maps.', documentTypes: ['map'] },
-  { id: 'other', label: 'Other records', description: 'Records not in another collection.', documentTypes: ['other', 'correspondence', 'exhibit', 'proclamation', 'municipal_code', 'project', 'note', 'web_link'] },
+  { id: 'other', label: 'Other records', description: 'Records not in another collection.', documentTypes: ['other', 'correspondence', 'exhibit', 'proclamation', 'municipal_code', 'project', 'note', 'web_link', 'election_result'] },
   { id: 'resident_submissions', label: 'Resident submitted', description: 'Added by residents. Not city records.', documentTypes: ['resident_submission'] },
 ];
 

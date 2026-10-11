@@ -1,0 +1,84 @@
+{
+ "results": [
+  {
+   "salesforce_report_document_id": "f640b5a2-bf7f-4bbb-9202-e6e355fef6f5",
+   "entity_id": 611,
+   "entity_name": "Vineyard City",
+   "entity_government_type": "City",
+   "report_type_standardized": "Approved Budget",
+   "report_year": 2026,
+   "report_status": "Approved",
+   "public_url": "https://storage.googleapis.com/sf_documents_by_id/015Do0000017jjyIAA.pdf",
+   "upload_date": "2025-07-17"
+  },
+  {
+   "salesforce_report_document_id": "07cc3063-30d7-426c-9a0b-84d57d4d8fc0",
+   "entity_id": 611,
+   "entity_name": "Vineyard City",
+   "entity_government_type": "City",
+   "report_type_standardized": "Financial Report",
+   "report_year": 2025,
+   "report_status": "Approved",
+   "public_url": "https://storage.googleapis.com/sf_documents_by_id/015Do000000rXKpIAM.pdf",
+   "upload_date": "2025-12-23"
+  },
+  {
+   "salesforce_report_document_id": "2974e12b-10dc-4a24-921e-cf1a7d7636e8",
+   "entity_id": 611,
+   "entity_name": "Vineyard City",
+   "entity_government_type": "City",
+   "report_type_standardized": "Fraud Risk Assessment",
+   "report_year": 2025,
+   "report_status": "Approved",
+   "public_url": "https://storage.googleapis.com/sf_documents_by_id/015Do0000017kQUIAY.pdf",
+   "upload_date": "2025-07-07"
+  },
+  {
+   "salesforce_report_document_id": "2d6d10be-97a8-4228-9bd5-b3f1e1c94a6b",
+   "entity_id": 611,
+   "entity_name": "Vineyard City",
+   "entity_government_type": "City",
+   "report_type_standardized": "Approved Budget",
+   "report_year": 2025,
+   "report_status": "Approved",
+   "public_url": "https://storage.googleapis.com/sf_documents_by_id/015Do0000017cK9IAI.pdf",
+   "upload_date": "2024-08-30"
+  },
+  {
+   "salesforce_report_document_id": "4a6989f8-bacc-4350-9623-9807e6f93796",
+   "entity_id": 611,
+   "entity_name": "Vineyard City",
+   "entity_government_type": "City",
+   "report_type_standardized": "Financial Certification",
+   "report_year": 2025,
+   "report_status": "Approved",
+   "public_url": "https://storage.googleapis.com/sf_documents_by_id/015Do000000rXKuIAM.pdf",
+   "upload_date": "2025-12-23"
+  },
+  {
+   "salesforce_report_document_id": "c8bb6474-6e08-43fc-9703-df09a4d555e1",
+   "entity_id": 611,
+   "entity_name": "Vineyard City",
+   "entity_government_type": "City",
+   "report_type_standardized": "Impact Fee Report",
+   "report_year": 2025,
+   "report_status": "Approved",
+   "public_url": "https://storage.googleapis.com/sf_documents_by_id/015Do000000rXEwIAM.xlsx",
+   "upload_date": "2025-12-22"
+  },
+  {
+   "salesforce_report_document_id": "f640b5a2-bf7f-4bbb-9202-e6e355fef6f5",
+   "entity_id": 611,
+   "entity_name": "Vineyard Water District",
+   "entity_government_type": "City",
+   "report_type_standardized": "Approved Budget",
+   "report_year": 2026,
+   "report_status": "Approved",
+   "public_url": "https://storage.googleapis.com/x/y.pdf",
+   "upload_date": "2025-07-17"
+  }
+ ],
+ "total_count": 76,
+ "page": 1,
+ "page_size": 50
+}

@@ -31,6 +31,8 @@ export const TYPE_LABEL: Record<DocumentType, string> = {
   note: 'Note',
   web_link: 'Link',
   resident_submission: 'Resident submission',
+  tax_rate: 'Tax rates',
+  election_result: 'Election results',
   other: 'Record',
 };
 

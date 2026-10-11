@@ -93,7 +93,7 @@ export async function handleStats(env: Env): Promise<Response> {
 }
 
 export async function listSources(env: Env, request: Request, id?: string): Promise<Response> {
-  const sql = `SELECT s.*, (SELECT count(*) FROM documents d WHERE d.source_id = s.id) AS document_count FROM sources s${id ? ' WHERE s.id = ?' : ''} ORDER BY s.name`;
+  const sql = `SELECT s.*, (SELECT count(*) FROM documents d WHERE d.source_id = s.id) AS document_count, (SELECT max(d.first_seen_at) FROM documents d WHERE d.source_id = s.id) AS last_new_record_at FROM sources s${id ? ' WHERE s.id = ?' : ''} ORDER BY s.name`;
   const stmt = env.CATALOG_DB.prepare(sql);
   const res = await (id ? stmt.bind(id) : stmt).all<Row>();
   const list = (res.results ?? []).map(toSource);

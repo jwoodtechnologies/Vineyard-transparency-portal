@@ -108,6 +108,7 @@ const LOOK: Record<string, Look> = {
   amenities: { color: '#2e6e45', kind: 'circle', radius: 3.5 },
   schools: { color: '#1c7ed6', kind: 'circle', radius: 7, label: 'Name', labelZoom: 12.5 },
   businesses: { color: '#e67700', kind: 'circle', radius: 4.5 },
+  udot: { color: '#5c7cfa', kind: 'line', width: 4, label: 'pin_desc', labelZoom: 14 },
 };
 
 /** Which property names a feature: used for search, the details card and "Ask about this". */
@@ -135,6 +136,7 @@ const NAME_FIELD: Record<string, string[]> = {
   greenspace: ['Category'],
   wayfinding: ['Description', 'Type'],
   boundary: ['NAME'],
+  udot: ['pin_desc'],
 };
 
 const LABEL: Record<string, string> = {
@@ -213,6 +215,12 @@ const LABEL: Record<string, string> = {
   Category: 'Category',
   Maintenance: 'Maintenance',
   Owner: 'Owner',
+  pin: 'UDOT project number (PIN)',
+  pin_desc: 'Project',
+  pin_stat_nm: 'Status (UDOT)',
+  proj_loc: 'Location',
+  public_desc: 'Description',
+  planned_construction_year: 'Planned construction year (UDOT)',
 };
 
 const HIDE = new Set(['OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Length', '__c', '__label', '__src', '__loading', 'CULDESAC', 'SITE_STATE']);
@@ -233,7 +241,7 @@ interface ParcelCardResponse {
 function fmt(key: string, v: unknown): string | null {
   if (v == null || v === '' || v === ' ') return null;
   // A zero acreage, value or year built in the parcel records means not recorded.
-  if ((key === 'ACREAGE' || key === 'MKT_CUR_VALUE' || key === 'GLA_WEIGHTED_YRBLT') && Number(v) === 0) return null;
+  if ((key === 'ACREAGE' || key === 'MKT_CUR_VALUE' || key === 'GLA_WEIGHTED_YRBLT' || key === 'planned_construction_year') && Number(v) === 0) return null;
   if ((key === 'FY27_Budget' || key === 'Total_Budget' || key === 'total_taxable' || key === 'MKT_CUR_VALUE') && Number.isFinite(Number(v))) return `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if ((key === 'OrdinanceDate' || key === 'LASTUPDATE') && Number.isFinite(Number(v)) && Number(v) > 1e11) return new Date(Number(v)).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   // City fiscal years run July to June: fiscal 2026 is July 2025 to June 2026.
@@ -313,7 +321,7 @@ interface Picked {
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
-const DATA_VERSION = 7;
+const DATA_VERSION = 8;
 const loaded = new Map<string, Promise<FC>>();
 /** Maps whose style has finished loading (tiles may still be streaming; layers can be added). */
 const styleReady = new WeakSet<maplibregl.Map>();
@@ -359,7 +367,7 @@ const PROJECT_CASING: Array<[number, number]> = [[11, 3.4], [14, 4.6], [17, 6.6]
 /** The parcel collection each map's source last took. */
 const parcelDrawn = new WeakMap<maplibregl.Map, FC>();
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda', 'ura'];
-const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'ura', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
 
 /** Readable area names: "GENEVA PHASE 2-MEGAPLEX" becomes "Geneva Phase 2, Megaplex". */
 function areaName(v: unknown, key: string): string {
@@ -483,6 +491,8 @@ function askFor(p: { layer: string; name: string; props: Record<string, unknown>
       return `What has Vineyard planned or installed for wayfinding signs${v('Type') ? ` (${v('Type')})` : ''}, and where do they go?`;
     case 'businesses':
       return `What has the City of Vineyard approved or discussed about ${name}?`;
+    case 'udot':
+      return `What has UDOT or Vineyard said about the ${name} project?`;
     case 'amenities':
       return `What plans, improvements and City Council decisions involve ${name} in Vineyard?`;
     default:
