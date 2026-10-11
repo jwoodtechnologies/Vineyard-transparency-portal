@@ -12,6 +12,7 @@ import type {
 } from '../../src/types/models';
 import { categoriesForType, normalizeType, toOcrStatus } from './taxonomy';
 import { parseJsonArray } from './util';
+import { displayTitle, recordStatus } from '../../src/lib/recordTitle';
 
 export type Row = Record<string, unknown>;
 
@@ -30,6 +31,10 @@ function categories(row: Row): CategoryId[] {
 }
 
 export function toDocumentSummary(row: Row): DocumentSummary {
+  // How the record reads in lists: a short title, the agenda item it came with, Draft or Adopted
+  // (adoption by motion is added by applyAdoptions in worker/api/records.ts).
+  const label = { title: String(row.title), documentType: normalizeType(row.document_type), date: str(row.document_date), documentNumber: str(row.document_number), governmentBodyId: str(row.government_body_id), governmentBodyName: str(row.government_body_name), sourceId: str(row.source_id), agendaItemId: str(row.agenda_item_id) };
+  const shown = displayTitle(label);
   return {
     id: String(row.id),
     slug: String(row.slug),
@@ -48,6 +53,9 @@ export function toDocumentSummary(row: Row): DocumentSummary {
     fileSize: num(row.file_size),
     categories: categories(row),
     currency: currency(row.currency),
+    displayTitle: shown.title,
+    agendaItemNumber: shown.item,
+    status: recordStatus(label, false, shown),
   };
 }
 

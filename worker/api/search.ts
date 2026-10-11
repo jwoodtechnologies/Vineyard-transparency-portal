@@ -5,7 +5,9 @@ import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES, CATEGORY_DEFS, categoriesForType,
 import { clampInt, isIsoDate, parseJsonArray } from '../lib/util';
 import { parseQuery } from '../search/query';
 import { SearchRepository, type ChunkHit } from '../search/SearchRepository';
-import { summariesByIds, catalogFilterSql, ORDER_BY } from './documents';
+import { summariesByIds, catalogFilterSql, ORDER_BY, agendaItems } from './documents';
+import { applyAdoptions } from './records';
+import { topicById } from '../../src/lib/recordTopics';
 import { toDocumentSummary, type Row } from '../lib/mappers';
 
 /** Reads the shared filter vocabulary (type, category, year, from, to, body, source, meeting, currency). */
@@ -21,6 +23,7 @@ export function filtersFromUrl(url: URL): SearchFilters {
   const ids = (key: string) => p.getAll(key).filter((v) => /^[A-Za-z0-9_.:-]{1,128}$/.test(v));
   const currency = p.getAll('currency').filter((c) => ['current', 'historical', 'superseded', 'amended', 'unknown'].includes(c)) as SearchFilters['currency'];
   const meeting = p.get('meeting');
+  const topic = p.get('topic');
   return {
     ...(types.length ? { documentTypes: types } : {}),
     ...(cats.length ? { categories: cats as SearchFilters['categories'] } : {}),
@@ -31,6 +34,7 @@ export function filtersFromUrl(url: URL): SearchFilters {
     ...(ids('source').length ? { sourceIds: ids('source') } : {}),
     ...(meeting && /^[A-Za-z0-9_.:-]{1,128}$/.test(meeting) ? { meetingId: meeting } : {}),
     ...(currency?.length ? { currency } : {}),
+    ...(topic && topicById(topic) ? { topic } : {}),
   };
 }
 
@@ -101,7 +105,7 @@ export async function runSearch(
       env.CATALOG_DB.prepare(`SELECT count(*) AS n FROM documents doc${sql}`).bind(...p).first<{ n: number }>(),
     ]);
     return {
-      items: (rows.results ?? []).map((r) => ({ document: toDocumentSummary(r), score: 0, excerpts: [], matches: [{ field: 'metadata', terms: [], page: null }], meetingTitle: null })),
+      items: (await applyAdoptions(env, (rows.results ?? []).map(toDocumentSummary), agendaItems(rows.results ?? []))).map((document) => ({ document, score: 0, excerpts: [], matches: [{ field: 'metadata', terms: [], page: null }], meetingTitle: null })),
       page: params.page,
       pageSize: params.pageSize,
       total: Number(count?.n ?? 0),

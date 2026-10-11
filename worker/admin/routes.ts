@@ -17,6 +17,9 @@ import { nowIso, utcDay, chunked } from '../lib/util';
 import { categoriesForType, normalizeType } from '../lib/taxonomy';
 import { adoptionDate, titleDate } from '../lib/adoptionDate';
 import { processVotes } from '../api/votes';
+import { adoptions } from '../api/records';
+import { adoptionKey, type Adoption } from '../lib/adoptions';
+import { numberedKindOf, recordNumberOf } from '../../src/lib/recordTitle';
 import { MEETING_COPY_GROUPS_SQL } from '../lib/meetingCopies';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
@@ -168,6 +171,23 @@ async function fixRecordDates(env: Env): Promise<{ cleared: number; dated: numbe
     await db.prepare('UPDATE documents SET document_date = ? WHERE id = ?').bind(date, d.id).run();
     await repo.shard(d.search_shard).prepare('UPDATE shard_documents SET document_date = ? WHERE document_id = ?').bind(date, d.id).run().catch(() => undefined);
     dated++;
+  }
+  // Still no date in the record's own text: the date of the meeting whose minutes record the motion
+  // adopting it (worker/lib/adoptions.ts), so an adopted ordinance never reads "day not stated".
+  const byMotion = await adoptions(env).catch(() => new Map<string, Adoption>());
+  if (byMotion.size) {
+    const left = await db.prepare(`SELECT id, title, document_type, document_number, year, government_body_id, government_body_name, search_shard FROM documents WHERE ${scope} AND document_date IS NULL`).all<Record<string, unknown>>();
+    for (const d of left.results ?? []) {
+      const input = { title: String(d.title ?? ''), documentType: String(d.document_type), documentNumber: (d.document_number as string | null) ?? null, governmentBodyId: (d.government_body_id as string | null) ?? null, governmentBodyName: (d.government_body_name as string | null) ?? null };
+      const kind = numberedKindOf(input);
+      const n = kind ? recordNumberOf(input) : null;
+      const a = kind && n ? byMotion.get(adoptionKey(kind, n)) : undefined;
+      if (!a?.date || (d.year != null && Number(a.date.slice(0, 4)) !== Number(d.year))) continue;
+      await db.prepare('UPDATE documents SET document_date = ? WHERE id = ? AND document_date IS NULL').bind(a.date, String(d.id)).run();
+      const shard = d.search_shard == null ? null : Number(d.search_shard);
+      if (shard != null && repo.activeShards.includes(shard)) await repo.shard(shard).prepare('UPDATE shard_documents SET document_date = ? WHERE document_id = ? AND document_date IS NULL').bind(a.date, String(d.id)).run().catch(() => undefined);
+      dated++;
+    }
   }
   // City website files filed without a date get the one their title prints (newsletters, email
   // updates, notices), so "this year" questions find them.

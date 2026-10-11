@@ -254,7 +254,7 @@ export interface DocumentEntity {
   name: string;
 }
 
-export interface Document {
+export interface Document extends RecordLabels {
   id: string;
   slug: string;
   title: string;
@@ -313,7 +313,18 @@ export type DocumentSummary = Pick<
   | 'categories'
   | 'currency'
   | 'isDemo'
-> & { description: string | null };
+> & { description: string | null } & RecordLabels;
+
+/**
+ * How a record reads in lists (src/lib/recordTitle.ts): a short title, the agenda item it came with,
+ * Draft or Adopted, and, for an adopted ordinance or resolution, the meeting that adopted it.
+ */
+export interface RecordLabels {
+  displayTitle?: string;
+  agendaItemNumber?: string | null;
+  status?: 'draft' | 'adopted' | null;
+  adoption?: { date: string | null; minutesDocumentId: string; page: number | null } | null;
+}
 
 export type VersionChangeStatus = 'original' | 'replaced' | 'amended' | 'unchanged' | 'removed_at_source';
 
@@ -453,6 +464,8 @@ export interface SearchFilters {
   sourceIds?: string[];
   meetingId?: string;
   currency?: RecordCurrency[];
+  /** A records home topic (src/lib/recordTopics.ts). */
+  topic?: string;
 }
 
 export interface SearchRequest {

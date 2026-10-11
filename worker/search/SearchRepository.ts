@@ -10,6 +10,7 @@
  * shard uses the same tokenizer, column weights and similar corpus statistics.
  */
 import type { Env } from '../env';
+import { topicById, topicSql } from '../../src/lib/recordTopics';
 import type { ChunkHit, ChunkInput, ShardDocumentInput, ShardFilters } from './types';
 import { fnv1a, parseSnippet } from './query';
 export type { ChunkHit, ChunkInput, ShardDocumentInput, ShardFilters } from './types';
@@ -102,6 +103,12 @@ export class SearchRepository {
     if (f.currency?.length) {
       clauses.push('d.currency IN (SELECT value FROM json_each(?))');
       params.push(JSON.stringify(f.currency));
+    }
+    const topic = topicById(f.topic);
+    if (topic) {
+      const t = topicSql(topic, 'd');
+      clauses.push(`(${t.sql})`);
+      params.push(...t.params);
     }
     return { sql: clauses.length ? ` AND ${clauses.join(' AND ')}` : '', params };
   }
