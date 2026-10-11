@@ -3066,7 +3066,10 @@ html.vc-locked .vc-landing {
 .vc-map-toast {
   position: absolute;
   left: 50%;
-  bottom: 1.2rem;
+  /* Above the legend, zoom and attribution controls so it never covers them. */
+  bottom: 5.5rem;
+  max-width: calc(100% - 2rem);
+  text-align: center;
   z-index: 5;
   transform: translateX(-50%);
   padding: 0.6rem 1rem;
@@ -4644,3 +4647,67 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-bud-proj-more { padding: 0; border: 0; background: none; font: inherit; font-size: 0.76rem; color: var(--vc-accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .vc-bud-projects > li > .vc-pd { margin: 0 0 0 24px; }
 @media (max-width: 480px) { .vc-bud-projects > li > .vc-pd { margin-left: 0; } }
+
+/* ------------------------------------------------------------------ touch targets
+ * On touch screens every control is at least 44 by 44 px (phone check, round 3). Row links and
+ * buttons grow; small inline markers keep their look and get a larger invisible hit area. */
+@media (pointer: coarse) {
+  .vc-ghost,
+  .vc-mic,
+  .vc-act,
+  .vc-chip,
+  .vc-wordmark-home,
+  .maplibregl-ctrl-group button,
+  .maplibregl-ctrl-attrib-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .maplibregl-ctrl-group button {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .maplibregl-ctrl-attrib-button {
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+  }
+  button:not(.vc-cite),
+  summary,
+  textarea,
+  input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
+  select,
+  .vc-meeting-link,
+  .vc-tag,
+  .vc-cp-link,
+  .vc-bud-proj-meta a[href],
+  .vc-bud-fine a[href],
+  .maplibregl-ctrl-attrib a[href],
+  li > a[href],
+  .vc-latest-more,
+  .vc-pd a[href],
+  .vc-snap a[href] {
+    min-height: 44px;
+  }
+  li > a[href],
+  .vc-latest-more,
+  .vc-pd a[href],
+  .vc-snap a[href],
+  .vc-meeting-link,
+  .vc-tag,
+  .vc-cp-link,
+  .vc-bud-proj-meta a[href],
+  .vc-bud-fine a[href],
+  .maplibregl-ctrl-attrib a[href],
+  .vc-sh-title,
+  .vc-bud-proj-more {
+    display: inline-flex;
+    align-items: center;
+  }
+  .vc-cite {
+    position: relative;
+  }
+  .vc-cite::after {
+    content: '';
+    position: absolute;
+    inset: -12px;
+  }
+}
