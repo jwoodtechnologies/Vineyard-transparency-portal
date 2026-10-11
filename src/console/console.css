@@ -4708,6 +4708,8 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-snap-table th { padding: 0.6rem 0.75rem; text-align: left; font-size: var(--vc-fs-xs); font-weight: 650; color: var(--vc-muted); border-bottom: 1px solid var(--vc-line-2); white-space: nowrap; }
 .vc-snap-table td { padding: 0.65rem 0.75rem; vertical-align: top; border-top: 1px solid var(--vc-line); color: var(--vc-ink-2); }
 .vc-snap-table td[data-first] { font-weight: 600; color: var(--vc-ink); }
+/* A status chip wraps inside its cell so every column fits. */
+.vc-snap-table td .vc-tag { justify-self: start; border-radius: var(--vc-radius-sm); height: auto; min-height: var(--vc-h-tag); padding-block: 0.2rem; white-space: normal; line-height: 1.3; }
 .vc-snap-text { margin-top: 0.6rem; font-size: var(--vc-fs-ui); line-height: 1.55; color: var(--vc-ink-2); }
 .vc-snap-text p { margin: 0 0 0.5rem; }
 @media (max-width: 699px) {
@@ -4719,7 +4721,6 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
   .vc-snap-table td[data-first] { font-size: var(--vc-fs-body); padding-bottom: 0.4rem; }
   .vc-snap-table td:not([data-first]) { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: var(--vc-sp-3); align-items: baseline; }
   .vc-snap-table td:not([data-first])::before { content: attr(data-label); font-size: var(--vc-fs-xs); font-weight: 500; color: var(--vc-muted); }
-  .vc-snap-table td .vc-tag { justify-self: start; height: auto; min-height: var(--vc-h-tag); padding-block: 0.2rem; white-space: normal; line-height: 1.3; }
 }
 
 /* project detail block (map project card, /construction rows, /budget projects) */
