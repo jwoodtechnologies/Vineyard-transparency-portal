@@ -362,6 +362,12 @@ export default function BudgetPage() {
       <header className="vc-page-head">
         <h1 className="vc-page-title">Budget</h1>
         {tab !== 'past' && <p className="vc-page-sub">Fiscal year 2026-2027 (FY27) · July 1, 2026 to June 30, 2027</p>}
+        {tab !== 'past' && b?.adoptionOrdinance && (
+          <p className="vc-page-sub">
+            Adopted {longDay(b.adopted)} by{' '}
+            {b.adoptionOrdinanceDoc ? <Link to={docHref(b.adoptionOrdinanceDoc)}>{b.adoptionOrdinance}</Link> : b.adoptionOrdinance}
+          </p>
+        )}
       </header>
 
       {load.status === 'loading' && (
@@ -450,6 +456,13 @@ export default function BudgetPage() {
                     <FileText size={13} /> FY 27 Final Budget (PDF)
                   </Link>
                 </li>
+                {b.adoptionOrdinance && b.adoptionOrdinanceDoc && (
+                  <li>
+                    <Link to={docHref(b.adoptionOrdinanceDoc)}>
+                      <FileText size={13} /> {b.adoptionOrdinance}, Final Budget for FY 2026-2027 (PDF)
+                    </Link>
+                  </li>
+                )}
                 <li>
                   <Link to={docHref(b.docs.slides)}>
                     <FileText size={13} /> FY 27 Budget slides (PDF)

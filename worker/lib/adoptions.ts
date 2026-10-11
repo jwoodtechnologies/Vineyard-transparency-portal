@@ -47,9 +47,10 @@ const kindFor = (word: string, body: string | null): NumberedKind | null => {
   return null;
 };
 
-function numbersIn(text: string, body: string | null, year: number | null): Array<{ kind: NumberedKind; number: string }> {
+/** The numbered measures a text names, for the series the body adopts; numbers years from the meeting are left out. */
+export function motionNumbers(text: string, body: string | null, year: number | null): Array<{ kind: NumberedKind; number: string }> {
   const out: Array<{ kind: NumberedKind; number: string }> = [];
-  for (const m of text.matchAll(NUM)) {
+  for (const m of text.replace(/[\u2012-\u2015]/g, '-').matchAll(NUM)) {
     const kind = kindFor(m[1], body);
     if (!kind) continue;
     const y = Number(m[2]);
@@ -67,7 +68,7 @@ export function adoptionsFrom(row: MotionRow): Adoption[] {
   if (!text || !ADOPTS.test(text) || NOT_ADOPTING.test(text)) return [];
   const year = row.meeting_date ? Number(row.meeting_date.slice(0, 4)) : null;
   const base = { date: row.meeting_date, motion: text, tally: row.tally ?? null, unanimous: Number(row.unanimous ?? 0) === 1, documentId: row.document_id, page: row.page ?? null };
-  const own = numbersIn(text, row.body_id, year).map((n) => ({ ...n, ...base, consent: false }));
+  const own = motionNumbers(text, row.body_id, year).map((n) => ({ ...n, ...base, consent: false }));
   if (own.length || !/consent/i.test(text) || !row.items) return own;
   let items: string[];
   try {
@@ -75,7 +76,7 @@ export function adoptionsFrom(row: MotionRow): Adoption[] {
   } catch {
     return [];
   }
-  return items.flatMap((it) => numbersIn(it, row.body_id, year)).map((n) => ({ ...n, ...base, consent: true }));
+  return items.flatMap((it) => motionNumbers(it, row.body_id, year)).map((n) => ({ ...n, ...base, consent: true }));
 }
 
 /** One adoption per measure: the motion that names it beats a consent list; the earliest meeting wins a tie. */

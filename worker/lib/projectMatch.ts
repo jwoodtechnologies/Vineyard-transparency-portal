@@ -17,7 +17,7 @@
  * A record goes to a project only when that project is the single best match among all funded
  * projects (`bestProject`); a tie goes to none.
  */
-import { BUDGET_ADOPTED, PROJECTS, PROJECT_FUNDS, type CapitalProject } from './budgetData';
+import { BUDGET_ADOPTED, BUDGET_ADOPTION_ORDINANCE, PROJECTS, PROJECT_FUNDS, type CapitalProject } from './budgetData';
 import { FY27_PLAN } from './capitalPlan';
 
 export interface FundedProject {
@@ -272,7 +272,7 @@ export function cleanLabel(s: string): string {
 }
 
 /** The council's (or the RDA board's) vote adopting the fiscal 2027 budget, held on the adoption date. */
-export function isBudgetAdoption(m: MotionLike): boolean {
+export function isBudgetAdoption(m: Pick<MotionLike, 'date' | 'result' | 'item' | 'motion'>): boolean {
   if (m.date !== BUDGET_ADOPTED || m.result !== 'carried') return false;
   const t = `${m.item ?? ''} ${m.motion}`.toLowerCase().replace(/[^a-z0-9\s\-–]/g, ' ');
   return /\bbudget\b/.test(t) && /(2026\s*[-–]\s*2027|\bfy\s*27\b|\bfy\s*2027\b|fiscal\s+year\s+2027)/.test(t) && !/\btentative\b|\bamending the\b|\bamendments? to the (?:fiscal|fy|budget|\d{4})/.test(t);
@@ -289,7 +289,8 @@ export function projectVotes(p: FundedProject, motions: MotionLike[], all: Funde
   const adoption = motions.filter(isBudgetAdoption);
   for (const body of bodies)
     for (const m of adoption.filter((x) => x.bodyId === body))
-      out.push({ kind: 'budget', label: body === 'redevelopment-agency' ? 'Approved the RDA budget for FY 2027' : 'Approved the FY 2027 budget', ...base(m) });
+      // The council's budget vote: the minutes do not print the ordinance number, Ordinance 2026-08 itself does (budgetData).
+      out.push({ kind: 'budget', label: body === 'redevelopment-agency' ? 'Approved the RDA budget for FY 2027' : 'Approved the FY 2027 budget', ...base(m), number: motionNumber(m) ?? (body === 'city-council' ? BUDGET_ADOPTION_ORDINANCE : null) });
   for (const m of motions) {
     if (!m.date || isBudgetAdoption(m)) continue;
     // A consent motion: the one consent item that names the project.

@@ -21,6 +21,7 @@ import { commissionAttendance, handleVotes, meetingMinutes, PC, queryMotions, SC
 import { findDraftMinutes, type DraftMinutes } from './draftMinutes';
 import { getConstruction } from './construction';
 import { getMapLayer } from './map';
+import { PROJECTS } from '../lib/budgetData';
 
 const BODY_NAME: Record<string, string> = { 'city-council': 'City Council', 'redevelopment-agency': 'Redevelopment Agency', 'planning-commission': 'Planning Commission' };
 
@@ -143,7 +144,9 @@ async function buildConstructionPage(env: Env, version: number): Promise<Record<
       .then((r) => r.json() as Promise<unknown>)
       .catch(() => null),
   ]);
-  return { version, builtAt: new Date().toISOString(), construction, projects };
+  // The adopted budget's capital projects, counted as /api/budget counts them, so /construction and /budget agree.
+  const budget = { projects: PROJECTS.length, total: PROJECTS.reduce((t, p) => t + p.amount, 0) };
+  return { version, builtAt: new Date().toISOString(), construction, projects, budget };
 }
 
 const pageKey = (name: string, year: number | null) => `${name}${year ? `:${year}` : ''}`;

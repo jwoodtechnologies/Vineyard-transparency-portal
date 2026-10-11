@@ -159,7 +159,8 @@ const OTHER_TITLE = /\b(sales|transient|room|energy|franchise|telecom\w*|resort|
 /** The rate a record's text states for Vineyard, with its page; null when no rate can be read exactly. */
 export function rateInText(chunks: Array<{ pageStart: number | null; text: string }>, countyRecord: boolean): { rate: string; page: number | null } | null {
   const pats = countyRecord
-    ? [/\bvineyard\s+(?:city|town)\b[^\n]{0,80}?(?:^|[\s:$])(0?\.\d{4,7})\b/i, /\bvineyard\b(?![^\n]{0,40}\b(?:rda|redevelopment|sid|special)\b)[^\n]{0,80}?(?:^|[\s:$])(0?\.\d{4,7})\b/i]
+    ? // "Vineyard City rate (tax unit VINE), tax areas 95, 96, 539, ... 548: 0.003460": the tax area list runs past 80 characters.
+      [/\bvineyard\s+(?:city|town)\b(?![^\n]{0,40}\b(?:rda|redevelopment|sid|special|pid)\b)[^\n]{0,200}?(?:^|[\s:$])(0?\.\d{4,7})\b/i, /\bvineyard\b(?![^\n]{0,40}\b(?:rda|redevelopment|sid|special)\b)[^\n]{0,80}?(?:^|[\s:$])(0?\.\d{4,7})\b/i]
     : [/certified\s+(?:property\s+)?tax\s+rate[^.]{0,200}?(?:^|[\s:$(])(0?\.\d{4,6})\b/i];
   for (const re of pats)
     for (const c of chunks) {

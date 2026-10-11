@@ -127,11 +127,15 @@ export function recordNumberOf(input: Pick<TitleInput, 'title' | 'documentNumber
   return null;
 }
 
+const RDA_MARK = /\bRDA\s+Res(?:olution)?\b|\bRes(?:olution)?\.?\s+(?:No\.?\s*)?RDA\b|\bRDA[-\s;]?(?:19|20)\d{2}\s*-|\bU-?(?:19|20)\d{2}\s*-?\s*\d/i;
+
 /** Which numbered series a record belongs to, when it is an ordinance or resolution. */
 export function numberedKindOf(input: Pick<TitleInput, 'title' | 'documentType' | 'governmentBodyId' | 'governmentBodyName'>): NumberedKind | null {
   if (input.documentType === 'ordinance') return 'ordinance';
   if (input.documentType !== 'resolution') return null;
-  const rda = input.governmentBodyId === 'redevelopment-agency' || /redevelopment/i.test(input.governmentBodyName ?? '') || /\bRDA\b/.test(input.title);
+  // The RDA series by its body, or by the RDA mark at the number ("RDA Resolution U2026-02", "Resolution RDA-2026-03",
+  // "RES U2025-01"). "RDA" in the subject ("Resolution 2026-15 RDA Audit Contract Extension") is a council resolution.
+  const rda = input.governmentBodyId === 'redevelopment-agency' || /redevelopment/i.test(input.governmentBodyName ?? '') || RDA_MARK.test(input.title);
   return rda ? 'rda-resolution' : 'resolution';
 }
 

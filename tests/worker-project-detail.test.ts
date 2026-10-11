@@ -154,7 +154,8 @@ describe('the votes behind a project', () => {
 
   it('uses the council vote for city funds and the RDA vote for the RDA fund', () => {
     const water = projectVotes(plan('Secondary Water Master Plan'), ALL);
-    expect(water.map((v) => [v.kind, v.label, v.number])).toEqual([['budget', 'Approved the FY 2027 budget', null]]);
+    // The minutes do not print the number; Ordinance 2026-08 itself says it adopted the FY 2026-2027 budget on June 23, 2026.
+    expect(water.map((v) => [v.kind, v.label, v.number])).toEqual([['budget', 'Approved the FY 2027 budget', 'Ordinance 2026-08']]);
     expect(water[0].votes).toHaveLength(4);
     expect(water[0].documentId).toBe('doc_f7aa0533b44d693c');
     const rda = projectVotes(plan('400 North & Mill Road Traffic Signal'), ALL);
@@ -166,7 +167,7 @@ describe('the votes behind a project', () => {
   it('adds a motion on the project itself after the budget vote', () => {
     const v = projectVotes(plan('Skate Park & Pump Track'), ALL);
     expect(v.map((x) => [x.kind, x.label, x.number, x.date])).toEqual([
-      ['budget', 'Approved the FY 2027 budget', null, '2026-06-23'],
+      ['budget', 'Approved the FY 2027 budget', 'Ordinance 2026-08', '2026-06-23'],
       ['project', 'Vineyard Skate Park Budget Allocation', 'Resolution 2026-13', '2026-03-10'],
     ]);
   });
