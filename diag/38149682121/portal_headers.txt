@@ -1,0 +1,98 @@
+== https://vineyardportal.org/
+HTTP/2 200 
+date: Sun, 11 Oct 2026 15:03:31 GMT
+content-type: text/html
+cf-cache-status: HIT
+cache-control: no-cache, max-age=0, must-revalidate
+etag: "0caf7b66b9ca49b35260fd6aa021a69d"
+strict-transport-security: max-age=15552000
+content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://basemap.nationalmap.gov https://gisaerials.utahcounty.gov; worker-src 'self' blob:; frame-src 'self' https://www.facebook.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+permissions-policy: camera=(), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+x-frame-options: DENY
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=UrjJXgBDgLep%2FtAae2Bd7EsxsStufJSgwmKDI8w7H2LkcHUPe9XSWw9U1nsscX8GvBHcYxC27tCysOOGViiIwEhu3SRLytOiaX%2FRXpccq28is1LAjI0LwIrUc3DPguUKaoZExgE%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+server: cloudflare
+cf-ray: a48ec082f8bfe7fa-ORD
+alt-svc: h3=":443"; ma=86400
+
+== https://vineyardportal.org/votes
+HTTP/2 200 
+date: Sun, 11 Oct 2026 15:03:31 GMT
+content-type: text/html
+cf-cache-status: HIT
+cache-control: no-cache, max-age=0, must-revalidate
+etag: "0caf7b66b9ca49b35260fd6aa021a69d"
+strict-transport-security: max-age=15552000
+content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://basemap.nationalmap.gov https://gisaerials.utahcounty.gov; worker-src 'self' blob:; frame-src 'self' https://www.facebook.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+permissions-policy: camera=(), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+x-frame-options: DENY
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=kKlGy95FASrNt5ZJuT1R6q3wMeQ8CLgYLgdsRoN0AhOBxufCxMFjECukb6PJ8RayJW2VOeJyMjU7vZA0QrMGz6G2u5HV8U8z7onHr4R8ttXTtr%2Byj8Ran5R7C9NVY68wYROhG7E%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+server: cloudflare
+cf-ray: a48ec083e950ae82-ORD
+alt-svc: h3=":443"; ma=86400
+
+== https://vineyardportal.org/theme-init.js
+HTTP/2 200 
+date: Sun, 11 Oct 2026 15:03:31 GMT
+content-type: text/javascript
+cf-cache-status: HIT
+cache-control: no-cache, max-age=0, must-revalidate
+etag: "331c901be0ef9f20ccb3fb7a1035fb25"
+strict-transport-security: max-age=15552000
+content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://basemap.nationalmap.gov https://gisaerials.utahcounty.gov; worker-src 'self' blob:; frame-src 'self' https://www.facebook.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+permissions-policy: camera=(), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+x-frame-options: DENY
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=MIFhu8W3EPyKt%2FSdHY0yf1T66Jp6oab0YtnOYbCYlGCaoPe5Cc9UWcGQE%2BzffLmeGZpmYKVfqJlbq80mutP124NTD8w8sTfKEOMrc4KOEQCVbnOiYeI4nPUp5urz0UrU8NhNiV0%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+server: cloudflare
+cf-ray: a48ec0845c12b271-ORD
+alt-svc: h3=":443"; ma=86400
+
+== https://vineyardportal.org/api/records/ordinances?year=2026
+HTTP/2 200 
+date: Sun, 11 Oct 2026 15:03:33 GMT
+content-type: application/json; charset=utf-8
+cache-control: public, max-age=600, stale-while-revalidate=3600
+strict-transport-security: max-age=15552000
+content-security-policy: default-src 'none'; frame-ancestors 'none'
+cross-origin-resource-policy: same-origin
+referrer-policy: strict-origin-when-cross-origin
+x-build: b8d55de2-28f4-454c-b88a-97faeededdec
+x-content-type-options: nosniff
+x-frame-options: DENY
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=8DMz2Z0086lcuDlP%2BndwT5EBDgiigJmtaIqZhRWqSlNbkYv22xKhJVNEf4t9Xg7IqpCLpJ%2BXFOierbGDGWe3EvMq5itdhzzMDAc3fWcsIVGmqfEygVFWalr7EdwNA7onVKZN%2Fa0%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+server: cloudflare
+cf-ray: a48ec084cfbae268-ORD
+alt-svc: h3=":443"; ma=86400
+
+== /assets/ConsolePage-CNoI_WBV.js
+HTTP/2 200 
+date: Sun, 11 Oct 2026 15:03:33 GMT
+content-type: text/javascript
+cf-cache-status: HIT
+cache-control: public, max-age=31536000, immutable
+etag: "7f4bc54707b2e579c30b5f50080dc71b"
+strict-transport-security: max-age=15552000
+content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://basemap.nationalmap.gov https://gisaerials.utahcounty.gov; worker-src 'self' blob:; frame-src 'self' https://www.facebook.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+cross-origin-opener-policy: same-origin
+permissions-policy: camera=(), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+x-frame-options: DENY
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=J0kORrI4cUBTHtxv3vHXVEHKKevPBBVR4dkEeiKMIC%2BYNmmdVgweTBlZfR8OBpAwlMLvGP%2FXFsBE32CamAuoi6PopKkr3ak3j7SHdWmq5zJX9iqzXh5Cw8Nkc9u2ONszA9mu%2F5w%3D"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+server: cloudflare
+cf-ray: a48ec092de2f7073-ORD
+alt-svc: h3=":443"; ma=86400
+
