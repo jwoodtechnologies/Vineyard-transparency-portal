@@ -38,6 +38,9 @@ export interface Budget {
   amended: string;
   /** The ordinance that adopted the amendment, e.g. "Ordinance 2026-10". */
   amendmentOrdinance: string;
+  /** The ordinance that adopted the budget ("Ordinance 2026-08") and its document; absent from an older cached response. */
+  adoptionOrdinance?: string;
+  adoptionOrdinanceDoc?: string;
   docs: { book: string; slides: string; amendment: string; amendmentSummary: string; tentative: string };
   funds: BudgetFund[];
   general: {

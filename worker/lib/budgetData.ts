@@ -20,6 +20,13 @@
 export const BUDGET_FISCAL_YEAR = 2027;
 // Source: FY 27 Final Budget (adopted June 23, 2026), page not recorded (doc_2c248c52cbadfa22)
 export const BUDGET_ADOPTED = '2026-06-23';
+// Source: Ordinance 2026-08 "Final Budget For FY 2026-2027" (doc_600641aa07c8b64c), page 1: "Adopted by Ord. 2026-08 on
+// 6/23/2026", "ORDINANCE NO. 2026-08 ... ADOPTING THE FINAL BUDGET FOR THE FISCAL YEAR BEGINNING JULY 1, 2026, AND ENDING
+// JUNE 30, 2027". The adopting motion: 06/23/2026 City Council minutes, page 3 (doc_f7aa0533b44d693c), item "Accept the
+// Final FY 2026-2027 Budget", motion "to approve the Fiscal Year 2026-2027 Budget with an amendment for the road project",
+// passed 3-1 (Holdaway, Lauret, Wood yes; Nair no). The minutes do not print the ordinance number; the ordinance does.
+export const BUDGET_ADOPTION_ORDINANCE = 'Ordinance 2026-08';
+export const BUDGET_ADOPTION_ORDINANCE_DOC = 'doc_600641aa07c8b64c';
 // Source: FY 27 First Budget Amendment (August 25, 2026), page not recorded (doc_3931ec08b88d5fbf)
 export const BUDGET_AMENDED = '2026-08-25';
 // Source: 08/25/2026 City Council minutes, page 5 (doc_7a0b2b44683f4559), item 8.1 "Approve Ordinance 2026-10
@@ -304,6 +311,9 @@ export interface BudgetPayload {
   adopted: string;
   amended: string;
   amendmentOrdinance: string;
+  /** "Ordinance 2026-08", the ordinance that adopted the budget, and its document. */
+  adoptionOrdinance: string;
+  adoptionOrdinanceDoc: string;
   docs: typeof BUDGET_DOCS;
   funds: BudgetFund[];
   general: typeof GENERAL;
@@ -328,6 +338,8 @@ export function budgetPayload(): BudgetPayload {
     adopted: BUDGET_ADOPTED,
     amended: BUDGET_AMENDED,
     amendmentOrdinance: BUDGET_AMENDMENT_ORDINANCE,
+    adoptionOrdinance: BUDGET_ADOPTION_ORDINANCE,
+    adoptionOrdinanceDoc: BUDGET_ADOPTION_ORDINANCE_DOC,
     docs: BUDGET_DOCS,
     funds: FUNDS,
     general: GENERAL,

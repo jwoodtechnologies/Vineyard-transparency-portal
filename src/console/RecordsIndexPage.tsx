@@ -20,9 +20,11 @@ interface IndexRow {
   adoptedFrom: 'minutes' | 'document' | null;
   tally: string | null;
   unanimous: boolean;
+  /** 'carried' when a motion for the number is in the archive (absent from an older cached response). */
+  vote?: 'carried' | null;
   minutes: { documentId: string; page: number | null } | null;
   document: { id: string; title: string; status: 'draft' | 'adopted' | null } | null;
-  state: 'adopted' | 'listed' | 'missing';
+  state: 'adopted' | 'listed' | 'missing' | 'absent';
 }
 interface RecordIndex {
   kind: string;
@@ -31,11 +33,20 @@ interface RecordIndex {
   rows: IndexRow[];
 }
 
-const KINDS: Record<string, { title: string; word: string; topic: string }> = {
-  ordinances: { title: 'Ordinances', word: 'Ordinance', topic: 'ordinances' },
-  resolutions: { title: 'Resolutions', word: 'Resolution', topic: 'resolutions' },
-  'rda-resolutions': { title: 'RDA resolutions', word: 'RDA Resolution', topic: 'rda' },
+const KINDS: Record<string, { title: string; word: string; topic: string; every: string }> = {
+  ordinances: { title: 'Ordinances', word: 'Ordinance', topic: 'ordinances', every: 'Every ordinance' },
+  resolutions: { title: 'Resolutions', word: 'Resolution', topic: 'resolutions', every: 'Every resolution' },
+  'rda-resolutions': { title: 'RDA resolutions', word: 'RDA Resolution', topic: 'rda', every: 'Every RDA resolution' },
 };
+
+/** The vote as the minutes record it, or that no motion for it is in the archive. */
+function voteLabel(r: IndexRow): string | null {
+  if (r.state === 'missing') return null;
+  if (r.tally) return `Vote ${r.tally}`;
+  if (r.unanimous) return 'Unanimous';
+  if (r.vote === 'carried' || (r.vote === undefined && r.minutes)) return 'Carried';
+  return 'Vote not in the archive';
+}
 
 export default function RecordsIndexPage() {
   const { index = '' } = useParams();
@@ -48,6 +59,7 @@ export default function RecordsIndexPage() {
   }, [kind]);
   if (!kind) return <Navigate to="/records" replace />;
   const data = load.status === 'done' ? load.data : null;
+  const held = data ? data.rows.filter((r) => r.state !== 'absent').length : 0;
 
   return (
     <Frame>
@@ -72,7 +84,7 @@ export default function RecordsIndexPage() {
             </label>
           )}
           <Link to={`/records?topic=${kind.topic}`} className="vc-rec-reset">
-            Every {kind.title.toLowerCase()} record
+            {kind.every}
           </Link>
         </div>
       </div>
@@ -88,10 +100,15 @@ export default function RecordsIndexPage() {
       {data && data.rows.length > 0 && (
         <>
           <p className="vc-mdocs-count">
-            {data.rows.length} numbered in {data.year}. Dates and tallies are from the minutes.
+            {held} of {data.rows.length} numbers for {data.year} in the archive. Dates and tallies are from the minutes.
           </p>
           <ol className="vc-idx">
-            {data.rows.map((r) => (
+            {data.rows.map((r) =>
+              r.state === 'absent' ? (
+                <li key={r.number} className="vc-idx-absent" data-state="absent">
+                  {kind.word} {r.number}. Not in the archive.
+                </li>
+              ) : (
               <li key={r.number} className="vc-idx-row" data-state={r.state}>
                 <div className="vc-idx-num">
                   {kind.word} {r.number}
@@ -108,8 +125,7 @@ export default function RecordsIndexPage() {
                     ) : (
                       <span>No adoption found in the minutes read</span>
                     )}
-                    {r.tally && <span>Vote {r.tally}</span>}
-                    {!r.tally && r.unanimous && <span>Unanimous</span>}
+                    {voteLabel(r) && <span>{voteLabel(r)}</span>}
                   </div>
                   <div className="vc-idx-links">
                     {r.document && (
@@ -125,7 +141,8 @@ export default function RecordsIndexPage() {
                   </div>
                 </div>
               </li>
-            ))}
+              ),
+            )}
           </ol>
         </>
       )}

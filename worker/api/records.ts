@@ -9,7 +9,10 @@ import type { DocumentSummary } from '../../src/types/models';
 import { RECORD_TOPICS, topicSql } from '../../src/lib/recordTopics';
 import { numberedKindOf, recordNumberOf, recordStatus, type NumberedKind } from '../../src/lib/recordTitle';
 import { adoptionKey, adoptionMap, type Adoption, type MotionRow } from '../lib/adoptions';
-import { buildIndex, type IndexDoc, type IndexRef } from '../lib/recordIndex';
+import { buildIndex, numberOnlyDocs, ownTitle, type IndexDoc, type IndexLink, type IndexMotion, type IndexRef } from '../lib/recordIndex';
+import { BUDGET_ADOPTION_ORDINANCE } from '../lib/budgetData';
+import { isBudgetAdoption } from '../lib/projectMatch';
+import { SearchRepository } from '../search/SearchRepository';
 import { json } from '../lib/http';
 
 const EDGE = 'public, max-age=600, stale-while-revalidate=3600';
@@ -84,9 +87,9 @@ export async function recordIndex(env: Env, which: string, url: URL): Promise<Re
   const type = kind === 'ordinance' ? 'ordinance' : 'resolution';
   const word = kind === 'ordinance' ? 'Ordinance' : 'Resolution';
   const body = kind === 'rda-resolution' ? 'redevelopment-agency' : 'city-council';
-  const [docs, map, refRows] = await Promise.all([
+  const [docs, map, refRows, motionRows] = await Promise.all([
     db
-      .prepare('SELECT id, title, document_type, document_number, document_date, year, government_body_id, government_body_name, source_id, agenda_item_id FROM documents WHERE document_type = ?')
+      .prepare('SELECT id, title, description, document_type, document_number, document_date, year, government_body_id, government_body_name, source_id, agenda_item_id FROM documents WHERE document_type = ?')
       .bind(type)
       .all<IndexDoc>(),
     adoptions(env),
@@ -95,7 +98,26 @@ export async function recordIndex(env: Env, which: string, url: URL): Promise<Re
       .bind(body, `%"${word} %`)
       .all<{ meeting_date: string | null; refs: string; document_id: string; page: number | null }>()
       .catch(() => ({ results: [] as Array<{ meeting_date: string | null; refs: string; document_id: string; page: number | null }> })),
+    // Motions that can carry a numbered measure: the item or motion names one, the budget, or a motion with no wording (a motion brought back).
+    db
+      .prepare(
+        `SELECT id, body_id, meeting_date, seq, item, motion, result, tally, unanimous, document_id, page FROM motions WHERE body_id = ?
+         AND (lower(coalesce(item, '')) LIKE '%ordinance%' OR lower(coalesce(item, '')) LIKE '%resolution%' OR lower(coalesce(item, '')) LIKE '%budget%'
+              OR lower(coalesce(motion, '')) LIKE '%ordinance%' OR lower(coalesce(motion, '')) LIKE '%resolution%' OR lower(coalesce(motion, '')) LIKE '%res %' OR lower(coalesce(motion, '')) LIKE '%ord %'
+              OR trim(coalesce(motion, '')) = '')`,
+      )
+      .bind(body)
+      .all<IndexMotion>()
+      .catch(() => ({ results: [] as IndexMotion[] })),
   ]);
+  const motions = motionRows.results ?? [];
+  // The council's budget vote adopted the budget ordinance, which the minutes do not name (budgetData).
+  const links: IndexLink[] = [];
+  if (kind === 'ordinance') {
+    const budgetVote = motions.find((m) => isBudgetAdoption({ date: m.meeting_date, result: String(m.result ?? ''), item: m.item, motion: m.motion ?? '' }));
+    const n = BUDGET_ADOPTION_ORDINANCE.match(/(\d{4}-\d{2})$/)?.[1];
+    if (budgetVote && n) links.push({ kind, number: n, motionId: budgetVote.id });
+  }
   const refs: IndexRef[] = [];
   for (const r of refRows.results ?? []) {
     let list: string[];
@@ -113,6 +135,32 @@ export async function recordIndex(env: Env, which: string, url: URL): Promise<Re
     }
   }
   refs.sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
-  const index = buildIndex(kind, year, docs.results ?? [], [...map.values()], refs);
+  const build = (titles?: Map<string, string>) => buildIndex(kind, year, docs.results ?? [], [...map.values()], refs, motions, links, titles);
+  let index = build();
+  // A title that is only the number, with no agenda wording or motion for it: the title the document prints.
+  const bare = numberOnlyDocs(index).slice(0, 12);
+  if (bare.length) {
+    const titles = await ownTitles(env, bare).catch(() => new Map<string, string>());
+    if (titles.size) index = build(titles);
+  }
   return json(index, { cache: EDGE });
+}
+
+async function ownTitles(env: Env, ids: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const repo = new SearchRepository(env);
+  if (!repo.available) return out;
+  const rows = await env.CATALOG_DB.prepare('SELECT id, search_shard FROM documents WHERE id IN (SELECT value FROM json_each(?))')
+    .bind(JSON.stringify(ids))
+    .all<{ id: string; search_shard: number | null }>();
+  await Promise.all(
+    (rows.results ?? []).map(async (r) => {
+      if (r.search_shard == null || !repo.activeShards.includes(Number(r.search_shard))) return;
+      const chunks = await repo.documentChunks(Number(r.search_shard), r.id).catch(() => []);
+      const first = chunks.filter((c) => (c.pageStart ?? 1) <= 1).map((c) => c.text).join('\n');
+      const t = ownTitle(first || (chunks[0]?.text ?? ''));
+      if (t) out.set(r.id, t);
+    }),
+  );
+  return out;
 }

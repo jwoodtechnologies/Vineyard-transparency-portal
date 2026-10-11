@@ -4931,6 +4931,7 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-idx-row { display: grid; grid-template-columns: 9.5rem 1fr; gap: 4px 14px; padding: 12px 14px; border: 1px solid var(--vc-line); border-radius: 14px; background: var(--vc-surface); }
 .vc-idx-row[data-state='missing'] { border-style: dashed; background: transparent; }
 .vc-idx-row[data-state='missing'] .vc-idx-title { color: var(--vc-muted); font-style: italic; }
+.vc-idx-absent { padding: 2px 14px; font-size: 13px; line-height: 1.4; color: var(--vc-muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .vc-idx-num { font-weight: 650; font-size: 14px; font-variant-numeric: tabular-nums; }
 .vc-idx-main { display: grid; gap: 3px; min-width: 0; }
 .vc-idx-title { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }

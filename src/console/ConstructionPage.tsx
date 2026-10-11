@@ -24,7 +24,7 @@ import {
   CATEGORIES,
   CITY_PAGE,
   STAGES,
-  millions,
+  money,
   plansFrom,
   type Category,
   type Plan,
@@ -132,13 +132,15 @@ function PlanRow({ p, years, open, onToggle, onShow }: { p: Plan; years: number[
 export default function ConstructionPage() {
   const { resolved } = useTheme();
   // One response: the city's project list and its Construction Projects page (GET /api/pages/construction).
-  const pageLoad = useJson<{ construction: ConstructionSnapshot | null; projects: FC | null }>('/api/pages/construction');
+  const pageLoad = useJson<{ construction: ConstructionSnapshot | null; projects: FC | null; budget?: { projects: number; total: number } }>('/api/pages/construction');
   const own = useJson<FC>(pageLoad.status === 'error' || (pageLoad.status === 'done' && !pageLoad.data.projects) ? '/api/map/layers/projects?page=0&v=5' : null);
   const load: Load<FC> = useMemo(
     () => (pageLoad.status === 'done' && pageLoad.data.projects ? { status: 'done', data: pageLoad.data.projects } : pageLoad.status === 'loading' ? { status: 'loading' } : own),
     [pageLoad, own],
   );
   const snapshot = pageLoad.status === 'done' ? pageLoad.data.construction : pageLoad.status === 'error' ? undefined : null;
+  // The adopted budget's project count and total, the same figures /budget?view=projects shows.
+  const adopted = pageLoad.status === 'done' ? (pageLoad.data.budget ?? null) : null;
   const plans = useMemo(() => (load.status === 'done' ? plansFrom(load.data) : []), [load]);
   const [category, setCategory] = useState<Category | 'All'>('All');
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -264,7 +266,13 @@ export default function ConstructionPage() {
         {plans.length > 0 && (
           <>
             <p className="vc-cp-lede">
-              {plans.length} projects in the fiscal 2027 budget, {millions(total)} in all.
+              On the city map: {plans.length} {plans.length === 1 ? 'project' : 'projects'}, {money(total)}.
+              {adopted && adopted.projects >= plans.length && (
+                <>
+                  {' '}
+                  In the adopted budget: <Link to="/budget?view=projects">{adopted.projects} projects, {money(adopted.total)}</Link>.
+                </>
+              )}
             </p>
             <div className="vc-cp-chips" role="group" aria-label="Filter by type">
               <button type="button" className="vc-chip" data-active={category === 'All'} onClick={() => setCategory('All')}>

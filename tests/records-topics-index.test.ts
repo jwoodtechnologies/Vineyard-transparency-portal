@@ -88,7 +88,9 @@ describe('numbered index', () => {
   it('lists the year by number with adoption dates from the minutes', () => {
     expect(idx.year).toBe(2026);
     expect(idx.years).toEqual([{ year: 2026, count: 4 }, { year: 2025, count: 1 }]);
-    expect(idx.rows.map((r) => [r.number, r.state])).toEqual([['2026-07', 'missing'], ['2026-09', 'adopted'], ['2026-10', 'adopted'], ['2026-11', 'listed']]);
+    expect(idx.rows.filter((r) => r.state !== 'absent').map((r) => [r.number, r.state])).toEqual([['2026-07', 'missing'], ['2026-09', 'adopted'], ['2026-10', 'adopted'], ['2026-11', 'listed']]);
+    // Every number below the highest held is a row; the ones nothing names are "absent", with nothing guessed.
+    expect(idx.rows.filter((r) => r.state === 'absent').map((r) => r.number)).toEqual(['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-08']);
     const r09 = idx.rows.find((r) => r.number === '2026-09')!;
     expect(r09).toMatchObject({ adoptedOn: '2026-06-23', adoptedFrom: 'minutes', tally: '4-0', minutes: { documentId: 'doc_f7aa0533b44d693c', page: 2 } });
     // The adopted copy from the code books is the one linked, not the packet copy.
@@ -105,7 +107,7 @@ describe('numbered index', () => {
   });
   it('a number cited in the minutes but held nowhere is "not in the archive", and an unknown number is not invented', () => {
     expect(idx.rows.find((r) => r.number === '2026-07')).toMatchObject({ state: 'missing', document: null, minutes: { documentId: 'doc_34ef709435ea7b2b', page: 3 } });
-    expect(idx.rows.some((r) => r.number === '2026-08')).toBe(false);
+    expect(idx.rows.find((r) => r.number === '2026-08')).toMatchObject({ state: 'absent', title: null, document: null, minutes: null, tally: null });
   });
 });
 
