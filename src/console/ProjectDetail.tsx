@@ -94,16 +94,25 @@ export function ProjectDetail({ project, budget = 'full' }: { project: ProjectRe
         </p>
       </section>
 
-      {d.votes.length > 0 && (
-        <section className="vc-pd-sec" aria-label="Votes">
-          <h3 className="vc-pd-h">{d.votes.length === 1 ? 'Vote' : 'Votes'}</h3>
-          <ul className="vc-pd-votes">
-            {d.votes.map((v) => (
-              <VoteBlock key={`${v.documentId}|${v.date}|${v.label}`} v={v} />
-            ))}
-          </ul>
-        </section>
-      )}
+      {[
+        { kind: 'budget', one: 'Funding vote', many: 'Funding votes' },
+        { kind: 'project', one: 'Related vote', many: 'Related votes' },
+      ].map(({ kind, one, many }) => {
+        // The budget adoption is the vote that funded the line; votes naming the project (contracts,
+        // grants, earlier phases) are related records and are never presented as its funding.
+        const list = d.votes.filter((v) => v.kind === kind);
+        if (!list.length) return null;
+        return (
+          <section key={kind} className="vc-pd-sec" aria-label={many}>
+            <h3 className="vc-pd-h">{list.length === 1 ? one : many}</h3>
+            <ul className="vc-pd-votes">
+              {list.map((v) => (
+                <VoteBlock key={`${v.documentId}|${v.date}|${v.label}`} v={v} />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
 
       {d.documents.length > 0 && (
         <section className="vc-pd-sec" aria-label="Related records">
