@@ -188,8 +188,11 @@ describe('per-turn checks', () => {
     const answer =
       "As of October 11, 2026, the city's Construction Projects page lists 2 projects:\nHAWK pedestrian crossing, Center Street & Holdaway Road (Pedestrian safety): status Materials being powder coated, expected completion Early November.\nTraffic signal, 400 South at Lakeside Park (Pedestrian safety): status In preparation, expected completion Early November.";
     const live = { construction: { available: true, glance } };
-    expect(evalTurn(spec3, { answer, engine: 'catalog', mode: 'conversation' }, { ...ctx, live })).toEqual([]);
-    expect(evalTurn(spec3, { answer: answer.split('\n').slice(0, 2).join('\n'), engine: 'catalog' }, { ...ctx, live })).toEqual(['construction answer lacks "Traffic signal, 400 South at Lakeside Park"']);
+    const page = { path: '/construction', title: 'Construction' };
+    expect(evalTurn(spec3, { answer, engine: 'catalog', mode: 'conversation', section: page }, { ...ctx, live })).toEqual([]);
+    expect(evalTurn(spec3, { answer: answer.split('\n').slice(0, 2).join('\n'), engine: 'catalog', section: page }, { ...ctx, live })).toEqual(['construction answer lacks "Traffic signal, 400 South at Lakeside Park"']);
+    // Every answer must open a page in the portal: a construction answer with no link fails.
+    expect(evalTurn(spec3, { answer, engine: 'catalog' }, { ...ctx, live })).toContain('no card or citation opens a page inside the portal');
   });
 });
 
