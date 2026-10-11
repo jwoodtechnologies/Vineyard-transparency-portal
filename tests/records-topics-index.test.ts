@@ -101,7 +101,7 @@ describe('numbered index', () => {
     const r10 = idx.rows.find((r) => r.number === '2026-10')!;
     expect(r10.document).toBeNull();
     expect(r10.unanimous).toBe(true);
-    expect(r10.title).toMatch(/^Adopt Ordinance 2026-10/);
+    expect(r10.title).toMatch(/^Amending the Fiscal Year 2026-2027 budget/);
     const r11 = idx.rows.find((r) => r.number === '2026-11')!;
     expect(r11).toMatchObject({ adoptedOn: null, state: 'listed', document: { id: 'doc_draft_0211', status: 'draft' } });
   });

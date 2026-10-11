@@ -41,7 +41,9 @@
     if (api && (screen === 'votes' || screen === 'planning') && /[?&](member|q|result|vote)=/.test(q)) api = null;
     if (api && screen === 'votes' && /[?&]body=redevelopment-agency(&|$)/.test(q)) api += '?body=redevelopment-agency';
     if (api && window.fetch) {
-      var marker = Math.floor(Date.now() / 300000);
+      // The same marker as fresh() in src/console/api.ts: five-minute bucket and the build id the page was served with.
+      var meta = document.querySelector('meta[name="vtp-build"]');
+      var marker = Math.floor(Date.now() / 300000) + '.' + ((meta && meta.getAttribute('content')) || 'dev');
       window.__vtpEarly = { url: api, res: fetch(api + (api.indexOf('?') < 0 ? '?' : '&') + '_=' + marker, { headers: { accept: 'application/json' } }) };
     }
   } catch (e) {

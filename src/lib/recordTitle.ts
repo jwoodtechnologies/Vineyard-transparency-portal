@@ -104,9 +104,9 @@ export function ingestSuffix(title: string): { rest: string; meeting: string | n
 /** "Ordinance 2026-09", "RES 2026-35", "ORD 2026-1", "Resolution No. 2026-12", "RDA-2026-03", "202631" read as kind and number. */
 export function parseRecordNumber(text: string | null | undefined): { kind: 'ordinance' | 'resolution'; number: string } | null {
   if (!text) return null;
-  const m = text.match(/\b(ordinance|ord|resolution|res)\b\.?\s*(?:no\.?\s*|number\s*|#\s*)?(?:rda[-\s]?|u-?)?((?:19|20)\d{2})\s*-?\s*(\d{1,3})([A-Z]?)\b/i);
+  const m = text.replace(/[‒-―]/g, '-').match(/\b(ordinance|ord|resolution|res)\b\.?\s*(?:no\.?\s*|number\s*|#\s*)?(?:rda[-\s]?|u-?)?(?:((?:19|20)\d{2})\s*-?\s*|(\d{2})\s*-\s*)(\d{1,3})([A-Z]?)\b/i);
   if (!m) return null;
-  return { kind: /^ord/i.test(m[1]) ? 'ordinance' : 'resolution', number: normalizeNumber(m[2], m[3], m[4]) };
+  return { kind: /^ord/i.test(m[1]) ? 'ordinance' : 'resolution', number: normalizeNumber(m[2] ?? 2000 + Number(m[3]), m[4], m[5]) };
 }
 
 /** "2026", "9", "" to "2026-09": numbers are compared and shown with at least two digits. */

@@ -9,7 +9,7 @@ import type { DocumentSummary } from '../../src/types/models';
 import { RECORD_TOPICS, topicSql } from '../../src/lib/recordTopics';
 import { numberedKindOf, recordNumberOf, recordStatus, type NumberedKind } from '../../src/lib/recordTitle';
 import { adoptionKey, adoptionMap, type Adoption, type MotionRow } from '../lib/adoptions';
-import { buildIndex, numberOnlyDocs, ownTitle, type IndexDoc, type IndexLink, type IndexMotion, type IndexRef } from '../lib/recordIndex';
+import { buildIndex, captionDocs, ownTitle, type IndexDoc, type IndexLink, type IndexMotion, type IndexRef } from '../lib/recordIndex';
 import { BUDGET_ADOPTION_ORDINANCE } from '../lib/budgetData';
 import { isBudgetAdoption } from '../lib/projectMatch';
 import { SearchRepository } from '../search/SearchRepository';
@@ -87,27 +87,35 @@ export async function recordIndex(env: Env, which: string, url: URL): Promise<Re
   const type = kind === 'ordinance' ? 'ordinance' : 'resolution';
   const word = kind === 'ordinance' ? 'Ordinance' : 'Resolution';
   const body = kind === 'rda-resolution' ? 'redevelopment-agency' : 'city-council';
-  const [docs, map, refRows, motionRows] = await Promise.all([
+  const map = await adoptions(env);
+  const adoptingIds = [...map.values()].map((x) => x.id).filter((x): x is string => Boolean(x));
+  // Motions that can carry a numbered measure: the item or motion names one, the budget, a motion with no wording
+  // (a motion brought back), or a motion read as adopting one. With each, its recorded roll call (yes and no),
+  // the tally when the minutes print none.
+  const motionSql = (roll: boolean) =>
+    `SELECT id, body_id, meeting_date, seq, item, motion, result, tally, unanimous, document_id, page${
+      roll
+        ? `, (SELECT count(*) FROM motion_votes v WHERE v.motion_id = motions.id AND v.vote = 'yes') AS yes,
+             (SELECT count(*) FROM motion_votes v WHERE v.motion_id = motions.id AND v.vote = 'no') AS no`
+        : ''
+    } FROM motions WHERE body_id = ?
+     AND (lower(coalesce(item, '')) LIKE '%ordinance%' OR lower(coalesce(item, '')) LIKE '%resolution%' OR lower(coalesce(item, '')) LIKE '%budget%'
+          OR lower(coalesce(motion, '')) LIKE '%ordinance%' OR lower(coalesce(motion, '')) LIKE '%resolution%' OR lower(coalesce(motion, '')) LIKE '%res %' OR lower(coalesce(motion, '')) LIKE '%ord %'
+          OR trim(coalesce(motion, '')) = '' OR id IN (SELECT value FROM json_each(?)))`;
+  const readMotions = (roll: boolean) => db.prepare(motionSql(roll)).bind(body, JSON.stringify(adoptingIds)).all<IndexMotion>();
+  const [docs, refRows, motionRows] = await Promise.all([
     db
       .prepare('SELECT id, title, description, document_type, document_number, document_date, year, government_body_id, government_body_name, source_id, agenda_item_id FROM documents WHERE document_type = ?')
       .bind(type)
       .all<IndexDoc>(),
-    adoptions(env),
     db
       .prepare('SELECT meeting_date, refs, document_id, page FROM motions WHERE body_id = ? AND refs LIKE ?')
       .bind(body, `%"${word} %`)
       .all<{ meeting_date: string | null; refs: string; document_id: string; page: number | null }>()
       .catch(() => ({ results: [] as Array<{ meeting_date: string | null; refs: string; document_id: string; page: number | null }> })),
-    // Motions that can carry a numbered measure: the item or motion names one, the budget, or a motion with no wording (a motion brought back).
-    db
-      .prepare(
-        `SELECT id, body_id, meeting_date, seq, item, motion, result, tally, unanimous, document_id, page FROM motions WHERE body_id = ?
-         AND (lower(coalesce(item, '')) LIKE '%ordinance%' OR lower(coalesce(item, '')) LIKE '%resolution%' OR lower(coalesce(item, '')) LIKE '%budget%'
-              OR lower(coalesce(motion, '')) LIKE '%ordinance%' OR lower(coalesce(motion, '')) LIKE '%resolution%' OR lower(coalesce(motion, '')) LIKE '%res %' OR lower(coalesce(motion, '')) LIKE '%ord %'
-              OR trim(coalesce(motion, '')) = '')`,
-      )
-      .bind(body)
-      .all<IndexMotion>()
+    // Without the roll call table (a new database), the motions alone.
+    readMotions(true)
+      .catch(() => readMotions(false))
       .catch(() => ({ results: [] as IndexMotion[] })),
   ]);
   const motions = motionRows.results ?? [];
@@ -137,15 +145,16 @@ export async function recordIndex(env: Env, which: string, url: URL): Promise<Re
   refs.sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
   const build = (titles?: Map<string, string>) => buildIndex(kind, year, docs.results ?? [], [...map.values()], refs, motions, links, titles);
   let index = build();
-  // A title that is only the number, with no agenda wording or motion for it: the title the document prints.
-  const bare = numberOnlyDocs(index).slice(0, 12);
-  if (bare.length) {
-    const titles = await ownTitles(env, bare).catch(() => new Map<string, string>());
+  // The caption each linked copy prints on its first page is its title (worker/lib/recordIndex.ts).
+  const ids = captionDocs(index);
+  if (ids.length) {
+    const titles = await ownTitles(env, ids).catch(() => new Map<string, string>());
     if (titles.size) index = build(titles);
   }
   return json(index, { cache: EDGE });
 }
 
+/** The caption printed on each document's first page, read from the search shards (one query per shard). */
 async function ownTitles(env: Env, ids: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   const repo = new SearchRepository(env);
@@ -153,13 +162,26 @@ async function ownTitles(env: Env, ids: string[]): Promise<Map<string, string>> 
   const rows = await env.CATALOG_DB.prepare('SELECT id, search_shard FROM documents WHERE id IN (SELECT value FROM json_each(?))')
     .bind(JSON.stringify(ids))
     .all<{ id: string; search_shard: number | null }>();
+  const byShard = new Map<number, string[]>();
+  for (const r of rows.results ?? []) {
+    const n = Number(r.search_shard);
+    if (r.search_shard == null || !repo.activeShards.includes(n)) continue;
+    byShard.set(n, [...(byShard.get(n) ?? []), r.id]);
+  }
   await Promise.all(
-    (rows.results ?? []).map(async (r) => {
-      if (r.search_shard == null || !repo.activeShards.includes(Number(r.search_shard))) return;
-      const chunks = await repo.documentChunks(Number(r.search_shard), r.id).catch(() => []);
-      const first = chunks.filter((c) => (c.pageStart ?? 1) <= 1).map((c) => c.text).join('\n');
-      const t = ownTitle(first || (chunks[0]?.text ?? ''));
-      if (t) out.set(r.id, t);
+    [...byShard.entries()].map(async ([n, list]) => {
+      const res = await repo
+        .shard(n)
+        .prepare('SELECT document_id, text FROM chunks WHERE document_id IN (SELECT value FROM json_each(?)) AND coalesce(page_start, 1) <= 1 ORDER BY document_id, page_start, rowid')
+        .bind(JSON.stringify(list))
+        .all<{ document_id: string; text: string }>()
+        .catch(() => ({ results: [] as Array<{ document_id: string; text: string }> }));
+      const text = new Map<string, string>();
+      for (const c of res.results ?? []) text.set(c.document_id, `${text.get(c.document_id) ?? ''}\n${c.text}`);
+      for (const [id, t] of text) {
+        const title = ownTitle(t);
+        if (title) out.set(id, title);
+      }
     }),
   );
   return out;

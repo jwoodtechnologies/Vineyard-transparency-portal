@@ -36,6 +36,7 @@ import { addFile, addForm, addStatus, reportSubmission } from './contrib/residen
 import { coverageSummary } from './api/coverage';
 import { handleFeed } from './api/feeds';
 import { isIndexKind, recordIndex, recordTopics } from './api/records';
+import { assetHeaders, buildId, cacheKey } from './lib/edgeCache';
 
 function id(segment: string | undefined): string {
   const value = decodeURIComponent(segment ?? '');
@@ -178,10 +179,12 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
 
 /**
  * Public, read-only API responses are cached at Cloudflare's edge (free Cache API). The key is the URL
- * without the client's five-minute marker (`_`), plus the archive's data version (worker/lib/dataVersion.ts),
- * so a stored copy stays good until the data behind it changes. When the version moves on (or a copy is
- * older than its route allows), the older copy is served at once and the new one is computed in the
- * background (stale-while-revalidate): readers never wait on D1 after the first visit. Edge hits read
+ * without the client's five-minute marker (`_`), plus the deployed build (the Worker version id) and the
+ * archive's data version (worker/lib/edgeCache.ts, worker/lib/dataVersion.ts), so a stored copy stays good
+ * until the code or the data behind it changes. When the data version moves on (or a copy is older than its
+ * route allows), the older copy of the same build is served at once and the new one is computed in the
+ * background (stale-while-revalidate). A copy from an earlier build is never served: the first request
+ * after a deploy computes its answer. Edge hits read
  * nothing from D1. Nothing personal is ever cached: there are no cookies, and POST /api/ask, admin, panel,
  * health and file streams are excluded.
  */
@@ -190,14 +193,6 @@ const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/arc
 const TIME_BOUND = /^\/api\/(events|latest|meetings|stats)/;
 const STORE_SECONDS = 7 * 86400;
 const refreshing = new Map<string, Promise<void>>();
-
-function cacheKey(url: URL, version: string): Request {
-  const u = new URL(url.toString());
-  u.searchParams.delete('_');
-  u.searchParams.sort();
-  u.searchParams.set('__v', version);
-  return new Request(u.toString(), { method: 'GET' });
-}
 
 /** The copy handed to the reader: a short browser cache time, the standing headers back, 304 on a matching ETag. */
 function serveStored(request: Request, hit: Response, stale: boolean): Response {
@@ -220,8 +215,10 @@ async function cached(request: Request, env: Env, url: URL, ctx: ExecutionContex
   if (request.method !== 'GET' || !EDGE_CACHEABLE.test(path) || request.headers.has('range')) return compute();
   const cache = (caches as unknown as { default: Cache }).default;
   const version = String(await dataVersion(env).catch(() => 0));
-  const key = cacheKey(url, version);
-  const latestKey = cacheKey(url, 'latest');
+  const build = buildId(env);
+  const key = cacheKey(url, build, version);
+  // The newest copy for this build (served while a newer data version is computed); never another build's.
+  const latestKey = cacheKey(url, build, 'latest');
   const freshFor = (TIME_BOUND.test(path) ? 300 : 3600) * 1000;
   const store = (res: Response) => {
     const cc = res.headers.get('cache-control') ?? '';
@@ -230,6 +227,7 @@ async function cached(request: Request, env: Env, url: URL, ctx: ExecutionContex
     copy.headers.set('cache-control', `public, max-age=${STORE_SECONDS}`);
     copy.headers.set('x-stored-at', String(Date.now()));
     copy.headers.set('x-data-version', version);
+    copy.headers.set('x-build', build);
     const twin = copy.clone();
     return Promise.all([cache.put(key, copy), cache.put(latestKey, twin)]).then(() => undefined, () => undefined);
   };
@@ -254,6 +252,11 @@ async function cached(request: Request, env: Env, url: URL, ctx: ExecutionContex
   const put = store(res);
   if (put) ctx.waitUntil(put);
   return res;
+}
+
+/** Static files served through the Worker carry the same cache headers as public/_headers (worker/lib/edgeCache.ts). */
+async function asset(request: Request, env: Env, url: URL): Promise<Response> {
+  return assetHeaders(url, await env.ASSETS.fetch(request));
 }
 
 /** Every API response carries the standing security headers, including streamed ones that are built outside json(). */
@@ -285,10 +288,19 @@ export default {
         return new Response('Feed unavailable.', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
       }
     }
-    if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith('/api/')) return asset(request, env, url);
 
     try {
-      return hardened(await cached(request, env, url, ctx, () => route(request, env, url, ctx)));
+      const res = hardened(await cached(request, env, url, ctx, () => route(request, env, url, ctx)));
+      // Which build answered (the client discards its kept copies when its own build changes: src/console/api.ts).
+      if (!res.headers.has('x-build') && res.status !== 101) {
+        try {
+          res.headers.set('x-build', buildId(env));
+        } catch {
+          /* immutable headers (a passed-through fetch): left as is */
+        }
+      }
+      return res;
     } catch (e) {
       if (e instanceof HttpError) return errorResponse(e);
       console.error(JSON.stringify({ event: 'api_error', path: url.pathname, message: e instanceof Error ? e.message : String(e) }));

@@ -24,6 +24,10 @@ interface IndexRow {
   vote?: 'carried' | null;
   minutes: { documentId: string; page: number | null } | null;
   document: { id: string; title: string; status: 'draft' | 'adopted' | null } | null;
+  /** Adopted with a carried motion (or the adopted copy), a draft, or no adoption in the archive. */
+  status?: 'adopted' | 'draft' | 'none';
+  /** For a draft: the newest draft copy's date and the body it went to. */
+  draft?: { date: string | null; body: string | null } | null;
   state: 'adopted' | 'listed' | 'missing' | 'absent';
 }
 interface RecordIndex {
@@ -39,13 +43,28 @@ const KINDS: Record<string, { title: string; word: string; topic: string; every:
   'rda-resolutions': { title: 'RDA resolutions', word: 'RDA Resolution', topic: 'rda', every: 'Every RDA resolution' },
 };
 
-/** The vote as the minutes record it, or that no motion for it is in the archive. */
+/** Adopted, Draft, or no adoption in the archive (from the state when an older response has no status). */
+function rowStatus(r: IndexRow): 'adopted' | 'draft' | 'none' {
+  if (r.status) return r.status;
+  if (r.state === 'adopted') return 'adopted';
+  return r.document?.status === 'draft' ? 'draft' : 'none';
+}
+
+/** The vote as recorded: the tally, else "Carried" for a carried motion with no tally; nothing for a row not adopted. */
 function voteLabel(r: IndexRow): string | null {
-  if (r.state === 'missing') return null;
+  if (r.state === 'missing' || rowStatus(r) !== 'adopted') return null;
   if (r.tally) return `Vote ${r.tally.replace(/^(\d+)\s*-\s*(\d+)/, '$1 to $2')}`;
-  if (r.unanimous) return 'Unanimous';
   if (r.vote === 'carried' || (r.vote === undefined && r.minutes)) return 'Carried';
   return 'Vote not in the archive';
+}
+
+/** The status line: "Adopted Aug 25, 2026", "Draft, Planning Commission, Oct 7, 2026", "Not in the archive". */
+function statusLabel(r: IndexRow): string {
+  if (r.state === 'missing') return 'Cited in the minutes';
+  const s = rowStatus(r);
+  if (s === 'adopted') return r.adoptedOn ? `Adopted ${formatDate(r.adoptedOn)}` : 'Adopted, date not found';
+  if (s === 'draft') return ['Draft', r.draft?.body, r.draft?.date ? formatDate(r.draft.date) : null].filter(Boolean).join(', ');
+  return 'Adoption not in the archive';
 }
 
 export default function RecordsIndexPage() {
@@ -109,22 +128,14 @@ export default function RecordsIndexPage() {
                   {kind.word} {r.number}. Not in the archive.
                 </li>
               ) : (
-              <li key={r.number} className="vc-idx-row" data-state={r.state}>
+              <li key={r.number} className="vc-idx-row" data-state={r.state} data-status={rowStatus(r)}>
                 <div className="vc-idx-num">
                   {kind.word} {r.number}
                 </div>
                 <div className="vc-idx-main">
-                  <div className="vc-idx-title">{r.state === 'missing' ? 'Not in the archive' : (r.title ?? 'Untitled')}</div>
+                  <div className="vc-idx-title">{r.state === 'missing' ? 'Not in the archive' : (r.title ?? 'Title not in the archive')}</div>
                   <div className="vc-idx-meta">
-                    {r.state === 'missing' ? (
-                      <span>Cited in the minutes</span>
-                    ) : r.adoptedOn ? (
-                      <span>Adopted {formatDate(r.adoptedOn)}</span>
-                    ) : r.state === 'adopted' ? (
-                      <span>Adopted, date not found</span>
-                    ) : (
-                      <span>No adoption found in the minutes read</span>
-                    )}
+                    <span>{statusLabel(r)}</span>
                     {voteLabel(r) && <span>{voteLabel(r)}</span>}
                   </div>
                   <div className="vc-idx-links">

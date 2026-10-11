@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { adoptionMap, type MotionRow } from '../worker/lib/adoptions';
-import { agendaTitle, buildIndex, numberOnlyDocs, ownTitle, type IndexDoc, type IndexLink, type IndexMotion } from '../worker/lib/recordIndex';
+import { agendaTitle, buildIndex, captionDocs, ownTitle, type IndexDoc, type IndexLink, type IndexMotion } from '../worker/lib/recordIndex';
 import { isBudgetAdoption } from '../worker/lib/projectMatch';
 import { BUDGET_ADOPTION_ORDINANCE } from '../worker/lib/budgetData';
 
@@ -116,7 +116,7 @@ describe('2026 RDA resolutions', () => {
 
   it('a resolution with no agenda wording takes the title it prints', () => {
     const idx = index('rda-resolution');
-    expect(numberOnlyDocs(idx)).toEqual(['doc_db0abf3676eb246b']);
+    expect(captionDocs(idx)).toContain('doc_db0abf3676eb246b');
     const titled = index('rda-resolution', new Map([['doc_db0abf3676eb246b', ownTitle(RDA_01_TEXT)!]]));
     expect(row(titled, '2026-01').title).toMatch(/^Establishing Mandatory Fiscal Impact Findings and Cooperation Conditions for All RDA Financial Participation/);
     expect(row(titled, '2026-01')).toMatchObject({ state: 'listed', vote: null });

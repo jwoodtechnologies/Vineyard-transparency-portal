@@ -16,6 +16,9 @@
     // Only /api/* executes Worker code; everything else is served directly from the asset store.
     "run_worker_first": ["/api/*", "/feeds/*"]
   },
+  // The deployed version's id (env.CF_VERSION_METADATA.id): edge cached API copies and stored page payloads are
+  // keyed to it, so a deploy never serves a copy computed by the code it replaced (worker/lib/edgeCache.ts).
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
   // Migration SQL is bundled as text so the Worker can apply it (POST /api/admin/migrate).
   "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
   "d1_databases": [
