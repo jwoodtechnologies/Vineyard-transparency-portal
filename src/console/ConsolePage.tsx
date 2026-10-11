@@ -14,7 +14,7 @@ import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSor
 import { SearchService } from '@/services';
 import { askStream, draftText } from './askStream';
 import { Composer } from './Composer';
-import { AnswerBody, Sources } from './Answer';
+import { AnswerBody, AsOf, ClarifyChoices, FollowUps, Sources } from './Answer';
 import { Records } from './Records';
 import { AnswerActions } from './AnswerActions';
 import { QuickLinks } from './QuickLinks';
@@ -245,6 +245,7 @@ export default function ConsolePage() {
             if (frame) cancelAnimationFrame(frame);
             patch(t.id, (cur) => ({
               draft: '',
+              streamed: Boolean(cur.draft),
               status: 'done',
               answer,
               recordsStatus: answer.mode === 'conversation' ? 'idle' : cur.recordsStatus,
@@ -253,7 +254,8 @@ export default function ConsolePage() {
           },
           (e: unknown) => {
             if (ctrl.signal.aborted) patch(t.id, { status: 'error', error: 'Stopped.' });
-            else patch(t.id, { status: 'error', error: e instanceof Error ? e.message : 'The archive could not be reached.' });
+            // The matching records still show, so the question is never left with nothing.
+            else patch(t.id, { status: 'error', error: e instanceof Error ? e.message : 'The archive could not be reached.', showRecords: true });
           },
         );
       }
@@ -432,17 +434,24 @@ export default function ConsolePage() {
               </div>
             )}
             {t.status === 'error' && (
-              <div className="vc-notice">
-                {t.error === 'Stopped.' ? 'Stopped.' : "I couldn't reach the archive just now."}{' '}
-                <button type="button" className="vc-ghost" onClick={() => retry(t)} style={{ marginLeft: 6 }}>
-                  <RotateCcw size={14} /> Try again
-                </button>
-              </div>
+              <>
+                <div className="vc-notice vc-notice-row">
+                  <span>{t.error === 'Stopped.' ? 'Stopped.' : 'The answer did not arrive. The records that match your question are below.'}</span>
+                  <button type="button" className="vc-secondary vc-retry" onClick={() => retry(t)}>
+                    <RotateCcw size={14} /> Try again
+                  </button>
+                </div>
+                {t.error !== 'Stopped.' && (
+                  <Records turn={t} exclude={new Set()} title="Matching records" onFilters={onFilters(t)} onMore={onMore(t)} onPreview={open(t)} onHide={() => patch(t.id, { showRecords: false })} />
+                )}
+              </>
             )}
             {t.status === 'done' && t.answer && (
               <>
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
-                {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
+                {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} instant={t.streamed} />}
+                <ClarifyChoices answer={t.answer} onAsk={ask} disabled={Boolean(busyTurn)} />
+                <AsOf answer={t.answer} />
                 {t.answer.votes && t.answer.votes.items.length > 0 && (
                   <section className="vc-answer-votes" aria-label="Recorded votes">
                     <div className="vc-answer-votes-head">
@@ -470,12 +479,13 @@ export default function ConsolePage() {
                 {contactCard(t, people)}
                 {t.answer.event && <EventCard event={t.answer.event} />}
                 {t.answer.series && <SeriesPanel series={t.answer.series} />}
-                {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} onCite={cite(t)} />}
+                {t.answer.mode !== 'conversation' && <Sources citations={t.answer.citations} />}
                 <QuickLinks answer={t.answer} />
                 <div className="vc-answer-foot">
                   <AnswerActions answer={t.answer} />
                   {t.answer.mode !== 'conversation' && !t.showRecords && <MoreRecords turn={t} onOpen={() => patch(t.id, { showRecords: true })} />}
                 </div>
+                {i === turns.length - 1 && <FollowUps answer={t.answer} onAsk={ask} disabled={Boolean(busyTurn)} />}
                 {t.answer.mode !== 'conversation' && t.showRecords && (
                   <Records
                     turn={t}
