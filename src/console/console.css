@@ -4260,8 +4260,9 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 .vc-sh-table thead th { position: sticky; top: 62px; z-index: 3; padding: 9px 6px 8px; background: var(--vc-bg-2); border-bottom: 1px solid var(--vc-line-2); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; white-space: nowrap; color: var(--vc-ink-2); }
 .vc-sh-table thead th.vc-sh-th-who { width: 1%; padding: 9px 2px 8px; border-left: 1px solid var(--vc-line); font-size: 0.58rem; font-weight: 600; letter-spacing: 0; text-transform: none; text-align: center; color: var(--vc-ink); }
 .vc-sh-th-who small { display: block; font-size: 0.5rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--vc-muted); }
+.vc-sh-th-who small.vc-sh-alt { letter-spacing: 0; text-transform: none; font-weight: 600; font-size: 0.56rem; }
 .vc-sh-th-who[data-on='true'] { text-decoration: underline; text-underline-offset: 3px; }
-.vc-sh-th-date, .vc-sh-th-status, .vc-sh-date, .vc-sh-status { display: none; }
+.vc-sh-th-date, .vc-sh-th-status, .vc-sh-date, .vc-sh-status, .vc-sh-th-tally, .vc-sh-tally { display: none; }
 .vc-sh-table tbody { border-top: 1px solid var(--vc-line); }
 .vc-sh-table tbody:nth-of-type(even) { background: var(--vc-bg-2); }
 .vc-sh-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -4278,13 +4279,13 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 .vc-sh-date-m span { white-space: nowrap; }
 .vc-sh-date-m small { font-size: 0.62rem; font-weight: 500; color: var(--vc-muted); }
 .vc-sh-status-m { white-space: nowrap; padding: 1px 6px; border-radius: 2px; font-size: 0.58rem; font-weight: 600; line-height: 1.5; color: var(--vc-ink-2); }
-.vc-sh-status-m[data-status='none'], .vc-sh-status-m[data-status='pending'] { color: var(--vc-muted); font-weight: 500; }
+.vc-sh-status-m[data-status='none'], .vc-sh-status-m[data-status='pending'], .vc-sh-status-m[data-status='canceled'] { color: var(--vc-muted); font-weight: 500; }
 /* Motion status cells stay neutral (grays only): the word carries the meaning, never a color. */
 .vc-sh-status-m[data-status='passed'], .vc-sh-status[data-status='passed'], .vc-sh-note[data-tone='good'] { background: color-mix(in srgb, var(--vc-ink) 8%, transparent); color: var(--vc-ink); }
 .vc-sh-status-m[data-status='failed'], .vc-sh-status[data-status='failed'], .vc-sh-status-m[data-status='denied'], .vc-sh-status[data-status='denied'] { background: color-mix(in srgb, var(--vc-ink) 14%, transparent); color: var(--vc-ink); }
 .vc-sh-status-m[data-status='continued'], .vc-sh-status-m[data-status='tabled'], .vc-sh-status-m[data-status='removed'], .vc-sh-status[data-status='continued'], .vc-sh-status[data-status='tabled'], .vc-sh-status[data-status='removed'] { background: color-mix(in srgb, var(--vc-ink) 4%, transparent); color: var(--vc-ink-2); }
 .vc-sh-status { width: 1%; padding: 0 10px; border-left: 1px solid var(--vc-line); font-size: 0.7rem; font-weight: 600; text-align: center; white-space: nowrap; color: var(--vc-ink-2); }
-.vc-sh-status[data-status='none'], .vc-sh-status[data-status='pending'] { font-weight: 500; color: var(--vc-muted); }
+.vc-sh-status[data-status='none'], .vc-sh-status[data-status='pending'], .vc-sh-status[data-status='canceled'] { font-weight: 500; color: var(--vc-muted); }
 .vc-sh-table tbody[data-pending='true'] .vc-sh-title { color: var(--vc-muted); }
 .vc-sh-table tbody[data-pending='true'] .vc-sh-date, .vc-sh-table tbody[data-pending='true'] .vc-sh-date-m { color: var(--vc-muted); }
 .vc-sh-date { width: 1%; padding: 0 10px; border-left: 1px solid var(--vc-line); font-size: 0.8rem; font-weight: 500; text-align: center; white-space: nowrap; color: var(--vc-ink); }
@@ -4293,6 +4294,10 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 .vc-sh-cell svg { display: inline-block; vertical-align: middle; width: 15px; height: 15px; }
 .vc-sh-cell i { display: inline-block; vertical-align: middle; width: 8px; border-top: 2px solid var(--vc-muted); opacity: 0.7; }
 .vc-sh-cell[data-on='true'] { background: color-mix(in srgb, var(--vc-ink) 7%, transparent); }
+.vc-sh-cell[data-vote='absent'] { font-weight: 700; color: var(--vc-muted); }
+.vc-sh-cell small { font-size: 0.56rem; font-weight: 600; letter-spacing: 0.02em; color: var(--vc-muted); }
+.vc-sh-tally { width: 1%; padding: 0 10px; border-left: 1px solid var(--vc-line); font-size: 0.76rem; font-weight: 600; text-align: center; white-space: nowrap; color: var(--vc-ink); font-variant-numeric: tabular-nums; }
+.vc-sh-tally small { display: block; font-size: 0.62rem; font-weight: 500; white-space: normal; color: var(--vc-muted); }
 .vc-sh-note { padding: 4px 6px; border-left: 1px solid var(--vc-line); font-size: 0.68rem; font-weight: 600; line-height: 1.2; text-align: center; color: var(--vc-ink-2); }
 .vc-sh-note:not([data-tone]) { font-weight: 500; color: var(--vc-muted); }
 .vc-sh-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -4317,8 +4322,8 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
   .vc-sh-table { font-size: 0.86rem; }
   .vc-sh-table thead th { padding: 10px 8px 9px; font-size: 0.68rem; }
   .vc-sh-table thead th.vc-sh-th-who { padding: 10px 6px 9px; font-size: 0.76rem; }
-  .vc-sh-th-date, .vc-sh-th-status { display: table-cell; width: 1%; text-align: center; border-left: 1px solid var(--vc-line); }
-  .vc-sh-date, .vc-sh-status { display: table-cell; }
+  .vc-sh-th-date, .vc-sh-th-status, .vc-sh-th-tally { display: table-cell; width: 1%; text-align: center; border-left: 1px solid var(--vc-line); }
+  .vc-sh-date, .vc-sh-status, .vc-sh-tally { display: table-cell; }
   .vc-sh-meta { display: none; }
   .vc-sh-what { padding: 10px 8px 10px 10px; }
   .vc-sh-title { gap: 5px; font-size: 0.92rem; }
@@ -4350,8 +4355,13 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
   .vc-vfilters .vc-vfilter-search { flex: 1 1 100%; }
   .vc-vfilters select { flex: 1 1 0; min-width: 0; font-size: 0.78rem; text-overflow: ellipsis; }
 }
+/* Phones: the chart stays inside the page's side gutters (a full-bleed chart was clipped on the left where the page
+   is not centred on the viewport), and never makes the page itself scroll sideways: a chart wider than the page
+   (seven or more columns) scrolls inside its own box. */
 @media (max-width: 560px) {
-  .vc-shw { margin-inline: calc(50% - 50vw); }
+  .vc-shw { max-width: 100%; min-width: 0; }
+  .vc-sh { max-width: 100%; }
+  .vc-sh-status-m { white-space: normal; }
 }
 .vc-votes-title { font-size: clamp(1.7rem, 7.4vw, 2.6rem); }
 

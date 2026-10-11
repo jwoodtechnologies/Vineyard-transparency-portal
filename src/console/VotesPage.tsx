@@ -3,26 +3,36 @@
  * with the date, how it ended, and a column for every member. Selecting a row opens the motion and each vote.
  */
 import './console.css';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Check, ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
 import { DocLink } from './DocLink';
 import { Frame } from './Chrome';
-import { useJson } from './api';
+import { getJson, useJson } from './api';
 import {
+  cellMark,
+  COUNCIL_SEATS,
+  meetingRows,
+  meetingsWithoutMinutes,
   memberTitle,
   mergeRows,
+  PC_SEATS,
+  recordedTally,
   motionDetail,
   motionLabel,
   motionTally,
   pendingRows,
+  plainDashes,
   recordedMotion,
   sheetRows,
   STATUS_WORD,
   useMemberNames,
+  type DraftMinutes,
+  type Mark,
   type MeetingLite,
   type MinutesRead,
   type MotionRow,
+  type Seat,
   type SheetRow,
 } from './votes';
 import { usePeople } from './people';
@@ -71,7 +81,7 @@ function AttendanceView({ a }: { a: Attendance }) {
                       data-here={p}
                       title={`${short(m.date)}: ${p ? 'present' : 'not present'}. Opens the minutes (PDF)`}
                     >
-                      <i aria-hidden="true">{p ? '✓' : '–'}</i>
+                      <i aria-hidden="true">{p ? '✓' : '-'}</i>
                       {short(m.date)}
                     </DocLink>
                   );
@@ -173,8 +183,8 @@ export function MotionCard({ m, member, recorded = false }: { m: MotionRow; memb
   );
 }
 
-/** What the marks in the chart mean. */
-function Key() {
+/** What the marks in the chart mean. Only the marks the chart uses are listed, plus the blank (members not yet seated). */
+function Key({ marks, mayor }: { marks: Set<Mark>; mayor: boolean }) {
   return (
     <p className="vc-sh-key" aria-label="Key to the marks">
       <span>
@@ -183,15 +193,26 @@ function Key() {
       <span>
         <X size={14} strokeWidth={2.8} /> No
       </span>
+      {marks.has('abstain') && (
+        <span>
+          <i>A</i> Abstained
+        </span>
+      )}
+      {marks.has('recused') && (
+        <span>
+          <i>R</i> Recused
+        </span>
+      )}
       <span>
-        <i>A</i> Abstained
+        <i>-</i> Absent
       </span>
-      <span>
-        <i>R</i> Recused
-      </span>
-      <span>
-        <i data-absent="true" /> Absent
-      </span>
+      {marks.has('unrecorded') && (
+        <span>
+          <i>NR</i> No vote recorded
+        </span>
+      )}
+      <span>Blank: not yet seated</span>
+      {mayor && <span>Mayor votes only to break a tie</span>}
     </p>
   );
 }
@@ -201,8 +222,36 @@ const lower = (n: string) => n.toLowerCase();
 const sameMember = (voter: string, name: string) => lower(voter) === lower(name) || (!voter.includes(' ') && lower(voter) === lower(last(name)));
 const surname = (n: string) => cap(last(n));
 
-/** The year's votes as one chart: what was decided, the date and how it ended on the left, then a column for each member who sits now (the council) or who voted (the commission). */
-function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[]; member: string | null; council: string[] | null; mayor: string | null; showBody: boolean }) {
+const MARK_WORD: Record<Mark, string> = {
+  yes: 'Yes',
+  no: 'No',
+  abstain: 'Abstained',
+  recused: 'Recused',
+  absent: 'Absent',
+  unseated: 'not yet seated',
+  nonvoting: 'did not vote (votes only to break a tie)',
+  unrecorded: 'no vote recorded',
+};
+
+/** One member's mark: a check, a cross, a letter, a hyphen for absent; empty for a seat not yet held. */
+function MarkGlyph({ mark }: { mark: Mark }) {
+  if (mark === 'yes') return <Check size={16} strokeWidth={2.6} />;
+  if (mark === 'no') return <X size={16} strokeWidth={2.6} />;
+  if (mark === 'abstain') return <>A</>;
+  if (mark === 'recused') return <>R</>;
+  if (mark === 'absent') return <>-</>;
+  if (mark === 'unrecorded') return <small>NR</small>;
+  return null;
+}
+
+const rolled = (m: MotionRow) => m.votes.filter((v) => v.vote !== 'absent');
+
+/**
+ * The year's votes as one chart: what was decided, the date, how it ended and the recorded count on the left, then a
+ * column for each seat: the council serving now (a member who has left has none), or the commission as its 2026
+ * records show it.
+ */
+function VoteSheet({ rows, member, seats, mayor, showBody }: { rows: SheetRow[]; member: string | null; seats: Seat[]; mayor: string | null; showBody: boolean }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   const toggle = (id: string) =>
     setOpen((o) => {
@@ -211,19 +260,21 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
       else n.add(id);
       return n;
     });
-  // Everyone serving now has a column, whether or not they have voted yet (the mayor votes only to break a tie). A member who has left has none.
-  const cols = useMemo(() => {
-    if (council) return council;
-    const all = [...new Set(rows.flatMap((r) => r.m.votes.map((v) => v.member)))];
-    return all.filter((n) => n.includes(' ') || !all.some((o) => o !== n && o.includes(' ') && lower(last(o)) === lower(n))).sort((a, b) => surname(a).localeCompare(surname(b)));
-  }, [council, rows]);
-  const voteOf = (m: MotionRow, name: string) => m.votes.find((v) => sameMember(v.member, name))?.vote ?? 'none';
   const isOn = (name: string) => member !== null && member !== '' && sameMember(member, name);
   const isMayor = (name: string) => mayor !== null && lower(name) === lower(mayor);
-  const span = cols.length + 3;
+  const marks = useMemo(() => {
+    const out = new Set<Mark>();
+    for (const r of rows) {
+      if (r.pending || r.status === 'none' || rolled(r.m).length === 0) continue;
+      for (const s of seats) out.add(cellMark(r.m, s, mayor !== null && lower(s.name) === lower(mayor)));
+    }
+    return out;
+  }, [rows, seats, mayor]);
+  const span = seats.length + 4;
   return (
     <div className="vc-shw">
-      <div className="vc-sh" data-many={cols.length >= 7 ? 'true' : undefined}>
+      <Key marks={marks} mayor={mayor !== null} />
+      <div className="vc-sh" data-many={seats.length >= 7 ? 'true' : undefined}>
         <table className="vc-sh-table">
           <thead>
             <tr>
@@ -236,10 +287,20 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
               <th scope="col" className="vc-sh-th-status">
                 Status
               </th>
-              {cols.map((n) => (
-                <th key={n} scope="col" className="vc-sh-th-who" data-on={isOn(n) ? 'true' : undefined} title={isMayor(n) ? `Mayor ${surname(n)}` : n}>
-                  {isMayor(n) && <small>Mayor</small>}
-                  {surname(n)}
+              <th scope="col" className="vc-sh-th-tally">
+                Tally
+              </th>
+              {seats.map((s) => (
+                <th
+                  key={s.name}
+                  scope="col"
+                  className="vc-sh-th-who"
+                  data-on={isOn(s.name) ? 'true' : undefined}
+                  title={isMayor(s.name) ? `Mayor ${surname(s.name)}` : s.role ? `${s.name}, ${s.role}` : s.name}
+                >
+                  {isMayor(s.name) && <small>Mayor</small>}
+                  {surname(s.name)}
+                  {s.role === 'Alternate' && <small className="vc-sh-alt">(Alt.)</small>}
                 </th>
               ))}
             </tr>
@@ -247,17 +308,21 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
           {rows.map((r) => {
             const m = r.m;
             const isOpen = open.has(m.id);
-            const rolled = m.votes.filter((v) => v.vote !== 'absent');
-            const unanimous = m.result === 'carried' && m.unanimous && rolled.length === 0;
+            const voted = rolled(m);
+            const unanimous = m.result === 'carried' && m.unanimous && voted.length === 0;
             // Everyone who voted is listed when the motion is opened, including a member who has since left (no column of their own). A bare last name is dropped when the same vote also carries the full name.
             const roll = m.votes
               .filter((v) => v.member.includes(' ') || !m.votes.some((o) => o !== v && o.member.includes(' ') && lower(last(o.member)) === lower(v.member)))
               .sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || surname(a.member).localeCompare(surname(b.member)));
-            const motionText = m.motion.replace(/\s+/g, ' ').trim();
-            const tally = motionTally(m);
+            const motionText = plainDashes(m.motion.replace(/\s+/g, ' ').trim());
+            const tally = r.pending || r.status === 'none' ? null : recordedTally(m);
+            const tieNote = tally?.endsWith('(Mayor breaks tie)') ? 'Mayor breaks tie' : null;
+            const tallyMain = tally ? tally.replace(/\s*\(Mayor breaks tie\)$/, '') : '';
             const to = m.meetingId ? `/meetings/${encodeURIComponent(m.meetingId)}` : null;
             const date = fmt(m.date, { month: 'short', day: 'numeric', year: 'numeric' });
+            const longDate = fmt(m.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
             const tag = showBody && m.bodyId === 'redevelopment-agency' ? 'RDA' : null;
+            const noVotes = r.pending || r.status === 'none';
             return (
               <tbody key={m.id} data-open={isOpen ? 'true' : undefined} data-pending={r.pending ? 'true' : undefined}>
                 <tr className="vc-sh-row" onClick={() => toggle(m.id)}>
@@ -281,6 +346,8 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
                       </span>
                       <span className="vc-sh-status-m" data-status={r.status}>
                         {STATUS_WORD[r.status]}
+                        {tallyMain ? ` ${tallyMain}` : ''}
+                        {tieNote ? ` (${tieNote})` : ''}
                       </span>
                     </span>
                   </td>
@@ -291,30 +358,24 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
                   <td className="vc-sh-status" data-status={r.status}>
                     {STATUS_WORD[r.status]}
                   </td>
-                  {r.pending ? (
-                    <td colSpan={cols.length} className="vc-sh-note" aria-hidden="true" />
-                  ) : unanimous || rolled.length === 0 ? (
-                    <td colSpan={cols.length} className="vc-sh-note" data-tone={unanimous ? 'good' : undefined}>
+                  <td className="vc-sh-tally">
+                    {tallyMain}
+                    {tieNote && <small>{tieNote}</small>}
+                  </td>
+                  {noVotes ? (
+                    <td colSpan={seats.length} className="vc-sh-note" aria-hidden="true" />
+                  ) : unanimous || voted.length === 0 ? (
+                    <td colSpan={seats.length} className="vc-sh-note" data-tone={unanimous ? 'good' : undefined}>
                       {unanimous ? 'Unanimous' : 'Names not listed'}
                     </td>
                   ) : (
-                    cols.map((n) => {
-                      const v = voteOf(m, n);
+                    seats.map((s) => {
+                      const mk = cellMark(m, s, isMayor(s.name));
                       return (
-                        <td key={n} className="vc-sh-cell" data-vote={v} data-on={isOn(n) ? 'true' : undefined}>
-                          <span className="vc-sh-sr">{`${surname(n)}: ${v === 'none' ? 'no vote recorded' : (VOTE_LABEL[v] ?? v)}`}</span>
+                        <td key={s.name} className="vc-sh-cell" data-vote={mk} data-on={isOn(s.name) ? 'true' : undefined}>
+                          <span className="vc-sh-sr">{`${surname(s.name)}: ${MARK_WORD[mk]}`}</span>
                           <span aria-hidden="true">
-                            {v === 'yes' ? (
-                              <Check size={16} strokeWidth={2.6} />
-                            ) : v === 'no' ? (
-                              <X size={16} strokeWidth={2.6} />
-                            ) : v === 'abstain' ? (
-                              'A'
-                            ) : v === 'recused' ? (
-                              'R'
-                            ) : v === 'absent' ? (
-                              <i />
-                            ) : null}
+                            <MarkGlyph mark={mk} />
                           </span>
                         </td>
                       );
@@ -325,18 +386,22 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
                   <tr className="vc-sh-more">
                     <td colSpan={span}>
                       <div className="vc-sh-detail">
-                        {r.pending ? (
-                          <p className="vc-sh-line">
-                            {`${m.bodyName ?? 'The meeting'} met on ${fmt(m.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}. The city has not posted the minutes yet. The votes will appear here once it does.`}
-                          </p>
+                        {r.canceled ? (
+                          <p className="vc-sh-line">{`The ${m.bodyName ? `${m.bodyName} ` : ''}meeting set for ${longDate} was canceled. The city's meeting portal lists it as canceled.`}</p>
+                        ) : r.draft ? (
+                          <p className="vc-sh-line">{`${m.bodyName ?? 'The body'} met on ${longDate}. The city has not posted these minutes as their own file yet. Draft minutes are printed in the agenda packet for ${r.draft.date ? fmt(r.draft.date, { month: 'long', day: 'numeric', year: 'numeric' }) : 'a later meeting'}, page ${r.draft.page}.`}</p>
+                        ) : r.pending ? (
+                          <p className="vc-sh-line">{`${m.bodyName ?? 'The meeting'} met on ${longDate}. The city has not posted the minutes yet. The votes will appear here once it does.`}</p>
+                        ) : r.status === 'none' && !m.motion ? (
+                          <p className="vc-sh-line">{`${m.bodyName ?? 'The body'} met on ${longDate}. The minutes record no vote on an agenda item.`}</p>
                         ) : (
                           <>
                             {r.full !== r.title && <p className="vc-sh-line">{r.full}</p>}
                             <p className="vc-sh-line">
                               <b>{STATUS_WORD[r.status]}</b>
-                              {tally ? ` ${tally}` : ''}
-                              {unanimous ? ', unanimous' : ''}
-                              {` on ${fmt(m.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
+                              {tallyMain ? ` ${tallyMain}` : ''}
+                              {unanimous && tallyMain !== 'Unanimous' ? ', unanimous' : ''}
+                              {` on ${longDate}`}
                               {m.bodyName ? `, ${m.bodyId === 'redevelopment-agency' ? 'RDA Board' : m.bodyName}` : ''}
                             </p>
                             {motionText && <p className="vc-sh-line">{`Motion: ${motionText.charAt(0).toUpperCase()}${motionText.slice(1)}`}</p>}
@@ -350,7 +415,7 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
                             {(m.items?.length ?? 0) > 0 && (
                               <ol className="vc-vt-items">
                                 {m.items!.map((it) => (
-                                  <li key={it}>{it.replace(/^(\d+\.\d+)\s+/, '$1  ')}</li>
+                                  <li key={it}>{plainDashes(it).replace(/^(\d+\.\d+)\s+/, '$1  ')}</li>
                                 ))}
                               </ol>
                             )}
@@ -371,13 +436,18 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
                             ) : (
                               !unanimous && <p className="vc-sh-line">The minutes do not say how each member voted.</p>
                             )}
-                            {m.tieBreak && mayor && <p className="vc-sh-line">{`Mayor ${surname(mayor)} broke the tie.`}</p>}
+                            {m.tieBreak && <p className="vc-sh-line">{mayor ? `The minutes record that Mayor ${surname(mayor)} broke the tie.` : 'The minutes record that the mayor broke the tie.'}</p>}
                           </>
                         )}
                         <p className="vc-sh-links">
-                          {!r.pending && (
+                          {!r.pending && m.documentId && (
                             <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
                               <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
+                            </DocLink>
+                          )}
+                          {r.draft && (
+                            <DocLink id={r.draft.documentId} page={r.draft.page} className="vc-vt-min">
+                              <FileText size={12} /> Draft minutes p. {r.draft.page}
                             </DocLink>
                           )}
                           {to && (
@@ -397,6 +467,29 @@ function VoteSheet({ rows, member, council, mayor, showBody }: { rows: SheetRow[
       </div>
     </div>
   );
+}
+
+/** Draft minutes printed in a later packet, for each held meeting with no minutes ("body|date" to the packet page, or null). */
+function useDrafts(list: Array<{ key: string; date: string; body: string }> | null): Record<string, DraftMinutes | null> | null {
+  const want = list ? list.map((x) => `${x.key}#${x.body}`).join(',') : null;
+  const [state, setState] = useState<{ want: string | null; drafts: Record<string, DraftMinutes | null> } | null>(null);
+  useEffect(() => {
+    if (want === null) return;
+    const ctl = new AbortController();
+    const items = want ? want.split(',').map((x) => ({ key: x.split('#')[0], date: x.split('#')[0].split('|')[1], body: x.split('#')[1] })) : [];
+    Promise.all(
+      items.map((x) =>
+        getJson<{ draft: DraftMinutes | null }>(`/api/draft-minutes?date=${x.date}&body=${encodeURIComponent(x.body)}`, ctl.signal).then(
+          (r) => [x.key, r.draft] as const,
+          () => [x.key, null] as const,
+        ),
+      ),
+    ).then((pairs) => {
+      if (!ctl.signal.aborted) setState({ want, drafts: Object.fromEntries(pairs) });
+    });
+    return () => ctl.abort();
+  }, [want]);
+  return state && state.want === want ? state.drafts : null;
 }
 
 function YearSection({
@@ -428,35 +521,49 @@ function YearSection({
   const meet = (b: string | undefined) => (open && plain && b ? `/api/meetings?year=${year}&body=${b}&pageSize=100&sort=date_desc` : null);
   const first = useJson<{ items: MeetingLite[] }>(meet(bodies[0]));
   const second = useJson<{ items: MeetingLite[] }>(meet(bodies[1]));
-  const read = useJson<{ meetings: MinutesRead[] }>(open && plain ? `/api/votes/meetings?year=${year}` : null);
+  const read = useJson<{ meetings: MinutesRead[] }>(open && plain ? `/api/votes/meetings?year=${year}${commission ? '&body=planning-commission' : ''}` : null);
   // Utah's evening is already tomorrow in UTC, so the day is counted from six hours back.
   const [today] = useState(() => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
+  const loaded = plain && read.status === 'done' && first.status === 'done' && (!bodies[1] || second.status === 'done');
+  const held = useMemo(() => (loaded && first.status === 'done' ? [...first.data.items, ...(second.status === 'done' ? second.data.items : [])] : null), [loaded, first, second]);
+  // The commission's page lists every meeting of the year; a held meeting with no minutes may have draft minutes in a later packet.
+  const lookFor = useMemo(() => (commission && held && read.status === 'done' ? meetingsWithoutMinutes(held, read.data.meetings, today) : null), [commission, held, read, today]);
+  const drafts = useDrafts(lookFor);
   const rows = useMemo<SheetRow[]>(() => {
     if (list.status !== 'done') return [];
     const votes = sheetRows(list.data.items, result === 'carried' || result === 'failed' ? result : '');
-    if (!plain || read.status !== 'done' || first.status !== 'done' || (bodies[1] && second.status !== 'done')) return votes;
-    const held = [...first.data.items, ...(second.status === 'done' ? second.data.items : [])];
-    return mergeRows(votes, pendingRows(held, read.data.meetings, today));
-  }, [list, result, plain, first, second, read, bodies, today]);
-  // The council's columns are everyone serving now: the mayor first, then the council in alphabetical order. The commission's are whoever voted.
+    if (!loaded || !held || read.status !== 'done') return votes;
+    if (!commission) return mergeRows(votes, pendingRows(held, read.data.meetings, today));
+    if (!drafts) return votes;
+    const voted = new Set(votes.map((r) => `${r.m.bodyId}|${(r.m.date ?? '').slice(0, 10)}`));
+    return mergeRows(votes, meetingRows(held, read.data.meetings, today, { voted, drafts }));
+  }, [list, result, loaded, held, read, today, commission, drafts]);
+  // The council's columns are everyone serving now: the mayor first, then the council in alphabetical order. The commission's are its seats as the 2026 records show them.
   const people = usePeople();
-  const { council, mayor } = useMemo(() => {
+  const { seats, mayor } = useMemo(() => {
+    if (commission) {
+      // A member who voted this year and is not in the list of seats still gets a column, so no recorded vote is hidden.
+      const voters = list.status === 'done' ? [...new Set(list.data.items.flatMap((m) => m.votes.map((v) => v.member)))].filter((n) => n.includes(' ')) : [];
+      const extra = voters.filter((n) => !PC_SEATS.some((s) => sameMember(n, s.name))).map((name) => ({ name }));
+      return { seats: [...PC_SEATS, ...extra].sort((a, b) => surname(a.name).localeCompare(surname(b.name))), mayor: null };
+    }
     const now = people.filter((p) => p.current && p.kind === 'elected');
     const mayorName = now.find((p) => /^mayor$/i.test(p.role))?.name ?? null;
     const rest = now
       .filter((p) => !/^mayor$/i.test(p.role))
       .map((p) => p.name)
       .sort((a, b) => surname(a).localeCompare(surname(b)));
-    return { council: now.length ? [...(mayorName ? [mayorName] : []), ...rest] : null, mayor: mayorName };
-  }, [people]);
-  const ready = commission || council !== null;
+    const names = now.length ? [...(mayorName ? [mayorName] : []), ...rest] : [];
+    return { seats: names.map((name): Seat => COUNCIL_SEATS[name.toLowerCase()] ?? { name }), mayor: mayorName };
+  }, [people, commission, list]);
+  const ready = seats.length > 0;
   return (
     <section className="vc-year">
       <button type="button" className="vc-year-head" onClick={onToggle} aria-expanded={open}>
         <span className="vc-year-num">{year}</span>
         <ChevronDown size={18} className="vc-board-chev" data-open={open} />
       </button>
-      {open && list.status === 'loading' && (
+      {open && (list.status === 'loading' || (list.status === 'done' && !ready)) && (
         <div className="vc-skeleton" aria-hidden="true">
           <span style={{ width: '90%' }} />
           <span style={{ width: '70%' }} />
@@ -464,7 +571,7 @@ function YearSection({
       )}
       {open && list.status === 'error' && <p className="vc-mo-note">This year could not load just now.</p>}
       {open && list.status === 'done' && !rows.length && <p className="vc-mo-note">No votes match.</p>}
-      {open && rows.length > 0 && ready && <VoteSheet rows={rows} member={member} council={commission ? null : council} mayor={commission ? null : mayor} showBody={showBody} />}
+      {open && rows.length > 0 && ready && <VoteSheet rows={rows} member={member} seats={seats} mayor={mayor} showBody={showBody} />}
     </section>
   );
 }
@@ -519,7 +626,6 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
       )}
       {commission && view === 'attendance' && att && <AttendanceView a={att} />}
 
-      {view !== 'attendance' && <Key />}
       {years.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
           <span style={{ width: '60%' }} />

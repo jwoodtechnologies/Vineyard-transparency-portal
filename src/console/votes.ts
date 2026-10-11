@@ -24,6 +24,8 @@ export interface MotionRow {
   refs: string[];
   documentId: string;
   page: number | null;
+  /** Who the minutes list as present and absent at the top (names as printed), when they list it. */
+  attendance?: { present: string[]; absent: string[] } | null;
   votes: VoteRow[];
 }
 export interface VoteMember {
@@ -92,7 +94,7 @@ export function motionDetail(m: MotionRow): string | null {
 }
 
 /** How a row of the vote list ended. */
-export type SheetStatus = 'passed' | 'failed' | 'denied' | 'continued' | 'tabled' | 'removed' | 'pending' | 'none';
+export type SheetStatus = 'passed' | 'failed' | 'denied' | 'continued' | 'tabled' | 'removed' | 'pending' | 'canceled' | 'none';
 
 export const STATUS_WORD: Record<SheetStatus, string> = {
   passed: 'Passed',
@@ -102,6 +104,7 @@ export const STATUS_WORD: Record<SheetStatus, string> = {
   tabled: 'Tabled',
   removed: 'Removed',
   pending: 'Pending',
+  canceled: 'Canceled',
   none: 'No result',
 };
 
@@ -117,6 +120,18 @@ export interface SheetRow {
   status: SheetStatus;
   /** A meeting that was held but whose minutes are not posted: there are no votes to show yet. */
   pending?: boolean;
+  /** A meeting the city canceled. */
+  canceled?: boolean;
+  /** Draft minutes printed inside a later meeting's agenda packet (the packet, its date and the page). */
+  draft?: DraftMinutes;
+}
+
+/** Where a meeting's draft minutes are printed before the city posts them on their own (/api/draft-minutes). */
+export interface DraftMinutes {
+  documentId: string;
+  title: string;
+  date: string | null;
+  page: number;
 }
 
 /** Agenda headings that name a part of the meeting, not a thing being decided. */
@@ -125,7 +140,7 @@ const SECTION =
 const ACRONYM = new Set(['RDA', 'TSD', 'TSSD', 'UDOT', 'FY', 'ARCH', 'MAG', 'PD', 'UVU', 'CDBG', 'UTA', 'HOA', 'USA', 'CC', 'II', 'III', 'IV', 'DADU', 'SB', 'NUVASSSD']);
 const SMALL = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'in', 'of', 'on', 'or', 'the', 'to', 'with']);
 /** Names that the minutes type in lower case inside a motion. */
-const PROPER = /\b(utah|vineyard|orem|provo|lehi|lindon|geneva|timpanogos|intermountain|holdaway|stratton|lauret|mccumber|cosmo|forge|deer valley|rda|tsd|nuvasssd|dadu|fy)\b/gi;
+const PROPER = /\b(utah|vineyard|orem|provo|lehi|lindon|geneva|timpanogos|intermountain|holdaway|stratton|lauret|mccumber|cosmo|forge|deer valley|rda|tsd|nuvasssd|dadu|fy|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi;
 
 /** The minutes are scanned, so a few words come through misspelled; these are the ones seen. */
 /** Names the minutes type in lower case or half in capitals. */
@@ -290,7 +305,7 @@ function classify(m: MotionRow): SheetRow | null {
   // Approving minutes is housekeeping. A motion made under the minutes heading that decides something else keeps its own name.
   const minutesItem = MINUTES.test(itemRaw);
   const aboutItem = !minutesItem;
-  if (minutesItem && (!text || MINUTES.test(text) || /^(?:continue|table|postpone|defer|move|strike|approve|accept)\b/i.test(text) || text.split(' ').length < 4)) return null;
+  if (minutesItem && (!text || MINUTES.test(text) || /^(?:continue|table|postpone|defer|move\s+(?:agenda\s+)?items?|strike|approve|accept)\b/i.test(text) || text.split(' ').length < 4)) return null;
   // Consent items: a bundle of routine items. Minutes alone are housekeeping; one real item takes its own name.
   let title = '';
   let own = sentence(text);
@@ -338,6 +353,9 @@ function classify(m: MotionRow): SheetRow | null {
   return { m, title: clip(title), full: title, alt: clip(trimTitle(ownShown) || title), status };
 }
 
+/** Text as shown on the page: an en or em dash from the minutes becomes a plain hyphen. */
+export const plainDashes = (t: string): string => t.replace(/[\u2013\u2014]/g, '-');
+
 /** The vote list for a set of motions: only real decisions, duplicates removed, newest first as given. */
 export function sheetRows(items: MotionRow[], only: 'carried' | 'failed' | '' = ''): SheetRow[] {
   const sig = (r: SheetRow) =>
@@ -371,6 +389,11 @@ export function sheetRows(items: MotionRow[], only: 'carried' | 'failed' | '' = 
         r.title = r.alt;
         r.full = r.alt;
       }
+  for (const r of rows) {
+    r.title = plainDashes(r.title);
+    r.full = plainDashes(r.full);
+    r.alt = plainDashes(r.alt);
+  }
   return rows.filter((r) => (only === 'carried' ? r.status === 'passed' : only === 'failed' ? r.status === 'failed' || r.status === 'denied' : true));
 }
 
@@ -474,4 +497,220 @@ export function memberTitle(name: string, role: string | null | undefined): stri
 /** The motion as the minutes record it, with only spacing tidied. */
 export function recordedMotion(m: Pick<MotionRow, 'motion'>): string {
   return m.motion.replace(/\s+/g, ' ').trim();
+}
+
+// ------------------------------------------------------------------------------------------ tally and marks
+
+/**
+ * The count for a vote as the minutes record it: "3 to 2", "4 to 0, 1 abstained", "3 to 2 (Mayor breaks tie)".
+ * The total the minutes print ("Motion Passed 3-2") is the record. A printed total counts every member who voted,
+ * a member who has since left included, so it can name more votes than the chart has columns. When the printed
+ * total is lower than the names the minutes list for one side, the minutes contradict themselves and the list of
+ * names is used. With no printed total, the count is taken from the names (every name, former members included).
+ * "(Mayor breaks tie)" is added only when the minutes say the mayor broke a tie.
+ */
+export function recordedTally(m: Pick<MotionRow, 'tally' | 'votes' | 'tieBreak' | 'unanimous' | 'result'>): string | null {
+  const n = (k: string) => m.votes.filter((v) => v.vote === k).length;
+  const yes = n('yes');
+  const no = n('no');
+  const printed = /^(\d+)-(\d+)$/.exec(m.tally ?? '');
+  let count: string | null = null;
+  if (printed && yes <= Number(printed[1]) && no <= Number(printed[2])) count = `${printed[1]} to ${printed[2]}`;
+  else if (yes + no + n('abstain') >= 2 || (printed && yes + no > 0)) count = `${yes} to ${no}`;
+  else if (m.unanimous && m.result === 'carried' && m.votes.length === 0) return 'Unanimous';
+  if (!count) return null;
+  const extra = [n('abstain') ? `${n('abstain')} abstained` : '', n('recused') ? `${n('recused')} recused` : ''].filter(Boolean).join(', ');
+  return `${count}${extra ? `, ${extra}` : ''}${m.tieBreak ? ' (Mayor breaks tie)' : ''}`;
+}
+
+/** A seat on the council or commission, with the dates the records show it held (inclusive). */
+export interface Seat {
+  name: string;
+  /** "Alternate" is shown in the column heading. */
+  role?: 'Alternate' | 'Chair' | 'Vice Chair';
+  /** First day the member could vote. Before it the column is blank. */
+  from?: string;
+  /** Last day the member could vote. After it the column is blank. */
+  to?: string;
+}
+
+/**
+ * Council members whose seat began after January 2026, when this council's term began.
+ *
+ * Chip (Christopher) Price: the City Council chose him to fill Ezra Nair's vacant seat at its special meeting of
+ * September 15, 2026 (draft minutes of that meeting, item 7.4, printed in the October 13, 2026 City Council agenda
+ * packet, doc_778fecc1b705e178 p. 7: Christopher "Chip" Price "was selected to fill the vacant City Council seat ...
+ * The oath of office was scheduled to occur following statutory notice requirements"; also "Public Notice -
+ * Appointment of New City Council Member", doc_47d614c9864068a8 p. 1: "At its public meeting held on September 15,
+ * 2026, the City Council voted to appoint Christopher Price"). No record in the archive gives the date of his oath.
+ * He did not vote at the September 15 meeting (Nair voted on every item after the selection), so his column is
+ * blank through September 15, 2026.
+ */
+export const COUNCIL_SEATS: Record<string, Seat> = {
+  'chip price': { name: 'Chip Price', from: '2026-09-16' },
+};
+
+/**
+ * The Planning Commission as its 2026 records show it. Sources (archive document id and page):
+ * - March 4, 2026 approved minutes, doc_87f4b9c0a818e65b p. 1: "COMMISSIONERS PRESENT: David Pearce, Graden Ostler,
+ *   Jordan Christensen, and Martina Huntington"; Daria Evans is listed under "OTHERS PRESENT" and spoke as a resident.
+ * - March 24, 2026 City Council minutes, doc_965360a52383e70e p. 6, item 9.1: the council approved the appointment of
+ *   Daria Evans to the Planning Commission and "Deputy Recorder Tony Lara administered the oath of office to Daria
+ *   Evans". Her column is blank before that day. The minutes do not say whose seat she filled.
+ * - May 6, 2026 minutes, doc_92676662d170d22b p. 1: "Planning Commissioners Present: Daria Evans, Brad Fagg, Martina
+ *   Huntington, Graden Ostler, David Pearce, and Nathan Steele"; p. 2: Nathan Steele elected Chair and David Pearce
+ *   Vice Chair.
+ * - Alternates: January 22, 2025 final minutes, doc_8581dd5de1cb765c p. 2: "Commissioners Fagg and Ostler are
+ *   alternates and can not be nominated." No later record found changes either seat. No 2026 minutes print a role
+ *   for them.
+ * - Nathan Steele and Brad Fagg sat on November 5, 2025 (minutes doc_ccd67fb92b4b6746 p. 1) and are listed on the
+ *   city's Board & Commission Members page as read October 5, 2026 (doc_079bc34d0f7ba1da; terms 2024-2027 and
+ *   2023-2026), so on March 4, 2026, where the minutes do not list them as present, they are marked absent.
+ * - Jordan Christensen: no record found of his leaving; on May 6, 2026 he is not listed as present, so he is marked absent.
+ * Not columns: Caden Rhoton (at no 2026 meeting with minutes; "RES 2026-16 Planning Commissioner Removal",
+ * doc_fdf9cfd8eff4c237 p. 1, was in the March 24, 2026 council packet, and the August 18, 2026 council minutes,
+ * doc_70147d9eaf07e39b p. 1, list him among Vineyard residents) and Natalie Harbin (last at the November 5, 2025
+ * meeting, doc_ccd67fb92b4b6746 p. 1; no 2026 votes).
+ */
+export const PC_SEATS: Seat[] = [
+  { name: 'Jordan Christensen' },
+  { name: 'Daria Evans', from: '2026-03-24' },
+  { name: 'Brad Fagg', role: 'Alternate' },
+  { name: 'Martina Huntington' },
+  { name: 'Graden Ostler', role: 'Alternate' },
+  { name: 'David Pearce', role: 'Vice Chair' },
+  { name: 'Nathan Steele', role: 'Chair' },
+];
+
+/** What a cell in the chart shows for one member on one vote. */
+export type Mark = 'yes' | 'no' | 'abstain' | 'recused' | 'absent' | 'unseated' | 'nonvoting' | 'unrecorded';
+
+const lc = (n: string) => n.toLowerCase();
+const lastName = (n: string) => n.split(' ').pop() ?? n;
+/** A recorded name belongs to a member when the minutes print their full name, or only their last name. */
+export const isMember = (recorded: string, name: string): boolean => lc(recorded) === lc(name) || (!recorded.includes(' ') && lc(recorded) === lc(lastName(name)));
+
+/**
+ * A member's mark on one vote, from the records only:
+ * - the vote the minutes record for them;
+ * - blank ("unseated") when they were not yet seated, or no longer seated, that day;
+ * - absent when the minutes list them as absent, or, in minutes that list only who was present, when they are not listed;
+ * - the mayor votes only to break a tie, so the mayor's cell is otherwise empty ("nonvoting");
+ * - otherwise no vote is recorded for them ("unrecorded").
+ */
+export function cellMark(m: Pick<MotionRow, 'date' | 'votes' | 'attendance'>, seat: Seat, mayor = false): Mark {
+  const day = (m.date ?? '').slice(0, 10);
+  if (day && ((seat.from && day < seat.from) || (seat.to && day > seat.to))) return 'unseated';
+  const v = m.votes.find((x) => isMember(x.member, seat.name))?.vote;
+  if (v === 'yes' || v === 'no' || v === 'abstain' || v === 'recused' || v === 'absent') return v;
+  const att = m.attendance;
+  if (att?.absent.some((n) => isMember(n, seat.name))) return 'absent';
+  if (mayor) return 'nonvoting';
+  // Only a present list that names everyone the roll call names is taken as complete.
+  const complete = att && att.present.length >= 2 && m.votes.every((x) => x.vote === 'absent' || att.present.some((n) => isMember(x.member, n) || isMember(n, x.member)));
+  if (att && complete && att.absent.length === 0 && !att.present.some((n) => isMember(n, seat.name))) return 'absent';
+  return 'unrecorded';
+}
+
+/** The column heading for a seat: the last name, with "(Alt.)" for an alternate. */
+export function seatLabel(seat: Seat): string {
+  const n = lastName(seat.name);
+  return seat.role === 'Alternate' ? `${n} (Alt.)` : n;
+}
+
+// ------------------------------------------------------------------------------------------ the year's meetings
+
+const shortDay = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+/**
+ * Every meeting of a body this year, for a page that lists them all (the Planning Commission):
+ * - a meeting held whose minutes are read gets no row here (its votes are its rows), unless none of its votes is
+ *   listed (`voted`), when it gets a "No votes recorded" row;
+ * - a meeting held with no minutes: "Draft minutes in <date> packet" when a later packet prints them, otherwise
+ *   "Minutes not yet posted";
+ * - a canceled meeting: "Meeting canceled".
+ * A meeting whose date has passed but which the calendar still calls scheduled is counted as held: the calendar is
+ * copied from the city's portal and a copy can lag, and the city posted no cancellation for it.
+ * Entries on one day are one meeting; a cancellation that day wins over an entry with no minutes. Hearing notices
+ * and comment periods filed under the body are not meetings.
+ */
+export function meetingRows(
+  meetings: MeetingLite[],
+  read: MinutesRead[],
+  today: string,
+  opts: { voted?: Set<string>; drafts?: Record<string, DraftMinutes | null>; from?: string } = {},
+): SheetRow[] {
+  const day = (d: string | null) => (d ?? '').slice(0, 10);
+  const from = opts.from ?? `${today.slice(0, 4)}-01-01`;
+  const have = new Set(read.map((r) => `${r.bodyId}|${day(r.date)}`));
+  const groups = new Map<string, MeetingLite[]>();
+  for (const mt of meetings) {
+    const date = day(mt.date);
+    if (!date || date < from || date > today || !mt.governmentBodyId) continue;
+    if (/\b(?:public notice|notice of public hearing|comment period)\b/i.test(mt.title) && !/\bcancel/i.test(mt.title)) continue;
+    const k = `${mt.governmentBodyId}|${date}`;
+    (groups.get(k) ?? groups.set(k, []).get(k)!).push(mt);
+  }
+  const rows: SheetRow[] = [];
+  for (const [key, list] of groups) {
+    const date = key.slice(key.indexOf('|') + 1);
+    const cancelled = list.find((m) => m.status === 'cancelled' || /\bcancel+(?:ed|ation)\b/i.test(m.title));
+    const held = list.some((m) => m.status === 'held' || (m.status === 'scheduled' && date < today));
+    const main = list.find((m) => m !== cancelled) ?? list[0];
+    let title: string;
+    let status: SheetStatus;
+    let draft: DraftMinutes | undefined;
+    if (have.has(key)) {
+      if (!opts.voted || opts.voted.has(key)) continue;
+      title = 'No votes recorded';
+      status = 'none';
+    } else if (cancelled) {
+      title = 'Meeting canceled';
+      status = 'canceled';
+    } else if (held) {
+      const d = opts.drafts?.[key] ?? null;
+      if (d) draft = d;
+      title = d ? `Draft minutes in ${d.date ? shortDay(d.date) : 'a later'} packet` : 'Minutes not yet posted';
+      status = 'pending';
+    } else continue;
+    const shownMeeting = status === 'canceled' && cancelled ? cancelled : main;
+    const bodyId = shownMeeting.governmentBodyId ?? null;
+    rows.push({
+      m: {
+        id: `meeting:${shownMeeting.id}`,
+        meetingId: shownMeeting.id,
+        date,
+        bodyId,
+        bodyName: bodyId ? (BODY_NAME[bodyId] ?? shownMeeting.governmentBodyName ?? null) : null,
+        item: null,
+        motion: '',
+        mover: null,
+        seconder: null,
+        result: 'unknown',
+        tally: null,
+        tieBreak: false,
+        unanimous: false,
+        inferred: false,
+        refs: [],
+        documentId: draft?.documentId ?? '',
+        page: draft?.page ?? null,
+        votes: [],
+      },
+      title,
+      full: title,
+      alt: title,
+      status,
+      pending: status !== 'none',
+      canceled: status === 'canceled',
+      draft,
+    });
+  }
+  return rows.sort((a, b) => (b.m.date ?? '').localeCompare(a.m.date ?? ''));
+}
+
+/** Meetings held with no minutes read, keyed "body|date": where to look for draft minutes in a later packet. */
+export function meetingsWithoutMinutes(meetings: MeetingLite[], read: MinutesRead[], today: string): Array<{ key: string; date: string; body: string }> {
+  return meetingRows(meetings, read, today)
+    .filter((r) => r.status === 'pending' && r.m.bodyId && r.m.date)
+    .map((r) => ({ key: `${r.m.bodyId}|${r.m.date}`, date: r.m.date as string, body: r.m.bodyName ?? '' }));
 }
