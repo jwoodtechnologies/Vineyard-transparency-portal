@@ -1,0 +1,91 @@
+# Read-only diagnostics for maintainers who cannot reach the city sites directly.
+# Saves copies of source pages and API responses, or the log of a short crawl, to the
+# `diagnostics` branch (diag/<run id>/). Never touches main. Start it from the Actions tab.
+name: Diagnostics
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: What to capture
+        type: choice
+        default: fixtures
+        options: [fixtures, crawl-log, ingest-log]
+      urls:
+        description: Extra URLs to save (space separated, optional)
+        default: ""
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: diagnostics
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VTP_API_BASE: ${{ vars.VTP_API_BASE || 'https://vineyardportal.org,https://vineyard-transparency-portal.citizenjwood.workers.dev' }}
+      VTP_OIDC_AUDIENCE: vineyardportal.org
+      VTP_TRIGGER: diagnostics
+      TASK: ${{ inputs.task }}
+      EXTRA: ${{ inputs.urls }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: inputs.task != 'fixtures'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-ingest.txt
+      - name: Capture
+        run: |
+          set -uo pipefail
+          OUT="diag/${GITHUB_RUN_ID}"
+          mkdir -p "$OUT"
+          UA="VineyardTransparencyPortal/1.0 (+https://vineyardportal.org; public records archive)"
+          save() { # save <name> <url>
+            curl -sSL --max-time 60 -A "$UA" -o "$OUT/$1" -w "$1 %{http_code} %{size_download} %{url_effective}\n" "$2" >> "$OUT/index.txt" 2>>"$OUT/errors.txt" || echo "$1 FAILED $2" >> "$OUT/index.txt"
+          }
+          if [[ "$TASK" == "fixtures" ]]; then
+            G=https://www.vineyardutah.gov
+            CC=https://vineyardut.api.civicclerk.com/v1
+            P=https://vineyardportal.org/api
+            save construction.html "$G/government/construction_projects.php"
+            save transparency.html "$G/transparency_portal/index.php"
+            save rda.html "$G/government/redevelopment_agency/index.php"
+            save agendas_notices.html "$G/government/agenda_minutes___public_notice.php"
+            save calendar.html "$G/calendar.php"
+            save revize_calendar.json "$G/_assets_/plugins/revizeCalendar/calendar_data_handler.php?webspace=vineyard&relative_revize_url=//cms3.revize.com&protocol=https:"
+            save cc_event_1706.json "$CC/Events/1706"
+            save cc_event_1711.json "$CC/Events/1711"
+            save cc_events_upcoming.json "$CC/Events?\$filter=startDateTime%20ge%202026-09-20T00:00:00Z&\$orderby=startDateTime"
+            save pmn_index.html "https://www.utah.gov/pmn/index.html"
+            save pmn_sitemap.xml "https://www.utah.gov/pmn/sitemap.xml"
+            save pmn_search_vineyard.html "https://www.utah.gov/pmn/search.html?q=vineyard"
+            save portal_stats.json "$P/stats"
+            save portal_sources.json "$P/sources"
+            save portal_latest.json "$P/latest"
+            save portal_health.json "$P/health"
+            save portal_meetings_upcoming.json "$P/meetings?upcoming=1&pageSize=50"
+            save portal_meetings_2026.json "$P/meetings?year=2026&pageSize=100"
+            i=0; for u in $EXTRA; do i=$((i+1)); save "extra_$i" "$u"; done
+          else
+            sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > /dev/null
+            pip install -q -r requirements-ingest.txt
+            if [[ "$TASK" == "crawl-log" ]]; then CMD=(run --limit 5 --hours 0.25); else CMD=(ingest --limit 10 --hours 0.25); fi
+            python -m ingest "${CMD[@]}" > "$OUT/log.txt" 2>&1; echo "exit=$?" >> "$OUT/log.txt"
+            tail -c 400000 "$OUT/log.txt" > "$OUT/log.tmp" && mv "$OUT/log.tmp" "$OUT/log.txt"
+          fi
+      - name: Save to the diagnostics branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mv diag "$RUNNER_TEMP/diag"
+          if git fetch -q origin diagnostics; then git checkout -q -B diagnostics origin/diagnostics; else git checkout -q --orphan diagnostics && git rm -rq --cached . && git clean -fdq; fi
+          mkdir -p diag && cp -r "$RUNNER_TEMP/diag/." diag/
+          git add diag && git commit -qm "Diagnostics ${TASK} ${GITHUB_RUN_ID}" && git push -q origin diagnostics
