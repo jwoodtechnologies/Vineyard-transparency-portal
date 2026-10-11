@@ -10,6 +10,7 @@ import { bodyFor, classifyType } from '../lib/civicclerk';
 import { SYNC_UA } from './ingest';
 import { urlKey } from './urls';
 import { assertRobots } from './robots';
+import { countSource } from './jobHealth';
 import { noticeBody, noticeStatus, parsePmnResults, PMN, type PmnNotice } from './pmnParse';
 
 export { parsePmnResults, type PmnNotice };
@@ -97,6 +98,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
     notices = await searchPmn(env);
   } catch (e) {
     await env.CATALOG_DB.prepare(`UPDATE sources SET status = 'unreachable', status_message = ?, last_checked_at = ? WHERE id = ?`).bind(String(e).slice(0, 300), now, PMN_SOURCE).run();
+    await countSource(env, PMN_SOURCE, false);
     throw e;
   }
   // Meetings: the agenda portal (CivicClerk) refuses Cloudflare's network, so the statewide notice
@@ -231,5 +233,6 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
     added = fresh.length;
   }
   await env.CATALOG_DB.prepare(`UPDATE sources SET status = 'active', status_message = NULL, last_checked_at = ?, last_success_at = ? WHERE id = ?`).bind(now, now, PMN_SOURCE).run();
+  await countSource(env, PMN_SOURCE, true);
   return { notices: notices.length, queued: added };
 }

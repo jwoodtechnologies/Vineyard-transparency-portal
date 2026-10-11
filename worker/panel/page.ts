@@ -3,7 +3,8 @@
  * bundle). All data is rendered with textContent, never as HTML.
  *
  * Owner: activity, adding records, every upload, resident submissions, people and invites, and the
- * coverage check (what the archive is missing, with a CSV download).
+ * coverage check (what the archive is missing, with a CSV download), and job health (each scheduled
+ * check and source: last run, last success, last error, failures in a row).
  * Uploader: adding records and its own uploads. An invite link (PANEL_PREFIX/invite/<token>) opens
  * the join form, where the invitee picks a display name and creates a passkey.
  */
@@ -87,6 +88,8 @@ html.dark .seg button[aria-pressed=true]{background:rgba(255,255,255,.1)}
 .pill{align-self:start;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
 .pill.up{background:var(--goodbg);color:var(--good)}.pill.down{background:var(--badbg);color:var(--bad)}
 .pill.soft{background:var(--bg2);color:var(--muted);font-weight:600}
+.mark{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px;background:var(--faint)}.mark.fail{background:var(--accent)}
+.err1{overflow-wrap:anywhere}
 .empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:14px}
 .more{display:flex;justify-content:center;padding:14px}
 .foot{margin-top:26px;font-size:12px;color:var(--faint);text-align:center}
@@ -260,6 +263,15 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
       <h2 class="sub">Records with no text</h2>
       <p class="hint">Text not extracted, not indexed for search, or waiting for OCR.</p>
       <div class="card"><ul class="feed" id="covNoText"></ul><div class="empty hidden" id="covNoTextEmpty">Every record has text.</div><div class="more" id="covNoTextMore"></div></div>
+    </div>
+
+    <div id="v-health" class="view hidden">
+      <div class="head"><h1>Health</h1><div class="rowacts"><button class="btn" id="hlRefresh" type="button">Reload</button></div></div>
+      <p class="hint" id="hlWhen"></p>
+      <h2 class="sub">Scheduled checks</h2>
+      <div class="card"><ul class="feed" id="hlJobs"></ul><div class="empty hidden" id="hlJobsEmpty">No checks recorded yet.</div></div>
+      <h2 class="sub">Sources</h2>
+      <div class="card"><ul class="feed" id="hlSources"></ul><div class="empty hidden" id="hlSourcesEmpty">No sources.</div></div>
     </div>
   </section>
 </div>

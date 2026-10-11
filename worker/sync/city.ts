@@ -15,6 +15,7 @@ import { extractHtml, type HtmlExtraction } from './extract';
 import { indexRecord, sha256Hex, SYNC_UA } from './ingest';
 import { canonicalUrl, categorize, normalizeUrl, urlKey } from './urls';
 import { assertRobots } from './robots';
+import { countSource } from './jobHealth';
 
 export const CITY = 'https://www.vineyardutah.gov/';
 export const CITY_SOURCE = 'vineyard-city-website';
@@ -291,6 +292,7 @@ export async function crawlCitySite(env: Env, budget: Budget, maxPages: number, 
         .bind(state.pass_id, state.started_at, now, JSON.stringify([CITY_SOURCE]), state.pages_done, state.docs_queued, state.errors, 'Full pass of the city website by the five-minute check.')
         .run();
       await db.prepare(`UPDATE sources SET status = 'active', status_message = NULL, last_checked_at = ?, last_success_at = ? WHERE id IN (?, ?)`).bind(now, now, CITY_SOURCE, PORTAL_SOURCE).run();
+      await Promise.all([countSource(env, CITY_SOURCE, true), countSource(env, PORTAL_SOURCE, true)]);
     }
     if (ageHours >= 20) {
       const passId = `site_${now.slice(0, 19).replace(/[-:T]/g, '')}`;

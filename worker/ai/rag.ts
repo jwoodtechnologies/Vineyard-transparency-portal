@@ -292,6 +292,96 @@ async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: s
   return { id: row.id, title: row.title, date: row.meeting_date, minutesOnly: outcome, terms: rest.length >= 3 ? rest : 'approve approved motion ordinance resolution item public hearing presentation' };
 }
 
+/** One meeting named by its date (and body): the records that belong to it, nothing else. */
+export interface DatedMeeting {
+  date: string;
+  body: MeetingBody;
+  /** "September 8, 2026 City Council meeting". */
+  name: string;
+  meetingId: string | null;
+  meetingIds: string[];
+  docIds: Set<string>;
+  minutesIds: Set<string>;
+  /** What happened there (spoke, decided, discussed): read from the minutes when the archive has them. */
+  outcome: boolean;
+}
+
+const MEETING_OUTCOME = /\b(happen\w*|decid\w*|decisions?|vot\w*|approv\w*|adopt\w*|pass(?:ed|es)?|den(?:y|ied)|actions?|outcomes?|results?|spoke|speak\w*|said|says?|comments?|commented|discuss\w*|presented|presentations?|testif\w*|attend\w*|absent|motions?|moved|asked|raised|concerns?)\b/i;
+const MONTH_WORDS = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?(?=\s|$)/gi;
+
+/**
+ * "Who spoke during public comment at the September 8, 2026 City Council meeting?": a question tied
+ * to one meeting by its date and body (or date and the word meeting). Its records are the documents
+ * filed under that meeting and the minutes, agenda and packet of that body dated that day. Null when
+ * the question names no meeting date, or the archive holds no meeting or record for it.
+ */
+export async function datedMeeting(env: Env, q: string, today = utahToday()): Promise<DatedMeeting | null> {
+  const date = meetingDateIn(q, today);
+  if (!date) return null;
+  const named = meetingBodyIn(q);
+  if (!named && !/\b(meeting|session)\b/i.test(q)) return null;
+  const body = named ?? 'city-council';
+  const meetings = await env.CATALOG_DB.prepare(
+    `SELECT id FROM meetings WHERE substr(meeting_date, 1, 10) = ? AND government_body_id = ? ORDER BY CASE WHEN id LIKE 'mtg_cc_%' THEN 0 ELSE 1 END, id LIMIT 5`,
+  )
+    .bind(date, body)
+    .all<{ id: string }>();
+  const meetingIds = (meetings.results ?? []).map((r) => String(r.id));
+  const docs = await env.CATALOG_DB.prepare(
+    `SELECT id, document_type FROM documents
+     WHERE meeting_id IN (SELECT value FROM json_each(?))
+        OR (document_date = ? AND government_body_id = ? AND document_type IN ('minutes', 'agenda', 'agenda_packet'))
+     LIMIT 300`,
+  )
+    .bind(JSON.stringify(meetingIds), date, body)
+    .all<{ id: string; document_type: string }>();
+  const rows = docs.results ?? [];
+  if (!meetingIds.length && !rows.length) return null;
+  return {
+    date,
+    body,
+    name: `${longDay(date)} ${BODY_LABEL[body]} meeting`,
+    meetingId: meetingIds[0] ?? null,
+    meetingIds,
+    docIds: new Set(rows.map((r) => String(r.id))),
+    minutesIds: new Set(rows.filter((r) => r.document_type === 'minutes').map((r) => String(r.id))),
+    outcome: MEETING_OUTCOME.test(q),
+  };
+}
+
+const LONG_DATE = /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+((?:19|20)\d{2})\b/gi;
+const NUM_DATE = /\b(\d{1,2})[./](\d{1,2})[./]((?:19|20)?\d{2})\b/g;
+
+const MONTH_INDEX: Record<string, number> = Object.fromEntries(['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'].map((m, i) => [m, i + 1]));
+
+/** True when the text names that day ("September 8", "Sept. 8, 2026", "9/8/2026"). */
+export function namesMeetingDay(text: string, date: string): boolean {
+  if (datesIn(text).includes(date)) return true;
+  const [, m, d] = date.split('-').map(Number);
+  const month = Object.keys(MONTH_INDEX)[m - 1];
+  return new RegExp(`\\b(?:${month}|${month.slice(0, 3)}\\.?|${month.slice(0, 4)}\\.?)\\s+${d}(?:st|nd|rd|th)?\\b`, 'i').test(text);
+}
+
+/** Every full date a passage names, as ISO. */
+function datesIn(text: string): string[] {
+  const out: string[] = [];
+  const iso = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  for (const m of text.matchAll(LONG_DATE)) out.push(iso(Number(m[3]), MONTH_INDEX[m[1].toLowerCase()], Number(m[2])));
+  for (const m of text.matchAll(NUM_DATE)) out.push(iso(Number(m[3].length === 2 ? `20${m[3]}` : m[3]), Number(m[1]), Number(m[2])));
+  return out;
+}
+
+/**
+ * A packet or agenda passage that is another meeting's minutes reprinted for approval ("Minutes of the
+ * August 25, 2026 City Council meeting ... Jared Tamez spoke"): it names minutes and another date, and
+ * never this meeting's date. Such a passage says what happened at that other meeting, not this one.
+ */
+export function reprintedMinutes(h: { documentType: string; text?: string | null }, date: string): boolean {
+  if (h.documentType === 'minutes' || !h.text || !/\bminutes\b/i.test(h.text)) return false;
+  const dates = datesIn(h.text);
+  return dates.length > 0 && !dates.includes(date);
+}
+
 const CURRENT = /\b(who is|who's|who are|current|currently|now|today|as of|latest|presently|still|this year|right now)\b/i;
 const ROLE = /\b(mayor|deputy mayor|council ?(member|man|woman)s?|city council|city manager|recorder|city attorney|director|department head|staff|employees?|who works|chief|official|commissioners?)\b/i;
 const PRESENT_Q = /\b(now|current|currently|today|this year|latest|recent|recently|right now|going on|happening|doing|working on|plans?|planned|planning|upcoming|status|still|update|progress)\b/i;
@@ -724,9 +814,37 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   };
 
   // "What happened at the last council meeting?" is answered from that meeting's own records.
-  const focus = agendaLock ? null : await meetingFocus(env, body.question).catch(() => null);
+  // "Who spoke during public comment at the September 8, 2026 City Council meeting?": only that meeting's
+  // own records (filed under it, or its body's minutes, agenda and packet of that day) reach the model.
+  const dated = agendaLock ? null : await datedMeeting(env, body.question, todayUT).catch(() => null);
+  const focus = agendaLock || dated ? null : await meetingFocus(env, body.question).catch(() => null);
   let hits: ChunkHit[] = [];
   let question = body.question;
+  // Minutes when the question asks what happened and the archive has them; otherwise every record of the meeting.
+  const datedIds = dated ? (dated.outcome && dated.minutesIds.size ? dated.minutesIds : dated.docIds) : null;
+  const inDated = (h: ChunkHit) => Boolean(dated && datedIds?.has(h.documentId) && !reprintedMinutes(h, dated.date));
+  const datedNone = async (searched: ChunkHit[]): Promise<Prepared> => {
+    const m = dated!;
+    const r = await fallback('no_results', null, searched);
+    const text = m.meetingId ? `I couldn't find that in the records of the ${m.name}. The meeting record is below.` : `I couldn't find that in the records of the ${m.name}.`;
+    const section = m.meetingId ? { path: `/meetings/${m.meetingId}`, label: `Open the ${m.name}`, hint: 'Agenda, packet, minutes and video' } : undefined;
+    return { kind: 'final', response: { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: 'search-fallback (nothing in the meeting records)', ...(section ? { section } : {}) } as AskResponse };
+  };
+  if (dated) {
+    const m = dated;
+    const rest = body.question.replace(/[?.!,]/g, ' ').replace(MONTH_WORDS, ' ').replace(/\b\d+(?:st|nd|rd|th)?\b/g, ' ').replace(FILLER, ' ').replace(/\b(rda|redevelopment|agency|board|that|this|night|evening|day)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+    const terms = rest.length >= 3 ? rest : 'approve approved motion ordinance resolution item public hearing presentation';
+    const lists = await Promise.all([
+      ...m.meetingIds.map((id) => retrieve(terms, { ...filters, meetingId: id }).catch(() => [] as ChunkHit[])),
+      retrieve(terms, { ...filters, dateFrom: m.date, dateTo: m.date, governmentBodyIds: [m.body] }).catch(() => [] as ChunkHit[]),
+    ]);
+    hits = interleave(lists, 60).filter(inDated);
+    if (!hits.length) return datedNone([]);
+    const fromMinutes = hits.every((h) => m.minutesIds.has(h.documentId));
+    question = fromMinutes
+      ? `${body.question}\n(Every source below is from the minutes of the ${m.name}. Start by naming that meeting and its date. Say only what these minutes record; if they do not answer the question, reply NO_RECORD.)`
+      : `${body.question}\n(Every source below is from the records of the ${m.name}: its agenda, packet${m.minutesIds.size ? ' and minutes' : ''}. Start by naming that meeting and its date.${m.minutesIds.size ? '' : ' Its minutes are not in the archive, so describe items as scheduled, not as decided.'} Minutes of an earlier meeting reprinted in a packet are from that other meeting; leave them out. If these records do not answer the question, reply NO_RECORD.)`;
+  }
   if (agendaLock) {
     const lock = agendaLock;
     const rest = body.question.replace(/[?.!,]/g, ' ').replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
@@ -929,8 +1047,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     topicNotes = '';
     question = lock.question;
   }
+  if (dated) {
+    // Nothing from another meeting reaches the model, reprinted minutes included.
+    const searched = hits;
+    hits = hits.filter(inDated);
+    latestHits = [];
+    topicNotes = '';
+    if (!hits.length) return datedNone(searched.filter((h) => dated.docIds.has(h.documentId)));
+  }
   // Resident submissions never inform answers about votes, the budget, meetings or construction.
-  hits = withoutResidentFor(hits, retrievalText, Boolean(focus || agendaLock) || voteIds.size > 0 || roadIds.size > 0);
+  hits = withoutResidentFor(hits, retrievalText, Boolean(focus || agendaLock || dated) || voteIds.size > 0 || roadIds.size > 0);
   question = `${question}\n(${timeNote(todayUT, frame)}${topicNotes ? ` ${topicNotes}` : ''}${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
@@ -1013,7 +1139,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   // A new topic is answered on its own: earlier turns reach the model only for a real follow-up,
   // so a question about utilities is never pulled back to the road asked about before.
-  const follow = !agendaLock && (aiFollow ?? retrievalText !== body.question);
+  const follow = !agendaLock && !dated && (aiFollow ?? retrievalText !== body.question);
   const prior = follow ? (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) : [];
   const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(question, evidence, follow ? history : []) }];
 
@@ -1129,13 +1255,22 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   // The next meeting's date, time and place lead, from the meeting record, ahead of its agenda items.
   const lock = agendaLock;
+  // An answer about one dated meeting always names it.
+  const datedFinish = dated
+    ? async (raw: string, engine?: string): Promise<AskResponse> => {
+        const r = await finish(raw, engine);
+        if (!r.citations?.length || namesMeetingDay(r.answer, dated.date)) return r;
+        const text = `From the records of the ${dated.name}:`;
+        return { ...r, answer: `${text}\n\n${r.answer}`, paragraphs: [{ segments: [{ text, citations: [] }] }, ...(r.paragraphs ?? [])] } as AskResponse;
+      }
+    : finish;
   const lockFinish = lock
     ? async (raw: string, engine?: string): Promise<AskResponse> => {
         const r = await finish(raw, engine);
         const text = lock.schedule.text;
         return { ...r, answer: `${text}\n\n${r.answer}`, paragraphs: [{ segments: [{ text, citations: [] }] }, ...(r.paragraphs ?? [])], event: lock.schedule.event } as AskResponse;
       }
-    : finish;
+    : datedFinish;
   return { kind: 'model', messages, useBig: budgetOk < intVar(env.AI_BIG_PER_DAY, BIG_MODEL_PER_DAY), finish: lockFinish, fail };
 }
 
