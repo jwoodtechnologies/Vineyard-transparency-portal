@@ -42,7 +42,7 @@ import { LATEST_ACTION_Q, SCOPE_FROM, councilName, currentCouncil, motionEvidenc
 import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
-import { BODY_LABEL, longDay, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, type MeetingVotesIntent } from './meetingVotes';
+import { BODY_LABEL, longDay, meetingBodyIn, meetingDateIn, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, type MeetingVotesIntent } from './meetingVotes';
 import { isOffTopic, OFF_TOPIC_REPLY } from './offTopic';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
@@ -505,10 +505,10 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   }
 
   // Knowledge-base questions answered straight from the calendar and the catalog: exact and free.
-  const quick = (text: string, event?: unknown, followUps: string[] = []) =>
+  const quick = (text: string, event?: unknown, followUps: string[] = [], section?: { path: string; label: string; hint: string }) =>
     ({
       kind: 'final',
-      response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: followUps, notice: null, engine: 'catalog', mode: 'conversation', ...(event ? { event } : {}) } as AskResponse,
+      response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: followUps, notice: null, engine: 'catalog', mode: 'conversation', ...(event ? { event } : {}), ...(section ? { section } : {}) } as AskResponse,
     }) as Prepared;
   const todayUT = utahToday();
   const frame = resolveTime(body.question, todayUT);
@@ -516,7 +516,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // "What construction is going on right now?": the city's page as last stored, with its date.
   if (isConstructionNowQuestion(body.question)) {
     const c = await constructionAnswer(env).catch(() => null);
-    if (c) return quick(c.text, undefined, c.followUps);
+    if (c) return quick(c.text, undefined, c.followUps, { path: '/construction', label: 'Open construction', hint: "The city's construction page, by version, with the map" });
   }
   const service = serviceAnswer(body.question);
   if (service) return quick(service.text, undefined, service.followUps);
@@ -899,13 +899,29 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     return { ...r, engine: `search-fallback (${msg.replace(/\s+/g, ' ').slice(0, 160)})` };
   };
 
+  // A question about one meeting ("at the September 8, 2026 City Council meeting") that finds no answer
+  // still opens that meeting: its record holds the agenda, packet, minutes and video.
+  const namedMeeting = async (): Promise<{ text: string; section: { path: string; label: string; hint: string } } | null> => {
+    const date = meetingDateIn(body.question, utahToday());
+    if (!date) return null;
+    const mb = meetingBodyIn(body.question) ?? 'city-council';
+    const row = await env.CATALOG_DB.prepare(`SELECT id FROM meetings WHERE substr(meeting_date, 1, 10) = ? AND government_body_id = ? ORDER BY CASE WHEN id LIKE 'mtg_cc_%' THEN 0 ELSE 1 END LIMIT 1`)
+      .bind(date, mb)
+      .first<{ id: string }>()
+      .catch(() => null);
+    if (!row) return null;
+    const name = `${longDay(date)} ${BODY_LABEL[mb]} meeting`;
+    return { text: `I couldn't find a record that answers that. The ${name} record is below.`, section: { path: `/meetings/${row.id}`, label: `Open the ${name}`, hint: 'Agenda, packet, minutes and video' } };
+  };
+
   const finish = async (raw: string, engine?: string): Promise<AskResponse> => {
     await quotaP;
     // The model found nothing that answers the question: say so plainly, with the closest records below.
     if (/^\s*NO_RECORD\b/.test(raw) || /^\s*NO_RECORD\s*$/m.test(raw.slice(0, 40))) {
       const r = await fallback('no_results', null);
-      const text = frame ? `I couldn't find a record that answers that for ${frame.label}. The closest records are below.` : "I couldn't find a record that answers that. The closest records are below.";
-      return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `${engine ?? DEFAULT_AI_MODEL} (no record)` } as AskResponse;
+      const named = await namedMeeting();
+      const text = named ? named.text : frame ? `I couldn't find a record that answers that for ${frame.label}. The closest records are below.` : "I couldn't find a record that answers that. The closest records are below.";
+      return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `${engine ?? DEFAULT_AI_MODEL} (no record)`, ...(named ? { section: named.section } : {}) } as AskResponse;
     }
     const first = segmentAnswer(briefAnswer(attributeCitations(raw.replace(/\bNO_RECORD\b/g, ''), evidence)), evidence.length);
     // Every figure must be in the source it cites; unsupported sentences are removed.
@@ -918,8 +934,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     if (!seg.used.size) {
       // Nothing the model wrote could be tied to a source: show the records, never an unchecked answer.
       const r = await fallback('no_results', null);
-      const text = "I couldn't find a record that answers that. The closest records are below.";
-      return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `search-fallback (no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 220)})` } as AskResponse;
+      const named = await namedMeeting();
+      const text = named ? named.text : "I couldn't find a record that answers that. The closest records are below.";
+      return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `search-fallback (no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 220)})`, ...(named ? { section: named.section } : {}) } as AskResponse;
     }
 
     // Renumber cited sources 1..k in order of first use.

@@ -138,3 +138,15 @@ describe('off-topic questions', () => {
       expect(isOffTopic(q), q).toBe(false);
   });
 });
+
+describe('schedule questions name the right body', () => {
+  it('answers a Library Board question with the Library Board, never the council', async () => {
+    const { bodyOf, unknownBody } = await import('../worker/ai/scheduleIntent');
+    expect(bodyOf('When is the next Library Board meeting?').label).toBe('Library Board');
+    expect(bodyOf('next active transportation commission meeting').label).toBe('Active Transportation Commission');
+    expect(bodyOf('When is the next City Council meeting?').label).toBe('City Council');
+    expect(unknownBody('When is the next Historic Preservation Commission meeting?')).toBe(true);
+    expect(unknownBody('When is the next Library Board meeting?')).toBe(false);
+    expect(unknownBody('When is the next council meeting?')).toBe(false);
+  });
+});

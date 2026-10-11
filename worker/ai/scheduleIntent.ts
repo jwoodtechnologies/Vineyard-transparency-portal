@@ -23,11 +23,28 @@ export function countKind(q: string): 'resolution' | 'ordinance' | 'minutes' | n
 }
 
 /** The body a meeting question is about, and how its meetings are named in the calendar and catalog. */
+const BODIES: Array<{ ask: RegExp; label: string; match: RegExp; like: string }> = [
+  { ask: /planning commission/i, label: 'Planning Commission', match: /planning commission/i, like: '%Planning Commission%' },
+  { ask: /\bRDA\b|redevelopment/i, label: 'Redevelopment Agency', match: /redevelopment|\bRDA\b/i, like: '%Redevelopment%' },
+  { ask: /\barch\b|architect/i, label: 'ARCH Commission', match: /\bARCH\b/i, like: '%ARCH Commission%' },
+  { ask: /\blibrary board\b|\blibrary\b.*\bmeeting\b/i, label: 'Library Board', match: /library board/i, like: '%Library Board%' },
+  { ask: /active transportation|\bATC\b/i, label: 'Active Transportation Commission', match: /active transportation|\bATC\b/i, like: '%Active Transportation%' },
+  { ask: /development review/i, label: 'Development Review Committee', match: /development review/i, like: '%Development Review%' },
+  { ask: /youth council/i, label: 'Youth Council', match: /youth council/i, like: '%Youth Council%' },
+  { ask: /vineyard cares coalition/i, label: 'Vineyard Cares Coalition', match: /vineyard cares coalition/i, like: '%Vineyard Cares Coalition%' },
+  { ask: /vineyard cares commission|communities that care/i, label: 'Vineyard Cares Commission', match: /vineyard cares commission|communities that care/i, like: '%Cares Commission%' },
+];
+const COUNCIL = { label: 'City Council', match: /city council|council meeting/i, like: '%City Council%' };
+
 export function bodyOf(q: string): { label: string; match: RegExp; like: string } {
-  if (/planning commission/i.test(q)) return { label: 'Planning Commission', match: /planning commission/i, like: '%Planning Commission%' };
-  if (/\bRDA\b|redevelopment/i.test(q)) return { label: 'Redevelopment Agency', match: /redevelopment|\bRDA\b/i, like: '%Redevelopment%' };
-  if (/\barch\b|architect/i.test(q)) return { label: 'ARCH Commission', match: /\bARCH\b/i, like: '%ARCH Commission%' };
-  return { label: 'City Council', match: /city council|council meeting/i, like: '%City Council%' };
+  const hit = BODIES.find((b) => b.ask.test(q));
+  return hit ? { label: hit.label, match: hit.match, like: hit.like } : COUNCIL;
+}
+
+/** True when the question names a board, commission or committee the schedule does not know: never answer it with the council. */
+export function unknownBody(q: string): boolean {
+  if (BODIES.some((b) => b.ask.test(q)) || /city council|\bcouncil\b/i.test(q)) return false;
+  return /\b(board|commission|committee|coalition)\b/i.test(q);
 }
 
 const NEXT_MEETING = /\b(next|upcoming|tonight'?s?|tomorrow'?s?|this week'?s?|coming)\b[^.?!]{0,50}\b(meeting|session|hearing)s?\b|\b(next|upcoming)\s+(city council|council|planning commission|commission|rda|redevelopment agency|arch commission)\b/i;

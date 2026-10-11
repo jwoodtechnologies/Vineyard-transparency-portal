@@ -8,7 +8,7 @@ import { loadCity } from '../api/events';
 import { expandCityEvents, type PortalEvent } from '../lib/cityEvents';
 import type { TimeFrame } from './timeframe';
 
-import { bodyOf, countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion } from './scheduleIntent';
+import { bodyOf, unknownBody, countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion } from './scheduleIntent';
 
 export { countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion };
 
@@ -42,6 +42,7 @@ export interface ScheduleAnswer {
 }
 
 export async function scheduleAnswer(env: Env, question: string): Promise<ScheduleAnswer | null> {
+  if (unknownBody(question)) return null;
   const body = bodyOf(question);
   const now = utahNow();
   const today = now.toISOString().slice(0, 10);
