@@ -877,16 +877,22 @@ a.vc-card:hover {
   font-size: 1.2rem;
 }
 .vc-seg {
-  animation: vc-word 0.55s var(--vc-ease) both;
+  animation: vc-flow 0.6s var(--vc-ease) both;
 }
-@keyframes vc-word {
+/* A finished answer flows up into place, one paragraph or list line after another. */
+@keyframes vc-flow {
   from {
     opacity: 0;
-    filter: blur(4px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    filter: none;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vc-seg {
+    animation: none;
   }
 }
 .vc-cite {

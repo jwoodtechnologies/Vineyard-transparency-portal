@@ -65,7 +65,7 @@ export function AnswerBody({ answer, onCite, instant = false }: Props) {
   const conversational = answer.mode === 'conversation';
   const paragraphs: AnswerParagraph[] = answer.paragraphs.length ? answer.paragraphs : answer.answer ? [{ segments: [{ text: answer.answer, citations: [] }] }] : [];
   let n = 0;
-  const delay = () => (instant ? undefined : { animationDelay: `${Math.min(n++ * 70, 1400)}ms` });
+  const delay = () => (instant ? undefined : { animationDelay: `${Math.min(n++ * 110, 990)}ms` });
   return (
     <div className="vc-answer" data-mode={conversational ? 'conversation' : 'records'} data-instant={instant || undefined} aria-live="polite">
       {paragraphs.map((p, pi) => {
@@ -129,9 +129,9 @@ export function AnswerBody({ answer, onCite, instant = false }: Props) {
           );
         }
         return (
-          <p key={pi} className={pi === 0 && !conversational ? 'vc-answer-lead' : undefined}>
+          <p key={pi} className={pi === 0 && !conversational ? 'vc-answer-lead vc-seg' : 'vc-seg'} style={delay()}>
             {p.segments.map((s, si) => (
-              <span key={si} className="vc-seg" style={delay()}>
+              <span key={si}>
                 {s.text}
                 <Cites ids={s.citations} byIndex={byIndex} onCite={onCite} />{' '}
               </span>

@@ -12,7 +12,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronDown, ChevronRight, History, Plus, RotateCcw } from 'lucide-react';
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { SearchService } from '@/services';
-import { askStream, draftText } from './askStream';
+import { askStream } from './askStream';
 import { Composer } from './Composer';
 import { AnswerBody, AsOf, ClarifyChoices, FollowUps, Sources } from './Answer';
 import { Records } from './Records';
@@ -224,28 +224,20 @@ export default function ConsolePage() {
         started.current.add(t.id);
         const ctrl = new AbortController();
         controllers.current.set(t.id, ctrl);
-        // Streamed text is batched to one render per frame so long answers stay smooth on phones.
-        let pending = '';
-        let frame = 0;
-        const flush = () => {
-          frame = 0;
-          const add = pending;
-          pending = '';
-          if (add) patch(t.id, (cur) => ({ draft: cur.draft + add, phase: 'writing' }));
-        };
+        // The answer is shown whole when it arrives; streamed text only switches the indicator to writing.
+        let writing = false;
         askStream({ question: t.question, conversation: history(turns.slice(0, i)) }, ctrl.signal, {
           onStatus: (phase) => phase === 'writing' && patch(t.id, { phase: 'writing' }),
-          onDelta: (text) => {
-            pending += text;
-            if (!frame) frame = requestAnimationFrame(flush);
+          onDelta: () => {
+            if (writing) return;
+            writing = true;
+            patch(t.id, { phase: 'writing' });
           },
         }).then(
           (res) => {
             const answer = res as ConsoleAnswer;
-            if (frame) cancelAnimationFrame(frame);
             patch(t.id, (cur) => ({
               draft: '',
-              streamed: Boolean(cur.draft),
               status: 'done',
               answer,
               recordsStatus: answer.mode === 'conversation' ? 'idle' : cur.recordsStatus,
@@ -422,17 +414,8 @@ export default function ConsolePage() {
             {cardsFor(t, people).map((p) => (
               <PersonCard key={p.slug} person={p} />
             ))}
-            {t.status === 'loading' && !t.draft && <Thinking writing={t.phase === 'writing'} />}
-            {t.status === 'loading' && t.draft && (
-              <div className="vc-answer" data-streaming="true" aria-live="polite">
-                {draftText(t.draft).map((para, k, all) => (
-                  <p key={k}>
-                    {para}
-                    {k === all.length - 1 && <span className="vc-caret" aria-hidden="true" />}
-                  </p>
-                ))}
-              </div>
-            )}
+            {/* The answer shows once it is complete and flows up into place; until then, the working indicator. */}
+            {t.status === 'loading' && <Thinking writing={t.phase === 'writing' || Boolean(t.draft)} />}
             {t.status === 'error' && (
               <>
                 <div className="vc-notice vc-notice-row">
@@ -449,7 +432,7 @@ export default function ConsolePage() {
             {t.status === 'done' && t.answer && (
               <>
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
-                {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} instant={t.streamed} />}
+                {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
                 <ClarifyChoices answer={t.answer} onAsk={ask} disabled={Boolean(busyTurn)} />
                 <AsOf answer={t.answer} />
                 {t.answer.votes && t.answer.votes.items.length > 0 && (
