@@ -22,6 +22,7 @@ import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
 import { shouldArchive } from '../lib/archivePolicy';
+import { rebalanceArchive } from './rebalance';
 import { ensureActivityTables } from '../panel/store';
 import { newSetupCode } from '../panel/auth';
 import { requireIngestAuth } from './auth';
@@ -1005,6 +1006,8 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   if (path === '/verify' && method === 'GET') return verify(env);
   if (path === '/queue' && method === 'GET') return listQueue(env, url);
   if (path === '/export/tables' && method === 'GET') return exportTables(env);
+  // Archive rebalance: reads by default; with {"apply": true} removes non-priority stored copies.
+  if (path === '/archive/rebalance' && method === 'POST') return rebalanceArchive(env, await readJson<Json>(request, 4096));
   if (path === '/export' && method === 'GET') return exportPage(env, url);
   // Backups are reads plus R2 writes, so they run even after the day's D1 write budget is spent.
   if (method === 'PUT' && path.startsWith('/backup/')) return putBackup(env, request, path.slice('/backup/'.length));

@@ -10,7 +10,7 @@ on:
         description: What to capture
         type: choice
         default: fixtures
-        options: [fixtures, crawl-log, ingest-log]
+        options: [fixtures, crawl-log, ingest-log, archive-plan]
       urls:
         description: Extra URLs to save (space separated, optional)
         default: ""
@@ -93,7 +93,7 @@ jobs:
           else
             sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > "$OUT/setup.txt" 2>&1 || true
             pip install -q -r requirements-ingest.txt >> "$OUT/setup.txt" 2>&1 || true
-            if [[ "$TASK" == "crawl-log" ]]; then CMD=(run --limit 5 --hours 0.25); else CMD=(ingest --limit 10 --hours 0.25); fi
+            if [[ "$TASK" == "crawl-log" ]]; then CMD=(run --limit 5 --hours 0.25); elif [[ "$TASK" == "archive-plan" ]]; then CMD=(archive-plan); else CMD=(ingest --limit 10 --hours 0.25); fi
             python -m ingest "${CMD[@]}" > "$OUT/log.txt" 2>&1 || echo "exit=$?" >> "$OUT/log.txt"
             tail -c 400000 "$OUT/log.txt" > "$OUT/log.tmp" && mv "$OUT/log.tmp" "$OUT/log.txt"
           fi

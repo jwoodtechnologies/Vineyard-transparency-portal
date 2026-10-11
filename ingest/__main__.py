@@ -125,6 +125,9 @@ def main(argv: list[str] | None = None) -> int:
             from . import backup
 
             print(json.dumps(backup.run(api)))
+        elif cmd in ("archive-plan", "archive-apply"):
+            # Make room in the archive for priority records (see worker/admin/rebalance.ts). Plan reads only.
+            print(json.dumps(api.post("/archive/rebalance", {"apply": cmd == "archive-apply", "limit": a.limit}), indent=2))
         elif cmd == "gis":
             from . import gis
 
