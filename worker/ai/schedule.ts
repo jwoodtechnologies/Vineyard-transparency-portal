@@ -8,16 +8,9 @@ import { loadCity } from '../api/events';
 import { expandCityEvents, type PortalEvent } from '../lib/cityEvents';
 import type { TimeFrame } from './timeframe';
 
-import { countKind, isMeetingCountQuestion, isScheduleQuestion } from './scheduleIntent';
+import { bodyOf, countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion } from './scheduleIntent';
 
-export { countKind, isMeetingCountQuestion, isScheduleQuestion };
-
-function bodyOf(q: string): { label: string; match: RegExp } {
-  if (/planning commission/i.test(q)) return { label: 'Planning Commission', match: /planning commission/i };
-  if (/\bRDA\b|redevelopment/i.test(q)) return { label: 'Redevelopment Agency', match: /redevelopment|\bRDA\b/i };
-  if (/\barch\b|architect/i.test(q)) return { label: 'ARCH Commission', match: /\bARCH\b/i };
-  return { label: 'City Council', match: /city council|council meeting/i };
-}
+export { countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion };
 
 const utahNow = () => new Date(Date.now() - 6 * 3600_000);
 
@@ -64,7 +57,7 @@ export async function scheduleAnswer(env: Env, question: string): Promise<Schedu
        WHERE coalesce(government_body_name, title) LIKE ? AND meeting_date >= ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%'
        ORDER BY meeting_date ASC, start_time ASC LIMIT 1`,
     )
-      .bind(`%${body.label === 'Redevelopment Agency' ? 'Redevelopment' : body.label}%`, today)
+      .bind(body.like, today)
       .first<{ id: string; title: string; meeting_date: string; start_time: string | null; location: string | null }>()
       .catch(() => null),
   ]);
@@ -130,7 +123,7 @@ export async function meetingsInFrame(env: Env, question: string, frame: TimeFra
     const r = await env.CATALOG_DB.prepare(
       `SELECT count(DISTINCT substr(meeting_date, 1, 10)) AS n FROM meetings WHERE coalesce(government_body_name, title) LIKE ? AND substr(meeting_date, 1, 10) BETWEEN ? AND ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%'`,
     )
-      .bind(`%${body.label === 'Redevelopment Agency' ? 'Redevelopment' : body.label}%`, win.from, end)
+      .bind(body.like, win.from, end)
       .first<{ n: number }>()
       .catch(() => null);
     held = Number(r?.n ?? 0);
@@ -174,3 +167,46 @@ export async function countAnswer(env: Env, type: 'resolution' | 'ordinance' | '
   if (!n) return `The archive has no ${label} on file for ${frame.label}.`;
   return `The archive holds ${n} ${n === 1 ? label.replace(/s$/, '') : label} from ${frame.label}.`;
 }
+
+/** Agenda record types: only these say what is on a meeting's agenda. */
+export const AGENDA_TYPES = ['agenda', 'agenda_packet'] as const;
+
+export interface NextAgenda {
+  schedule: ScheduleAnswer;
+  /** The catalog meeting that is the next meeting of this body, when the catalog has it. */
+  meetingId: string | null;
+  /** That meeting's own agenda and packet records (none means the agenda is not posted). */
+  agendaDocIds: string[];
+}
+
+/**
+ * The next meeting of the body asked about, and that meeting's own agenda records. Only records
+ * filed under that meeting id, whose meeting belongs to that body, count: an agenda from another
+ * body or another meeting never answers "what is on the agenda".
+ */
+export async function nextAgenda(env: Env, question: string): Promise<NextAgenda | null> {
+  const schedule = await scheduleAnswer(env, question);
+  if (!schedule) return null;
+  const body = bodyOf(question);
+  const date = schedule.event.start.slice(0, 10);
+  const meeting = schedule.meetingId
+    ? { id: schedule.meetingId }
+    : await env.CATALOG_DB.prepare(
+        `SELECT id FROM meetings WHERE coalesce(government_body_name, title) LIKE ? AND substr(meeting_date, 1, 10) = ? AND lower(coalesce(status, '')) NOT LIKE '%cancel%' ORDER BY start_time ASC LIMIT 1`,
+      )
+        .bind(body.like, date)
+        .first<{ id: string }>()
+        .catch(() => null);
+  if (!meeting) return { schedule, meetingId: null, agendaDocIds: [] };
+  const rows = await env.CATALOG_DB.prepare(
+    `SELECT d.id FROM documents d JOIN meetings m ON m.id = d.meeting_id
+     WHERE d.meeting_id = ? AND coalesce(m.government_body_name, m.title) LIKE ? AND d.document_type IN (${AGENDA_TYPES.map(() => '?').join(', ')})`,
+  )
+    .bind(meeting.id, body.like, ...AGENDA_TYPES)
+    .all<{ id: string }>()
+    .catch(() => ({ results: [] as Array<{ id: string }> }));
+  return { schedule: { ...schedule, meetingId: meeting.id, event: { ...schedule.event, meetingId: meeting.id } }, meetingId: meeting.id, agendaDocIds: (rows.results ?? []).map((r) => r.id) };
+}
+
+/** What is said when the next meeting has no posted agenda: when and where, and nothing about content. */
+export const AGENDA_NOT_POSTED = 'The agenda for this meeting is not posted yet.';

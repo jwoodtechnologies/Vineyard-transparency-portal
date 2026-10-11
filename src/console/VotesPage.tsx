@@ -10,11 +10,13 @@ import { DocLink } from './DocLink';
 import { Frame } from './Chrome';
 import { useJson } from './api';
 import {
+  memberTitle,
   mergeRows,
   motionDetail,
   motionLabel,
   motionTally,
   pendingRows,
+  recordedMotion,
   sheetRows,
   STATUS_WORD,
   useMemberNames,
@@ -103,15 +105,18 @@ const ORDER: Record<string, number> = {
 const DAY = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00Z`) : null);
 const fmt = (iso: string | null, o: Intl.DateTimeFormatOptions) => (DAY(iso) ? DAY(iso)!.toLocaleDateString('en-US', { ...o, timeZone: 'UTC' }) : '');
 const last = (n: string) => n.split(' ').pop() ?? n;
+/** What the body calls the people who vote in it. */
+const seat = (bodyId: string | null) => (bodyId === 'planning-commission' ? 'Commissioner' : bodyId === 'redevelopment-agency' ? 'Board Member' : 'Council Member');
 const cap = (n: string) => {
   const t = n.charAt(0).toUpperCase() + n.slice(1);
   return n === n.toLowerCase() ? t.replace(/^Mc([a-z])/, (_, c: string) => `Mc${c.toUpperCase()}`) : t;
 };
-/** What the body calls the people who vote in it. */
-const seat = (bodyId: string | null) => (bodyId === 'planning-commission' ? 'Commissioner' : bodyId === 'redevelopment-agency' ? 'Board Member' : 'Council Member');
 
-/** One vote: what it was on, how it ended, and each member's vote. */
-export function MotionCard({ m, member }: { m: MotionRow; member?: string | null }) {
+/**
+ * One vote: what it was on, how it ended, and each member's vote. With `recorded` (answer cards),
+ * the motion is worded as the minutes record it and the agenda item is shown as recorded.
+ */
+export function MotionCard({ m, member, recorded = false }: { m: MotionRow; member?: string | null; recorded?: boolean }) {
   const nameOf = useMemberNames();
   const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result recorded';
   const roll = [...m.votes]
@@ -119,15 +124,17 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
     .sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
   // No names in the minutes ("passed unanimously"): the badge says so in place of the member tags.
   const unanimous = m.result === 'carried' && m.unanimous && roll.length === 0;
-  const surname = (id: string) => cap(last(nameOf(id).name));
-  const titled = (id: string) => `${/^mayor$/i.test(nameOf(id).person?.role ?? '') ? 'Mayor' : seat(m.bodyId)} ${surname(id)}`;
+  // Title and last name as the people records store them ("Council Member McCumber"); last name alone when none is stored.
+  const titled = (id: string) => memberTitle(nameOf(id).name, nameOf(id).person?.role);
+  const label = recorded ? recordedMotion(m) : motionLabel(m);
+  const detail = recorded ? (m.item ? `Agenda item: ${m.item.replace(/\s+/g, ' ').trim()}` : null) : motionDetail(m);
   return (
     <li className="vc-vt">
       <div className="vc-vt-top">
         <span className="vc-vt-what">
-          <p className="vc-vt-label">{motionLabel(m)}</p>
-          {motionDetail(m) && <p className="vc-vt-detail">{motionDetail(m)}</p>}
-          {m.refs.length > 0 && !/resolution|ordinance/i.test(motionLabel(m)) && <p className="vc-vt-detail">{m.refs.join(', ')}</p>}
+          <p className="vc-vt-label">{label}</p>
+          {detail && <p className="vc-vt-detail">{detail}</p>}
+          {m.refs.length > 0 && !/resolution|ordinance/i.test(label) && <p className="vc-vt-detail">{m.refs.join(', ')}</p>}
         </span>
         <span className="vc-vt-result" data-result={m.result}>
           {outcome}
@@ -150,7 +157,7 @@ export function MotionCard({ m, member }: { m: MotionRow; member?: string | null
           )}
           {roll.map((v) => (
             <li key={v.member} data-vote={v.vote} data-on={member && member === v.member ? 'true' : undefined} title={`${titled(v.member)}: ${VOTE_LABEL[v.vote] ?? v.vote}`}>
-              <span>{/^mayor$/i.test(nameOf(v.member).person?.role ?? '') ? `Mayor ${surname(v.member)}` : surname(v.member)}</span>
+              <span>{titled(v.member)}</span>
               <b>{VOTE_LABEL[v.vote] ?? v.vote}</b>
             </li>
           ))}

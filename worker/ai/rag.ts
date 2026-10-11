@@ -22,7 +22,8 @@ import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
 import { readAiStream } from './sse';
 import { interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
-import { countAnswer, countKind, isMeetingCountQuestion, isScheduleQuestion, meetingsInFrame, scheduleAnswer } from './schedule';
+import { AGENDA_NOT_POSTED, AGENDA_TYPES, countAnswer, countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion, meetingsInFrame, nextAgenda, scheduleAnswer, type ScheduleAnswer } from './schedule';
+import { bodyOf } from './scheduleIntent';
 import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
@@ -31,6 +32,9 @@ import { constructionAnswer } from './constructionAnswer';
 import { seriesFor } from './series';
 import { ROAD_STATUS, roadsIn } from './roads';
 import { factsLine, rewriteQuestion } from './rewrite';
+import { carryOver, keepsTopic } from './followup';
+import { citedMotions } from './voteMatch';
+import { placeAnswer, placeIntent, resolvePlace } from './place';
 import { LATEST_ACTION_Q, councilName, currentCouncil, motionEvidence, queryMotions, votesFor, type MotionOut } from '../api/votes';
 import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
@@ -79,9 +83,12 @@ function validate(body: unknown): AskRequest {
   if (question.length < 1 || question.length > 1000) throw badRequest('`question` must be 1 to 1000 characters.');
   const conversation = Array.isArray(b.conversation)
     ? b.conversation
-        .filter((t): t is { role: 'user' | 'assistant'; content: string } => !!t && typeof t === 'object' && ['user', 'assistant'].includes((t as { role?: string }).role ?? '') && typeof (t as { content?: unknown }).content === 'string')
+        .filter((t): t is { role: 'user' | 'assistant'; content: string; sources?: unknown } => !!t && typeof t === 'object' && ['user', 'assistant'].includes((t as { role?: string }).role ?? '') && typeof (t as { content?: unknown }).content === 'string')
         .slice(-6)
-        .map((t) => ({ role: t.role, content: t.content.slice(0, 2000) }))
+        .map((t) => {
+          const sources = Array.isArray(t.sources) ? t.sources.filter((x): x is string => typeof x === 'string').map((x) => stripControl(x).slice(0, 200)).slice(0, 6) : [];
+          return { role: t.role, content: t.content.slice(0, 2000), ...(t.role === 'assistant' && sources.length ? { sources } : {}) };
+        })
     : [];
   const filters = b.filters && typeof b.filters === 'object' ? (b.filters as SearchFilters) : undefined;
   return { question, conversation, ...(filters ? { filters: sanitizeFilters(filters) } : {}), ...(b.debug === true ? { debug: true } : {}) } as AskRequest;
@@ -212,12 +219,12 @@ async function meetingFocus(env: Env, q: string): Promise<{ id: string; title: s
   const next = /\b(upcoming|next|tonight|today|this week)\b/i.test(q);
   // What happened / was decided comes from minutes; packets reprint the previous meeting's minutes.
   const outcome = !next && /\b(happen|happened|decide|decided|decision|vote|voted|votes|approve|approved|adopt|adopted|pass|passed|deny|denied|action|actions|outcome|result)\w*\b/i.test(q);
-  const body = /planning commission/i.test(q) ? '%Planning%' : /\bRDA\b|redevelopment/i.test(q) ? '%Redevelopment%' : /\barch|architect/i.test(q) ? '%ARCH%' : '%Council%';
+  const body = bodyOf(q).like;
   const today = new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10); // Utah
   const row = await env.CATALOG_DB.prepare(
     `SELECT m.id, m.title, m.meeting_date FROM meetings m
      WHERE coalesce(m.government_body_name, m.title) LIKE ? AND m.meeting_date ${next ? '>=' : '<='} ?
-       AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = m.id${outcome ? " AND d.document_type = 'minutes'" : ''})
+       ${next ? "AND lower(coalesce(m.status, '')) NOT LIKE '%cancel%'" : `AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = m.id${outcome ? " AND d.document_type = 'minutes'" : ''})`}
      ORDER BY m.meeting_date ${next ? 'ASC' : 'DESC'} LIMIT 1`,
   )
     .bind(body, today)
@@ -402,13 +409,48 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
           answer: s.text,
           paragraphs: [{ segments: [{ text: s.text, citations: [] }] }],
           citations: [],
-          suggestedFollowUps: ["What's on the agenda for the next City Council meeting?"],
+          suggestedFollowUps: [`What's on the agenda for the next ${bodyOf(body.question).label} meeting?`],
           notice: null,
           engine: 'schedule',
           mode: 'conversation',
           event: s.event,
         } as AskResponse,
       };
+    }
+  }
+
+  // "When is the next Planning Commission meeting and what is on the agenda?": the date, time and
+  // place come from the meeting record, and agenda content only from that meeting's own agenda
+  // records (same body, same meeting id). With no posted agenda, nothing is said about content.
+  let agendaLock: { docIds: Set<string>; meetingId: string; schedule: ScheduleAnswer; question: string } | null = null;
+  if (isNextAgendaQuestion(body.question)) {
+    const label = bodyOf(body.question).label;
+    const na = await nextAgenda(env, body.question).catch(() => undefined);
+    const scheduleFinal = (text: string, s: ScheduleAnswer | null): Prepared => ({
+      kind: 'final',
+      response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'schedule', mode: 'conversation', ...(s ? { event: s.event } : {}) } as AskResponse,
+    });
+    if (na === undefined) return scheduleFinal(`The ${label} meeting schedule could not be read just now.`, null);
+    if (na === null) return scheduleFinal(`The city's official calendar and meeting portal do not list an upcoming ${label} meeting yet.`, null);
+    if (!na.meetingId || !na.agendaDocIds.length) return scheduleFinal(`${na.schedule.text} ${AGENDA_NOT_POSTED}`, na.schedule);
+    agendaLock = {
+      docIds: new Set(na.agendaDocIds),
+      meetingId: na.meetingId,
+      schedule: na.schedule,
+      question: `${body.question}\n(Every source below is from the agenda or packet of this ${label} meeting, ${na.schedule.event.start.slice(0, 10)}. The date, time and place are given separately: describe only the items on this agenda, as scheduled, not as decided. Minutes reprinted inside a packet are from an earlier meeting; leave them out.)`,
+    };
+  }
+
+  // "Who owns the parcel at Vineyard Connector and Main Street?", "where is Grove Park?": a card that
+  // opens the portal map on that spot, from the city's own map layers. Never an owner's name.
+  const pi = placeIntent(body.question);
+  if (pi && !agendaLock) {
+    const land = pi.owner || pi.zoning || pi.parcel || pi.kind === 'intersection' || pi.kind === 'address';
+    const spot = await resolvePlace(pi).catch(() => null);
+    // A plain "where is X" that is not on the map layers goes on to the records search.
+    if (spot || land) {
+      const a = placeAnswer(pi, spot);
+      return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: a.text, paragraphs: [{ segments: [{ text: a.text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'map', mode: 'conversation', map: a.map } as AskResponse };
     }
   }
 
@@ -429,9 +471,20 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   };
 
   // "What happened at the last council meeting?" is answered from that meeting's own records.
-  const focus = await meetingFocus(env, body.question).catch(() => null);
+  const focus = agendaLock ? null : await meetingFocus(env, body.question).catch(() => null);
   let hits: ChunkHit[] = [];
   let question = body.question;
+  if (agendaLock) {
+    const lock = agendaLock;
+    const rest = body.question.replace(/[?.!,]/g, ' ').replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
+    const f: SearchFilters = { ...filters, meetingId: lock.meetingId, documentTypes: [...AGENDA_TYPES] };
+    const lists = await Promise.all([retrieve('agenda item public hearing presentation consider approve discussion action', f), rest.length >= 3 ? retrieve(rest, f) : Promise.resolve([] as ChunkHit[])]);
+    hits = interleave(lists, 40).filter((h) => lock.docIds.has(h.documentId));
+    if (!hits.length) {
+      const text = `${lock.schedule.text} The agenda for this meeting is posted, but its text is not in the archive yet.`;
+      return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'schedule', mode: 'conversation', event: lock.schedule.event } as AskResponse };
+    }
+  }
   if (focus) {
     hits = await retrieve(focus.terms, { ...filters, meetingId: focus.id, ...(focus.minutesOnly ? { documentTypes: ['minutes'] } : {}) });
     const when = `${focus.title}${focus.date ? ` held ${focus.date}` : ''}`;
@@ -593,6 +646,14 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seenC = new Set<string>();
     hits = [...current.slice(0, 6), ...top, ...hits.slice(30)].filter((h) => (seenC.has(h.chunkId) ? false : (seenC.add(h.chunkId), true)));
   }
+  if (agendaLock) {
+    // Nothing from another body or another meeting reaches the model.
+    const lock = agendaLock;
+    hits = hits.filter((h) => lock.docIds.has(h.documentId));
+    latestHits = [];
+    topicNotes = '';
+    question = lock.question;
+  }
   question = `${question}\n(${timeNote(todayUT, frame)}${topicNotes ? ` ${topicNotes}` : ''}${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
@@ -658,7 +719,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
 
   // A new topic is answered on its own: earlier turns reach the model only for a real follow-up,
   // so a question about utilities is never pulled back to the road asked about before.
-  const follow = aiFollow ?? retrievalText !== body.question;
+  const follow = !agendaLock && (aiFollow ?? retrievalText !== body.question);
   const prior = follow ? (body.conversation ?? []).slice(-4).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) : [];
   const messages: Msg[] = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...prior, { role: 'user', content: buildUserMessage(question, evidence, follow ? history : []) }];
 
@@ -743,7 +804,16 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     };
   };
 
-  return { kind: 'model', messages, useBig: budgetOk < intVar(env.AI_BIG_PER_DAY, BIG_MODEL_PER_DAY), finish, fail };
+  // The next meeting's date, time and place lead, from the meeting record, ahead of its agenda items.
+  const lock = agendaLock;
+  const lockFinish = lock
+    ? async (raw: string, engine?: string): Promise<AskResponse> => {
+        const r = await finish(raw, engine);
+        const text = lock.schedule.text;
+        return { ...r, answer: `${text}\n\n${r.answer}`, paragraphs: [{ segments: [{ text, citations: [] }] }, ...(r.paragraphs ?? [])], event: lock.schedule.event } as AskResponse;
+      }
+    : finish;
+  return { kind: 'model', messages, useBig: budgetOk < intVar(env.AI_BIG_PER_DAY, BIG_MODEL_PER_DAY), finish: lockFinish, fail };
 }
 
 const SSE_HEADERS = {
@@ -819,7 +889,15 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   // The conversation brain: follow-up or new question, rewritten to stand on its own, and what the
   // resident stated as fact. Everything after this reads the standalone question.
   const rw = typed.conversation?.length && aiConfigured(env) && !aiBreakerOpen() ? await rewriteQuestion(env, fixSpelling(typed.question), typed.conversation).catch(() => null) : null;
-  const body = rw ? ({ ...typed, question: rw.standalone, followUp: rw.followUp } as AskRequest) : typed;
+  // A message with no subject of its own ("who voted for it and how much did it cost?") always
+  // takes the subject of the previous turns, whatever the model decided: the model's rewrite is
+  // used only when it kept that subject.
+  const carried = carryOver(fixSpelling(typed.question), typed.conversation ?? []);
+  const body = carried
+    ? ({ ...typed, question: rw?.followUp && keepsTopic(rw.standalone, carried.terms) ? rw.standalone : carried.standalone, followUp: true } as AskRequest)
+    : rw
+      ? ({ ...typed, question: rw.standalone, followUp: rw.followUp } as AskRequest)
+      : typed;
   const shared = factsLine(rw?.facts ?? []);
 
   // Recurring reports (water quality, audits, budgets): every year's edition goes with the answer.
@@ -833,7 +911,8 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   const votes = await votesFor(env, body.question, staff).catch(() => null);
   const withContact = (r: AskResponse): AskResponse => {
     const x = r as AskResponse & { mode?: string; engine?: string; people?: string[] };
-    if (votes && x.mode !== 'conversation') r = { ...r, votes } as AskResponse;
+    // Only the motions the answer is about: the ones it cites, when it cites any.
+    if (votes && x.mode !== 'conversation' && !isNextAgendaQuestion(body.question)) r = { ...r, votes: { ...votes, items: citedMotions(votes.items, (r.citations ?? []).map((c) => c.excerpt?.chunkId)) } } as AskResponse;
     // What the resident shared is acknowledged as theirs, after the answer from the records.
     if (shared && x.mode !== 'conversation') r = { ...r, answer: `${r.answer} ${shared}`.trim(), paragraphs: [...(r.paragraphs ?? []), { segments: [{ text: shared, citations: [] }] }] };
     if (!contact || x.mode === 'conversation' || x.engine === 'directory' || x.people?.length) return r;

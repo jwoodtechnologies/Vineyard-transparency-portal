@@ -9,6 +9,7 @@ import { SearchRepository } from '../search/SearchRepository';
 import { parseMinutes, rosterFrom, type ParsedMotion } from '../lib/votes';
 import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
+import { motionMatches, placeWords, termTries } from '../ai/voteMatch';
 
 /** Bump to re-read every set of minutes after a parser change. */
 export const VOTES_PARSER = 17;
@@ -581,23 +582,27 @@ export async function votesFor(env: Env, question: string, people: Array<{ name:
   const lower = ` ${question.toLowerCase().replace(/[^a-z0-9' -]+/g, ' ')} `;
   const members = await currentCouncil(env);
   const lastOf = (m: string) => (m.split(' ').pop() ?? m).toLowerCase();
-  const said = (m: string) => lower.includes(` ${m.toLowerCase()} `) || lower.includes(` ${lastOf(m)} `) || lower.includes(` ${lastOf(m)}'`);
+  // "Holdaway Fields" is a place: that last name there does not name the council member.
+  const places = placeWords(question);
+  const said = (m: string) => lower.includes(` ${m.toLowerCase()} `) || (!places.has(lastOf(m)) && (lower.includes(` ${lastOf(m)} `) || lower.includes(` ${lastOf(m)}'`)));
   // A current official named in the question first, then the most recent member with that name.
   const fromPeople = people.map((p) => p.name).filter((n) => members.includes(n) && said(n));
   const member = fromPeople[0] ?? members.find((m) => lastOf(m).length >= 4 && said(m)) ?? null;
   const words = lower
     .split(/\s+/)
     .map((w) => w.replace(/'s$/, ''))
-    .filter((w) => w.length >= 3 && !NOT_TERMS.has(w) && !(member && member.toLowerCase().split(' ').includes(w)) && !people.some((p) => p.name.toLowerCase().split(/\s+/).includes(w)));
-  if (!member && !words.length) return null;
-  // The topic asked about: all its words, then its most specific single words. A question about a
-  // topic with no recorded motion gets no card (never someone's unrelated latest votes).
-  const tries = [...new Set([words.slice(0, 3).join(' '), ...[...words].sort((x, y) => y.length - x.length).slice(0, 3)])].filter(Boolean);
-  for (const q of tries) {
-    const r = await queryMotions(env, { member, q, pageSize: 5 });
-    if (r.items.length) return { member, q, items: r.items };
+    .filter((w) => w.length >= 3 && !NOT_TERMS.has(w) && (places.has(w) || (!(member && member.toLowerCase().split(' ').includes(w)) && !people.some((p) => p.name.toLowerCase().split(/\s+/).includes(w)))));
+  const uniq = [...new Set(words)];
+  if (!member && !uniq.length) return null;
+  // The topic asked about: all its words, then pairs of its most specific words. Only motions whose
+  // recorded wording or agenda item has those words are shown; a question about a topic with no
+  // recorded motion gets no card (never someone's unrelated latest votes).
+  for (const terms of termTries(uniq)) {
+    const r = await queryMotions(env, { member, q: terms.join(' '), pageSize: 8 });
+    const items = r.items.filter((m) => motionMatches(m, terms));
+    if (items.length) return { member, q: terms.join(' '), items: items.slice(0, 5) };
   }
-  if (member && !words.length) {
+  if (member && !uniq.length) {
     const r = await queryMotions(env, { member, pageSize: 5 });
     if (r.items.length) return { member, q: '', items: r.items };
   }

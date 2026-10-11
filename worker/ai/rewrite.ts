@@ -9,7 +9,7 @@ import { meteredRun } from './meter';
 import { aiText } from './answer';
 
 type Env = { AI?: unknown; CATALOG_DB?: object; AI_NEURONS_PER_DAY?: string };
-type Turn = { role: 'user' | 'assistant'; content: string };
+type Turn = { role: 'user' | 'assistant'; content: string; sources?: string[] };
 
 export const REWRITE_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
 
@@ -23,7 +23,7 @@ const PROMPT = [
   "You read a resident's conversation with the Vineyard, Utah public records assistant and prepare the latest message for a records search.",
   'Decide whether the latest message is a FOLLOW-UP that depends on the conversation (it refers back with it, that, this, he, she, they, there, those, "what about", "and", "why", "when", "how long", a correction such as "no, I meant X", or a bare "?" or "explain"), or a NEW question about something different. A message that names its own subject (a different road, person, topic or document) is new, even if it is short.',
   'Return only JSON, no other text: {"followUp": true or false, "standalone": "...", "facts": ["..."]}',
-  'standalone: the latest message as one complete question that makes sense with no conversation. For a follow-up, put in what it refers to (the road, project, person, meeting, document or topic from the conversation). For a bare "?" or "explain", ask for more detail about the previous question. For a new question, return it as written. Keep every name, number, road, date and year exactly. Never answer the question.',
+  'standalone: the latest message as one complete question that makes sense with no conversation. For a follow-up, put in what it refers to (the road, project, person, meeting, document or topic from the conversation, using the names in the previous question and the records the assistant cited). For a bare "?" or "explain", ask for more detail about the previous question. For a new question, return it as written. Keep every name, number, road, date and year exactly. Never answer the question.',
   'facts: things the resident states as fact in the latest message (for example "David Lauret said 575 South should reopen October 15"), each as a short sentence starting "You said". Use [] when the message states nothing.',
 ].join('\n');
 
@@ -53,7 +53,7 @@ export function parseRewrite(out: string, question: string): Rewrite | null {
 export async function rewriteQuestion(env: Env, question: string, conversation: Turn[]): Promise<Rewrite | null> {
   const turns = conversation.slice(-4);
   if (!turns.some((t) => t.role === 'user')) return null;
-  const convo = turns.map((t) => `${t.role === 'user' ? 'Resident' : 'Assistant'}: ${t.content.replace(/\s+/g, ' ').slice(0, t.role === 'user' ? 400 : 600)}`).join('\n');
+  const convo = turns.map((t) => `${t.role === 'user' ? 'Resident' : 'Assistant'}: ${t.content.replace(/\s+/g, ' ').slice(0, t.role === 'user' ? 400 : 600)}${t.role === 'assistant' && t.sources?.length ? ` (Records cited: ${t.sources.slice(0, 4).join('; ')})` : ''}`).join('\n');
   try {
     const run = meteredRun(env, REWRITE_MODEL, {
       messages: [

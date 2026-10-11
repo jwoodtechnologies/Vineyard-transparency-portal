@@ -526,6 +526,8 @@ export type RetrievalStatus = 'grounded' | 'partial' | 'no_results' | 'ai_unavai
 export interface ConversationTurn {
   role: 'user' | 'assistant';
   content: string;
+  /** Assistant turns: titles of the records the answer cited, so a follow-up keeps its subject. */
+  sources?: string[];
 }
 
 export interface AskRequest {

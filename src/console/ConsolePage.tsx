@@ -83,14 +83,31 @@ function contactCard(t: Turn, people: Person[]) {
   return <PersonCard person={p} label="Contact for this" />;
 }
 
+/** The prior turns sent with a question, so a follow-up ("who voted for it?") keeps its subject. */
 function history(turns: Turn[]): ConversationTurn[] {
   return turns
     .filter((t) => t.status === 'done' && t.answer)
     .slice(-3)
-    .flatMap((t) => [
-      { role: 'user' as const, content: t.question },
-      { role: 'assistant' as const, content: (t.answer?.answer ?? '').slice(0, 900) },
-    ]);
+    .flatMap((t) => {
+      const sources = answerSources(t.answer);
+      return [
+        { role: 'user' as const, content: t.question },
+        { role: 'assistant' as const, content: (t.answer?.answer ?? '').slice(0, 900), ...(sources.length ? { sources } : {}) },
+      ];
+    });
+}
+
+/** Titles of what an answer was built on: its cited records, the motions it showed, the meeting it named. */
+function answerSources(a: ConsoleAnswer | null): string[] {
+  if (!a) return [];
+  const out = [
+    ...(a.citations ?? []).map((c) => c.documentTitle),
+    ...(a.votes?.items ?? []).slice(0, 3).map((m) => m.item ?? m.motion),
+    ...(a.event ? [a.event.title] : []),
+  ]
+    .map((s) => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, 200))
+    .filter(Boolean);
+  return [...new Set(out)].slice(0, 6);
 }
 
 function Thinking({ writing }: { writing: boolean }) {
@@ -414,7 +431,7 @@ export default function ConsolePage() {
                     </div>
                     <ol className="vc-mos">
                       {t.answer.votes.items.slice(0, 3).map((m) => (
-                        <MotionCard key={m.id} m={m} member={t.answer?.votes?.member ?? null} />
+                        <MotionCard key={m.id} m={m} member={t.answer?.votes?.member ?? null} recorded />
                       ))}
                     </ol>
                   </section>

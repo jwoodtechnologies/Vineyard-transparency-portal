@@ -11,6 +11,7 @@ import type { MapLayerInfo } from './api';
 import { getJson } from './api';
 import { LINKS, STAFF, type ServiceLink } from './services';
 import { DIRECTORY, directoryFor } from './directory';
+import { dedupeCards } from './cards';
 
 /** Keep in step with DATA_VERSION in MapPage so both read the same cached layer data. */
 const MAP_DATA_VERSION = 5;
@@ -203,16 +204,20 @@ export function QuickLinks({ answer }: { answer: ConsoleAnswer }) {
     };
   }, [wantsMap]);
 
-  const maps = wantsMap ? mapBubbles(question, text, names ?? { projects: [], parks: [] }) : [];
+  // An answer about a place carries its own map card, centered on the spot: it leads, and no other map bubbles are added.
+  const answerMap: Bubble[] = answer.map && answer.map.href.startsWith('/map') ? [{ key: 'answer-map', label: answer.map.label, hint: answer.map.hint, href: answer.map.href, kind: 'map', internal: true }] : [];
+  const maps = answerMap.length ? answerMap : wantsMap ? mapBubbles(question, text, names ?? { projects: [], parks: [] }) : [];
   // Cards open here in the portal wherever the portal has the page: a service opens its own page
   // (with the official form one tap further), the staff directory opens People.
-  const all = [...services, ...maps].slice(0, 7).map((b): Bubble => {
+  const mapped = [...(answerMap.length ? [...maps, ...services] : [...services, ...maps])].map((b): Bubble => {
     if (b.internal || !b.href.startsWith('http')) return b;
     if (b.href === LINKS.staff.href) return { ...b, href: '/people', internal: true };
     // The city's own pages open inside the portal with the official form one tap further; a service run by someone else (the library, the bookmobile, permits, alerts) opens its official site straight away.
     const entry = DIRECTORY.find((e) => e.href === b.href);
     return entry && /^https:\/\/(www\.)?vineyardutah\.gov\//.test(entry.href) ? { ...b, href: `/services/${entry.id}`, internal: true } : b;
   });
+  // One card per destination, and never two cards with the same title.
+  const all = dedupeCards(mapped).slice(0, 7);
   // A message that just names a part of the portal already has its own card.
   if (!all.length || answer.section) return null;
 
