@@ -13,10 +13,10 @@ import { ChevronDown, MapPin } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { Frame } from './Chrome';
 import { DocLink } from './DocLink';
-import { useJson } from './api';
+import { useJson, type Load } from './api';
 import { CsvButton } from './CsvButton';
 import { csvName } from './csv';
-import { CitySnapshot } from './CitySnapshot';
+import { CitySnapshot, type ConstructionSnapshot } from './CitySnapshot';
 import { ProjectDetail } from './ProjectDetail';
 import type { MapFocus } from './ConstructionMap';
 import {
@@ -131,7 +131,14 @@ function PlanRow({ p, years, open, onToggle, onShow }: { p: Plan; years: number[
 
 export default function ConstructionPage() {
   const { resolved } = useTheme();
-  const load = useJson<FC>('/api/map/layers/projects?page=0&v=5');
+  // One response: the city's project list and its Construction Projects page (GET /api/pages/construction).
+  const pageLoad = useJson<{ construction: ConstructionSnapshot | null; projects: FC | null }>('/api/pages/construction');
+  const own = useJson<FC>(pageLoad.status === 'error' || (pageLoad.status === 'done' && !pageLoad.data.projects) ? '/api/map/layers/projects?page=0&v=5' : null);
+  const load: Load<FC> = useMemo(
+    () => (pageLoad.status === 'done' && pageLoad.data.projects ? { status: 'done', data: pageLoad.data.projects } : pageLoad.status === 'loading' ? { status: 'loading' } : own),
+    [pageLoad, own],
+  );
+  const snapshot = pageLoad.status === 'done' ? pageLoad.data.construction : pageLoad.status === 'error' ? undefined : null;
   const plans = useMemo(() => (load.status === 'done' ? plansFrom(load.data) : []), [load]);
   const [category, setCategory] = useState<Category | 'All'>('All');
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -243,7 +250,7 @@ export default function ConstructionPage() {
         </div>
       </section>
 
-      <CitySnapshot cityPage={CITY_PAGE} />
+      <CitySnapshot cityPage={CITY_PAGE} data={snapshot} />
 
       <section className="vc-latest-sec">
         <div className="vc-latest-sec-head">

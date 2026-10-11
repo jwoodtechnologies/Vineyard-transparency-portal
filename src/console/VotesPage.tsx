@@ -3,30 +3,23 @@
  * with the date, how it ended, and a column for every member. Selecting a row opens the motion and each vote.
  */
 import './console.css';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Check, ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
 import { DocLink } from './DocLink';
 import { Frame } from './Chrome';
-import { getJson, useJson } from './api';
+import { useJson, type Load } from './api';
 import {
   cellMark,
   COUNCIL_SEATS,
   meetingRows,
-  meetingsWithoutMinutes,
-  memberTitle,
   mergeRows,
   PC_SEATS,
   recordedTally,
-  motionDetail,
-  motionLabel,
-  motionTally,
   pendingRows,
   plainDashes,
-  recordedMotion,
   sheetRows,
   STATUS_WORD,
-  useMemberNames,
   type DraftMinutes,
   type Mark,
   type MeetingLite,
@@ -35,7 +28,7 @@ import {
   type Seat,
   type SheetRow,
 } from './votes';
-import { usePeople } from './people';
+import { primePeople, usePeople, type Person } from './people';
 import { CsvButton } from './CsvButton';
 import { csvName } from './csv';
 import { voteCsvRows } from './voteCsv';
@@ -100,20 +93,7 @@ function AttendanceView({ a }: { a: Attendance }) {
     </section>
   );
 }
-const VOTE_LABEL: Record<string, string> = {
-  yes: 'Yes',
-  no: 'No',
-  abstain: 'Abstained',
-  recused: 'Recused',
-  absent: 'Absent',
-};
-const ORDER: Record<string, number> = {
-  yes: 0,
-  no: 1,
-  abstain: 2,
-  recused: 3,
-  absent: 4,
-};
+import { ORDER, VOTE_LABEL } from './MotionCard';
 
 const DAY = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00Z`) : null);
 const fmt = (iso: string | null, o: Intl.DateTimeFormatOptions) => (DAY(iso) ? DAY(iso)!.toLocaleDateString('en-US', { ...o, timeZone: 'UTC' }) : '');
@@ -124,67 +104,6 @@ const cap = (n: string) => {
   const t = n.charAt(0).toUpperCase() + n.slice(1);
   return n === n.toLowerCase() ? t.replace(/^Mc([a-z])/, (_, c: string) => `Mc${c.toUpperCase()}`) : t;
 };
-
-/**
- * One vote: what it was on, how it ended, and each member's vote. With `recorded` (answer cards),
- * the motion is worded as the minutes record it and the agenda item is shown as recorded.
- */
-export function MotionCard({ m, member, recorded = false }: { m: MotionRow; member?: string | null; recorded?: boolean }) {
-  const nameOf = useMemberNames();
-  const outcome = m.result === 'carried' ? 'Passed' : m.result === 'failed' ? 'Failed' : 'No result recorded';
-  const roll = [...m.votes]
-    .filter((v) => v.vote !== 'absent')
-    .sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || nameOf(a.member).name.localeCompare(nameOf(b.member).name));
-  // No names in the minutes ("passed unanimously"): the badge says so in place of the member tags.
-  const unanimous = m.result === 'carried' && m.unanimous && roll.length === 0;
-  // Title and last name as the people records store them ("Council Member McCumber"); last name alone when none is stored.
-  const titled = (id: string) => memberTitle(nameOf(id).name, nameOf(id).person?.role);
-  const label = recorded ? recordedMotion(m) : motionLabel(m);
-  const detail = recorded ? (m.item ? `Agenda item: ${m.item.replace(/\s+/g, ' ').trim()}` : null) : motionDetail(m);
-  return (
-    <li className="vc-vt">
-      <div className="vc-vt-top">
-        <span className="vc-vt-what">
-          <p className="vc-vt-label">{label}</p>
-          {detail && <p className="vc-vt-detail">{detail}</p>}
-          {m.refs.length > 0 && !/resolution|ordinance/i.test(label) && <p className="vc-vt-detail">{m.refs.join(', ')}</p>}
-        </span>
-        <span className="vc-vt-result" data-result={m.result}>
-          {outcome}
-          {motionTally(m) ? ` ${motionTally(m)}` : ''}
-        </span>
-      </div>
-      {(m.items?.length ?? 0) > 0 && (
-        <ol className="vc-vt-items">
-          {m.items!.map((it) => (
-            <li key={it}>{it.replace(/^(\d+\.\d+)\s+/, '$1  ')}</li>
-          ))}
-        </ol>
-      )}
-      {(roll.length > 0 || unanimous) && (
-        <ul className="vc-vt-tags" aria-label="How each member voted">
-          {unanimous && (
-            <li data-badge="unanimous">
-              <b>Unanimous</b>
-            </li>
-          )}
-          {roll.map((v) => (
-            <li key={v.member} data-vote={v.vote} data-on={member && member === v.member ? 'true' : undefined} title={`${titled(v.member)}: ${VOTE_LABEL[v.vote] ?? v.vote}`}>
-              <span>{titled(v.member)}</span>
-              <b>{VOTE_LABEL[v.vote] ?? v.vote}</b>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="vc-vt-foot">
-        {m.tieBreak && <span className="vc-vt-meta">Mayor broke the tie</span>}
-        <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
-          <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
-        </DocLink>
-      </div>
-    </li>
-  );
-}
 
 /** What the marks in the chart mean. Only the marks the chart uses are listed, plus the blank (members not yet seated). */
 function Key({ marks, mayor }: { marks: Set<Mark>; mayor: boolean }) {
@@ -340,7 +259,7 @@ function VoteSheet({ rows, member, seats, mayor, showBody }: { rows: SheetRow[];
                       }}
                     >
                       <ChevronRight size={14} className="vc-sh-chev" aria-hidden="true" />
-                      <span>{r.title}</span>
+                      <span title={r.full}>{r.title}</span>
                     </button>
                     <span className="vc-sh-meta" aria-hidden="true">
                       <span className="vc-sh-date-m">
@@ -472,27 +391,18 @@ function VoteSheet({ rows, member, seats, mayor, showBody }: { rows: SheetRow[];
   );
 }
 
-/** Draft minutes printed in a later packet, for each held meeting with no minutes ("body|date" to the packet page, or null). */
-function useDrafts(list: Array<{ key: string; date: string; body: string }> | null): Record<string, DraftMinutes | null> | null {
-  const want = list ? list.map((x) => `${x.key}#${x.body}`).join(',') : null;
-  const [state, setState] = useState<{ want: string | null; drafts: Record<string, DraftMinutes | null> } | null>(null);
-  useEffect(() => {
-    if (want === null) return;
-    const ctl = new AbortController();
-    const items = want ? want.split(',').map((x) => ({ key: x.split('#')[0], date: x.split('#')[0].split('|')[1], body: x.split('#')[1] })) : [];
-    Promise.all(
-      items.map((x) =>
-        getJson<{ draft: DraftMinutes | null }>(`/api/draft-minutes?date=${x.date}&body=${encodeURIComponent(x.body)}`, ctl.signal).then(
-          (r) => [x.key, r.draft] as const,
-          () => [x.key, null] as const,
-        ),
-      ),
-    ).then((pairs) => {
-      if (!ctl.signal.aborted) setState({ want, drafts: Object.fromEntries(pairs) });
-    });
-    return () => ctl.abort();
-  }, [want]);
-  return state && state.want === want ? state.drafts : null;
+/** Everything a voting page shows for one year, in one response (GET /api/pages/votes, /api/pages/planning). */
+export interface VotesPageData {
+  version: number;
+  years: Array<{ year: number; motions: number; meetings: number }>;
+  year: number | null;
+  motions: { items: MotionRow[]; total: number };
+  meetings: MeetingLite[];
+  read: MinutesRead[];
+  people: Person[];
+  /** Planning Commission: draft minutes printed in a later packet, keyed "body|date". */
+  drafts?: Record<string, DraftMinutes | null>;
+  attendance?: Attendance;
 }
 
 function YearSection({
@@ -504,8 +414,9 @@ function YearSection({
   commission,
   showBody,
   result,
-  bodies,
   plain,
+  pageUrl,
+  agg,
 }: {
   year: number;
   query: string;
@@ -515,32 +426,33 @@ function YearSection({
   commission: boolean;
   showBody: boolean;
   result: string;
-  /** The bodies on this chart, for finding meetings whose minutes are not posted yet. */
-  bodies: string[];
   /** No filter is narrowing the list, so a meeting with no minutes belongs on it. */
   plain: boolean;
+  /** The page's one-response endpoint (plain view). */
+  pageUrl: string;
+  /** The page's response already loaded for its newest year. */
+  agg: VotesPageData | null;
 }) {
-  const list = useJson<{ items: MotionRow[]; total: number }>(open ? `/api/votes?scope=current&${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
-  const meet = (b: string | undefined) => (open && plain && b ? `/api/meetings?year=${year}&body=${b}&pageSize=100&sort=date_desc` : null);
-  const first = useJson<{ items: MeetingLite[] }>(meet(bodies[0]));
-  const second = useJson<{ items: MeetingLite[] }>(meet(bodies[1]));
-  const read = useJson<{ meetings: MinutesRead[] }>(open && plain ? `/api/votes/meetings?year=${year}${commission ? '&body=planning-commission' : ''}` : null);
+  const mine = agg && agg.year === year ? agg : null;
+  const own = useJson<VotesPageData>(open && plain && !mine ? `${pageUrl}${pageUrl.includes('?') ? '&' : '?'}year=${year}` : null);
+  const filtered = useJson<{ items: MotionRow[]; total: number }>(open && !plain ? `/api/votes?scope=current&${query}${query ? '&' : ''}year=${year}&pageSize=400` : null);
+  const data = mine ?? (own.status === 'done' ? own.data : null);
+  const ownStatus = own.status;
+  const list = useMemo<Load<{ items: MotionRow[]; total: number }>>(
+    () => (!plain ? filtered : data ? { status: 'done', data: data.motions } : ownStatus === 'error' ? { status: 'error' } : { status: 'loading' }),
+    [plain, filtered, data, ownStatus],
+  );
   // Utah's evening is already tomorrow in UTC, so the day is counted from six hours back.
   const [today] = useState(() => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10));
-  const loaded = plain && read.status === 'done' && first.status === 'done' && (!bodies[1] || second.status === 'done');
-  const held = useMemo(() => (loaded && first.status === 'done' ? [...first.data.items, ...(second.status === 'done' ? second.data.items : [])] : null), [loaded, first, second]);
-  // The commission's page lists every meeting of the year; a held meeting with no minutes may have draft minutes in a later packet.
-  const lookFor = useMemo(() => (commission && held && read.status === 'done' ? meetingsWithoutMinutes(held, read.data.meetings, today) : null), [commission, held, read, today]);
-  const drafts = useDrafts(lookFor);
   const rows = useMemo<SheetRow[]>(() => {
     if (list.status !== 'done') return [];
     const votes = sheetRows(list.data.items, result === 'carried' || result === 'failed' ? result : '');
-    if (!loaded || !held || read.status !== 'done') return votes;
-    if (!commission) return mergeRows(votes, pendingRows(held, read.data.meetings, today));
-    if (!drafts) return votes;
+    if (!plain || !data) return votes;
+    if (!commission) return mergeRows(votes, pendingRows(data.meetings, data.read, today));
+    // The commission's page lists every meeting of the year; a held meeting with no minutes may have draft minutes in a later packet.
     const voted = new Set(votes.map((r) => `${r.m.bodyId}|${(r.m.date ?? '').slice(0, 10)}`));
-    return mergeRows(votes, meetingRows(held, read.data.meetings, today, { voted, drafts }));
-  }, [list, result, loaded, held, read, today, commission, drafts]);
+    return mergeRows(votes, meetingRows(data.meetings, data.read, today, { voted, drafts: data.drafts ?? {} }));
+  }, [list, result, plain, data, today, commission]);
   // The council's columns are everyone serving now: the mayor first, then the council in alphabetical order. The commission's are its seats as the 2026 records show them.
   const people = usePeople();
   const { seats, mayor } = useMemo(() => {
@@ -591,7 +503,6 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
   const rdaOnly = !commission && asked === 'redevelopment-agency';
   // The council's chart carries every vote of the City Council and the Redevelopment Agency, where the same members sit as its board. An RDA row is tagged.
   const body = commission ? 'planning-commission' : rdaOnly ? 'redevelopment-agency' : '';
-  const bodies = commission ? ['planning-commission'] : rdaOnly ? ['redevelopment-agency'] : ['city-council', 'redevelopment-agency'];
   const member = params.get('member') ?? '';
   const q = params.get('q') ?? '';
   const result = params.get('result') ?? '';
@@ -608,16 +519,24 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
     for (const [k, v] of Object.entries({ member, body, q, result, vote })) if (v) u.set(k, v);
     return u.toString();
   }, [member, body, q, result, vote]);
+  const plain = !member && !q && !result && !vote;
+  // The plain view (no filter) is one response: years, the newest year's votes and meetings, attendance, drafts.
+  const pageUrl = commission ? '/api/pages/planning' : rdaOnly ? '/api/pages/votes?body=redevelopment-agency' : '/api/pages/votes';
+  const page = useJson<VotesPageData>(plain ? pageUrl : null);
+  const agg = page.status === 'done' ? page.data : null;
+  // The people come with the page's response: the member columns need no request of their own.
+  if (agg?.people?.length) primePeople(agg.people);
   const yearsQ = new URLSearchParams(Object.entries({ member, body }).filter(([, v]) => v)).toString();
-  const years = useJson<{ years: Array<{ year: number; motions: number; meetings: number }> }>(`/api/votes/years?scope=current${yearsQ ? `&${yearsQ}` : ''}`);
-  const attendance = useJson<Attendance>(body === 'planning-commission' ? '/api/votes/attendance' : null);
-  const att = attendance.status === 'done' ? attendance.data : null;
+  const yearsOwn = useJson<{ years: Array<{ year: number; motions: number; meetings: number }> }>(plain ? null : `/api/votes/years?scope=current${yearsQ ? `&${yearsQ}` : ''}`);
+  const years: Load<{ years: Array<{ year: number; motions: number; meetings: number }> }> = plain ? (agg ? { status: 'done', data: { years: agg.years } } : page.status === 'error' ? { status: 'error' } : { status: 'loading' }) : yearsOwn;
+  const attendanceOwn = useJson<Attendance>(!plain && body === 'planning-commission' ? '/api/votes/attendance' : null);
+  const att = plain ? (agg?.attendance ?? null) : attendanceOwn.status === 'done' ? attendanceOwn.data : null;
   const [open, setOpen] = useState<Record<number, boolean>>({});
   const yearList = years.status === 'done' ? years.data.years : [];
   const isOpen = (y: number, i: number) => open[y] ?? i === 0;
 
   return (
-    <Frame>
+    <Frame wide="sheet">
       <header className="vc-page-head">
         <h1 className="vc-page-title vc-votes-title">{commission ? 'Planning Commission Voting Recap' : 'City Council Voting Recap'}</h1>
       </header>
@@ -639,6 +558,7 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
           <span style={{ width: '60%' }} />
         </div>
       )}
+      {years.status === 'error' && <p className="vc-mo-note">The votes could not load just now. Reload to try again.</p>}
       {view !== 'attendance' && years.status === 'done' && !yearList.length && <p className="vc-mo-note">No votes match.</p>}
       {view !== 'attendance' &&
         yearList.map((y, i) => (
@@ -648,8 +568,9 @@ export function VotesView({ commission = false }: { commission?: boolean }) {
             result={result}
             commission={commission}
             showBody={!body}
-            bodies={bodies}
-            plain={!member && !q && !result && !vote}
+            plain={plain}
+            pageUrl={pageUrl}
+            agg={agg}
             query={query}
             member={member || null}
             open={isOpen(y.year, i)}

@@ -58,6 +58,8 @@ function slugify(title: string): string {
 const sum = (results: D1Result[]): number => results.reduce((t, r) => t + Number(r.meta?.rows_written ?? 0), 0);
 
 export class Budget {
+  /** Rows this instance recorded (the cron tick bumps the data version when any were written). */
+  written = 0;
   constructor(private readonly env: Env) {}
   get limit(): number {
     return intVar(this.env.MAX_D1_INGEST_ROWS_PER_DAY, 75000);
@@ -71,6 +73,7 @@ export class Budget {
     if (used + estimate >= this.limit) throw new HttpError(429, 'quota_exhausted', BUDGET_MESSAGE, secondsToUtcMidnight());
   }
   async record(rows: number, extra: { r2Bytes?: number; r2Ops?: number } = {}): Promise<void> {
+    this.written += Math.max(0, rows);
     await this.env.CATALOG_DB.prepare(
       `INSERT INTO quota_usage (day, d1_rows_written, r2_bytes_uploaded, r2_class_a_ops, updated_at) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(day) DO UPDATE SET d1_rows_written = d1_rows_written + excluded.d1_rows_written,

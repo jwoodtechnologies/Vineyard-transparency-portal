@@ -19,6 +19,8 @@ import { track } from './sync/checks';
 import { runSync } from './sync/run';
 import { drainContribQueue } from './contrib/indexing';
 import { refreshCoverageIfStale } from './lib/coverage';
+import { bumpDataVersion } from './lib/dataVersion';
+import { rebuildPages } from './api/pages';
 
 const UA = { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org; public records archive)', accept: 'application/json, text/html;q=0.9' };
 
@@ -138,7 +140,22 @@ export async function runFrequent(env: Env, scheduledTime = Date.now()): Promise
   summary.portalUploads = await track(env, 'portal-uploads', () => drainContribQueue(env, budget, Date.now() + 60_000));
   // The coverage check (owner panel) is recomputed once a day.
   summary.coverage = await track(env, 'coverage', () => refreshCoverageIfStale(env));
+  summary.pages = await afterChanges(env, budget, summary);
   return summary;
+}
+
+/**
+ * When the tick changed public data (rows written, or minutes read into votes): the data version goes up, so
+ * edge copies refresh, and the heavy pages' payloads are rebuilt now (worker/api/pages.ts) so a reader's
+ * request is one stored row.
+ */
+async function afterChanges(env: Env, budget: Budget, summary: Record<string, unknown>): Promise<unknown> {
+  const votes = summary.votes as { read?: number; motions?: number } | undefined;
+  if (!budget.written && !Number(votes?.read ?? 0)) return 'unchanged';
+  await bumpDataVersion(env);
+  // Voting pages are rebuilt when minutes were read or meetings changed; the construction payload (and any
+  // other page) is rebuilt on its next request while the stored copy is served.
+  return track(env, 'pages', () => rebuildPages(env, ['council', 'planning', 'rda']));
 }
 
 export async function runHourly(env: Env, scheduledTime = Date.now()): Promise<Record<string, unknown>> {
@@ -155,6 +172,7 @@ export async function runHourly(env: Env, scheduledTime = Date.now()): Promise<R
   Object.assign(summary, await runSync(env, scheduledTime, budget));
   summary.votes = await track(env, 'votes', () => processVotes(env, 8_000, 40));
   summary.portalUploads = await track(env, 'portal-uploads', () => drainContribQueue(env, budget, Date.now() + 60_000));
+  summary.pages = await afterChanges(env, budget, summary);
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('INSERT INTO cron_runs (started_at, finished_at, summary_json) VALUES (?, ?, ?)').bind(started, new Date().toISOString(), JSON.stringify(summary)),
     env.CATALOG_DB.prepare('DELETE FROM cron_runs WHERE id <= (SELECT max(id) - 500 FROM cron_runs)'),

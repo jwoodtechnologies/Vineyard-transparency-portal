@@ -10,9 +10,12 @@ import { bodyFor, classifyType } from '../lib/civicclerk';
 import { SYNC_UA } from './ingest';
 import { urlKey } from './urls';
 import { assertRobots } from './robots';
-import { parsePmnResults, PMN, type PmnNotice } from './pmnParse';
+import { noticeBody, parsePmnResults, PMN, type PmnNotice } from './pmnParse';
 
 export { parsePmnResults, type PmnNotice };
+
+/** The body a notice is for (the title wins over the body the notice site filed it under). */
+const bodyOfNotice = (n: PmnNotice) => bodyFor(noticeBody(n.publicBody, n.title));
 
 export const PMN_SOURCE = 'utah-pmn-vineyard';
 const ENTITY = 'Vineyard';
@@ -43,6 +46,33 @@ export async function searchPmn(env: Env, sinceDays = 45): Promise<PmnNotice[]> 
   });
   if (!res.ok) throw new Error(`PMN search HTTP ${res.status}`);
   return parsePmnResults(await res.text()).filter((n) => n.entity.toLowerCase() === ENTITY.toLowerCase());
+}
+
+/**
+ * Meetings recorded from notices before the title rule existed carry the body the notice was filed under
+ * (an ARCH Commission meeting under City Council). Each run puts them under the body their title names,
+ * with their files, so they join that body's calendar and leave the other's. Reads only notice meetings
+ * (a primary key range); writes only rows that change.
+ */
+export async function repairNoticeBodies(env: Env, now: string, budget: Budget): Promise<number> {
+  const rows =
+    (await env.CATALOG_DB.prepare("SELECT id, title, government_body_id, government_body_name FROM meetings WHERE id >= 'mtg_pmn_' AND id < 'mtg_pmn`'").all<{ id: string; title: string; government_body_id: string | null; government_body_name: string | null }>())
+      .results ?? [];
+  const stmts: D1PreparedStatement[] = [];
+  const bodies = new Map<string, { id: string; name: string; kind: string }>();
+  for (const r of rows) {
+    if (!r.government_body_name) continue;
+    const body = bodyFor(noticeBody(r.government_body_name, r.title));
+    if (!body || body.id === r.government_body_id) continue;
+    bodies.set(body.id, body);
+    stmts.push(env.CATALOG_DB.prepare('UPDATE meetings SET government_body_id = ?, government_body_name = ?, updated_at = ? WHERE id = ?').bind(body.id, body.name, now, r.id));
+    stmts.push(env.CATALOG_DB.prepare('UPDATE documents SET government_body_id = ?, government_body_name = ? WHERE meeting_id = ? AND government_body_id IS ?').bind(body.id, body.name, r.id, r.government_body_id));
+  }
+  if (!stmts.length) return 0;
+  await upsertBodies(env, { bodies: [...bodies.values()] }, budget);
+  const changed = sumChanges(await env.CATALOG_DB.batch(stmts));
+  await budget.record(changed);
+  return changed;
 }
 
 let registered = false;
@@ -79,7 +109,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
   for (const n of notices) {
     // Only meeting notices make meetings (hearing and other notices are records, not calendar entries).
     if (!n.eventDate || !n.publicBody || !/meeting|session|cancel/i.test(n.title)) continue;
-    const body = bodyFor(n.publicBody);
+    const body = bodyOfNotice(n);
     if (!body) continue;
     const found = await env.CATALOG_DB.prepare(
       `SELECT id, agenda_document_id, packet_document_id FROM meetings WHERE meeting_date = ? AND (government_body_id = ? OR lower(government_body_name) = lower(?))
@@ -115,6 +145,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
   }
   if (bodies.size) await upsertBodies(env, { bodies: [...bodies.values()] }, budget);
   for (let i = 0; i < newMeetings.length; i += 100) await upsertMeetings(env, { meetings: newMeetings.slice(i, i + 100) }, budget);
+  await repairNoticeBodies(env, now, budget);
   // A meeting recorded from a notice gives way to the agenda portal's record of it once that arrives.
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare(
@@ -132,7 +163,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
   for (const n of notices) {
     const mtg = meetingFor.get(n.id);
     if (!mtg) continue;
-    const body = bodyFor(n.publicBody);
+    const body = bodyOfNotice(n);
     const urls = JSON.stringify([n.url, ...n.attachments.map((f) => f.url)]);
     links.push(
       env.CATALOG_DB.prepare(`UPDATE documents SET meeting_id = ?, government_body_id = coalesce(government_body_id, ?) WHERE meeting_id IS NULL AND source_id = ? AND original_url IN (SELECT value FROM json_each(?))`).bind(
@@ -144,12 +175,12 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
     );
     if (!mtg.hasAgenda)
       links.push(
-        env.CATALOG_DB.prepare(`UPDATE meetings SET agenda_document_id = (SELECT id FROM documents WHERE source_id = ? AND original_url = ? LIMIT 1) WHERE id = ? AND agenda_document_id IS NULL`).bind(PMN_SOURCE, n.url, mtg.id),
+        env.CATALOG_DB.prepare(`UPDATE meetings SET agenda_document_id = (SELECT id FROM documents WHERE source_id = ?1 AND original_url = ?2 LIMIT 1) WHERE id = ?3 AND agenda_document_id IS NULL AND EXISTS (SELECT 1 FROM documents WHERE source_id = ?1 AND original_url = ?2)`).bind(PMN_SOURCE, n.url, mtg.id),
       );
     const packet = n.attachments.find((f) => /packet/i.test(f.name));
     if (packet && !mtg.hasPacket)
       links.push(
-        env.CATALOG_DB.prepare(`UPDATE meetings SET packet_document_id = (SELECT id FROM documents WHERE source_id = ? AND original_url = ? LIMIT 1) WHERE id = ? AND packet_document_id IS NULL`).bind(PMN_SOURCE, packet.url, mtg.id),
+        env.CATALOG_DB.prepare(`UPDATE meetings SET packet_document_id = (SELECT id FROM documents WHERE source_id = ?1 AND original_url = ?2 LIMIT 1) WHERE id = ?3 AND packet_document_id IS NULL AND EXISTS (SELECT 1 FROM documents WHERE source_id = ?1 AND original_url = ?2)`).bind(PMN_SOURCE, packet.url, mtg.id),
       );
   }
   if (links.length) await budget.record(sumChanges(await env.CATALOG_DB.batch(links)));
@@ -157,7 +188,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
   const items: Record<string, unknown>[] = [];
   for (const n of notices) {
     const mtg = meetingFor.get(n.id);
-    const base = { documentDate: n.eventDate, governmentBodyName: n.publicBody || null, governmentBodyId: bodyFor(n.publicBody)?.id ?? null, pmnNoticeId: n.id, meetingId: mtg?.id ?? null, meetingTitle: n.title };
+    const base = { documentDate: n.eventDate, governmentBodyName: bodyOfNotice(n)?.name ?? (n.publicBody || null), governmentBodyId: bodyOfNotice(n)?.id ?? null, pmnNoticeId: n.id, meetingId: mtg?.id ?? null, meetingTitle: n.title };
     items.push({
       urlKey: await urlKey(n.url),
       sourceId: PMN_SOURCE,

@@ -37,10 +37,10 @@ function groupDocs(docs: NonNullable<ConstructionSnapshot['documents']>): Array<
  * The whole "City construction page" section. It is not shown at all until a readable copy exists:
  * the portal never shows an empty section.
  */
-export function CitySnapshot({ cityPage }: { cityPage: string }) {
-  const load = useJson<ConstructionSnapshot>('/api/construction');
-  if (load.status !== 'done' || !load.data.available || !load.data.asOf) return null;
-  const s = load.data;
+export function CitySnapshot({ cityPage, data }: { cityPage: string; /** Already loaded with the page's own response; undefined loads it here. */ data?: ConstructionSnapshot | null }) {
+  const load = useJson<ConstructionSnapshot>(data === undefined ? '/api/construction' : null);
+  const s = data !== undefined ? data : load.status === 'done' ? load.data : null;
+  if (!s || !s.available || !s.asOf) return null;
   const g = s.glance;
   return (
     <section className="vc-latest-sec">
