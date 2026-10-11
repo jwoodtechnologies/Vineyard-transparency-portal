@@ -64,16 +64,19 @@ const MEETINGISH = /\b(meeting|session|council|commission|rda|redevelopment|boar
 export interface MeetingVotesIntent {
   date: string;
   body: MeetingBody;
-  /** 'no': only the motions with a No vote; 'all': every recorded motion. */
-  kind: 'all' | 'no';
+  /** 'no': only the motions with a No vote; 'mover': who moved and seconded each; 'all': every recorded motion. */
+  kind: 'all' | 'no' | 'mover';
 }
+
+/** "Who seconded it?", "who made the motion?", "who moved to approve the budget?". */
+export const MOVER_Q = /\bwho\s+(?:(?:first\s+)?seconded|second(?:ed)?\s+(?:it|the motion)|moved|made\s+(?:the|that|this)?\s*motions?|made\s+it|motioned|proposed\s+it)\b|\b(?:moved|seconded)\s+by\s+whom\b/i;
 
 /** "What did the city council vote on at the September 8 meeting?", "did anyone vote no at the 9/8 meeting?". */
 export function meetingVotesIntent(q: string, today: string): MeetingVotesIntent | null {
   if (!VOTED.test(q) || !MEETINGISH.test(q)) return null;
   const date = meetingDateIn(q, today);
   if (!date) return null;
-  return { date, body: meetingBodyIn(q) ?? 'city-council', kind: NO_VOTE.test(q) ? 'no' : 'all' };
+  return { date, body: meetingBodyIn(q) ?? 'city-council', kind: MOVER_Q.test(q) ? 'mover' : NO_VOTE.test(q) ? 'no' : 'all' };
 }
 
 /** Words that point back at a meeting named earlier in the conversation. */
@@ -115,6 +118,8 @@ export interface MeetingMotion {
   tally: string | null;
   items: string[];
   votes: Array<{ member: string; vote: string }>;
+  mover?: string | null;
+  seconder?: string | null;
 }
 
 /** A member as the answer names them: title and last name ("Council Member McCumber", "Mayor Stratton"). */
@@ -152,6 +157,16 @@ export function meetingVotesText(intent: MeetingVotesIntent, motions: MeetingMot
       ...withNo.map((m) => {
         const no = m.votes.filter((v) => v.vote === 'no').map((v) => memberTitle(v.member, intent.body, mayor));
         return `${motionLine(m)} Voting No: ${no.join(', ')}.`;
+      }),
+    ];
+  }
+  if (intent.kind === 'mover') {
+    const who = (n: string | null | undefined) => (n ? memberTitle(n, intent.body, mayor) : null);
+    return [
+      `Who moved and seconded each recorded motion at the ${when} ${label} meeting:`,
+      ...motions.map((m) => {
+        const by = [who(m.mover) ? `moved by ${who(m.mover)}` : 'mover not recorded', who(m.seconder) ? `seconded by ${who(m.seconder)}` : 'no second recorded'].join(', ');
+        return `${motionLine(m).replace(/\. (Passed|Failed|Result not recorded)/, `; ${by}. $1`)}`;
       }),
     ];
   }

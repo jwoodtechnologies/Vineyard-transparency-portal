@@ -24,6 +24,8 @@ export function countKind(q: string): 'resolution' | 'ordinance' | 'minutes' | n
 
 /** The body a meeting question is about, and how its meetings are named in the calendar and catalog. */
 const BODIES: Array<{ ask: RegExp; label: string; match: RegExp; like: string }> = [
+  // Public hearings and notices are filed as their own body ("Public Hearing - Senate Bill 284"), never the council's meeting.
+  { ask: /public hearings?|public notices?/i, label: 'public hearing', match: /public hearing|public notice/i, like: '%Public%' },
   { ask: /planning commission/i, label: 'Planning Commission', match: /planning commission/i, like: '%Planning Commission%' },
   { ask: /\bRDA\b|redevelopment/i, label: 'Redevelopment Agency', match: /redevelopment|\bRDA\b/i, like: '%Redevelopment%' },
   { ask: /\barch\b|architect/i, label: 'ARCH Commission', match: /\bARCH\b/i, like: '%ARCH Commission%' },

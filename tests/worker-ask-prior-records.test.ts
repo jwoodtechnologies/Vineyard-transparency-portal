@@ -74,10 +74,12 @@ describe('a follow-up reads the records the previous answer cited', () => {
   it('still removes a figure no record states, and the fallback carries the closest records as cards', async () => {
     const env = await seed();
     const r = await ask({ ...env, AI: ai(() => 'The Redevelopment Agency has a cap of $900 million on the tax increment [1].') } as unknown as Env, { question: 'Is there a cap on what it can collect?', conversation: convo });
-    expect(r.answer).toBe("I couldn't find a record that answers that. The closest records are below.");
+    // No dead end: the closest record is quoted in its own words, at its page.
+    expect(r.answer.startsWith('The records closest to your question:')).toBe(true);
     expect(r.answer).not.toContain('$900 million');
-    expect(r.relatedDocuments.length).toBeGreaterThan(0);
-    expect(r.relatedDocuments.map((d) => d.id)).toContain('doc_6a0c9a6544266140');
+    expect(r.answer).not.toMatch(/couldn't find|unavailable|unable to/i);
+    expect(r.citations.map((c) => c.documentId)).toContain('doc_6a0c9a6544266140');
+    expect(r.citations.every((c) => c.page != null)).toBe(true);
   });
 
   it('scores a passage by the previous answer figures it holds, then the follow-up words', () => {

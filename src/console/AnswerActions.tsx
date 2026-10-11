@@ -1,6 +1,6 @@
 /** Copy, thumbs up and thumbs down under an answer. Votes go to the owner's activity panel. */
 import { useState } from 'react';
-import { Check, Copy, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Check, Copy, Share2, ThumbsDown, ThumbsUp } from 'lucide-react';
 import type { ConsoleAnswer } from './types';
 import { formatDate } from './format';
 
@@ -28,10 +28,10 @@ function saveVote(id: string, vote: Vote) {
   }
 }
 
+/** The answer as plain text: list items on their own lines, citation markers kept, then each source with its link. */
 function plainAnswer(a: ConsoleAnswer): string {
-  const text = a.paragraphs.length
-    ? a.paragraphs.map((p) => p.segments.map((s) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ')).join('\n\n')
-    : a.answer;
+  const seg = (s: { text: string; citations: number[] }) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`;
+  const text = a.paragraphs.length ? a.paragraphs.map((p) => (p.list ? p.segments.map((s) => `- ${seg(s)}`).join('\n') : p.segments.map(seg).join(' '))).join('\n\n') : a.answer;
   if (!a.citations.length) return text;
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const sources = a.citations.map((c) => {
@@ -60,9 +60,33 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+/** A link that asks this question again on the portal. */
+function shareUrl(question: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://vineyardportal.org';
+  return `${origin}/?q=${encodeURIComponent(question)}`;
+}
+
 export function AnswerActions({ answer }: { answer: ConsoleAnswer }) {
   const [vote, setVote] = useState<Vote | null>(() => readVotes()[answer.id] ?? null);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
+
+  const share = async () => {
+    const url = shareUrl(answer.question);
+    const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { share?: (d: ShareData) => Promise<void> }) : null;
+    if (nav?.share) {
+      try {
+        await nav.share({ title: 'Vineyard Transparency Portal', text: answer.question, url });
+        return;
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return;
+      }
+    }
+    if (await copyText(url)) {
+      setShared(true);
+      setTimeout(() => setShared(false), 1600);
+    }
+  };
   const rateable = answer.mode !== 'conversation' && /^ask_[0-9a-f]{16}$/.test(answer.id);
 
   const copy = async () => {
@@ -89,6 +113,10 @@ export function AnswerActions({ answer }: { answer: ConsoleAnswer }) {
       <button type="button" className="vc-act" onClick={copy} aria-label={copied ? 'Copied' : 'Copy answer'} title={copied ? 'Copied' : 'Copy answer'} data-done={copied}>
         {copied ? <Check size={15} strokeWidth={2.2} /> : <Copy size={15} strokeWidth={1.9} />}
         <span className="vc-act-text">{copied ? 'Copied' : 'Copy'}</span>
+      </button>
+      <button type="button" className="vc-act" onClick={share} aria-label={shared ? 'Link copied' : 'Share this question'} title={shared ? 'Link copied' : 'Share'} data-done={shared}>
+        {shared ? <Check size={15} strokeWidth={2.2} /> : <Share2 size={15} strokeWidth={1.9} />}
+        <span className="vc-act-text">{shared ? 'Link copied' : 'Share'}</span>
       </button>
       {rateable && (
         <>

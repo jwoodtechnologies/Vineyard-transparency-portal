@@ -24,6 +24,8 @@ export interface TurnSpec {
   live?: { nextMeeting?: string; construction?: string };
   checks?: { portalLink?: boolean; titles?: boolean; why?: string };
   elliptical?: boolean;
+  /** A follow-up that names its own subject with a code path: no rewrite model call. */
+  standalone?: boolean;
   needsRewrite?: boolean;
   ai?: string;
   model?: boolean;
@@ -102,6 +104,7 @@ export function selectCases(cases: SuiteCase[], opts?: { mode?: 'full' | 'deploy
 export function historyFor(done: Array<{ question: string; response: AskLike | null }>): Array<{ role: string; content: string; sources?: string[] }>;
 export function portalLinks(r: AskLike | null): string[];
 export function nameProblems(text: string, officials: Officials): string[];
+export const DEAD_END: RegExp;
 export function globalChecks(r: AskLike | null, checks?: TurnSpec['checks'], officials?: Officials): string[];
 export function nextMeetingDates(items: Array<Record<string, unknown>>, today: string): string[];
 export function constructionLines(glance: { rows: Array<Record<string, string>> } | null | undefined, filter?: string): string[];

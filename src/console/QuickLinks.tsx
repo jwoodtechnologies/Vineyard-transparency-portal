@@ -11,7 +11,7 @@ import type { MapLayerInfo } from './api';
 import { getJson } from './api';
 import { LINKS, STAFF, type ServiceLink } from './services';
 import { DIRECTORY, directoryFor } from './directory';
-import { dedupeCards } from './cards';
+import { dedupeCards, normalizeHref } from './cards';
 
 /** Keep in step with DATA_VERSION in MapPage so both read the same cached layer data. */
 const MAP_DATA_VERSION = 10;
@@ -215,10 +215,12 @@ export function QuickLinks({ answer }: { answer: ConsoleAnswer }) {
     const entry = DIRECTORY.find((e) => e.href === b.href);
     return entry && /^https:\/\/(www\.)?vineyardutah\.gov\//.test(entry.href) ? { ...b, href: `/services/${entry.id}`, internal: true } : b;
   });
-  // One card per destination, and never two cards with the same title.
-  const all = dedupeCards(mapped).slice(0, 7);
-  // A message that just names a part of the portal already has its own card.
-  if (!all.length || answer.section) return null;
+  // One card per destination, and never two cards with the same title; the answer's own page card is not repeated.
+  const own = answer.section ? normalizeHref(answer.section.path) : null;
+  const all = dedupeCards(mapped)
+    .filter((b) => !own || normalizeHref(b.href) !== own)
+    .slice(0, answer.section ? 4 : 7);
+  if (!all.length) return null;
 
   return (
     <nav className="vc-quick" aria-label="Related actions">

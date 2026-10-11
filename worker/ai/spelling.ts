@@ -2,6 +2,9 @@
  * Common misspellings and spoken-word slips in questions about Vineyard records, fixed before the
  * archive is searched ("grammar request" is a GRAMA records request). Pure.
  */
+/** The fix with the first letter cased as written ("Ordinance 2026-09" stays capitalized). */
+const keepCase = (m: string, to: string) => (/^[A-Z]/.test(m) ? `${to[0].toUpperCase()}${to.slice(1)}` : to);
+
 const FIXES: Array<[RegExp, string]> = [
   [/\bgram+[ae]r?\s+(request|form|requests)\b/gi, 'GRAMA records $1'],
   [/\b(gramma|grahma|grama|gramah)\b/gi, 'GRAMA'],
@@ -9,13 +12,13 @@ const FIXES: Array<[RegExp, string]> = [
   [/\bvin[ey]+ard\b/gi, 'Vineyard'],
   [/\bvinyard\b/gi, 'Vineyard'],
   [/\bminuets\b/gi, 'minutes'],
-  [/\bord[ia]n[ae]n?ces?\b/gi, (m: string) => (m.toLowerCase().endsWith('s') ? 'ordinances' : 'ordinance')] as unknown as [RegExp, string],
+  [/\bord[ia]n[ae]n?ces?\b/gi, (m: string) => keepCase(m, m.toLowerCase().endsWith('s') ? 'ordinances' : 'ordinance')] as unknown as [RegExp, string],
   [/\bordinace(s?)\b/gi, 'ordinance$1'],
   [/\bresolu(s|t)ion(s?)\b/gi, 'resolution$2'],
   [/\bcouncel\b/gi, 'council'],
   [/\bcounsil\b/gi, 'council'],
   [/\bbudjet\b/gi, 'budget'],
-  [/\bpermitt?s?\b/gi, (m: string) => (m.toLowerCase().endsWith('s') ? 'permits' : 'permit')] as unknown as [RegExp, string],
+  [/\bpermitt?s?\b/gi, (m: string) => keepCase(m, m.toLowerCase().endsWith('s') ? 'permits' : 'permit')] as unknown as [RegExp, string],
   [/\bzoneing\b/gi, 'zoning'],
   [/\brecorders office\b/gi, "Recorder's office"],
   [/\bmayers?\b/gi, 'mayor'],

@@ -8,8 +8,8 @@
 #     metering day so it never takes the day's larger-model answers or Neurons ahead of residents:
 #     about 1,430 Neurons (worst case about 2,070), under a fifth of the daily cap.
 #   - workflow_dispatch: full=true runs the full suite, full=false the post-deploy subset.
-# The runner refuses to start above --max-neurons, and skips (does not fail) model cases when the
-# site reports AI answers unavailable.
+# The runner refuses to start above --max-neurons. Every case runs: an answer that dead-ends ("couldn't find",
+# "unavailable") or has no source fails, so a model outage shows up as failures, never as skips.
 name: Chat suite
 
 on:

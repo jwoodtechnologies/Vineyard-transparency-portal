@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Chat regression suite for POST /api/ask (scripts/chat-suite/run.mjs). Every expected fact names its source: a document id and page read through the live API on October 11, 2026 (/api/documents/<id>/text, /api/votes, /api/meetings, /api/people, /api/construction, captured by the Diagnostics workflow runs 38131489865 and 38131647112 on the diagnostics branch), or a portal data record when the fact has no document (directory, meeting calendar, GIS map, construction page). Items with kind 'behavior' check how the answer is built, not a fact. Items with 'until' are only checked up to that date (Utah time); time-dependent answers are checked against live data with 'live'.",
+  "about": "Chat regression suite for POST /api/ask (scripts/chat-suite/run.mjs). Every expected fact names its source: a document id and page read through the live API on October 11, 2026 (/api/documents/<id>/text, /api/votes, /api/meetings, /api/people, /api/construction, captured by the Diagnostics workflow runs 38131489865 and 38131647112 on the diagnostics branch), or a portal data record when the fact has no document (directory, meeting calendar, GIS map, construction page). Items with kind 'behavior' check how the answer is built, not a fact. Items with 'until' are only checked up to that date (Utah time); time-dependent answers are checked against live data with 'live'. Cases added October 11, 2026 read the live API through Diagnostics run 38152760553 (October 11, 2026) (votes, records indexes, meetings, people, fee schedule search). Every answer must open a portal page and never dead-end (\"couldn't find\", \"unavailable\", \"unable to\", \"I don't know\"); off-topic and small talk are the only answers without a source.",
   "officials": {
     "people": [
       {
@@ -283,6 +283,156 @@
       "url": "https://vineyardut.api.civicclerk.com/v1/Events/1660",
       "title": "CivicClerk event 1660, Joint Meeting - City Council and Orem City, November 17, 2026, 12:30",
       "quote": "address1 \"City Council Conference Room, \", address2 \" 56 N State Street\", city \"Orem\""
+    },
+    "votes-cc-2026-06-23-ord09": {
+      "documentId": "doc_f7aa0533b44d693c",
+      "page": 3,
+      "title": "City Council minutes, June 23, 2026",
+      "quote": "8.1 Approve Ordinance 2026-09, Stormwater Management Code Update | mover Jacob Holdaway | seconder David Lauret | carried 4-0",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_f7aa0533b44d693c:2"
+    },
+    "votes-cc-2026-06-23-budget": {
+      "documentId": "doc_f7aa0533b44d693c",
+      "page": 3,
+      "title": "City Council minutes, June 23, 2026",
+      "quote": "3.2 Bb Accept the Final FY 2026-2027 Budget (Evan Smith) | carried 3-1",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_f7aa0533b44d693c:3"
+    },
+    "votes-cc-2026-08-11-ord07": {
+      "documentId": "doc_34ef709435ea7b2b",
+      "page": 3,
+      "title": "City Council minutes, August 11, 2026",
+      "quote": "5.4 Approve Ordinance 2026-07 | mover Ezra Nair | seconder Parker McCumber | carried 3-2",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_34ef709435ea7b2b:2"
+    },
+    "votes-cc-2026-08-25-ord10": {
+      "documentId": "doc_7a0b2b44683f4559",
+      "page": 5,
+      "title": "City Council minutes, August 25, 2026",
+      "quote": "8.1 Approve Ordinance 2026-10 Budget Amendments | mover David Lauret | seconder Jacob Holdaway | carried",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_7a0b2b44683f4559:9"
+    },
+    "votes-cc-2026-09-08-movers": {
+      "documentId": "doc_87aac14fa329d527",
+      "page": 3,
+      "title": "City Council minutes, September 8, 2026",
+      "quote": "5.1 Appoint Steffani Winder to the Vineyard Library Board | mover Parker McCumber | seconder David Lauret | carried 4-0",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_87aac14fa329d527:1"
+    },
+    "votes-cc-2026-09-15": {
+      "documentId": "doc_5f867130115b8be0",
+      "page": 4,
+      "title": "Special City Council minutes, September 15, 2026",
+      "quote": "7.1 Approve the First Amendment to the Holdaway Fields Development Agreement | mover Jacob Wood | seconder David Lauret | carried 4-0",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_5f867130115b8be0:2"
+    },
+    "votes-rda-2026-09-15": {
+      "documentId": "doc_65bbcb853249cc0d",
+      "page": 2,
+      "title": "Redevelopment Agency minutes, September 15, 2026",
+      "quote": "3.1 Approve the Appointment of RDA Directors | approve the appointment of Rob Sant and Steven Proud | mover David Lauret | seconder Parker McCumber | carried 5-0",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_65bbcb853249cc0d:2"
+    },
+    "votes-cc-2026-03-31": {
+      "documentId": "doc_84fbf9bd5e34fc28",
+      "page": 3,
+      "title": "City Council minutes, March 31, 2026",
+      "quote": "8.1 Resolution 2026-21 Amend the Consolidated Fee Schedule (p. 3); 8.2 Adopt Resolution 2026-19 In Support Of Parking Enforcement (p. 4)",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_84fbf9bd5e34fc28:1"
+    },
+    "votes-cc-2026-03-dates": {
+      "api": "/api/votes?pageSize=100",
+      "title": "City Council motions in March 2026",
+      "quote": "meeting dates 2026-03-10, 2026-03-24, 2026-03-31",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1"
+    },
+    "votes-cc-2026-05-26": {
+      "documentId": "doc_43974cc0eb8e88f5",
+      "page": 4,
+      "title": "City Council minutes, May 26, 2026",
+      "quote": "9.1 Appoint Brian Voeks as City Manager | Approve the mayor's appointment of brian voeks as city manager",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_43974cc0eb8e88f5:3"
+    },
+    "votes-cc-2026-02-24": {
+      "documentId": "doc_72fafbc263266ada",
+      "page": 3,
+      "title": "City Council minutes, February 24, 2026",
+      "quote": "5.4 Municipal Financial Institution Signatory Authorization (Resolution 2026-12); 6.1 Utah Lake Authority - Governing Board Member (Resolution 2026-09)",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_72fafbc263266ada:5"
+    },
+    "votes-rda-2026-07-14": {
+      "documentId": "doc_125e390e8b99472b",
+      "page": 2,
+      "title": "Redevelopment Agency minutes, July 14, 2026",
+      "quote": "5.1 Approve Resolution U2026-04 Authorizing the RDA Director to Trigger ... | Table the item. there was no second. the motion failed. | failed",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_125e390e8b99472b:2"
+    },
+    "votes-rda-2026-06-09-cornelius": {
+      "documentId": "doc_aa7cce8288e53fef",
+      "page": 3,
+      "title": "Redevelopment Agency minutes, June 9, 2026",
+      "quote": "4.1 Approve the appointment of Kim Cornelius to serve as an RDA Advisor | mover David Lauret | seconder Jacob Wood | carried 4-1",
+      "api": "/api/votes?pageSize=100",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_1, motion doc_aa7cce8288e53fef:2"
+    },
+    "ord-index-2026": {
+      "api": "/api/records/ordinances?year=2026",
+      "title": "Ordinance index, 2026",
+      "quote": "2026-06 Flood Damage Prevention Ordinance (adopted 2026-06-23, 4-0); 2026-07 Amending the Vineyard Subdivision Code ... (adopted 2026-08-11, 3-2, minutes doc_34ef709435ea7b2b p. 3, document doc_b6771ee4f809b3bb); 2026-09 Amending Title 7 ... Chapter 7.08, Stormwater Management (adopted 2026-06-23, 4-0, minutes doc_f7aa0533b44d693c p. 3, document doc_61a1c86ee9d874b1); 2026-03 absent; 2026-11 Senate Bill 284/City Code Compliance (draft, Planning Commission 2026-10-07, document doc_d6b15487c75c4548)",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_3"
+    },
+    "res-index-2026": {
+      "api": "/api/records/resolutions?year=2026",
+      "title": "Resolution index, 2026",
+      "quote": "2026-21 Amending the Vineyard City Consolidated Fee Schedule ... (adopted 2026-03-31, 5-0, document doc_cf2e86cce004c8f2); 2026-34 Amending the Consolidated Fee Schedule (adopted 2026-08-11, 4-0, minutes doc_34ef709435ea7b2b p. 3, document doc_70ac8126c38dc65f); 2026-35 Adopting the Amended 2026 Vineyard City Council Regular Annual Public Meeting Schedule (adopted 2026-09-15, 5-0, document doc_7e261e98af671bb8)",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_4"
+    },
+    "rda-index-2026": {
+      "api": "/api/records/rda-resolutions?year=2026",
+      "title": "RDA resolution index, 2026",
+      "quote": "2026-02 Directing the City's Hr Specialist to Accept Applications from Independent Contractors to Act as Advisers to the RDA Board (adopted 2026-04-28, 4-1, minutes doc_b64f95c2fe4c82c0 p. 1, document doc_f648c61bb9dc889f)",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_5"
+    },
+    "meetings-2026-10-11": {
+      "api": "/api/meetings?upcoming=1&pageSize=60",
+      "title": "Meeting calendar, captured October 11, 2026",
+      "quote": "mtg_cc_1442 City Council 2026-09-08 and mtg_cc_1674 Redevelopment Agency 2026-09-08; mtg_cc_1652 City Council and mtg_cc_1677 Redevelopment Agency 2026-09-15; mtg_cc_1711 ARCH COMMISSION 2026-10-29; mtg_cc_1708 Development Review Committee 2026-11-05",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_18"
+    },
+    "people-2026-10-11": {
+      "api": "/api/people",
+      "title": "Staff directory, captured October 11, 2026",
+      "quote": "ed-kennedy Code Enforcement Officer; cris-johnson Chief Building Official (801) 226-1929; devan-peterson Environmental Utilities Manager; brian-vawdrey Parks & Recreation Director; christopher-thomas Streets & Stormwater Manager; jacob-holdaway and jacob-wood Council Member",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_10"
+    },
+    "fee-schedule-search": {
+      "api": "/api/search?q=fee%20schedule&pageSize=10",
+      "title": "Consolidated fee schedules in the archive",
+      "quote": "doc_7a00ea67e1a359b2 Clean - Consolidated Fee Schedule fin (2026-04-28); doc_70ac8126c38dc65f Resolution 2026-34",
+      "capturedBy": "Diagnostics run 38152760553 (October 11, 2026), extra_11 and extra_12"
+    },
+    "budget-book-p3-funds": {
+      "documentId": "doc_2c248c52cbadfa22",
+      "page": 3,
+      "title": "FY 27 Final Budget, fund list",
+      "quote": "Transportation 1,743,994 | Stormwater 821,707 (as keyed in worker/lib/budgetData.ts FUNDS from page 3)"
+    },
+    "budget-book-p18-recreation": {
+      "documentId": "doc_2c248c52cbadfa22",
+      "page": 18,
+      "title": "FY 27 Final Budget, Parks and Recreation",
+      "quote": "Recreation 590,877 (as keyed in worker/lib/budgetData.ts DEPARTMENTS)"
     }
   },
   "cases": [
@@ -494,7 +644,6 @@
     {
       "id": "votes-ordinance-2026-07",
       "category": "votes-member",
-      "tier": "model",
       "question": "How did the council vote on Ordinance 2026-07?",
       "mustContain": [
         {
@@ -512,12 +661,14 @@
           "regex": "unanimous",
           "flags": "i"
         }
-      ]
+      ],
+      "expect": {
+        "engine": "votes-measure"
+      }
     },
     {
       "id": "votes-member-mccumber-ord-2026-07",
       "category": "votes-member",
-      "tier": "model",
       "question": "How did Council Member McCumber vote on Ordinance 2026-07?",
       "mustContain": [
         {
@@ -531,12 +682,14 @@
           "regex": "McCumber (voted|cast a vote) (no|against)",
           "flags": "i"
         }
-      ]
+      ],
+      "expect": {
+        "engine": "votes-measure"
+      }
     },
     {
       "id": "votes-member-tie-break",
       "category": "votes-member",
-      "tier": "model",
       "question": "Who broke the tie on Ordinance 2026-07?",
       "mustContain": [
         {
@@ -549,7 +702,10 @@
           "regex": "Council Member Wood (broke|cast)",
           "flags": "i"
         }
-      ]
+      ],
+      "expect": {
+        "engine": "votes-measure"
+      }
     },
     {
       "id": "votes-library-board-appointment",
@@ -1126,7 +1282,7 @@
       "question": "How do I report a pothole on my street?",
       "mustContain": [
         {
-          "text": "Christopher Thomas",
+          "text": "Streets & Stormwater Manager Thomas",
           "source": "dir-christopher-thomas"
         }
       ]
@@ -1220,10 +1376,6 @@
           "source": "dir-city-hall-phone"
         }
       ],
-      "checks": {
-        "portalLink": false,
-        "why": "the library sign-up button is added in the browser from src/console/services.ts, not by /api/ask"
-      },
       "expect": {
         "engine": "catalog"
       }
@@ -1238,10 +1390,6 @@
           "source": "library-site"
         }
       ],
-      "checks": {
-        "portalLink": false,
-        "why": "the bookmobile button is added in the browser from src/console/services.ts"
-      },
       "expect": {
         "engine": "catalog"
       }
@@ -1478,7 +1626,8 @@
       ],
       "expect": {
         "engine": "budget-data"
-      }
+      },
+      "standalone": true
     },
     {
       "id": "followup-budget-elliptical",
@@ -1662,7 +1811,8 @@
           ],
           "expect": {
             "engine": "budget-data"
-          }
+          },
+          "standalone": true
         }
       ]
     },
@@ -1715,10 +1865,6 @@
           "live": {
             "construction": "all"
           },
-          "checks": {
-            "portalLink": false,
-            "why": "construction answers carry no record card"
-          },
           "expect": {
             "engine": "catalog"
           }
@@ -1728,22 +1874,15 @@
           "live": {
             "construction": "400 South"
           },
-          "checks": {
-            "portalLink": false,
-            "why": "construction answers carry no record card"
-          },
           "expect": {
             "engine": "catalog"
-          }
+          },
+          "standalone": true
         },
         {
           "question": "Is there construction on Center Street right now?",
           "live": {
             "construction": "Center Street"
-          },
-          "checks": {
-            "portalLink": false,
-            "why": "construction answers carry no record card"
           },
           "expect": {
             "engine": "catalog"
@@ -1859,7 +1998,8 @@
           ],
           "expect": {
             "engine": "schedule"
-          }
+          },
+          "standalone": true
         }
       ]
     },
@@ -1888,7 +2028,8 @@
           ],
           "expect": {
             "engine": "budget-data"
-          }
+          },
+          "standalone": true
         }
       ]
     },
@@ -1921,7 +2062,8 @@
           ],
           "expect": {
             "engine": "tax-rate-data"
-          }
+          },
+          "standalone": true
         }
       ]
     },
@@ -1951,7 +2093,8 @@
             "cards": [
               "map"
             ]
-          }
+          },
+          "standalone": true
         }
       ]
     },
@@ -1977,7 +2120,8 @@
           "checks": {
             "portalLink": false,
             "why": "off-topic replies carry no sources"
-          }
+          },
+          "standalone": true
         },
         {
           "question": "How much is in the water fund?",
@@ -1989,7 +2133,8 @@
           ],
           "expect": {
             "engine": "budget-data"
-          }
+          },
+          "standalone": true
         }
       ]
     },
@@ -2045,7 +2190,6 @@
     {
       "id": "votes-rda-tamez-mover",
       "category": "votes-member",
-      "tier": "model",
       "question": "Who made the motion to hire Jared Tamez as an RDA advisor?",
       "mustContain": [
         {
@@ -2056,7 +2200,10 @@
           "regex": "4\\s*(-|to)\\s*1",
           "source": "rda-min-2026-06-09-p3"
         }
-      ]
+      ],
+      "expect": {
+        "engine": "votes-mover"
+      }
     },
     {
       "id": "votes-holdaway-fields-amendment",
@@ -2092,6 +2239,1301 @@
           "source": "cc-event-1660"
         }
       ]
+    },
+    {
+      "id": "meetings-next-arch",
+      "category": "meetings",
+      "question": "When is the next ARCH Commission meeting?",
+      "live": {
+        "nextMeeting": "arch-commission"
+      },
+      "mustNotContain": [
+        "City Council meeting"
+      ],
+      "expect": {
+        "engine": "schedule",
+        "cards": [
+          "event"
+        ]
+      }
+    },
+    {
+      "id": "meetings-next-drc",
+      "category": "meetings",
+      "question": "When is the next Development Review Committee meeting?",
+      "live": {
+        "nextMeeting": "development-review-committee"
+      },
+      "mustNotContain": [
+        "City Council meeting"
+      ],
+      "expect": {
+        "engine": "schedule",
+        "cards": [
+          "event"
+        ]
+      }
+    },
+    {
+      "id": "meetings-next-council-phrasing",
+      "category": "meetings",
+      "question": "When does the city council meet next?",
+      "live": {
+        "nextMeeting": "city-council"
+      },
+      "expect": {
+        "engine": "schedule",
+        "cards": [
+          "event"
+        ]
+      }
+    },
+    {
+      "id": "meetings-next-planning-time",
+      "category": "meetings",
+      "question": "What time is the next Planning Commission meeting?",
+      "live": {
+        "nextMeeting": "planning-commission"
+      },
+      "expect": {
+        "engine": "schedule",
+        "cards": [
+          "event"
+        ]
+      }
+    },
+    {
+      "id": "meetings-next-rda-where",
+      "category": "meetings",
+      "question": "Where is the next RDA meeting?",
+      "live": {
+        "nextMeeting": "redevelopment-agency"
+      },
+      "expect": {
+        "engine": "schedule",
+        "cards": [
+          "event"
+        ]
+      }
+    },
+    {
+      "id": "meetings-count-left",
+      "category": "meetings",
+      "question": "How many City Council meetings are left this year?",
+      "expect": {
+        "engine": "catalog"
+      }
+    },
+    {
+      "id": "meetings-next-public-hearing",
+      "category": "notices",
+      "question": "When is the next public hearing?",
+      "mustNotContain": [
+        "The next City Council meeting"
+      ]
+    },
+    {
+      "id": "votes-last-council",
+      "category": "votes-meeting",
+      "question": "What passed at the last City Council meeting?",
+      "mustContain": [
+        {
+          "text": "September 15, 2026",
+          "source": "votes-cc-2026-09-15",
+          "until": "2026-10-13"
+        },
+        {
+          "text": "Holdaway Fields",
+          "source": "votes-cc-2026-09-15",
+          "until": "2026-10-13"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting",
+        "cards": [
+          "votes"
+        ]
+      }
+    },
+    {
+      "id": "votes-last-rda",
+      "category": "votes-meeting",
+      "question": "What did the RDA approve at its most recent meeting?",
+      "mustContain": [
+        {
+          "text": "Rob Sant",
+          "source": "votes-rda-2026-09-15",
+          "until": "2026-10-13"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting"
+      }
+    },
+    {
+      "id": "votes-meeting-before",
+      "category": "votes-meeting",
+      "question": "What did the City Council vote on at the meeting before September 8, 2026?",
+      "mustContain": [
+        {
+          "text": "August 25, 2026",
+          "source": "votes-cc-2026-08-25-ord10"
+        },
+        {
+          "text": "Ordinance 2026-10",
+          "source": "votes-cc-2026-08-25-ord10"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting",
+        "citations": [
+          {
+            "documentId": "doc_7a0b2b44683f4559"
+          }
+        ]
+      }
+    },
+    {
+      "id": "votes-meeting-2026-03-31",
+      "category": "votes-meeting",
+      "question": "What did the City Council vote on at the March 31, 2026 meeting?",
+      "mustContain": [
+        {
+          "text": "Resolution 2026-21",
+          "source": "votes-cc-2026-03-31"
+        },
+        {
+          "text": "Resolution 2026-19",
+          "source": "votes-cc-2026-03-31"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting",
+        "citations": [
+          {
+            "documentId": "doc_84fbf9bd5e34fc28"
+          }
+        ]
+      }
+    },
+    {
+      "id": "votes-meeting-2026-05-26",
+      "category": "votes-meeting",
+      "question": "What did the City Council approve on May 26, 2026?",
+      "mustContain": [
+        {
+          "regex": "Brian Voeks",
+          "flags": "i",
+          "source": "votes-cc-2026-05-26"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting",
+        "citations": [
+          {
+            "documentId": "doc_43974cc0eb8e88f5"
+          }
+        ]
+      }
+    },
+    {
+      "id": "votes-meeting-2026-02-24",
+      "category": "votes-meeting",
+      "question": "What did the council vote on at the February 24, 2026 meeting?",
+      "mustContain": [
+        {
+          "text": "Resolution 2026-12",
+          "source": "votes-cc-2026-02-24"
+        },
+        {
+          "text": "Utah Lake",
+          "source": "votes-cc-2026-02-24"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting",
+        "citations": [
+          {
+            "documentId": "doc_72fafbc263266ada"
+          }
+        ]
+      }
+    },
+    {
+      "id": "votes-meeting-rda-2026-07-14",
+      "category": "votes-meeting",
+      "question": "What did the RDA vote on at the July 14, 2026 meeting?",
+      "mustContain": [
+        {
+          "text": "U2026-04",
+          "source": "votes-rda-2026-07-14"
+        },
+        {
+          "text": "Failed",
+          "source": "votes-rda-2026-07-14"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting",
+        "citations": [
+          {
+            "documentId": "doc_125e390e8b99472b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "votes-meeting-2026-06-23-no",
+      "category": "votes-meeting",
+      "question": "Did anyone vote no at the June 23, 2026 City Council meeting?",
+      "mustContain": [
+        {
+          "text": "2026-2027 Budget",
+          "source": "votes-cc-2026-06-23-budget"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting"
+      }
+    },
+    {
+      "id": "votes-movers-2026-09-08",
+      "category": "votes-member",
+      "question": "Who moved and seconded the motions at the September 8, 2026 City Council meeting?",
+      "mustContain": [
+        {
+          "text": "moved by Council Member McCumber, seconded by Council Member Lauret",
+          "source": "votes-cc-2026-09-08-movers"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting"
+      }
+    },
+    {
+      "id": "votes-mover-cornelius",
+      "category": "votes-member",
+      "question": "Who seconded the motion to appoint Kim Cornelius as an RDA advisor?",
+      "mustContain": [
+        {
+          "text": "seconded by Board Member Wood",
+          "source": "votes-rda-2026-06-09-cornelius"
+        },
+        {
+          "text": "4-1",
+          "source": "votes-rda-2026-06-09-cornelius"
+        }
+      ],
+      "expect": {
+        "engine": "votes-mover"
+      }
+    },
+    {
+      "id": "votes-month-clarify",
+      "category": "ambiguous",
+      "question": "What did the City Council vote on in March 2026?",
+      "mustContain": [
+        {
+          "text": "March 31, 2026",
+          "source": "votes-cc-2026-03-dates"
+        },
+        {
+          "text": "March 24, 2026",
+          "source": "votes-cc-2026-03-dates"
+        }
+      ],
+      "expect": {
+        "engine": "clarify"
+      }
+    },
+    {
+      "id": "votes-month-single-rda",
+      "category": "votes-meeting",
+      "question": "What did the RDA vote on in September 2026?",
+      "mustContain": [
+        {
+          "text": "Rob Sant",
+          "source": "votes-rda-2026-09-15"
+        }
+      ],
+      "expect": {
+        "engine": "votes-meeting"
+      }
+    },
+    {
+      "id": "votes-ordinance-2026-09",
+      "category": "votes-member",
+      "question": "How did the council vote on Ordinance 2026-09?",
+      "mustContain": [
+        {
+          "text": "4 to 0",
+          "source": "votes-cc-2026-06-23-ord09"
+        },
+        {
+          "text": "June 23, 2026",
+          "source": "votes-cc-2026-06-23-ord09"
+        }
+      ],
+      "expect": {
+        "engine": "votes-measure",
+        "citations": [
+          {
+            "documentId": "doc_f7aa0533b44d693c"
+          }
+        ]
+      }
+    },
+    {
+      "id": "votes-ordinance-2026-10",
+      "category": "votes-member",
+      "question": "How did the council vote on Ordinance 2026-10?",
+      "mustContain": [
+        {
+          "text": "August 25, 2026",
+          "source": "votes-cc-2026-08-25-ord10"
+        }
+      ],
+      "expect": {
+        "engine": "votes-measure"
+      }
+    },
+    {
+      "id": "votes-mover-ord-2026-09",
+      "category": "votes-member",
+      "question": "Who made the motion on Ordinance 2026-09?",
+      "mustContain": [
+        {
+          "text": "Council Member Holdaway moved Ordinance 2026-09 and Council Member Lauret seconded",
+          "source": "votes-cc-2026-06-23-ord09"
+        }
+      ],
+      "expect": {
+        "engine": "votes-measure"
+      }
+    },
+    {
+      "id": "record-ordinance-2026-09",
+      "category": "records",
+      "question": "Show me Ordinance 2026-09",
+      "mustContain": [
+        {
+          "text": "Stormwater Management",
+          "source": "ord-index-2026"
+        },
+        {
+          "text": "June 23, 2026",
+          "source": "ord-index-2026"
+        }
+      ],
+      "expect": {
+        "engine": "record-lookup",
+        "citations": [
+          {
+            "documentId": "doc_61a1c86ee9d874b1",
+            "page": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "record-ordinance-2026-07-about",
+      "category": "records",
+      "question": "What is Ordinance 2026-07 about?",
+      "mustContain": [
+        {
+          "text": "Subdivision Code",
+          "source": "ord-index-2026"
+        },
+        {
+          "text": "August 11, 2026",
+          "source": "ord-index-2026"
+        },
+        {
+          "text": "3-2",
+          "source": "ord-index-2026"
+        }
+      ],
+      "expect": {
+        "engine": "record-lookup"
+      }
+    },
+    {
+      "id": "record-resolution-2026-34",
+      "category": "records",
+      "question": "Find Resolution 2026-34",
+      "mustContain": [
+        {
+          "text": "Consolidated Fee Schedule",
+          "source": "res-index-2026"
+        },
+        {
+          "text": "August 11, 2026",
+          "source": "res-index-2026"
+        }
+      ],
+      "expect": {
+        "engine": "record-lookup",
+        "citations": [
+          {
+            "documentId": "doc_70ac8126c38dc65f"
+          }
+        ]
+      }
+    },
+    {
+      "id": "record-resolution-2026-21",
+      "category": "records",
+      "question": "What is Resolution 2026-21?",
+      "mustContain": [
+        {
+          "text": "Consolidated Fee Schedule",
+          "source": "res-index-2026"
+        },
+        {
+          "text": "March 31, 2026",
+          "source": "res-index-2026"
+        }
+      ],
+      "expect": {
+        "engine": "record-lookup"
+      }
+    },
+    {
+      "id": "record-resolution-2026-35",
+      "category": "records",
+      "question": "Show me Resolution 2026-35",
+      "mustContain": [
+        {
+          "text": "Annual Public Meeting",
+          "source": "res-index-2026"
+        },
+        {
+          "text": "September 15, 2026",
+          "source": "res-index-2026"
+        }
+      ],
+      "expect": {
+        "engine": "record-lookup"
+      }
+    },
+    {
+      "id": "record-rda-resolution-2026-02",
+      "category": "records",
+      "question": "Show RDA Resolution 2026-02",
+      "mustContain": [
+        {
+          "text": "Independent Contractors",
+          "source": "rda-index-2026"
+        },
+        {
+          "text": "April 28, 2026",
+          "source": "rda-index-2026"
+        },
+        {
+          "text": "4-1",
+          "source": "rda-index-2026"
+        }
+      ],
+      "expect": {
+        "engine": "record-lookup"
+      }
+    },
+    {
+      "id": "record-ordinance-2026-11-draft",
+      "category": "records",
+      "question": "What is Ordinance 2026-11?",
+      "mustContain": [
+        {
+          "text": "draft",
+          "source": "ord-index-2026"
+        },
+        {
+          "text": "has not been adopted",
+          "source": "ord-index-2026"
+        }
+      ],
+      "expect": {
+        "engine": "record-lookup"
+      }
+    },
+    {
+      "id": "record-ordinance-absent",
+      "category": "records",
+      "question": "Show Ordinance 2026-03",
+      "mustContain": [
+        {
+          "text": "no Ordinance 2026-03 on file",
+          "source": "ord-index-2026"
+        }
+      ],
+      "expect": {
+        "engine": "record-lookup",
+        "sectionPath": "/records/ordinances?year=2026"
+      }
+    },
+    {
+      "id": "docs-minutes-2026-09-08",
+      "category": "records",
+      "question": "Find the minutes for the September 8, 2026 City Council meeting",
+      "mustContain": [
+        {
+          "text": "September 8, 2026",
+          "source": "cc-min-2026-09-08"
+        }
+      ],
+      "expect": {
+        "engine": "meeting-docs",
+        "citations": [
+          {
+            "documentId": "doc_87aac14fa329d527",
+            "page": 1
+          }
+        ],
+        "sectionPath": "/meetings/mtg_cc_1442"
+      }
+    },
+    {
+      "id": "docs-minutes-2026-08-11",
+      "category": "records",
+      "question": "Where are the minutes of the August 11, 2026 City Council meeting?",
+      "expect": {
+        "engine": "meeting-docs",
+        "citations": [
+          {
+            "documentId": "doc_34ef709435ea7b2b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "docs-agenda-cc-2026-10-13",
+      "category": "records",
+      "question": "Show me the agenda for the October 13, 2026 City Council meeting",
+      "expect": {
+        "engine": "meeting-docs",
+        "citations": [
+          {
+            "documentId": "doc_f4ae1addeca92d54"
+          }
+        ]
+      },
+      "mustContain": [
+        {
+          "text": "October 13, 2026",
+          "source": "cc-meeting-2026-10-13"
+        }
+      ]
+    },
+    {
+      "id": "docs-agenda-rda-2026-10-13",
+      "category": "records",
+      "question": "Show me the agenda for the October 13, 2026 RDA meeting",
+      "expect": {
+        "engine": "meeting-docs",
+        "citations": [
+          {
+            "documentId": "doc_eec450a90e31894d"
+          }
+        ]
+      },
+      "mustContain": [
+        {
+          "text": "October 13, 2026",
+          "source": "rda-agenda-2026-10-13"
+        }
+      ]
+    },
+    {
+      "id": "docs-minutes-last-council",
+      "category": "records",
+      "question": "Show me the minutes of the last City Council meeting",
+      "expect": {
+        "engine": "meeting-docs"
+      }
+    },
+    {
+      "id": "docs-clarify-2026-09-15",
+      "category": "ambiguous",
+      "question": "Find the minutes for the September 15, 2026 meeting",
+      "mustContain": [
+        {
+          "text": "City Council",
+          "source": "meetings-2026-10-11"
+        },
+        {
+          "text": "Redevelopment Agency",
+          "source": "meetings-2026-10-11"
+        }
+      ],
+      "expect": {
+        "engine": "clarify"
+      }
+    },
+    {
+      "id": "docs-clarify-2026-09-08-agenda",
+      "category": "ambiguous",
+      "question": "Show me the agenda for the September 8, 2026 meeting",
+      "mustContain": [
+        {
+          "text": "Redevelopment Agency",
+          "source": "meetings-2026-10-11"
+        }
+      ],
+      "expect": {
+        "engine": "clarify"
+      }
+    },
+    {
+      "id": "clarify-two-bodies",
+      "category": "ambiguous",
+      "question": "What was approved at the September 15, 2026 meeting?",
+      "mustContain": [
+        {
+          "text": "City Council",
+          "source": "meetings-2026-10-11"
+        },
+        {
+          "text": "Redevelopment Agency",
+          "source": "meetings-2026-10-11"
+        }
+      ],
+      "expect": {
+        "engine": "clarify"
+      }
+    },
+    {
+      "id": "clarify-person-jacob",
+      "category": "ambiguous",
+      "question": "How did Jacob vote on Ordinance 2026-07?",
+      "mustContain": [
+        {
+          "text": "Council Member Holdaway",
+          "source": "people-2026-10-11"
+        },
+        {
+          "text": "Council Member Wood",
+          "source": "people-2026-10-11"
+        }
+      ],
+      "expect": {
+        "engine": "clarify"
+      }
+    },
+    {
+      "id": "clarify-who-is-jacob",
+      "category": "ambiguous",
+      "question": "Who is Jacob?",
+      "expect": {
+        "engine": "clarify"
+      }
+    },
+    {
+      "id": "budget-general-fund",
+      "category": "budget",
+      "question": "How much is the general fund?",
+      "mustContain": [
+        {
+          "text": "$17,774,808",
+          "source": "budget-book-p3"
+        },
+        {
+          "text": "$17,504,153",
+          "source": "budget-amend-p2"
+        },
+        {
+          "text": "$17,258,772",
+          "source": "budget-amend-p2"
+        }
+      ],
+      "expect": {
+        "engine": "budget-data"
+      }
+    },
+    {
+      "id": "budget-public-safety",
+      "category": "budget",
+      "question": "How much is spent on public safety?",
+      "mustContain": [
+        {
+          "text": "$4,705,075",
+          "source": "budget-book-p12"
+        },
+        {
+          "text": "$2,873,462",
+          "source": "budget-book-p13"
+        }
+      ],
+      "expect": {
+        "engine": "budget-data"
+      }
+    },
+    {
+      "id": "budget-parks-and-rec",
+      "category": "budget",
+      "question": "How much is the parks and recreation budget?",
+      "mustContain": [
+        {
+          "text": "$956,369",
+          "source": "budget-book-p18"
+        },
+        {
+          "text": "$590,877",
+          "source": "budget-book-p18-recreation"
+        }
+      ],
+      "expect": {
+        "engine": "budget-data"
+      }
+    },
+    {
+      "id": "budget-transportation-fund",
+      "category": "budget",
+      "question": "How much is the transportation fund?",
+      "mustContain": [
+        {
+          "text": "$1,743,994",
+          "source": "budget-book-p3-funds"
+        }
+      ],
+      "expect": {
+        "engine": "budget-data"
+      }
+    },
+    {
+      "id": "budget-how-big",
+      "category": "budget",
+      "question": "How big is the city budget?",
+      "mustContain": [
+        {
+          "text": "$17,774,808",
+          "source": "budget-book-p3"
+        },
+        {
+          "text": "$7,575,979",
+          "source": "budget-book-p3"
+        }
+      ],
+      "mustNotContain": [
+        "$70,944,358"
+      ],
+      "expect": {
+        "engine": "budget-data"
+      }
+    },
+    {
+      "id": "tax-rate-2026-phrasing",
+      "category": "tax",
+      "question": "What is the property tax rate for 2026?",
+      "mustContain": [
+        {
+          "text": "0.003796",
+          "source": "tax-fy26"
+        }
+      ],
+      "expect": {
+        "engine": "tax-rate-data"
+      }
+    },
+    {
+      "id": "fees-pavilion",
+      "category": "fees",
+      "question": "How much does it cost to rent a park pavilion?",
+      "mustContain": [
+        {
+          "text": "page",
+          "kind": "behavior",
+          "source": "fee-schedule-search"
+        }
+      ],
+      "expect": {
+        "engine": "fee-schedule"
+      }
+    },
+    {
+      "id": "fees-water-rates",
+      "category": "fees",
+      "question": "What are the water rates?",
+      "expect": {
+        "engine": "fee-schedule"
+      }
+    },
+    {
+      "id": "fees-business-license",
+      "category": "fees",
+      "question": "What is the business license fee?",
+      "expect": {
+        "engine": "fee-schedule"
+      }
+    },
+    {
+      "id": "contact-code-enforcement",
+      "category": "people",
+      "question": "Who do I contact about a code enforcement complaint?",
+      "mustContain": [
+        {
+          "text": "Code Enforcement Officer Kennedy",
+          "source": "people-2026-10-11"
+        }
+      ],
+      "expect": {
+        "engine": "directory"
+      }
+    },
+    {
+      "id": "contact-building-permits",
+      "category": "people",
+      "question": "Who handles building permits?",
+      "mustContain": [
+        {
+          "text": "Chief Building Official Johnson",
+          "source": "people-2026-10-11"
+        }
+      ],
+      "expect": {
+        "engine": "directory"
+      }
+    },
+    {
+      "id": "contact-water-leak",
+      "category": "people",
+      "question": "Who do I call about a water leak?",
+      "mustContain": [
+        {
+          "text": "Environmental Utilities Manager Peterson",
+          "source": "people-2026-10-11"
+        }
+      ],
+      "expect": {
+        "engine": "directory"
+      }
+    },
+    {
+      "id": "contact-pavilion",
+      "category": "people",
+      "question": "Who do I contact about reserving a pavilion?",
+      "mustContain": [
+        {
+          "text": "Parks & Recreation Director Vawdrey",
+          "source": "people-2026-10-11"
+        }
+      ],
+      "expect": {
+        "engine": "directory"
+      }
+    },
+    {
+      "id": "construction-road-closures",
+      "category": "construction",
+      "question": "Are there any road closures right now?",
+      "live": {
+        "construction": "all"
+      },
+      "expect": {
+        "engine": "catalog"
+      }
+    },
+    {
+      "id": "parks-pickleball",
+      "category": "parks",
+      "tier": "model",
+      "question": "Which Vineyard parks have pickleball courts?"
+    },
+    {
+      "id": "parcel-zoning-main-street",
+      "category": "parcels",
+      "question": "What zone is 600 N Main St in?",
+      "expect": {
+        "engine": "map",
+        "cards": [
+          "map"
+        ]
+      }
+    },
+    {
+      "id": "elections-next",
+      "category": "elections",
+      "tier": "model",
+      "question": "When is the next city election?"
+    },
+    {
+      "id": "notices-hearings",
+      "category": "notices",
+      "tier": "model",
+      "question": "What public hearings has the city held this year?"
+    },
+    {
+      "id": "followup-last-meeting-chain",
+      "category": "followup",
+      "turns": [
+        {
+          "question": "What passed at the last City Council meeting?",
+          "expect": {
+            "engine": "votes-meeting"
+          }
+        },
+        {
+          "question": "and the one before that?",
+          "elliptical": true,
+          "mustContain": [
+            {
+              "text": "September 8, 2026",
+              "source": "votes-cc-2026-09-08-movers",
+              "until": "2026-10-13"
+            }
+          ],
+          "expect": {
+            "engine": "votes-meeting"
+          }
+        },
+        {
+          "question": "who made the motion?",
+          "elliptical": true,
+          "mustContain": [
+            {
+              "text": "moved by",
+              "kind": "behavior",
+              "source": "votes-cc-2026-09-08-movers"
+            }
+          ],
+          "expect": {
+            "engine": "votes-meeting"
+          }
+        },
+        {
+          "question": "show me the minutes",
+          "elliptical": true,
+          "expect": {
+            "engine": "meeting-docs"
+          }
+        }
+      ]
+    },
+    {
+      "id": "followup-schedule-bodies",
+      "category": "followup",
+      "turns": [
+        {
+          "question": "When is the next City Council meeting?",
+          "live": {
+            "nextMeeting": "city-council"
+          },
+          "expect": {
+            "engine": "schedule"
+          }
+        },
+        {
+          "question": "what about the RDA?",
+          "elliptical": true,
+          "live": {
+            "nextMeeting": "redevelopment-agency"
+          },
+          "expect": {
+            "engine": "schedule"
+          }
+        },
+        {
+          "question": "and the planning commission?",
+          "elliptical": true,
+          "live": {
+            "nextMeeting": "planning-commission"
+          },
+          "expect": {
+            "engine": "schedule"
+          }
+        }
+      ]
+    },
+    {
+      "id": "followup-ordinance-chain",
+      "category": "followup",
+      "turns": [
+        {
+          "question": "How did the council vote on Ordinance 2026-07?",
+          "expect": {
+            "engine": "votes-measure"
+          }
+        },
+        {
+          "question": "who seconded it?",
+          "elliptical": true,
+          "mustContain": [
+            {
+              "text": "Council Member Nair moved Ordinance 2026-07 and Council Member McCumber seconded",
+              "source": "votes-cc-2026-08-11-ord07"
+            }
+          ],
+          "expect": {
+            "engine": "votes-measure"
+          }
+        },
+        {
+          "question": "show me the minutes",
+          "elliptical": true,
+          "expect": {
+            "engine": "meeting-docs",
+            "citations": [
+              {
+                "documentId": "doc_34ef709435ea7b2b"
+              }
+            ]
+          }
+        },
+        {
+          "question": "What else did the City Council vote on at its August 11, 2026 meeting?",
+          "expect": {
+            "engine": "votes-meeting"
+          },
+          "mustContain": [
+            {
+              "text": "Resolution 2026-34",
+              "source": "cc-min-2026-08-11"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "followup-record-to-vote",
+      "category": "followup",
+      "turns": [
+        {
+          "question": "Show me Ordinance 2026-09",
+          "expect": {
+            "engine": "record-lookup"
+          }
+        },
+        {
+          "question": "How did the council vote on it?",
+          "mustContain": [
+            {
+              "text": "4 to 0",
+              "source": "votes-cc-2026-06-23-ord09"
+            }
+          ],
+          "expect": {
+            "engine": "votes-measure"
+          },
+          "elliptical": true
+        }
+      ]
+    },
+    {
+      "id": "followup-rda-sep15-chain",
+      "category": "followup",
+      "turns": [
+        {
+          "question": "What did the RDA approve on September 15, 2026?",
+          "expect": {
+            "engine": "votes-meeting"
+          }
+        },
+        {
+          "question": "who made the motion?",
+          "elliptical": true,
+          "mustContain": [
+            {
+              "text": "moved by Board Member Lauret",
+              "source": "votes-rda-2026-09-15"
+            }
+          ],
+          "expect": {
+            "engine": "votes-meeting"
+          }
+        },
+        {
+          "question": "show me the minutes",
+          "elliptical": true,
+          "expect": {
+            "engine": "meeting-docs",
+            "citations": [
+              {
+                "documentId": "doc_65bbcb853249cc0d"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "followup-clarify-pick",
+      "category": "followup",
+      "turns": [
+        {
+          "question": "What was approved at the September 15, 2026 meeting?",
+          "expect": {
+            "engine": "clarify"
+          }
+        },
+        {
+          "question": "What was approved at the September 15, 2026 Redevelopment Agency meeting?",
+          "mustContain": [
+            {
+              "text": "Rob Sant",
+              "source": "votes-rda-2026-09-15"
+            }
+          ],
+          "expect": {
+            "engine": "votes-meeting"
+          },
+          "standalone": true
+        }
+      ]
+    },
+    {
+      "id": "followup-month-clarify-pick",
+      "category": "followup",
+      "turns": [
+        {
+          "question": "What did the City Council vote on in March 2026?",
+          "expect": {
+            "engine": "clarify"
+          }
+        },
+        {
+          "question": "What did the City Council vote on at the March 31, 2026 meeting?",
+          "mustContain": [
+            {
+              "text": "Resolution 2026-19",
+              "source": "votes-cc-2026-03-31"
+            }
+          ],
+          "expect": {
+            "engine": "votes-meeting"
+          },
+          "standalone": true
+        }
+      ]
+    },
+    {
+      "id": "switch-budget-to-schedule-to-body",
+      "category": "topic-switch",
+      "turns": [
+        {
+          "question": "How much is the parks budget?",
+          "mustContain": [
+            {
+              "text": "$956,369",
+              "source": "budget-book-p18"
+            }
+          ],
+          "expect": {
+            "engine": "budget-data"
+          }
+        },
+        {
+          "question": "When is the next City Council meeting?",
+          "live": {
+            "nextMeeting": "city-council"
+          },
+          "expect": {
+            "engine": "schedule"
+          },
+          "standalone": true
+        },
+        {
+          "question": "what about the planning commission?",
+          "elliptical": true,
+          "live": {
+            "nextMeeting": "planning-commission"
+          },
+          "expect": {
+            "engine": "schedule"
+          }
+        }
+      ]
+    },
+    {
+      "id": "switch-meeting-to-fee",
+      "category": "topic-switch",
+      "turns": [
+        {
+          "question": "When is the next RDA meeting?",
+          "live": {
+            "nextMeeting": "redevelopment-agency"
+          },
+          "expect": {
+            "engine": "schedule"
+          }
+        },
+        {
+          "question": "How much does it cost to rent a park pavilion?",
+          "expect": {
+            "engine": "fee-schedule"
+          },
+          "standalone": true
+        }
+      ]
+    },
+    {
+      "id": "switch-record-to-contact",
+      "category": "topic-switch",
+      "turns": [
+        {
+          "question": "Show me Resolution 2026-34",
+          "expect": {
+            "engine": "record-lookup"
+          }
+        },
+        {
+          "question": "Who do I contact about a pothole?",
+          "mustContain": [
+            {
+              "text": "Streets & Stormwater Manager Thomas",
+              "source": "people-2026-10-11"
+            }
+          ],
+          "expect": {
+            "engine": "directory"
+          },
+          "standalone": true
+        }
+      ]
+    },
+    {
+      "id": "switch-votes-to-tax",
+      "category": "topic-switch",
+      "turns": [
+        {
+          "question": "What passed at the last City Council meeting?",
+          "expect": {
+            "engine": "votes-meeting"
+          }
+        },
+        {
+          "question": "What is the property tax rate?",
+          "expect": {
+            "engine": "tax-rate-data"
+          },
+          "standalone": true
+        }
+      ]
+    },
+    {
+      "id": "sections-boards",
+      "category": "sections",
+      "question": "boards and commissions",
+      "expect": {
+        "engine": "catalog",
+        "sectionPath": "/boards"
+      }
+    },
+    {
+      "id": "rda-what-is",
+      "category": "rda",
+      "tier": "model",
+      "question": "What does the Redevelopment Agency do?"
+    },
+    {
+      "id": "parks-splash-pad",
+      "category": "parks",
+      "tier": "model",
+      "question": "When is the splash pad open?"
+    },
+    {
+      "id": "elections-candidates-2025",
+      "category": "elections",
+      "tier": "model",
+      "question": "Who ran for city council in 2025?"
     }
   ]
 }

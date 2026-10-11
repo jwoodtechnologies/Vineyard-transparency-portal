@@ -13,6 +13,8 @@ import { bodyOf, unknownBody, countKind, isMeetingCountQuestion, isNextAgendaQue
 export { countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion };
 
 const utahNow = () => new Date(Date.now() - 6 * 3600_000);
+/** "City Council meeting", but "public hearing" on its own. */
+const noun = (label: string) => (/hearing/i.test(label) ? label : `${label} meeting`);
 
 function when(local: string, allDay = false): string {
   const [d, t] = local.split('T');
@@ -74,7 +76,7 @@ export async function scheduleAnswer(env: Env, question: string): Promise<Schedu
     const loc = ev.location ? ev.location.replace(/\s+/g, ' ').trim() : null;
     const meetingId = meeting && mDate === evDate ? meeting.id : null;
     return {
-      text: `The next ${body.label} meeting is ${when(ev.start, ev.allDay)}${loc ? ` at ${loc}` : ''}, according to the city's official calendar.`,
+      text: `The next ${noun(body.label)} is ${when(ev.start, ev.allDay)}${loc ? ` at ${loc}` : ''}, according to the city's official calendar.`,
       meetingId,
       event: { title: `${body.label} meeting`, start: ev.start.slice(0, 16), allDay: ev.allDay, location: loc, meetingId, source: 'city-calendar', url: ev.url || 'https://www.vineyardutah.gov/calendar.php' },
     };
@@ -83,7 +85,7 @@ export async function scheduleAnswer(env: Env, question: string): Promise<Schedu
     const time = meeting.start_time && /^\d{1,2}:\d{2}/.test(meeting.start_time) ? `${mDate}T${meeting.start_time.slice(0, 5)}` : mDate;
     const loc = meeting.location ? meeting.location.replace(/\s+/g, ' ').trim() : null;
     return {
-      text: `The next ${body.label} meeting is ${when(time)}${loc ? ` at ${loc}` : ''}, according to the city's meeting portal.`,
+      text: `The next ${noun(body.label)} is ${when(time)}${loc ? ` at ${loc}` : ''}${/hearing/i.test(body.label) ? `: ${meeting.title}` : ''}, according to the city's meeting portal.`,
       meetingId: meeting.id,
       event: { title: `${body.label} meeting`, start: time, allDay: !time.includes('T'), location: loc, meetingId: meeting.id, source: 'meeting-portal', url: 'https://vineyardut.portal.civicclerk.com/' },
     };

@@ -10,7 +10,8 @@
  * Options: --base URL, --cases FILE (tests/chat-suite/cases.json), --mode full|deploy, --sample N (2),
  * --seed N (UTC day number), --delay MS between requests (7000; the Worker allows 10 questions a minute),
  * --out FILE (chat-suite-results.json), --max-neurons N (refuses to start above it; 2600 full, 600 deploy).
- * Exit code: 0 all passed (skips allowed), 1 a case failed, 2 the run could not start.
+ * Exit code: 0 all passed, 1 a case failed (a dead-end answer such as "AI answers are temporarily unavailable"
+ * fails, it is never skipped), 2 the run could not start.
  * Writes a Markdown summary to $GITHUB_STEP_SUMMARY when set. Budget numbers: see lib.mjs.
  */
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';

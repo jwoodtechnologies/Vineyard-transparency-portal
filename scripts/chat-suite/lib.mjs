@@ -43,7 +43,7 @@ export function longDate(iso) {
 /** Every case as a list of turns, with its tier ("model" when any turn needs the answer model). */
 export function normalizeCases(data) {
   return data.cases.map((c) => {
-    const turns = c.turns ?? [{ question: c.question, mustContain: c.mustContain, mustNotContain: c.mustNotContain, expect: c.expect, live: c.live, checks: c.checks, elliptical: c.elliptical, needsRewrite: c.needsRewrite }];
+    const turns = c.turns ?? [{ question: c.question, mustContain: c.mustContain, mustNotContain: c.mustNotContain, expect: c.expect, live: c.live, checks: c.checks, elliptical: c.elliptical, standalone: c.standalone, needsRewrite: c.needsRewrite }];
     const model = turns.map((t) => t.ai === 'model' || (c.tier === 'model' && t.ai !== 'none'));
     const tier = model.some(Boolean) ? 'model' : 'deterministic';
     return { id: c.id, category: c.category, tier, conversation: c.conversation ?? [], turns: turns.map((t, i) => ({ ...t, model: model[i] })) };
@@ -53,7 +53,8 @@ export function normalizeCases(data) {
 /** Neurons one turn is expected to use (and at worst), per the header of this file. */
 export function turnCost(turn, index, staticConversation = false) {
   const followUp = index > 0 || staticConversation;
-  const rewrite = followUp && !turn.elliptical ? NEURONS.rewrite : 0;
+  // `standalone`: a follow-up that names its own subject with a code path skips the rewrite (worker/ai/lookups.ts standsAlone).
+  const rewrite = followUp && !turn.elliptical && !turn.standalone ? NEURONS.rewrite : 0;
   return { expected: rewrite + (turn.model ? NEURONS.modelTurn : 0), worst: rewrite + (turn.model ? NEURONS.modelTurnWorst : 0) };
 }
 
@@ -70,7 +71,7 @@ export function estimate(cases) {
       worst += cost.worst;
       requests += 1;
       if (t.model) modelTurns += 1;
-      if ((i > 0 || c.conversation.length > 0) && !t.elliptical) rewrites += 1;
+      if ((i > 0 || c.conversation.length > 0) && !t.elliptical && !t.standalone) rewrites += 1;
     });
   return { cases: cases.length, requests, modelTurns, rewrites, neurons: Math.round(expected), worstNeurons: Math.round(worst), shareOfCap: Math.round((expected / DAILY_CAP) * 1000) / 10 };
 }
@@ -174,12 +175,23 @@ export function nameProblems(text, officials) {
 }
 
 const GENERATED = /\bGenerated (by|with|using|on|at|from)\b|\bAI[- ]generated\b|^\s*Generated\b/im;
+/** Wording that ends a conversation without an answer. Never acceptable, whoever wrote it. */
+export const DEAD_END = /\b(couldn'?t find|could not find|unavailable|unable to|i don'?t know|i do not know)\b/i;
+/** Off-topic and small-talk replies are the only answers that may come without a source. */
+const SOURCELESS_OK = /^(off-topic|assistant)\b/;
 
-/** Checks every answer gets: no em or en dashes, titled names, a portal link, no "Generated" boilerplate. */
+/**
+ * Checks every answer gets: no em or en dashes, titled names, a portal link, no "Generated" boilerplate,
+ * no dead-end wording ("couldn't find", "unavailable", "unable to", "I don't know") and never an empty
+ * source list (except off-topic and small talk; `checks.portalLink: false` does not lift that).
+ */
 export function globalChecks(r, checks = {}, officials = { people: [], distinctiveLastNames: [] }) {
   const fails = [];
   const answer = String(r?.answer ?? '');
+  const sourceless = SOURCELESS_OK.test(String(r?.engine ?? ''));
   if (!answer.trim()) fails.push('empty answer');
+  if (DEAD_END.test(answer) || DEAD_END.test(String(r?.notice ?? ''))) fails.push(`dead-end wording: "${(answer.match(DEAD_END) ?? String(r?.notice ?? '').match(DEAD_END))[0]}"`);
+  if (!sourceless && !portalLinks(r).length) fails.push('empty source list: no citation or card');
   if (/[–—]/.test(answer)) fails.push('answer has an em or en dash');
   if (checks.titles !== false) for (const p of nameProblems(answer, officials)) fails.push(p);
   if (checks.portalLink !== false && !portalLinks(r).length) fails.push('no card or citation opens a page inside the portal');
@@ -272,9 +284,6 @@ export function evalTurn(spec, r, ctx) {
 /* Running                                                                                          */
 /* ------------------------------------------------------------------------------------------------ */
 
-const QUOTA = /4006|neuron cap|daily allowance|quota/i;
-/** The site's own notice when the model is down or its breaker is open: a skip for model cases, never a pass. */
-const AI_DOWN = /AI answers are temporarily unavailable/i;
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function getJson(fetchFn, url) {
@@ -334,28 +343,22 @@ export async function loadLive(fetchFn, base, cases) {
 
 /**
  * Runs the cases one request at a time with `delayMs` between requests (the Worker allows 10
- * questions a minute per address). Model cases are skipped, not failed, when the site reports AI
- * answers unavailable (daily Neuron cap reached) before or during the run.
+ * questions a minute per address). Every case runs, whatever the model's state: the site must answer
+ * every question usefully when the model is down or over the daily Neuron cap (by quoting the
+ * records), so an answer that dead-ends ("AI answers are temporarily unavailable") is a failure, not a skip.
  */
 export async function runSuite({ base, cases, officials, fetchFn = fetch, sleep = sleepMs, delayMs = 7000, now = new Date(), log = () => {} }) {
   const today = utahToday(now);
   const health = await getJson(fetchFn, `${base}/api/health`).catch((e) => ({ error: String(e?.message ?? e) }));
-  let aiAvailable = health.ai !== false && !health.error;
   const live = await loadLive(fetchFn, base, cases);
   const ctx = { today, live, officials };
   const results = [];
   let first = true;
   for (const c of cases) {
-    const needsAi = c.turns.some((t) => t.model || t.needsRewrite);
-    if (needsAi && !aiAvailable) {
-      results.push({ id: c.id, category: c.category, tier: c.tier, status: 'skip', reason: 'AI answers unavailable (daily Neuron cap or breaker)', turns: [] });
-      log(`skip  ${c.id} (AI unavailable)`);
-      continue;
-    }
     const done = [];
     const turns = [];
     let status = 'pass';
-    let reason = null;
+    const reason = null;
     for (const [i, t] of c.turns.entries()) {
       if (!first) await sleep(delayMs);
       first = false;
@@ -370,15 +373,9 @@ export async function runSuite({ base, cases, officials, fetchFn = fetch, sleep 
         fails = [`request failed: ${String(e?.message ?? e)}`];
       }
       const engine = String(r?.engine ?? '');
-      const aiDown = QUOTA.test(engine) || AI_DOWN.test(String(r?.answer ?? '')) || AI_DOWN.test(String(r?.notice ?? ''));
-      if ((t.model || t.needsRewrite) && aiDown) {
-        aiAvailable = false;
-        status = 'skip';
-        reason = `AI unavailable during the run (${(engine || String(r?.notice ?? '')).slice(0, 120)})`;
-      } else if (fails.length) status = 'fail';
+      if (fails.length) status = 'fail';
       turns.push({ turn: i + 1, question: t.question, engine, ms: Date.now() - started, failures: fails, answer: String(r?.answer ?? '').slice(0, 1500), citations: (r?.citations ?? []).map((x) => ({ documentId: x.documentId, page: x.page ?? null })) });
       done.push({ question: t.question, response: r });
-      if (status === 'skip') break;
     }
     results.push({ id: c.id, category: c.category, tier: c.tier, status, reason, turns });
     log(`${status.padEnd(5)} ${c.id}${status === 'fail' ? `: ${turns.flatMap((x) => x.failures.map((f) => `[turn ${x.turn}] ${f}`)).join('; ')}` : ''}`);

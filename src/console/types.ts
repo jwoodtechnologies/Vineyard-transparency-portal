@@ -39,6 +39,8 @@ export interface Turn {
   wantRecords: boolean;
   /** Model text as it streams in (display only; replaced by the checked answer). */
   draft: string;
+  /** The answer replaced streamed text (shown without a fade, so nothing jumps). */
+  streamed?: boolean;
   phase: 'searching' | 'writing';
 }
 

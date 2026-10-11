@@ -5310,3 +5310,58 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 @media (max-width: 820px) {
   .vc-cp-map { max-height: 60vh; }
 }
+
+/* ------------------------------------------------------------ answer layout */
+/* A lead sentence, then lists (motions, quoted records) and small tables (three or more figures). */
+.vc-answer-listwrap,
+.vc-answer-table-wrap { margin: 0 0 1rem; }
+.vc-answer-listwrap:last-child,
+.vc-answer-table-wrap:last-child { margin-bottom: 0; }
+.vc-answer-list { margin: 0; padding: 0; list-style: none; font-family: var(--vc-sans); font-size: var(--vc-fs-body); line-height: 1.55; color: var(--vc-ink-2); }
+.vc-answer-list li { position: relative; padding: var(--vc-sp-2) 0 var(--vc-sp-2) 18px; border-top: 1px solid var(--vc-line); text-wrap: pretty; overflow-wrap: anywhere; }
+.vc-answer-list li:first-child { border-top: 0; padding-top: 2px; }
+.vc-answer-list li::before { content: ''; position: absolute; left: 2px; top: calc(var(--vc-sp-2) + 0.62em); width: 6px; height: 6px; border-radius: 50%; background: var(--vc-accent); }
+.vc-answer-list li:first-child::before { top: calc(2px + 0.62em); }
+.vc-answer-table-wrap { overflow-x: auto; border: 1px solid var(--vc-line); border-radius: var(--vc-radius-lg, 16px); }
+.vc-answer-table { width: 100%; border-collapse: collapse; font-family: var(--vc-sans); font-size: var(--vc-fs-ui); line-height: 1.45; color: var(--vc-ink); }
+.vc-answer-table th,
+.vc-answer-table td { padding: 10px 12px; border-top: 1px solid var(--vc-line); text-align: left; vertical-align: top; }
+.vc-answer-table thead th { border-top: 0; background: var(--vc-bg-2); color: var(--vc-muted); font-size: var(--vc-fs-xs); font-weight: 600; }
+.vc-answer-table tbody th { font-weight: 500; }
+.vc-answer-table td,
+.vc-answer-table thead th:not(:first-child) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vc-answer-table-wrap .vc-answer-cites { padding: 0 12px 10px; }
+.vc-answer-cites { margin: 6px 0 0; font-family: var(--vc-sans); font-size: var(--vc-fs-sm); color: var(--vc-muted); }
+.vc-answer[data-instant] .vc-seg { animation: none; }
+.vc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* When the data behind an answer is current. */
+.vc-asof { margin: 10px 0 0; font-family: var(--vc-sans); font-size: var(--vc-fs-sm); color: var(--vc-muted); }
+
+/* A clarifying question's choices: full-size touch targets. */
+.vc-clarify { display: flex; flex-wrap: wrap; gap: var(--vc-sp-2); margin: 12px 0 4px; }
+.vc-clarify-chip { height: auto; min-height: var(--vc-h-control, 40px); padding: 6px 16px; font-size: var(--vc-fs-ui); white-space: normal; text-align: left; }
+.vc-clarify-chip:hover { border-color: var(--vc-ink); color: var(--vc-ink); }
+
+/* Suggested next questions. */
+.vc-followups { display: grid; gap: var(--vc-sp-2); margin: 16px 0 0; }
+.vc-followup { display: flex; align-items: flex-start; gap: var(--vc-sp-2); width: 100%; min-height: 40px; padding: 9px 14px; border: 1px solid var(--vc-line-2); border-radius: 12px; background: transparent; color: var(--vc-ink-2); font: inherit; font-size: var(--vc-fs-ui); line-height: 1.45; text-align: left; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+.vc-followup svg { flex: none; margin-top: 3px; color: var(--vc-accent); }
+.vc-followup:hover { border-color: var(--vc-ink); color: var(--vc-ink); }
+.vc-followup:disabled,
+.vc-clarify-chip:disabled { opacity: 0.55; cursor: default; }
+
+/* Sources: a compact row of cards, each opening the record at the cited page. */
+.vc-sources { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--vc-sp-2); }
+.vc-source { min-height: 0; padding: 10px 12px; gap: 4px; text-decoration: none; }
+.vc-source-title { font-size: var(--vc-fs-sm); }
+@media (max-width: 520px) {
+  .vc-sources { grid-template-columns: 1fr 1fr; }
+}
+
+/* The answer did not arrive: one line, a retry, and the matching records under it. */
+.vc-notice-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.vc-retry { height: 36px; display: inline-flex; align-items: center; gap: 6px; }
+@media print {
+  .vc-followups, .vc-clarify { display: none; }
+}
