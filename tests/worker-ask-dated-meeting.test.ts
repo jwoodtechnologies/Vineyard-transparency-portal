@@ -109,7 +109,8 @@ describe('a question about one dated meeting reads only that meeting', () => {
     const env = await seed(false);
     const seen: string[] = [];
     const r = await ask({ ...env, AI: ai(writer, seen) } as unknown as Env, { question: 'who spoke during public comment at that meeting?', conversation: convo });
-    expect(r.answer).toBe(`I couldn't find that in the records of the September 8, ${YEAR} City Council meeting. The meeting record is below.`);
+    expect(r.answer).toBe(`Nothing in the agenda or packet of the September 8, ${YEAR} City Council meeting answers that, and its minutes are not posted yet. Its records and video are on the meeting page.`);
+    expect(r.answer).not.toMatch(/couldn't find|unavailable|unable to/i);
     expect(r.answer).not.toContain('Tamez');
     expect(r.section?.path).toBe('/meetings/mtg_cc_1442');
     expect(r.citations).toEqual([]);

@@ -42,10 +42,14 @@ import { LATEST_ACTION_Q, SCOPE_FROM, councilName, currentCouncil, motionEvidenc
 import { sectionFor } from './sections';
 import { contactFor, contactLine, isIdentityQuestion, isPersonFollowUp, namedIn, PERSON_PRONOUN, personFromTurns, titleIn, whoIsAnswer, type StaffPerson } from './contacts';
 import { fixSpelling } from './spelling';
-import { BODY_LABEL, longDay, meetingBodyIn, meetingDateIn, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, type MeetingBody, type MeetingVotesIntent } from './meetingVotes';
-import { measureVotesIntent, measureVotesText, motionIsAbout, type MeasureVotesIntent } from './measureVotes';
+import { BODY_LABEL, longDay, meetingBodyIn, meetingDateIn, meetingFollowUp, meetingVotesIntent, meetingVotesText, memberTitle, motionLine, MOVER_Q, type MeetingBody, type MeetingVotesIntent } from './meetingVotes';
+import { measureRefIn, measureVotesIntent, measureVotesText, motionIsAbout, type MeasureVotesIntent } from './measureVotes';
 import { officialRoster, TERM_FROM, titleOfficials } from './officials';
 import { isOffTopic, OFF_TOPIC_REPLY } from './offTopic';
+import { bodyClarify, CONTACT_Q, docLookupIntent, feeIntent, lastMeetingIntent, monthVotesIntent, motionSearchWords, personClarify, recordLookupIntent, resolveFollowUp, suggestFollowUps } from './lookups';
+import { routeFor } from './quotes';
+import { bodiesOnDate, clarifyResponse, codeResponse, docLookupResponse, feeResponse, lastVotesDate, quotesResponse, recordLookupResponse, recordsAnswer, routeResponse } from './lookupAnswers';
+import { BUDGET_AMENDED } from '../lib/budgetData';
 
 // Per-isolate protection. Nothing here identifies a person or persists anywhere.
 let breakerUntil = 0;
@@ -237,7 +241,8 @@ async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: numb
 /** Tries the larger model first (while today's share lasts), then the small one. */
 async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; temperature?: number; useBig?: boolean } = {}): Promise<{ text: string; engine: string }> {
   const primary = env.AI_MODEL && env.AI_MODEL !== FALLBACK_AI_MODEL ? env.AI_MODEL : DEFAULT_AI_MODEL;
-  const models = opts.useBig === false ? [FALLBACK_AI_MODEL] : [primary, FALLBACK_AI_MODEL];
+  // The larger model, then the small one; a small-model answer gets one retry. A retry runs only after an error.
+  const models = opts.useBig === false ? [FALLBACK_AI_MODEL, FALLBACK_AI_MODEL] : [primary, FALLBACK_AI_MODEL];
   let last: unknown = null;
   for (const [i, model] of models.entries()) {
     try {
@@ -465,7 +470,7 @@ export async function budgetResponse(env: Env, base: { id: string; question: str
     };
   });
   const segments = a.sentences.map((s) => ({ text: s.text, citations: s.docs.map((d) => order.indexOf(d) + 1) }));
-  const paragraphs = [{ segments }];
+  const paragraphs = budgetParagraphs(segments);
   const answer = segments.map((s) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ');
   return {
     ...base,
@@ -476,7 +481,44 @@ export async function budgetResponse(env: Env, base: { id: string; question: str
     notice: null,
     engine: 'budget-data',
     section: { path: '/budget', label: 'Open the budget', hint: 'Every fund, department and project' },
+    suggestedFollowUps: suggestFollowUps({ engine: 'budget-data' }).filter((f) => !sameQuestion(f, base.question)),
+    asOf: BUDGET_AMENDED,
+    asOfLabel: 'Budget as amended',
   } as AskResponse;
+}
+
+const sameQuestion = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() === b.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Budget sentences laid out for reading: the lead sentences as a paragraph, the figure lines
+ * ("Police: $4,705,075 in ...") as a list, and as a small table too when there are three or more.
+ * The segments (and so the plain answer) are unchanged.
+ */
+export function budgetParagraphs(segments: Array<{ text: string; citations: number[] }>): Array<{ segments: Array<{ text: string; citations: number[] }>; list?: boolean; table?: { columns: string[]; rows: Array<{ cells: string[]; citations: number[] }> } }> {
+  const LINE = /^([^:$]{2,60}?)(?: fund)?: (\$[\d,]+)/;
+  const first = segments.findIndex((s) => LINE.test(s.text));
+  if (first < 0) return [{ segments }];
+  let end = first;
+  while (end < segments.length && LINE.test(segments[end].text)) end++;
+  const lines = segments.slice(first, end);
+  const out: ReturnType<typeof budgetParagraphs> = [];
+  if (first > 0) out.push({ segments: segments.slice(0, first) });
+  const rows = lines.map((s) => {
+    const label = s.text.match(LINE)![1].trim();
+    const amounts = [...s.text.matchAll(/\$[\d,]+/g)].map((m) => m[0]);
+    return { label, amounts, citations: s.citations };
+  });
+  const two = rows.some((r) => r.amounts.length >= 2 && /after .*amendment/i.test(lines[rows.indexOf(r)].text));
+  const table =
+    rows.length >= 3
+      ? {
+          columns: two ? ['', 'Adopted', 'After amendment'] : ['', 'Amount'],
+          rows: rows.map((r) => ({ cells: two ? [r.label, r.amounts[0], r.amounts[1] ?? r.amounts[0]] : [r.label, r.amounts[0]], citations: r.citations })),
+        }
+      : undefined;
+  out.push({ segments: lines, list: true, ...(table ? { table } : {}) });
+  if (end < segments.length) out.push({ segments: segments.slice(end) });
+  return out;
 }
 
 /** The minutes a recorded motion was read from, as the answer's citation (opens the document at that page). */
@@ -544,6 +586,7 @@ export async function measureVotesResponse(env: Env, base: { id: string; questio
     engine: 'votes-measure',
     section: { path: '/votes', label: 'Open voting records', hint: 'Every recorded vote, meeting by meeting' },
     votes: { member: named, q: intent.ref.label, items: found.slice(-5) },
+    suggestedFollowUps: suggestFollowUps({ engine: 'votes-measure', measure: intent.ref.label, meeting: decided.date ? { date: decided.date, body } : null }),
   } as AskResponse;
 }
 
@@ -565,7 +608,52 @@ export async function meetingVotesResponse(env: Env, base: { id: string; questio
   const segments = sentences.map((text) => ({ text, citations: [1] }));
   const answer = segments.map((x) => `${x.text} [1]`).join(' ');
   const shown = intent.kind === 'no' ? r.items.filter((m) => m.votes.some((v) => v.vote === 'no')) : r.items;
-  return final(answer, { paragraphs: [{ segments }], citations: [citation], votes: { member: null, q: '', items: (shown.length ? shown : r.items).slice(0, 12) } } as Partial<AskResponse>);
+  // A lead sentence, then the motions as a list.
+  const paragraphs = segments.length >= 2 ? [{ segments: [segments[0]] }, { segments: segments.slice(1), list: true }] : [{ segments }];
+  const hasMinutes = Boolean(citation.documentType === 'minutes');
+  return final(answer, {
+    paragraphs,
+    citations: [citation],
+    votes: { member: null, q: '', items: (shown.length ? shown : r.items).slice(0, 12) },
+    suggestedFollowUps: suggestFollowUps({ engine: 'votes-meeting', meeting: { date: intent.date, body: intent.body }, hasMinutes }).filter((f) => !(intent.kind === 'mover' && /^Who moved/.test(f))),
+    ...(r.items[0]?.meetingId ? { section: { path: `/meetings/${r.items[0].meetingId}`, label: `Open the ${longDay(intent.date)} ${BODY_LABEL[intent.body]} meeting`, hint: 'Agenda, packet, minutes and video' } } : {}),
+  } as Partial<AskResponse>);
+}
+
+/** Who moved and seconded each of a few recorded motions, with its meeting and result, cited to the minutes. */
+async function moversResponse(env: Env, base: { id: string; question: string; relatedDocuments: DocumentSummary[]; suggestedFollowUps: string[]; generatedAt: string }, motions: MotionOut[], staff: StaffPerson[]): Promise<AskResponse | null> {
+  const mayor = staff.find((p) => /\bmayor\b/i.test(p.role) && !/deputy/i.test(p.role))?.name ?? null;
+  const citations: Citation[] = [];
+  const segments: Array<{ text: string; citations: number[] }> = [];
+  for (const m of motions) {
+    const body: MeetingBody = m.bodyId === 'redevelopment-agency' || m.bodyId === 'planning-commission' ? m.bodyId : 'city-council';
+    let at = citations.findIndex((c) => c.documentId === m.documentId);
+    if (at < 0) {
+      const c = await minutesCitation(env, m.documentId, m.page, body, m.date, m.meetingId);
+      citations.push({ ...c, index: citations.length + 1 });
+      at = citations.length - 1;
+    }
+    const who = (n: string | null) => (n ? memberTitle(n, body, mayor) : null);
+    const by = [who(m.mover) ? `moved by ${who(m.mover)}` : 'mover not recorded', who(m.seconder) ? `seconded by ${who(m.seconder)}` : 'no second recorded'].join(', ');
+    const where = m.date ? ` at the ${longDay(m.date)} ${BODY_LABEL[body]} meeting` : '';
+    segments.push({ text: motionLine({ item: m.item, motion: m.motion, result: m.result, tally: m.tally, items: m.items, votes: m.votes }).replace(/\. (Passed|Failed|Result not recorded)/, `; ${by}${where}. $1`), citations: [at + 1] });
+  }
+  if (!segments.length) return null;
+  const paragraphs = segments.length > 1 ? [{ segments: [{ text: `${segments.length} recorded motions match:`, citations: [] }] }, { segments, list: true }] : [{ segments }];
+  const first = motions[0];
+  const fb: MeetingBody = first.bodyId === 'redevelopment-agency' || first.bodyId === 'planning-commission' ? first.bodyId : 'city-council';
+  return {
+    ...base,
+    retrievalStatus: 'grounded',
+    answer: paragraphs.map((p) => p.segments.map((x) => `${x.text}${x.citations.length ? ` ${x.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ')).join('\n\n'),
+    paragraphs,
+    citations,
+    notice: null,
+    engine: 'votes-mover',
+    section: { path: '/votes', label: 'Open voting records', hint: 'Every recorded vote, meeting by meeting' },
+    votes: { member: null, q: '', items: motions.slice(0, 3) },
+    suggestedFollowUps: first.date ? suggestFollowUps({ engine: 'votes-measure', meeting: { date: first.date, body: fb } }) : [],
+  } as AskResponse;
 }
 
 /** Sentences that give a rate (0.003796, .003796, 1.5%) with no year in them are removed. */
@@ -616,18 +704,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const found = await summariesByIds(env, ids).catch(() => new Map<string, DocumentSummary>());
     return ids.map((id) => found.get(id) ?? hitSummary(list.find((h) => h.documentId === id)!));
   };
-  const fallback = async (status: 'search_only' | 'no_results', notice: string | null, closest: ChunkHit[] = []): Promise<AskResponse> => ({
-    ...base,
-    retrievalStatus: status,
-    answer: status === 'no_results' ? NO_RESULTS_ANSWER : SEARCH_ONLY_NOTICE,
-    paragraphs: status === 'no_results' ? [{ segments: [{ text: NO_RESULTS_ANSWER, citations: [] }] }] : [],
-    citations: [],
-    relatedDocuments: await closestDocs(closest),
-    // The client runs its own record search alongside every question, so no second search here.
-    searchResults: [],
-    notice,
-    engine: 'search-fallback',
-  });
+
 
   // Conversation, not a records question: an instant, friendly reply that never states facts.
   const kind = smallTalkKind(body.question);
@@ -644,6 +721,71 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], notice: null, engine: 'off-topic', mode: 'conversation' } as AskResponse };
   }
 
+  const todayQ = utahToday();
+  // "How did Jacob vote on it?" when two officials are named Jacob: ask which one, never guess.
+  const officials = officialRoster(staff).filter((o) => /^(Mayor|Council Member)$/.test(o.title) && !o.to);
+  const who2 = personClarify(base.question, officials);
+  if (who2) return { kind: 'final', response: clarifyResponse(base, who2, { path: '/people', label: 'Open the staff directory', hint: 'Mayor, council and city staff' }) };
+
+  // "Show Ordinance 2026-09", "what is Resolution 2026-34?": the record, its title and adoption, from the records index.
+  const rli = recordLookupIntent(body.question);
+  if (rli) {
+    const r = await recordLookupResponse(env, base, rli).catch(() => null);
+    if (r) return { kind: 'final', response: r };
+  }
+
+  // "Find the minutes for the September 8 meeting", "show me the agenda for the last RDA meeting".
+  const dli = docLookupIntent(body.question, todayQ);
+  if (dli) {
+    if (dli.date && !dli.body) {
+      const bodies = await bodiesOnDate(env, dli.date).catch(() => [] as MeetingBody[]);
+      const c = bodyClarify(body.question, dli.date, bodies);
+      if (c) return { kind: 'final', response: clarifyResponse(base, c, { path: '/meetings?view=past', label: 'Open past meetings', hint: 'Agendas, packets, minutes and video' }) };
+    }
+    const r = await docLookupResponse(env, base, dli, todayQ).catch(() => null);
+    if (r) return { kind: 'final', response: r };
+  }
+
+  // "What passed at the last council meeting?", "and the one before that?": the newest meeting (before a date)
+  // with recorded motions, every motion listed by code.
+  const lmi = lastMeetingIntent(body.question, todayQ);
+  if (lmi) {
+    const date = await lastVotesDate(env, lmi.body, lmi.before, todayQ).catch(() => null);
+    if (date) {
+      const r = await meetingVotesResponse(env, base, { date, body: lmi.body, kind: MOVER_Q.test(body.question) ? 'mover' : lmi.kind }, staff).catch(() => null);
+      if (r) return { kind: 'final', response: r };
+    }
+  }
+
+  // "What did the council vote on in September?": one meeting that month is answered; several are offered as choices.
+  const mvm = monthVotesIntent(body.question, todayQ);
+  if (mvm) {
+    const dates = await env.CATALOG_DB.prepare('SELECT DISTINCT meeting_date AS d FROM motions WHERE body_id = ? AND substr(meeting_date, 1, 7) = ? ORDER BY meeting_date')
+      .bind(mvm.body, mvm.month)
+      .all<{ d: string }>()
+      .then((x) => (x.results ?? []).map((y) => String(y.d)))
+      .catch(() => [] as string[]);
+    const label = BODY_LABEL[mvm.body];
+    if (dates.length === 1) {
+      const r = await meetingVotesResponse(env, base, { date: dates[0], body: mvm.body, kind: 'all' }, staff).catch(() => null);
+      if (r) return { kind: 'final', response: r };
+    } else if (dates.length > 1) {
+      const month = longDay(`${mvm.month}-01`).replace(/ 1,/, '');
+      const choices = dates.slice(-4).map((d) => ({ label: longDay(d), question: `What did the ${label} vote on at the ${longDay(d)} meeting?` }));
+      return { kind: 'final', response: clarifyResponse(base, { prompt: `The ${label} has recorded votes from ${dates.length} meetings in ${month}. Which meeting do you mean?`, choices }, { path: '/votes', label: 'Open voting records', hint: 'Every recorded vote, meeting by meeting' }) };
+    }
+  }
+
+  // "Who made the motion to hire Jared Tamez?": the recorded motion found by the names (or words) it gives.
+  if (MOVER_Q.test(body.question) && !meetingDateIn(body.question, todayQ) && !measureRefIn(body.question) && !namedNow) {
+    const words = motionSearchWords(base.question);
+    const found = words.length ? await queryMotions(env, { q: words.join(' '), pageSize: 6 }).catch(() => null) : null;
+    if (found && found.items.length >= 1 && found.items.length <= 4) {
+      const r = await moversResponse(env, base, found.items, staff).catch(() => null);
+      if (r) return { kind: 'final', response: r };
+    }
+  }
+
   // "What did the council vote on at the September 8 meeting?": every recorded motion of that
   // meeting, from the voting records, never a model summary that can leave one out.
   // A question about one member's votes ("how did Wood vote on September 8?") goes on to the member path.
@@ -655,6 +797,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     if (r) return { kind: 'final', response: r };
   }
   const mv = namedNow ? null : meetingVotesIntent(body.question, utahToday());
+  if (mv && !meetingBodyIn(body.question)) {
+    // Two bodies met that day and the question names neither: ask which.
+    const bodies = await bodiesOnDate(env, mv.date).catch(() => [] as MeetingBody[]);
+    const c = bodyClarify(body.question, mv.date, bodies);
+    if (c) return { kind: 'final', response: clarifyResponse(base, c, { path: '/votes', label: 'Open voting records', hint: 'Every recorded vote, meeting by meeting' }) };
+  }
   if (mv) {
     const r = await meetingVotesResponse(env, base, mv, staff).catch(() => null);
     if (r) return { kind: 'final', response: r };
@@ -670,11 +818,30 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   if (tri) {
     const newer = await newerRateRecord(env).catch(() => null);
     const sentences = taxRateSentences(tri, utahToday(), newer);
-    if (sentences.length) return { kind: 'final', response: await taxRateResponse(env, base, sentences) };
+    if (sentences.length) {
+      const r = await taxRateResponse(env, base, sentences);
+      return { kind: 'final', response: { ...r, suggestedFollowUps: suggestFollowUps({ engine: 'tax-rate-data' }).filter((f) => !sameQuestion(f, body.question)) } };
+    }
   }
 
   const bi = budgetIntent(body.question);
   if (bi) return { kind: 'final', response: await budgetResponse(env, base, budgetAnswer(bi)) };
+
+  // "How much is the pavilion rental fee?": the page of the newest fee schedule that lists it.
+  const fi = feeIntent(body.question);
+  if (fi) {
+    const r = await feeResponse(env, base, fi.words).catch(() => null);
+    if (r) return { kind: 'final', response: r };
+  }
+
+  // "Who do I contact about a pothole?": the staff member the directory lists for it.
+  if (CONTACT_Q.test(body.question)) {
+    const p = contactFor(`how do I contact someone about ${body.question}`, staff);
+    if (p) {
+      const text = contactLine(p);
+      return { kind: 'final', response: codeResponse(base, 'directory', [{ segments: [{ text, citations: [] }] }], { contact: p.slug, section: { path: `/people/${p.slug}`, label: `Open ${p.role} ${p.name.split(/\s+/).pop()}`, hint: 'Phone, email and department' } }) };
+    }
+  }
 
   // A message that names a part of the portal ("voting record", "staff directory"): what it holds,
   // answered from the data, with a card that opens it here.
@@ -714,7 +881,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const quick = (text: string, event?: unknown, followUps: string[] = [], section?: { path: string; label: string; hint: string }) =>
     ({
       kind: 'final',
-      response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: followUps, notice: null, engine: 'catalog', mode: 'conversation', ...(event ? { event } : {}), ...(section ? { section } : {}) } as AskResponse,
+      // Every answer opens a page inside the portal: the one that holds this subject, when no card is given.
+      response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: followUps, notice: null, engine: 'catalog', mode: 'conversation', ...(event ? { event } : {}), section: section ?? (event ? undefined : routeFor(body.question).section) } as AskResponse,
     }) as Prepared;
   const todayUT = utahToday();
   const frame = resolveTime(body.question, todayUT);
@@ -752,11 +920,13 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
           answer: s.text,
           paragraphs: [{ segments: [{ text: s.text, citations: [] }] }],
           citations: [],
-          suggestedFollowUps: [`What's on the agenda for the next ${bodyOf(body.question).label} meeting?`],
+          suggestedFollowUps: suggestFollowUps({ engine: 'schedule', scheduleBody: bodyOf(body.question).label }),
           notice: null,
           engine: 'schedule',
           mode: 'conversation',
           event: s.event,
+          asOf: todayUT,
+          asOfLabel: s.event.source === 'city-calendar' ? 'City calendar' : 'Meeting portal',
         } as AskResponse,
       };
     }
@@ -773,8 +943,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       kind: 'final',
       response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'schedule', mode: 'conversation', ...(s ? { event: s.event } : {}) } as AskResponse,
     });
-    if (na === undefined) return scheduleFinal(`The ${label} meeting schedule could not be read just now.`, null);
-    if (na === null) return scheduleFinal(`The city's official calendar and meeting portal do not list an upcoming ${label} meeting yet.`, null);
+    if (na === undefined) return { kind: 'final', response: await routeResponse(env, base, `${label} meetings`, 'route (schedule read failed)') };
+    if (na === null) {
+      const r = await routeResponse(env, base, `${label} meetings`, 'schedule');
+      const text = `The city's official calendar and meeting portal do not list an upcoming ${label} meeting yet. Past ${label} meetings are on the Meetings page.`;
+      return { kind: 'final', response: { ...r, answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }] } };
+    }
     if (!na.meetingId || !na.agendaDocIds.length) return scheduleFinal(`${na.schedule.text} ${AGENDA_NOT_POSTED}`, na.schedule);
     agendaLock = {
       docIds: new Set(na.agendaDocIds),
@@ -817,6 +991,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // "Who spoke during public comment at the September 8, 2026 City Council meeting?": only that meeting's
   // own records (filed under it, or its body's minutes, agenda and packet of that day) reach the model.
   const dated = agendaLock ? null : await datedMeeting(env, body.question, todayUT).catch(() => null);
+  if (dated && !meetingBodyIn(body.question)) {
+    // "Who spoke at the September 15 meeting?" when the council and the RDA both met: ask which.
+    const bodies = await bodiesOnDate(env, dated.date).catch(() => [] as MeetingBody[]);
+    const c = bodyClarify(body.question, dated.date, bodies);
+    if (c) return { kind: 'final', response: clarifyResponse(base, c, { path: '/meetings?view=past', label: 'Open past meetings', hint: 'Agendas, packets, minutes and video' }) };
+  }
   const focus = agendaLock || dated ? null : await meetingFocus(env, body.question).catch(() => null);
   let hits: ChunkHit[] = [];
   let question = body.question;
@@ -825,10 +1005,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   const inDated = (h: ChunkHit) => Boolean(dated && datedIds?.has(h.documentId) && !reprintedMinutes(h, dated.date));
   const datedNone = async (searched: ChunkHit[]): Promise<Prepared> => {
     const m = dated!;
-    const r = await fallback('no_results', null, searched);
-    const text = m.meetingId ? `I couldn't find that in the records of the ${m.name}. The meeting record is below.` : `I couldn't find that in the records of the ${m.name}.`;
-    const section = m.meetingId ? { path: `/meetings/${m.meetingId}`, label: `Open the ${m.name}`, hint: 'Agenda, packet, minutes and video' } : undefined;
-    return { kind: 'final', response: { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: 'search-fallback (nothing in the meeting records)', ...(section ? { section } : {}) } as AskResponse };
+    const section = m.meetingId ? { path: `/meetings/${m.meetingId}`, label: `Open the ${m.name}`, hint: 'Agenda, packet, minutes and video' } : routeFor(`${BODY_LABEL[m.body]} meeting`).section;
+    // The meeting's own records, quoted where they hold the question's words; else the meeting page.
+    const q = await quotesResponse(env, base, body.question, searched, staff, 'record-quotes (meeting records)', `From the records of the ${m.name}:`).catch(() => null);
+    if (q) return { kind: 'final', response: { ...q, section } as AskResponse };
+    const text = `Nothing in the ${m.minutesIds.size ? 'minutes, agenda or packet' : 'agenda or packet'} of the ${m.name} answers that${m.minutesIds.size ? '' : ', and its minutes are not posted yet'}. Its records and video are on the meeting page.`;
+    return { kind: 'final', response: codeResponse(base, 'route (nothing in the meeting records)', [{ segments: [{ text, citations: [] }] }], { section, relatedDocuments: await closestDocs(searched) }) };
   };
   if (dated) {
     const m = dated;
@@ -1060,11 +1242,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   question = `${question}\n(${timeNote(todayUT, frame)}${topicNotes ? ` ${topicNotes}` : ''}${CURRENT.test(body.question) || ROLE.test(body.question) ? ' Answer with the current information: a record marked current outranks older records. Say what date your source is from.' : ''})`;
   const loose = parseQuery(retrievalText, { match: 'any' });
   const budgetOk = await budgetP;
-  if (!hits.length) return { kind: 'final', response: await fallback('no_results', null) };
+  // Nothing found: the part of the portal that holds it. The model down or over budget: the records quoted.
+  if (!hits.length) return { kind: 'final', response: await routeResponse(env, base, body.question, 'route (no matching records)') };
   if (!aiReady || budgetOk == null) {
     const why = !aiConfigured(env) ? 'AI not configured' : aiBreakerOpen() ? 'paused after a quota error' : 'daily answer limit reached';
-    const r = await fallback('search_only', SEARCH_ONLY_NOTICE, hits);
-    return { kind: 'final', response: { ...r, engine: `search-fallback (${why})` } };
+    return { kind: 'final', response: await recordsAnswer(env, base, body.question, hits, staff, why) };
   }
 
   // Every candidate passage is read against the question by a reranker; the answer is written from
@@ -1118,11 +1300,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   if (isTaxRateQuestion(body.question)) {
     const searched = hits;
     hits = hits.filter((h) => isTaxRateRecord(h));
-    if (!hits.length) {
-      const r = await fallback('no_results', null, searched);
-      const text = "I couldn't find a tax rate record that answers that. The closest records are below.";
-      return { kind: 'final', response: { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: 'search-fallback (no tax rate record)' } as AskResponse };
-    }
+    if (!hits.length) return { kind: 'final', response: await recordsAnswer(env, base, body.question, searched, staff, 'no tax rate record') };
   }
   const evidence = selectEvidence(hits);
   // Start the catalog reads the final answer needs now, so they finish while the model writes.
@@ -1150,8 +1328,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     // just this one answer, and both models were already tried.
     if (/4006|daily free allocation|neuron|quota/i.test(msg)) breakerUntil = Date.now() + 30 * 60_000;
     await bumpQuota(env, 'ai_failures').catch(() => undefined);
-    const r = await fallback('search_only', SEARCH_ONLY_NOTICE, [...evidence, ...hits]);
-    return { ...r, engine: `search-fallback (${msg.replace(/\s+/g, ' ').slice(0, 160)})` };
+    return recordsAnswer(env, base, body.question, [...evidence, ...hits], staff, msg.replace(/\s+/g, ' ').slice(0, 160), follow ? (history[history.length - 1] ?? '') : '');
   };
 
   // A question about one meeting ("at the September 8, 2026 City Council meeting") that finds no answer
@@ -1166,18 +1343,24 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       .catch(() => null);
     if (!row) return null;
     const name = `${longDay(date)} ${BODY_LABEL[mb]} meeting`;
-    return { text: `I couldn't find a record that answers that. The ${name} record is below.`, section: { path: `/meetings/${row.id}`, label: `Open the ${name}`, hint: 'Agenda, packet, minutes and video' } };
+    return { text: `The ${name} record has its agenda, packet, minutes and video.`, section: { path: `/meetings/${row.id}`, label: `Open the ${name}`, hint: 'Agenda, packet, minutes and video' } };
+  };
+
+  /** No checked answer from the model: the closest records quoted, else the meeting or portal page that holds it. */
+  const noAnswer = async (why: string): Promise<AskResponse> => {
+    const named = await namedMeeting().catch(() => null);
+    const pool = [...evidence, ...hits];
+    const context = follow ? (history[history.length - 1] ?? '') : '';
+    const q = await quotesResponse(env, base, `${body.question} ${context}`.trim(), pool, staff, `record-quotes (${why})`, undefined, priorIds).catch(() => null);
+    if (q) return named ? ({ ...q, section: named.section } as AskResponse) : q;
+    if (named) return codeResponse(base, `route (${why})`, [{ segments: [{ text: named.text, citations: [] }] }], { section: named.section, relatedDocuments: await closestDocs(pool) });
+    return routeResponse(env, base, body.question, `route (${why})`, pool);
   };
 
   const finish = async (raw: string, engine?: string): Promise<AskResponse> => {
     await quotaP;
     // The model found nothing that answers the question: say so plainly, with the closest records below.
-    if (/^\s*NO_RECORD\b/.test(raw) || /^\s*NO_RECORD\s*$/m.test(raw.slice(0, 40))) {
-      const r = await fallback('no_results', null, [...evidence, ...hits]);
-      const named = await namedMeeting();
-      const text = named ? named.text : frame ? `I couldn't find a record that answers that for ${frame.label}. The closest records are below.` : "I couldn't find a record that answers that. The closest records are below.";
-      return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `${engine ?? DEFAULT_AI_MODEL} (no record)`, ...(named ? { section: named.section } : {}) } as AskResponse;
-    }
+    if (/^\s*NO_RECORD\b/.test(raw) || /^\s*NO_RECORD\s*$/m.test(raw.slice(0, 40))) return noAnswer(`${engine ?? DEFAULT_AI_MODEL}: no record`);
     const first = segmentAnswer(briefAnswer(attributeCitations(raw.replace(/\bNO_RECORD\b/g, ''), evidence)), evidence.length);
     // Every figure must be in the source it cites; unsupported sentences are removed.
     const grounded = groundParagraphs(first.paragraphs, evidence, topicNotes);
@@ -1186,13 +1369,8 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     // A current rate never stands without its year: a sentence giving one with no year or date is removed.
     if (currentValue) grounded.paragraphs = undatedRates(grounded.paragraphs);
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
-    if (!seg.used.size) {
-      // Nothing the model wrote could be tied to a source: show the records, never an unchecked answer.
-      const r = await fallback('no_results', null, [...evidence, ...hits]);
-      const named = await namedMeeting();
-      const text = named ? named.text : "I couldn't find a record that answers that. The closest records are below.";
-      return { ...r, retrievalStatus: 'partial', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], engine: `search-fallback (no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 220)})`, ...(named ? { section: named.section } : {}) } as AskResponse;
-    }
+    // Nothing the model wrote could be tied to a source: the records quoted, never an unchecked answer.
+    if (!seg.used.size) return noAnswer(`no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 200)}`);
 
     // Renumber cited sources 1..k in order of first use.
     const order = [...seg.used].sort((a, b) => a - b);
@@ -1236,6 +1414,11 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     });
 
     const citedDocs = new Set(cited.map((c) => c.documentId));
+    // Follow-ups only where a code path answers: the votes and minutes of the newest meeting the answer cites.
+    const minutesCite = citations.filter((c) => c.documentType === 'minutes' && c.date && c.date >= SCOPE_FROM).sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+    const citedBody = minutesCite ? (docs.get(minutesCite.documentId)?.governmentBodyId ?? null) : null;
+    const followBody: MeetingBody | null = citedBody === 'city-council' || citedBody === 'redevelopment-agency' || citedBody === 'planning-commission' ? citedBody : null;
+    const suggested = minutesCite && followBody ? suggestFollowUps({ engine: 'votes-meeting', meeting: { date: String(minutesCite.date).slice(0, 10), body: followBody } }).filter((f) => !/meeting before/.test(f)) : [];
     const relatedDocuments = [...docs.values()].filter((d) => !citedDocs.has(d.id)).slice(0, 5);
     const partial = seg.dropped > 0 || seg.insufficient || grounded.removed > 0;
     const answer = paragraphs.map((p) => p.segments.map((s) => `${s.text}${s.citations.length ? ` ${s.citations.map((c) => `[${c}]`).join('')}` : ''}`).join(' ')).join('\n\n');
@@ -1247,6 +1430,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
       paragraphs,
       citations,
       relatedDocuments,
+      suggestedFollowUps: suggested,
       notice: null,
       engine: `${engine ?? env.AI_MODEL ?? DEFAULT_AI_MODEL}${ranked ? ' + rerank' : ''}${plan ? ' + plan' : ''}`,
       ...((body as { debug?: boolean }).debug ? { draft: raw, plan, evidence: evidence.map((h, i) => `[${i + 1}] ${h.title} | ${h.documentDate ?? h.year ?? ''} | p${h.pageStart ?? ''}`) } : {}),
@@ -1311,7 +1495,21 @@ function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract
         engine = r.engine;
         if (!/NO_RECORD/.test(raw)) await send('delta', { t: raw });
       } else {
-        raw = await streamSmall(env, prep.messages, (t) => send('delta', { t }));
+        let streamed = false;
+        try {
+          raw = await streamSmall(env, prep.messages, async (t) => {
+            streamed = true;
+            await send('delta', { t });
+          });
+          if (!raw.trim()) throw new Error('Empty AI response');
+        } catch (e) {
+          // Nothing shown yet: one more try on the small model, whole (about 40 Neurons, only after an error).
+          if (streamed) throw e;
+          const r = await callModel(env, prep.messages, { useBig: false });
+          raw = r.text;
+          engine = `${r.engine} (retry after ${String(e instanceof Error ? e.message : e).slice(0, 80)})`;
+          if (!/NO_RECORD/.test(raw)) await send('delta', { t: raw });
+        }
       }
       if (!raw.trim()) throw new Error('Empty AI response');
       final = await prep.finish(raw, engine);
@@ -1323,6 +1521,35 @@ function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract
   })();
   ctx?.waitUntil(work);
   return new Response(readable, { status: 200, headers: SSE_HEADERS });
+}
+
+/**
+ * A follow-up that names its own subject and has a code path ("When is the next City Council meeting?",
+ * "Show me Resolution 2026-34", "What is the property tax rate?", an off-topic question) needs no model
+ * rewrite: about 11 Neurons saved on every such turn. Anything that refers back ("that", "they", "there")
+ * is not one; "it" is, except in "does it cost" and the like.
+ */
+export function standsAlone(q: string, today: string): boolean {
+  const refers = /\b(that|this|those|these|they|them|their|he|she|his|her|him|there|same|else)\b/i.test(q) || /\b(it|its)\b/i.test(q.replace(/\b(?:does|is|will|would|did) it (?:cost|take|open|close|start|run)\b/gi, ' '));
+  if (refers) return false;
+  if (isOffTopic(q)) return true;
+  const pi = placeIntent(q);
+  return Boolean(
+    recordLookupIntent(q) ||
+      measureRefIn(q) ||
+      (meetingDateIn(q, today) && meetingBodyIn(q)) ||
+      docLookupIntent(q, today)?.date ||
+      monthVotesIntent(q, today) ||
+      lastMeetingIntent(q, today) ||
+      isScheduleQuestion(q) ||
+      CONTACT_Q.test(q) ||
+      feeIntent(q) ||
+      taxRateIntent(q) ||
+      budgetIntent(q) ||
+      isConstructionNowQuestion(q) ||
+      serviceAnswer(q) ||
+      (pi && (pi.kind === 'intersection' || pi.kind === 'address')),
+  );
 }
 
 export type AskLogger = (response: AskResponse, latencyMs: number) => void;
@@ -1349,9 +1576,13 @@ export async function handleAsk(env: Env, request: Request, ctx?: ExecutionConte
   // "and parks?", "what about the library?", "and for 2026?": the new subject (or time) goes into the
   // previous question's frame, word for word. This is exact, so it wins and the model is not asked.
   // "did anyone vote no that night?": the meeting named earlier (body and date) goes into the question.
-  const meetingQ = meetingFollowUp(fixSpelling(typed.question), typed.conversation ?? [], utahToday());
+  // "what about the RDA?", "and the one before that?", "who seconded it?", "show me the minutes": exact rewrites from the conversation.
+  const exactQ = resolveFollowUp(fixSpelling(typed.question), typed.conversation ?? [], utahToday());
+  const meetingQ = exactQ ?? meetingFollowUp(fixSpelling(typed.question), typed.conversation ?? [], utahToday());
   const elliptical = meetingQ ?? ellipticalFollowUp(fixSpelling(typed.question), typed.conversation ?? []);
-  const rw = !elliptical && typed.conversation?.length && aiConfigured(env) && !aiBreakerOpen() ? await rewriteQuestion(env, fixSpelling(typed.question), typed.conversation).catch(() => null) : null;
+  // A follow-up that names its own subject and has a code path is not sent to the rewrite model.
+  const alone = !elliptical && standsAlone(fixSpelling(typed.question), utahToday());
+  const rw = !elliptical && !alone && typed.conversation?.length && aiConfigured(env) && !aiBreakerOpen() ? await rewriteQuestion(env, fixSpelling(typed.question), typed.conversation).catch(() => null) : null;
   // A message with no subject of its own ("who voted for it and how much did it cost?") always
   // takes the subject of the previous turns, whatever the model decided: the model's rewrite is
   // used only when it kept that subject.

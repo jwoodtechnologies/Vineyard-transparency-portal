@@ -108,7 +108,8 @@ export function contactFor(q: string, people: StaffPerson[]): StaffPerson | null
 /** "For this, the city staff contact is Ed Kennedy, Code Enforcement Officer." */
 export function contactLine(p: StaffPerson): string {
   const reach = p.email ? ` (${p.email})` : p.phone ? ` (${p.phone})` : '';
-  return `The city staff contact for this is ${p.name}, ${p.role}${reach}.`;
+  const last = p.name.trim().split(/\s+/).pop() ?? p.name;
+  return `The city staff contact for this is ${p.role} ${last}${reach}.`;
 }
 
 /** "The deputy mayor", "the city recorder", "code enforcement officer": whoever holds that title today (one holder only). */

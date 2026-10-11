@@ -17,12 +17,12 @@ export interface MeasureRef {
 
 export interface MeasureVotesIntent {
   ref: MeasureRef;
-  /** 'tie': who broke a tie; 'vote': how the members voted. */
-  focus: 'vote' | 'tie';
+  /** 'tie': who broke a tie; 'mover': who moved and seconded; 'vote': how the members voted. */
+  focus: 'vote' | 'tie' | 'mover';
 }
 
 const REF = /\b(ordinance|ord\.?|resolution|res\.?)\s*(?:no\.?\s*|number\s*|#\s*)?((?:19|20)\d{2})\s*[-‐-―]\s*(\d{1,3})\b/i;
-const VOTE_WORDS = /\b(vot\w*|tie|tie-?break\w*|broke|pass(?:ed|es)?|approv\w*|adopt\w*|aye|nay|roll call|support\w*|oppos\w*|against|in favor|unanimous\w*|moved|seconded|split)\b/i;
+const VOTE_WORDS = /\b(vot\w*|motion\w*|tie|tie-?break\w*|broke|pass(?:ed|es)?|approv\w*|adopt\w*|aye|nay|roll call|support\w*|oppos\w*|against|in favor|unanimous\w*|moved|seconded|split)\b/i;
 
 /** "Ordinance 2026-07", "Ord. 2026-7", "RES 2026-16" in a message. */
 export function measureRefIn(q: string): MeasureRef | null {
@@ -38,7 +38,8 @@ export function measureRefIn(q: string): MeasureRef | null {
 export function measureVotesIntent(q: string): MeasureVotesIntent | null {
   const ref = measureRefIn(q);
   if (!ref || !VOTE_WORDS.test(q)) return null;
-  return { ref, focus: /\btie\b|tie-?break|\bbroke\b/i.test(q) ? 'tie' : 'vote' };
+  const focus = /\btie\b|tie-?break|\bbroke\b/i.test(q) ? 'tie' : /\bwho\b[^?]*\b(second\w*|moved|made (?:the |that )?motion|motioned)\b/i.test(q) ? 'mover' : 'vote';
+  return { ref, focus };
 }
 
 export interface MeasureMotion {
@@ -94,6 +95,8 @@ export function measureVotesText(intent: MeasureVotesIntent, m: MeasureMotion, m
     ? `${label} ${verb}${tally ? ` ${tally}` : m.unanimous && !m.votes.length ? ' unanimously' : ''} ${where}${tiePart}.`
     : `The minutes of the ${m.date ? `${longDay(m.date)} ` : ''}${BODY_LABEL[body]} meeting record a vote on ${label} but not its result.`;
   const out: string[] = [];
+  const moverLine = m.mover ? `${who(m.mover)} moved it${m.seconder ? ` and ${who(m.seconder)} seconded` : ''}.` : null;
+  if (intent.focus === 'mover') out.push(moverLine ? moverLine.replace(/^(.+?) moved it/, `$1 moved ${label}`) : `The minutes record no mover for ${label}.`);
   if (intent.focus === 'tie') {
     if (m.tieBreak) out.push(`${tieBy![0].toUpperCase()}${tieBy!.slice(1)} broke the tie on ${label}${mayorVote ? `, voting ${mayorVote.vote}` : ''}, ${where}.`);
     else out.push(`The minutes record no tie on ${label}.`);
@@ -110,6 +113,6 @@ export function measureVotesText(intent: MeasureVotesIntent, m: MeasureMotion, m
     .filter((g) => g.names.length);
   if (groups.length) out.push(`${groups.map((g) => `${VOTE_LABEL[g.k]}: ${list(g.names)}`).join('. ')}.`);
   else if (m.unanimous) out.push('The minutes record the vote as unanimous without listing each member.');
-  if (m.mover) out.push(`${who(m.mover)} moved it${m.seconder ? ` and ${who(m.seconder)} seconded` : ''}.`);
+  if (moverLine && intent.focus !== 'mover') out.push(moverLine);
   return out;
 }

@@ -565,6 +565,22 @@ export interface AnswerSegment {
 
 export interface AnswerParagraph {
   segments: AnswerSegment[];
+  /** The segments are items of one list (motions, budget lines, quoted records): shown as a list. */
+  list?: boolean;
+  /** Three or more figures: shown as a small table (the segments stay the plain-text form). */
+  table?: AnswerTable;
+}
+
+/** A small table of figures written by code: each row's cells, and the sources it cites. */
+export interface AnswerTable {
+  columns: string[];
+  rows: Array<{ cells: string[]; citations: number[] }>;
+}
+
+/** A short clarifying question with tappable choices, asked instead of guessing. */
+export interface AnswerClarify {
+  prompt: string;
+  choices: Array<{ label: string; question: string }>;
 }
 
 export interface AskResponse {
@@ -584,6 +600,12 @@ export interface AskResponse {
   generatedAt: ISODateTime;
   /** Identifier of the answering engine. e.g. "budget-data" or a model name. */
   engine: string;
+  /** The date the data behind the answer is current as of (ISO), for data that changes. */
+  asOf?: string | null;
+  /** What the "as of" date is ("Voting records", "City calendar"). */
+  asOfLabel?: string | null;
+  /** A short clarifying question with choices, instead of an answer that would guess. */
+  clarify?: AnswerClarify | null;
 }
 
 /* -------------------------------------------------------------------------- */
