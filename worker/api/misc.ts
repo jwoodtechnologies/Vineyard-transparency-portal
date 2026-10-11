@@ -6,6 +6,7 @@ import { CATEGORY_DEFS, DOCUMENT_TYPE_LABELS, normalizeType } from '../lib/taxon
 import { clampInt, nowIso, randomId } from '../lib/util';
 import { SearchRepository } from '../search/SearchRepository';
 import { aiBreakerOpen, aiConfigured } from '../ai/rag';
+import { listChecks } from '../sync/checks';
 
 export async function handleHealth(env: Env): Promise<Response> {
   const checkedAt = nowIso();
@@ -32,6 +33,7 @@ export async function handleHealth(env: Env): Promise<Response> {
   }
   const ai = aiConfigured(env) && !aiBreakerOpen();
   const archive = Boolean(env.ARCHIVE);
+  const checks = await listChecks(env).catch(() => []);
   const status = database && search ? 'ok' : 'degraded';
   return json(
     {
@@ -47,6 +49,7 @@ export async function handleHealth(env: Env): Promise<Response> {
       searchShards: repo.activeShards.length,
       indexedDocuments: indexed,
       lastCrawl: lastCrawl ? { status: lastCrawl.status, startedAt: lastCrawl.started_at, finishedAt: lastCrawl.finished_at } : null,
+      checks,
     },
     { cache: CACHE.none },
   );

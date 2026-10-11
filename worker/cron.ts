@@ -15,6 +15,7 @@ import { CC_API, mapEvent, type CcEvent } from './lib/civicclerk';
 import { ensureNewsTables } from './lib/news';
 import { UCSO_ARCHIVE, UCSO_SOURCE, cleanText, mentionsVineyard, recent, releaseBody, ucsoPage, type UcsoItem } from './lib/sheriff';
 import { processVotes } from './api/votes';
+import { track } from './sync/checks';
 
 const UA = { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org; public records archive)', accept: 'application/json, text/html;q=0.9' };
 
@@ -35,7 +36,7 @@ async function refreshCivicClerk(env: Env, budget: Budget): Promise<Record<strin
   const seen = new Set<number>();
   for (let page = 0; url && page < 10; page++) {
     const res = await fetch(url, { headers: UA });
-    if (!res.ok) throw new Error(`CivicClerk ${res.status}`);
+    if (!res.ok) throw new Error(`CivicClerk ${res.status} ${res.statusText}: ${(await res.text().catch(() => '')).slice(0, 160)}`);
     const data = (await res.json()) as { value?: CcEvent[]; '@odata.nextLink'?: string };
     const fresh = (data.value ?? []).filter((e) => e && !seen.has(e.id));
     if (!fresh.length) break;
@@ -126,8 +127,8 @@ async function refreshSheriff(env: Env, budget: Budget): Promise<Record<string, 
 export async function runFrequent(env: Env): Promise<Record<string, unknown>> {
   const budget = new Budget(env);
   const summary: Record<string, unknown> = {};
-  summary.civicclerk = await refreshCivicClerk(env, budget).catch((e) => String(e).slice(0, 300));
-  summary.votes = await processVotes(env, 6_000, 20).catch((e) => String(e).slice(0, 200));
+  summary.civicclerk = await track(env, 'civicclerk', () => refreshCivicClerk(env, budget));
+  summary.votes = await track(env, 'votes', () => processVotes(env, 6_000, 20));
   return summary;
 }
 
@@ -138,11 +139,11 @@ export async function runHourly(env: Env): Promise<Record<string, unknown>> {
   const summary: Record<string, unknown> = {};
   // The hourly check writes only a few rows, so it runs even after the backfill has used the
   // day's ingestion allowance (that allowance sits well under the D1 Free daily limit).
-  const [cc, ucso] = await Promise.allSettled([refreshCivicClerk(env, budget), refreshSheriff(env, budget)]);
-  summary.civicclerk = cc.status === 'fulfilled' ? cc.value : String(cc.reason).slice(0, 300);
-  summary.sheriff = ucso.status === 'fulfilled' ? ucso.value : String(ucso.reason).slice(0, 300);
+  const [cc, ucso] = await Promise.all([track(env, 'civicclerk', () => refreshCivicClerk(env, budget)), track(env, 'sheriff', () => refreshSheriff(env, budget))]);
+  summary.civicclerk = cc;
+  summary.sheriff = ucso;
   // New minutes become voting records within the hour.
-  summary.votes = await processVotes(env, 8_000, 40).catch((e) => String(e).slice(0, 200));
+  summary.votes = await track(env, 'votes', () => processVotes(env, 8_000, 40));
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('INSERT INTO cron_runs (started_at, finished_at, summary_json) VALUES (?, ?, ?)').bind(started, new Date().toISOString(), JSON.stringify(summary)),
     env.CATALOG_DB.prepare('DELETE FROM cron_runs WHERE id <= (SELECT max(id) - 500 FROM cron_runs)'),
