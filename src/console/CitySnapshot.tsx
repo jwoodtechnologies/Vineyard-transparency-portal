@@ -5,6 +5,7 @@
  */
 import { ArrowUpRight, ChevronDown, FileText } from 'lucide-react';
 import { useJson } from './api';
+import { DocLink } from './DocLink';
 import { formatDate, formatDateTime, normalizeDatesInText } from '@/lib/dates';
 
 interface Glance {
@@ -21,7 +22,7 @@ export interface ConstructionSnapshot {
   heading?: string | null;
   glance?: Glance | null;
   text?: string;
-  documents?: Array<{ url: string; label: string; group?: string | null }>;
+  documents?: Array<{ url: string; label: string; group?: string | null; documentId?: string }>;
   versions?: Array<{ retrievedAt: string }>;
 }
 
@@ -101,9 +102,13 @@ export function CitySnapshot({ cityPage, data }: { cityPage: string; /** Already
               <ul>
                 {docs.map((d) => (
                   <li key={d.url}>
-                    <a href={d.url} target="_blank" rel="noopener noreferrer">
-                      {d.label} <ArrowUpRight size={13} strokeWidth={1.9} />
-                    </a>
+                    {d.documentId ? (
+                      <DocLink id={d.documentId}>{d.label}</DocLink>
+                    ) : (
+                      <a href={d.url} target="_blank" rel="noopener noreferrer">
+                        {d.label} <ArrowUpRight size={13} strokeWidth={1.9} />
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

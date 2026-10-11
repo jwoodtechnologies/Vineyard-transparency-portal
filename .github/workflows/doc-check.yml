@@ -1,0 +1,73 @@
+# Document check (scripts/doc-check/run.mjs) against the live site, nightly: every record id linked from the
+# construction, budget, index, latest and coverage pages must open, and 25 random PDFs (most with an archived
+# copy, some without) must show a readable first page at phone (390 px) and desktop (1440 px) size in Chromium:
+# not blank, dark text present, a styled toolbar, and page text that matches the record's own text.
+# Read only. A failure fails the job; the watchdog (watchdog.yml) then opens an issue labeled watchdog.
+name: Document check
+
+on:
+  schedule:
+    # 10:23 UTC (4:23 am in Vineyard): after the night's ingest, before residents are up.
+    - cron: "23 10 * * *"
+  workflow_dispatch:
+    inputs:
+      count:
+        description: Number of random records
+        default: "25"
+      ids:
+        description: Check these record ids instead (comma separated, optional)
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: doc-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BASE: https://vineyardportal.org
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Chromium
+        run: |
+          set -euo pipefail
+          PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
+          (cd "$PW" && npm init -y > /dev/null && npm i -s playwright@1.56.1 && npx playwright install --with-deps chromium)
+      - name: Check
+        env:
+          COUNT: ${{ inputs.count || '25' }}
+          IDS: ${{ inputs.ids }}
+        run: |
+          set -uo pipefail
+          ARGS=(--base "$BASE" --pw "$RUNNER_TEMP/pw/node_modules/playwright/index.mjs" --count "$COUNT" --seed "${{ github.run_number }}" --out doc-check.json --shots doc-check-shots)
+          if [[ -n "$IDS" ]]; then ARGS+=(--ids "$IDS"); fi
+          node scripts/doc-check/run.mjs "${ARGS[@]}"
+      - name: Keep the report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-check-${{ github.run_id }}
+          path: |
+            doc-check.json
+            doc-check-shots
+          if-no-files-found: ignore
+      # Same place as the chat suite: the diagnostics branch, under doc-check/<run id>/. Never main.
+      - name: Save to the diagnostics branch
+        if: always()
+        run: |
+          set -euo pipefail
+          [[ -f doc-check.json ]] || exit 0
+          mkdir -p "$RUNNER_TEMP/dc" && cp doc-check.json "$RUNNER_TEMP/dc/report.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch -q origin diagnostics; then git checkout -q -B diagnostics origin/diagnostics; else git checkout -q --orphan diagnostics && git rm -rq --cached . && git clean -fdq; fi
+          mkdir -p "doc-check/${GITHUB_RUN_ID}" && cp "$RUNNER_TEMP/dc/report.json" "doc-check/${GITHUB_RUN_ID}/report.json"
+          git add doc-check && git commit -qm "Document check ${GITHUB_RUN_ID}" && git push -q origin diagnostics || echo "::warning::Could not save to the diagnostics branch"

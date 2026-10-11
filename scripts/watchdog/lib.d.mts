@@ -51,6 +51,6 @@ export const MARKER: string;
 export function stamp(iso: string | null | undefined): string;
 export function clean(text: unknown): string;
 export function failureStreak(runs: Run[] | null | undefined): number;
-export function evaluate(input: { health: Health | null; chatRun: Run | null; ingestRuns: Run[] | null; repo: string; base: string; server?: string }): Item[];
+export function evaluate(input: { health: Health | null; chatRun: Run | null; docRun?: Run | null; ingestRuns: Run[] | null; repo: string; base: string; server?: string }): Item[];
 export function plan(items: Item[], openIssues: OpenIssue[], now?: number, complete?: boolean): Action[];
 export function lastNoteAt(issue: { created_at: string }, comments: Array<{ body?: string; created_at: string }> | null | undefined): string;

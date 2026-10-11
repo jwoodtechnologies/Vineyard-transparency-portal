@@ -1,10 +1,12 @@
 /** /documents/:documentId : one record, shown in the same quiet frame as the rest of the portal. */
 import './styles';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, CalendarDays, Download, Expand, Flag, Layers, MessageSquare, Printer, Share2, X } from 'lucide-react';
-import type { DocumentDetail, DocumentPageText } from '@/types/models';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowUpRight, CalendarDays, Flag, Layers, MessageSquare, Share2 } from 'lucide-react';
 import { DocumentService } from '@/services';
+import { isDataError } from '@/data/adapters/errors';
+import { ErrorNote } from './ErrorNote';
+import { RecordViewer } from './RecordViewer';
 import { BackButton, Frame } from './Chrome';
 import { formatDate, sourceLabel } from './format';
 import { meetingHref } from './meetings';
@@ -15,9 +17,7 @@ import { labelsOf } from './recordLabels';
 import { STATUS_LABEL } from '@/lib/recordTitle';
 import { setHead } from '@/lib/head';
 
-const PdfViewer = lazy(() => import('@/components/documents/PdfViewer'));
-
-type Load<T> = { status: 'loading' } | { status: 'error' } | { status: 'done'; data: T };
+type Load<T> = { status: 'loading' } | { status: 'error'; error: unknown } | { status: 'done'; data: T };
 
 function useLoad<T>(key: string | null, fn: () => Promise<T>): Load<T> {
   const [state, setState] = useState<{ key: string | null; value: Load<T> }>({ key: null, value: { status: 'loading' } });
@@ -26,7 +26,7 @@ function useLoad<T>(key: string | null, fn: () => Promise<T>): Load<T> {
     let live = true;
     fn().then(
       (data) => live && setState({ key, value: { status: 'done', data } }),
-      () => live && setState({ key, value: { status: 'error' } }),
+      (error: unknown) => live && setState({ key, value: { status: 'error', error } }),
     );
     return () => {
       live = false;
@@ -38,68 +38,6 @@ function useLoad<T>(key: string | null, fn: () => Promise<T>): Load<T> {
 }
 
 const safeHttp = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u) ? u : null);
-
-function TextPages({ pages, page }: { pages: DocumentPageText[]; page: number }) {
-  useEffect(() => {
-    document.getElementById(`vc-p${page}`)?.scrollIntoView({ block: 'start' });
-  }, [page]);
-  if (!pages.length) return <div className="vc-empty">No readable text was extracted from this record.</div>;
-  return (
-    <div className="vc-textpages">
-      {pages.map((p) => (
-        <section key={p.page} id={`vc-p${p.page}`} className="vc-textpage">
-          <p className="vc-label">Page {p.page}</p>
-          <div className="vc-textpage-body">{p.text}</div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function Viewer({ doc, page, setPage, highlight }: { doc: DocumentDetail; page: number; setPage: (p: number) => void; highlight: string[] }) {
-  const [failed, setFailed] = useState(false);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
-  const isPdf = doc.mimeType === 'application/pdf';
-  const isImage = /^image\/(png|jpeg)$/.test(doc.mimeType ?? '') && Boolean(doc.archiveUrl);
-  useEffect(() => {
-    let live = true;
-    void DocumentService.fileUrl(doc.id, doc.archiveUrl).then((u) => live && setFileUrl(u));
-    return () => {
-      live = false;
-    };
-  }, [doc.id, doc.archiveUrl]);
-  // PDFs always open as the actual PDF: the archived copy, or the official file streamed through
-  // the portal when there is no copy yet. Text is the fallback only when the PDF cannot load.
-  const needText = (!isPdf && !isImage) || failed;
-  const text = useLoad(needText ? `text:${doc.id}` : null, () => DocumentService.text(doc.id));
-
-  if (isImage && !failed && doc.archiveUrl) {
-    return (
-      <div className="vc-viewer vc-viewer-image">
-        <img src={doc.archiveUrl} alt={doc.title} onError={() => setFailed(true)} />
-      </div>
-    );
-  }
-  if (!needText && fileUrl) {
-    return (
-      <div className="vc-viewer">
-        <Suspense fallback={<div className="vc-viewer-wait" />}>
-          <PdfViewer url={fileUrl} page={page} onPageChange={setPage} onError={() => setFailed(true)} highlight={highlight} title={doc.title} />
-        </Suspense>
-      </div>
-    );
-  }
-  if (!needText) return <div className="vc-viewer-wait" />;
-  if (text.status === 'loading')
-    return (
-      <div className="vc-skeleton" aria-hidden="true">
-        <span style={{ width: '94%' }} />
-        <span style={{ width: '86%' }} />
-      </div>
-    );
-  if (text.status === 'error') return <div className="vc-empty">This record could not be displayed here. Try the original source.</div>;
-  return <TextPages pages={text.data} page={page} />;
-}
 
 /** Report a resident submission (two reports from different people hide it until the owner looks). */
 function ReportButton({ documentId }: { documentId: string }) {
@@ -120,35 +58,6 @@ function ReportButton({ documentId }: { documentId: string }) {
   );
 }
 
-const touchDevice = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
-
-/** Prints the record itself: a PDF through a hidden same-origin frame (desktop), or the browser's
- * own PDF viewer in a new tab (phones); text records print the page with a clean print layout. */
-function printRecord(doc: DocumentDetail, fileUrl: string | null) {
-  if (doc.mimeType === 'application/pdf' && fileUrl) {
-    if (touchDevice()) {
-      window.open(fileUrl, '_blank', 'noopener');
-      return;
-    }
-    const frame = document.createElement('iframe');
-    frame.className = 'vc-print-frame';
-    frame.setAttribute('aria-hidden', 'true');
-    frame.src = fileUrl;
-    frame.onload = () => {
-      try {
-        frame.contentWindow?.focus();
-        frame.contentWindow?.print();
-      } catch {
-        window.open(fileUrl, '_blank', 'noopener');
-      }
-      setTimeout(() => frame.remove(), 120_000);
-    };
-    document.body.appendChild(frame);
-    return;
-  }
-  window.print();
-}
-
 async function shareRecord(title: string): Promise<'shared' | 'copied' | 'failed'> {
   const url = window.location.href;
   try {
@@ -163,101 +72,67 @@ async function shareRecord(title: string): Promise<'shared' | 'copied' | 'failed
   }
 }
 
-/**
- * The record in a shell that can go truly full screen: a fixed layer over the whole screen (works
- * on iPhone, where web pages cannot use the browser Fullscreen API) plus the Fullscreen API where it
- * exists, with a large Exit button that is always visible. Back and Esc also exit.
- */
-function FullScreenShell({ title, children }: { title: string; children: ReactNode }) {
-  const shell = useRef<HTMLDivElement>(null);
-  const [full, setFull] = useState(false);
-  const exit = useCallback(() => {
-    setFull(false);
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-    if ((window.history.state as { vcFull?: boolean } | null)?.vcFull) window.history.back();
-  }, []);
-  const enter = () => {
-    setFull(true);
-    window.history.pushState({ ...(window.history.state ?? {}), vcFull: true }, '');
-    const el = shell.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
-    try {
-      if (el?.requestFullscreen) void el.requestFullscreen({ navigationUI: 'hide' }).catch(() => undefined);
-      else el?.webkitRequestFullscreen?.();
-    } catch {
-      /* the fixed layer alone still fills the screen */
-    }
-  };
-  useEffect(() => {
-    if (!full) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && exit();
-    const onPop = () => {
-      setFull(false);
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-    };
-    // Leaving browser full screen (Esc, swipe, system gesture) also leaves the layer.
-    const onFs = () => {
-      if (!document.fullscreenElement) exit();
-    };
-    document.addEventListener('keydown', onKey);
-    window.addEventListener('popstate', onPop);
-    document.addEventListener('fullscreenchange', onFs);
-    return () => {
-      document.body.style.overflow = prev;
-      document.removeEventListener('keydown', onKey);
-      window.removeEventListener('popstate', onPop);
-      document.removeEventListener('fullscreenchange', onFs);
-    };
-  }, [full, exit]);
-  return (
-    <div ref={shell} className="vc-viewer-shell" data-full={full}>
-      {full ? (
-        <div className="vc-full-bar">
-          <span className="vc-full-title">{title}</span>
-          <button type="button" className="vc-full-exit" onClick={exit} autoFocus>
-            <X size={18} strokeWidth={2.2} /> Exit full screen
-          </button>
-        </div>
-      ) : (
-        <button type="button" className="vc-full-open" onClick={enter} aria-label="Full screen">
-          <Expand size={15} strokeWidth={2} /> <span>Full screen</span>
-        </button>
-      )}
-      {children}
-    </div>
-  );
+/** Keeps ?page=N in the address in step with the page on screen, without a navigation (no re-render, no scroll). */
+function replacePageInAddress(p: number) {
+  const u = new URL(window.location.href);
+  if (p > 1) u.searchParams.set('page', String(p));
+  else u.searchParams.delete('page');
+  if (u.href !== window.location.href) window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash);
 }
 
 export default function DocumentView() {
   const { documentId = '' } = useParams();
-  const [params, setParams] = useSearchParams();
-  const page = Math.max(1, Number(params.get('page')) || 1);
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const urlPage = Math.max(1, Number(params.get('page')) || 1);
   const q = (params.get('q') ?? '').slice(0, 200);
-  const load = useLoad(`doc:${documentId}`, () => DocumentService.get(documentId));
+  const [attempt, setAttempt] = useState(0);
+  const load = useLoad(`doc:${documentId}:${attempt}`, () => DocumentService.get(documentId));
   const doc = load.status === 'done' ? load.data : null;
   const [showMeeting, setShowMeeting] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
   const siblings = useMeetingDocs(doc?.meeting?.id ?? null);
-  const fileUrl = doc ? (doc.archiveUrl ?? (doc.mimeType === 'application/pdf' ? `/api/documents/${encodeURIComponent(doc.id)}/file` : null)) : null;
+  const [page, setPage] = useState<{ for: string; page: number }>({ for: documentId, page: urlPage });
+  const current = page.for === documentId ? page.page : urlPage;
+  const notFound = load.status === 'error' && isDataError(load.error) && load.error.kind === 'not_found';
 
   useEffect(() => {
     if (doc) setHead(doc.title, [labelsOf(doc).type, doc.governmentBodyName, formatDate(doc.date)].filter(Boolean).join(', ') + '. A Vineyard, Utah public record with its source document and full text.');
   }, [doc]);
 
-  const setPage = (p: number) => {
-    const next = new URLSearchParams(params);
-    if (p > 1) next.set('page', String(p));
-    else next.delete('page');
-    setParams(next, { replace: true });
+  // An old id that now answers with the record it was folded into: the address shows the current id.
+  useEffect(() => {
+    if (doc && doc.id !== documentId && documentId.startsWith('doc_')) navigate(`/documents/${encodeURIComponent(doc.id)}${window.location.search}`, { replace: true });
+  }, [doc, documentId, navigate]);
+
+  // A slow or failed answer (not a missing record) is tried again once on its own.
+  useEffect(() => {
+    if (load.status !== 'error' || notFound || attempt > 0) return;
+    const t = setTimeout(() => setAttempt(1), 1500);
+    return () => clearTimeout(t);
+  }, [load.status, notFound, attempt]);
+
+  const onPage = (p: number) => {
+    setPage({ for: documentId, page: p });
+    replacePageInAddress(p);
   };
 
   if (load.status === 'error') {
+    const message = notFound ? (isDataError(load.error) && /taken out of the archive/.test(load.error.message) ? load.error.message : 'That record is not in the archive.') : null;
     return (
       <Frame>
         <BackButton fallback="/records" />
-        <div className="vc-empty" style={{ marginTop: '2rem' }}>
-          That record is not in the archive.
+        <div style={{ marginTop: '2rem' }}>
+          {message ? (
+            <div className="vc-empty">
+              {message}{' '}
+              <Link to="/records" className="vc-doc-adopted">
+                Browse the records
+              </Link>
+            </div>
+          ) : (
+            <ErrorNote onRetry={() => setAttempt((a) => a + 1)}>The record could not be loaded just now.</ErrorNote>
+          )}
         </div>
       </Frame>
     );
@@ -275,6 +150,7 @@ export default function DocumentView() {
   }
 
   const original = safeHttp(doc.originalUrl);
+  const fileUrl = doc.archiveUrl ?? null;
   const highlight = q.split(/\s+/).filter((w) => w.length > 2).slice(0, 8);
   const lb = labelsOf(doc);
   const facts = [lb.type, formatDate(doc.date) ?? (doc.adoption?.date ? null : doc.year ? String(doc.year) : null), doc.governmentBodyName, lb.item ? `Item ${lb.item}` : null, doc.pageCount ? `${doc.pageCount} pages` : null].filter(Boolean);
@@ -293,7 +169,7 @@ export default function DocumentView() {
           ))}
         </p>
         <h1 className="vc-page-title">{lb.title}</h1>
-        {(lb.status || filedAs) && (
+        {(lb.status || filedAs || doc.adoption?.date) && (
           <p className="vc-doc-filed">
             {lb.status && (
               <span className="vc-rchip" data-status={lb.status}>
@@ -313,7 +189,7 @@ export default function DocumentView() {
           {original || fileUrl ? <>Source document: {original ?? `${window.location.origin}${fileUrl}`}<br /></> : null}
           This page: {`${window.location.origin}${window.location.pathname}`}
         </p>
-        <div className="vc-mtg-actions">
+        <div className="vc-mtg-actions vc-doc-actions">
           {doc.meeting && (
             <Link to={meetingHref(doc.meeting)} className="vc-secondary">
               <CalendarDays size={15} strokeWidth={1.8} /> {doc.meeting.title}, {formatDate(doc.meeting.date)}
@@ -325,14 +201,6 @@ export default function DocumentView() {
               <Layers size={15} strokeWidth={1.8} /> Everything from this meeting <span className="vc-count">{siblings.status === 'loading' ? '\u00a0\u00a0' : siblings.docs.length}</span>
             </button>
           )}
-          {(doc.archiveUrl || doc.mimeType === 'application/pdf') && (
-            <a href={doc.archiveUrl ?? `/api/documents/${encodeURIComponent(doc.id)}/file`} className="vc-secondary" download>
-              <Download size={15} strokeWidth={1.8} /> Download
-            </a>
-          )}
-          <button type="button" className="vc-secondary" onClick={() => printRecord(doc, fileUrl)}>
-            <Printer size={15} strokeWidth={1.8} /> Print
-          </button>
           <button
             type="button"
             className="vc-secondary"
@@ -356,9 +224,7 @@ export default function DocumentView() {
           {resident && <ReportButton documentId={doc.id} />}
         </div>
       </header>
-      <FullScreenShell title={doc.title}>
-        <Viewer doc={doc} page={page} setPage={setPage} highlight={highlight} />
-      </FullScreenShell>
+      <RecordViewer key={doc.id} doc={doc} page={current} onPage={onPage} highlight={highlight} />
       {showMeeting && doc.meeting && <MeetingDocsSheet meeting={{ id: doc.meeting.id, title: doc.meeting.title, date: doc.meeting.date }} currentId={doc.id} onClose={() => setShowMeeting(false)} />}
     </Frame>
   );

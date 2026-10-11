@@ -156,3 +156,22 @@ Every route sets `document.title` ("Page | Vineyard Transparency Portal") and th
 navigation (`src/lib/head.ts`). The share image (`public/og.png`, 1200 by 630) and the icons
 (`favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`) come from
 `scripts/og/make.mjs`, which renders the wordmark in a browser.
+
+## Record viewer
+
+`/documents/:id` (`src/console/RecordViewer.tsx`, styles in `src/components/documents/viewer.css`, plain classes on
+the tokens above, never utility classes). The header stays short: facts, title, one row of actions (swiped
+sideways on phones), so the first page shows without scrolling.
+
+- PDF on a computer: the browser's own PDF viewer in a same-origin frame of `/api/documents/:id/file`
+  (`#page=N`), as tall as the screen under the toolbar.
+- PDF on a phone or tablet (or a browser with its PDF viewer off): every page drawn with pdf.js, one under the
+  other, sharp at the screen's density, with a transparent text layer. pdf.js needs its data files (WebAssembly
+  image decoders for scans, standard fonts, character maps), copied to `/assets/pdfjs-<version>/` by
+  `vite.config.ts`, and `'wasm-unsafe-eval'` in `script-src`.
+- One toolbar: previous, page box, next, zoom (pdf.js on a computer), Download, Print, Open, Full screen.
+  Labels show from 720 px; on a phone the icons carry them as names.
+- No copy the portal can serve: one "Open the PDF" button to the official file, with the text the archive read
+  below. Never a blank frame: the file is checked to be a PDF before a viewer is drawn.
+- Images are shown as they are; Word files and spreadsheets are offered as a download, never converted.
+- `.github/workflows/doc-check.yml` checks 25 random records nightly at 390 and 1440 px.
