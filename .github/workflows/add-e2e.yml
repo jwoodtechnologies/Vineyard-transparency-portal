@@ -1,0 +1,49 @@
+name: Add page end to end check
+
+# Adds a test note on the public Add page, checks it is searchable with the resident label,
+# reports it from two runners (two people), checks it is hidden, then removes and deletes it.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  VTP_API_BASE: ${{ vars.VTP_API_BASE || 'https://vineyardportal.org,https://vineyard-transparency-portal.citizenjwood.workers.dev' }}
+  VTP_OIDC_AUDIENCE: vineyardportal.org
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      doc: ${{ steps.run.outputs.doc }}
+      ip: ${{ steps.ip.outputs.ip }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q "requests>=2.31,<3"
+      - id: ip
+        run: echo "ip=$(curl -s https://api.ipify.org)" >> "$GITHUB_OUTPUT"
+      - id: run
+        run: python -m ingest.e2e_add submit
+
+  second:
+    needs: submit
+    if: always() && needs.submit.outputs.doc != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q "requests>=2.31,<3"
+      - name: Runner addresses
+        run: |
+          now=$(curl -s https://api.ipify.org)
+          if [[ "$now" == "${{ needs.submit.outputs.ip }}" ]]; then echo "Same address as the first runner" | tee -a "$GITHUB_STEP_SUMMARY"; else echo "Different address from the first runner" | tee -a "$GITHUB_STEP_SUMMARY"; fi
+      - run: python -m ingest.e2e_add second "${{ needs.submit.outputs.doc }}"
