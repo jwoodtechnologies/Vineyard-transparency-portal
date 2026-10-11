@@ -14,7 +14,7 @@ import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 maplibregl.setWorkerUrl(workerUrl);
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronDown, Crosshair, Layers, MessageSquare, Search, X } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
@@ -96,7 +96,6 @@ const LOOK: Record<string, Look> = {
   subdivisions: { color: '#1098ad', kind: 'fill', by: 'Subdivision', opacity: 0.14, width: 2.4, label: 'Subdivision', labelZoom: 12.5 },
   rda: { color: '#7048e8', kind: 'fill', opacity: 0.16, outline: '#5f3dc4', width: 2.6, dash: true, label: 'REDEV', labelZoom: 12 },
   rdaparcels: { color: '#7048e8', kind: 'fill', by: 'RDA', opacity: 0.3, width: 0.7, label: 'RDA', labelZoom: 15.5 },
-  pdoverlay: { color: '#f76707', kind: 'fill', opacity: 0.12, outline: '#d9480f', width: 2.6, dash: true, label: 'GRANTEE', labelZoom: 12.5 },
   snowplow: { color: '#1c7ed6', kind: 'line', by: 'Priority', width: 2.5 },
   evacroutes: { color: '#e03131', kind: 'line', width: 3.5 },
   evaczones: { color: '#f08c00', kind: 'fill', by: 'Zone', opacity: 0.16, width: 2.4, label: 'Zone', labelZoom: 12 },
@@ -124,7 +123,6 @@ const NAME_FIELD: Record<string, string[]> = {
   zoning: ['ZONE', 'District'],
   landuse: ['Land_Use'],
   parcels: ['SITE_FULL_ADDRESS', 'PARCEL_NO'],
-  pdoverlay: ['GRANTEE'],
   rda: ['REDEV', 'REDLAB'],
   watersedge: ['District', 'ZONE'],
   amenities: ['Facility'],
@@ -201,7 +199,6 @@ const LABEL: Record<string, string> = {
   GLA_WEIGHTED_YRBLT: 'Year built (2025 city parcel data)',
   MKT_CUR_VALUE: 'Market value (county)',
   TAX_DISTRICT_DESCR: 'Tax district',
-  GRANTEE: 'Planned development',
   PARCEL_ID: 'Parcel',
   PARCEL_ADD: 'Address',
   acreage: 'Acres',
@@ -265,7 +262,7 @@ const streetOf = (full: string) => titleWords(full.trim().replace(/^[NSEW]\s+(?=
 function nameOf(layer: string, p: Record<string, unknown>): string {
   for (const f of NAME_FIELD[layer] ?? []) {
     const v = fmt(f, p[f]);
-    if (v) return layer === 'roads' ? streetOf(v) : layer === 'rda' || layer === 'rdaparcels' ? areaName(v, layer) : v;
+    if (v) return layer === 'roads' ? streetOf(v) : layer === 'snowplow' ? titleWords(v) : layer === 'rda' || layer === 'rdaparcels' ? areaName(v, layer) : v;
   }
   return 'Map feature';
 }
@@ -273,13 +270,51 @@ function nameOf(layer: string, p: Record<string, unknown>): string {
 /** What each color means, for layers colored by a field (snow plow priority, zoning, land use). */
 const LEGENDS = new Map<string, Array<[string, string]>>();
 const LEGEND_TITLE: Record<string, string> = { snowplow: 'Snow plow priority', zoning: 'Zoning', landuse: 'Future land use', evaczones: 'Evacuation zone', greenspace: 'Green space', watersedge: "Water's Edge district", rdaparcels: 'RDA', subdivisions: 'Neighborhood' };
-const legendValue = (layer: string, v: string) => (!v.trim() || /^null$/i.test(v) ? (layer === 'snowplow' ? 'No priority listed' : 'Not listed') : layer === 'snowplow' && /^\d+$/.test(v) ? `Priority ${v}${v === '1' ? ' (plowed first)' : ''}` : v);
+/**
+ * Snow plow routes by the city's Priority field (1, 2, 4 or blank in the city GIS). Colors differ in
+ * lightness as well as hue (dark orange, sky blue, yellow), line widths step down by priority, and
+ * roads with no priority listed are a thin dashed gray, so the classes read without color too.
+ */
+const SNOW: Record<string, { color: string; width: number }> = {
+  '1': { color: '#d55e00', width: 5 },
+  '2': { color: '#56b4e9', width: 3.5 },
+  '3': { color: '#009e73', width: 3 },
+  '4': { color: '#f0e442', width: 3 },
+};
+const SNOW_NONE = { color: '#a6adb4', width: 2 };
+const snowOf = (v: string) => SNOW[v] ?? (v.trim() ? { color: '#cc79a7', width: 3 } : SNOW_NONE);
+/** Who maintains the roads of each plow priority, from the layer's Maintained field. */
+const SNOW_BY = new Map<string, string[]>();
+const snowPriority = (v: unknown) => (v == null || !String(v).trim() || /^null$/i.test(String(v)) ? 'No priority listed' : `Priority ${v}`);
+function legendValue(layer: string, v: string): string {
+  if (layer !== 'snowplow') return !v.trim() || /^null$/i.test(v) ? 'Not listed' : v;
+  const by = SNOW_BY.get(v) ?? [];
+  // Priorities whose roads the city does not maintain name who does (UDOT, Orem City).
+  return by.length && !by.includes('Vineyard City') ? `${snowPriority(v)} (${by.join(', ')})` : snowPriority(v);
+}
+/** A color-coded layer's values in key order: numbers in order, blank last. */
+function legendKeys(layer: string): string[] {
+  const vals = (LEGENDS.get(layer) ?? []).map(([v]) => v);
+  return [...vals].sort((a, b) => Number(!a.trim()) - Number(!b.trim()) || a.localeCompare(b, undefined, { numeric: true }));
+}
+/** A legend key line for a snow plow priority: its color, its width and, with no priority, dashes. */
+const snowSwatch = (v: string): CSSProperties => {
+  const s = snowOf(v);
+  return {
+    height: `${Math.max(3, s.width)}px`,
+    width: '1.4rem',
+    background: v.trim() ? s.color : `repeating-linear-gradient(90deg, ${s.color} 0 5px, transparent 5px 8px)`,
+    boxShadow: '0 0 0 1px rgba(0,0,0,0.6)',
+  };
+};
 
 function colorize(layer: string, fc: FC): FC {
   const by = LOOK[layer]?.by;
   if (!by) return fc;
   const values = [...new Set(fc.features.map((f) => String(f.properties?.[by] ?? '')))].sort();
-  const idx = new Map(values.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+  const idx = new Map(values.map((v, i) => [v, layer === 'snowplow' ? snowOf(v).color : PALETTE[i % PALETTE.length]]));
+  if (layer === 'snowplow')
+    for (const v of values) SNOW_BY.set(v, [...new Set(fc.features.filter((f) => String(f.properties?.[by] ?? '') === v).map((f) => fmt('Maintained', f.properties?.Maintained)).filter((m): m is string => Boolean(m)))].sort());
   LEGENDS.set(layer, values.map((v) => [v, idx.get(v) as string]));
   return { ...fc, features: fc.features.map((f) => ({ ...f, properties: { ...f.properties, __c: idx.get(String(f.properties?.[by] ?? '')) } })) };
 }
@@ -322,7 +357,7 @@ interface Picked {
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
-const DATA_VERSION = 9;
+const DATA_VERSION = 10;
 const loaded = new Map<string, Promise<FC>>();
 /** Maps whose style has finished loading (tiles may still be streaming; layers can be added). */
 const styleReady = new WeakSet<maplibregl.Map>();
@@ -371,7 +406,7 @@ const PROJECT_CASING: Array<[number, number]> = [[11, 3.4], [14, 4.6], [17, 6.6]
 /** The parcel collection each map's source last took. */
 const parcelDrawn = new WeakMap<maplibregl.Map, FC>();
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda'];
-const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'pdoverlay', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
 
 /** Readable area names: "GENEVA PHASE 2-MEGAPLEX" becomes "Geneva Phase 2, Megaplex". */
 function areaName(v: unknown, key: string): string {
@@ -486,8 +521,6 @@ function askFor(p: { layer: string; name: string; props: Record<string, unknown>
     case 'evaczones':
     case 'evacroutes':
       return `What is Vineyard's evacuation plan for ${name}?`;
-    case 'pdoverlay':
-      return `What planned development overlay applies to ${name} in Vineyard, and what did the City Council approve?`;
     case 'wayfinding':
       // Wayfinding points carry sign directions ("Continue East on Center Street..."), not names.
       return `What has Vineyard planned or installed for wayfinding signs${v('Type') ? ` (${v('Type')})` : ''}, and where do they go?`;
@@ -528,6 +561,8 @@ export default function MapPage() {
   const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820);
   // The legend starts folded on phones so it never sits on top of the zoom buttons.
   const [legendOpen, setLegendOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 640);
+  // Set when a color-coded layer is turned on: the legend opens with a short highlight.
+  const [legendFlash, setLegendFlash] = useState(false);
   const [q, setQ] = useState('');
   const [zoom, setZoom] = useState(13);
   const [error, setError] = useState<string | null>(null);
@@ -703,21 +738,21 @@ export default function MapPage() {
       // One click handler for every layer: the topmost feature under the pointer wins.
       m.on('click', (e) => {
         if (window.innerWidth <= 820) setPanel(false);
-        const ids = (m.getStyle().layers ?? []).map((l) => l.id).filter((id) => /^vtp-(?!pick|boundary|mask)[a-z]+-(fill|line|circle)$/.test(id) && m.getLayoutProperty(id, 'visibility') !== 'none');
+        const ids = (m.getStyle().layers ?? []).map((l) => l.id).filter((id) => /^vtp-(?!pick|boundary|mask)[a-z]+-(fill|line|dash|circle)$/.test(id) && m.getLayoutProperty(id, 'visibility') !== 'none');
         const hits = m.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: ids });
         const order = (f: MapGeoJSONFeature) => (f.layer.type === 'circle' ? 0 : f.layer.type === 'line' && !f.layer.id.includes('parcels') ? 1 : 2);
         const f = [...hits].sort((a, b) => order(a) - order(b))[0];
         // Zoom 14 and 15 draw parcel lines with no shapes to tap: the parcel under the tap is looked
         // up instead, ahead of the areas drawn under parcels (as at zoom 16), behind points and lines.
         const tap = parcelTapRef.current;
-        const fKey = f?.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|circle)$/, '');
+        const fKey = f?.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|dash|circle)$/, '');
         const under = !f || (order(f) === 2 && DRAW_ORDER.indexOf(fKey ?? '') < DRAW_ORDER.indexOf('parcels'));
         if (tap.on && under && tapLooksUpParcel(m.getZoom(), tap.linesOk)) {
           pickParcelRef.current(m, e.lngLat, {});
           return;
         }
         if (!f) return;
-        const key = f.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|circle)$/, '');
+        const key = f.layer.id.replace(/^vtp-/, '').replace(/-(fill|line|dash|circle)$/, '');
         if (key === 'parcels') {
           pickParcelRef.current(m, e.lngLat, f.properties ?? {});
           return;
@@ -911,6 +946,16 @@ export default function MapPage() {
             },
             before,
           );
+        } else if (key === 'snowplow') {
+          // Each priority on the same dark casing as the other lines; no priority listed is dashed.
+          const pr = ['to-string', ['coalesce', ['get', 'Priority'], '']];
+          const widthOf = (scale: number, extra: number) =>
+            ['interpolate', ['linear'], ['zoom'], 12, ['match', pr, ...Object.entries(SNOW).flatMap(([v, s]) => [v, s.width * scale * 0.6 + extra]), '', SNOW_NONE.width * scale * 0.6 + extra, 3 * scale * 0.6 + extra], 17, ['match', pr, ...Object.entries(SNOW).flatMap(([v, s]) => [v, s.width * scale * 1.5 + extra]), '', SNOW_NONE.width * scale * 1.5 + extra, 3 * scale * 1.5 + extra]] as unknown as number;
+          const listed = ['!=', pr, ''] as unknown as maplibregl.FilterSpecification;
+          const unlisted = ['==', pr, ''] as unknown as maplibregl.FilterSpecification;
+          map.addLayer({ id: `${src}-casing`, type: 'line', source: src, minzoom, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': CASING.color, 'line-opacity': CASING.opacity, 'line-width': widthOf(1, 2.5) } }, before);
+          map.addLayer({ id: `${src}-dash`, type: 'line', source: src, minzoom, filter: unlisted, layout: { 'line-join': 'round' }, paint: { 'line-color': SNOW_NONE.color, 'line-width': widthOf(1, 0), 'line-dasharray': [2, 1.5] } }, before);
+          map.addLayer({ id: `${src}-line`, type: 'line', source: src, minzoom, filter: listed, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': color, 'line-width': widthOf(1, 0), 'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.95] as unknown as number } }, before);
         } else if (look.kind === 'line') {
           map.addLayer({
             id: `${src}-line`,
@@ -949,7 +994,7 @@ export default function MapPage() {
             paint: { 'text-color': dark ? '#f5f5f6' : key === 'roads' ? '#7a2e05' : edge === color && look.by ? (['coalesce', ['get', '__c'], look.color] as unknown as string) : edge, 'text-halo-color': dark ? 'rgba(10,10,11,0.92)' : 'rgba(255,255,255,0.95)', 'text-halo-width': 1.8 },
           });
         }
-        for (const id of [`${src}-fill`, `${src}-line`, `${src}-circle`]) {
+        for (const id of [`${src}-fill`, `${src}-line`, `${src}-dash`, `${src}-circle`]) {
           if (!map.getLayer(id) || key === 'boundary') continue;
           map.on('mouseenter', id, () => (map.getCanvas().style.cursor = 'pointer'));
           map.on('mousemove', id, (e) => {
@@ -968,7 +1013,7 @@ export default function MapPage() {
         }
       }
       const vis = on.has(key) || key === 'boundary' ? 'visible' : 'none';
-      for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+      for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`, `${src}-dash`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
       // With the city-wide lines, the tiles draw from zoom 16; without them, from zoom 15.
       if (key === 'parcels') for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`]) if (map.getLayer(id)) map.setLayerZoomRange(id, linesOk ? FULL_ZOOM : (info.minZoom ?? 0), 24);
     }
@@ -1037,13 +1082,20 @@ export default function MapPage() {
     [catalog, params, setParams],
   );
 
-  const toggle = (key: string) =>
+  const toggle = (key: string) => {
+    const adding = !on.has(key);
     setOn((cur) => {
       const next = new Set(cur);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
+    // A layer colored by value opens the legend and briefly highlights it, so its key is seen.
+    if (adding && LOOK[key]?.by) {
+      setLegendOpen(true);
+      setLegendFlash(true);
+    }
+  };
 
   const locate = () =>
     navigator.geolocation?.getCurrentPosition(
@@ -1144,7 +1196,8 @@ export default function MapPage() {
                   const minZ = l.key === 'parcels' && linesOk ? linesMinZoom : l.minZoom;
                   const far = minZ != null && zoom < minZ && on.has(l.key);
                   return (
-                  <label key={l.key} className="vc-map-layer" data-dim={far}>
+                  <Fragment key={l.key}>
+                  <label className="vc-map-layer" data-dim={far}>
                     <span className="vc-map-swatch" data-kind={LOOK[l.key]?.kind} style={{ background: lookOf(l.key, dark)?.color }} />
                     <span className="vc-map-lname">
                       {l.label}
@@ -1152,6 +1205,17 @@ export default function MapPage() {
                     </span>
                     <input type="checkbox" className="vc-switch" checked={on.has(l.key)} onChange={() => toggle(l.key)} />
                   </label>
+                  {l.key === 'snowplow' && on.has(l.key) && (
+                    <ul className="vc-map-layer-key" aria-label="Snow plow priority key">
+                      {legendKeys('snowplow').map((v) => (
+                        <li key={v || 'none'}>
+                          <span className="vc-map-swatch" data-kind="line" style={snowSwatch(v)} />
+                          {legendValue('snowplow', v)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  </Fragment>
                   );
                 })}
               </div>
@@ -1166,7 +1230,7 @@ export default function MapPage() {
           if (!shown.length) return null;
           const name = (k: string) => catalog?.find((l) => l.key === k)?.label ?? k;
           return (
-            <aside className="vc-map-legend" data-open={legendOpen} aria-label="Legend">
+            <aside className="vc-map-legend" data-open={legendOpen} data-flash={legendFlash} onAnimationEnd={() => setLegendFlash(false)} aria-label="Legend">
               <button type="button" className="vc-map-legend-toggle" aria-expanded={legendOpen} onClick={() => setLegendOpen((o) => !o)}>
                 <span className="vc-map-legend-dots" aria-hidden="true">
                   {shown.slice(0, 3).map((k) => (
@@ -1180,14 +1244,14 @@ export default function MapPage() {
                 <div className="vc-map-legend-body">
                   {shown.map((k) => {
                   const values = LOOK[k]?.by ? LEGENDS.get(k) : null;
-                  if (values && values.length > 1 && values.length <= 16)
+                  if (values && (values.length > 1 || k === 'snowplow') && values.length <= 16)
                     return (
                       <div key={k}>
                         <p className="vc-map-legend-title">{LEGEND_TITLE[k] ?? name(k)}</p>
                         <ul>
-                          {[...values].sort((a, b) => Number(!a[0].trim()) - Number(!b[0].trim()) || a[0].localeCompare(b[0], undefined, { numeric: true })).map(([v, c]) => (
+                          {legendKeys(k).map((v) => [v, values.find((x) => x[0] === v)?.[1] ?? ''] as const).map(([v, c]) => (
                             <li key={v || 'none'}>
-                              <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={{ background: c }} />
+                              <span className="vc-map-swatch" data-kind={LOOK[k]?.kind} style={k === 'snowplow' ? snowSwatch(v) : { background: c }} />
                               {legendValue(k, v)}
                             </li>
                           ))}
@@ -1222,7 +1286,26 @@ export default function MapPage() {
             </div>
             <h2 className="vc-map-card-title">{picked.name}</h2>
             <dl className="vc-map-facts">
-              {Object.entries(picked.props)
+              {picked.layer === 'snowplow' ? (
+                <>
+                  <div>
+                    <dt>Plow priority</dt>
+                    <dd>
+                      <span className="vc-map-swatch" data-kind="line" style={snowSwatch(fmt('Priority', picked.props.Priority) ?? '')} /> {snowPriority(fmt('Priority', picked.props.Priority))}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Maintained by</dt>
+                    <dd>{fmt('Maintained', picked.props.Maintained) ?? 'Not listed'}</dd>
+                  </div>
+                  {fmt('ROADCLASS', picked.props.ROADCLASS) && (
+                    <div>
+                      <dt>Road class</dt>
+                      <dd>{fmt('ROADCLASS', picked.props.ROADCLASS)}</dd>
+                    </div>
+                  )}
+                </>
+              ) : Object.entries(picked.props)
                 .filter(([k]) => !HIDE.has(k) && !(NAME_FIELD[picked.layer] ?? []).slice(0, 1).includes(k))
                 .map(([k, v]) => [k, fmt(k, v)] as const)
                 .filter(([, v]) => v)

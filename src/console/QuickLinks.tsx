@@ -14,7 +14,7 @@ import { DIRECTORY, directoryFor } from './directory';
 import { dedupeCards } from './cards';
 
 /** Keep in step with DATA_VERSION in MapPage so both read the same cached layer data. */
-const MAP_DATA_VERSION = 9;
+const MAP_DATA_VERSION = 10;
 
 interface Bubble {
   key: string;

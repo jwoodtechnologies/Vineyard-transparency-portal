@@ -4041,6 +4041,11 @@ html.vc-locked .vc-landing {
 .vc-map-legend-title { margin: 8px 0 4px; font-size: var(--vc-fs-micro); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--vc-muted); }
 .vc-map-legend ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .vc-map-legend li { display: flex; align-items: center; gap: 8px; color: var(--vc-ink-2); }
+.vc-map-legend[data-flash='true'] { animation: vc-legend-flash 1.6s ease-out; }
+@keyframes vc-legend-flash { 0%, 40% { box-shadow: 0 0 0 3px var(--vc-accent, #1c7ed6), var(--vc-shadow-sm); } 100% { box-shadow: var(--vc-shadow-sm); } }
+@media (prefers-reduced-motion: reduce) { .vc-map-legend[data-flash='true'] { animation-duration: 0.01s; } }
+.vc-map-layer-key { list-style: none; margin: -0.15rem 0 0.4rem; padding: 0 0 0 1.4rem; display: flex; flex-direction: column; gap: 0.3rem; font-size: var(--vc-fs-xs); color: var(--vc-ink-2); }
+.vc-map-layer-key li { display: flex; align-items: center; gap: 0.5rem; }
 .vc-map .maplibregl-ctrl-bottom-right { z-index: 8; }
 @media (max-width: 640px) {
   .vc-map-legend { left: 10px; bottom: 22px; max-width: calc(100% - 84px); }
