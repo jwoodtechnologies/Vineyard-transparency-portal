@@ -79,6 +79,16 @@ jobs:
             curl -sSI --max-time 30 -A "$BUA" "$G/" > "$OUT/city_headers_browser_ua.txt" 2>&1 || true
             curl -sSI --max-time 30 -A "$UA" "$G/" > "$OUT/city_headers_portal_ua.txt" 2>&1 || true
             curl -sS --max-time 20 https://api.ipify.org > "$OUT/runner_ip.txt" 2>&1 || true
+            # Utah Public Notice Website: entity search for Vineyard (POST form with a CSRF token).
+            J="$RUNNER_TEMP/pmn.cookies"
+            curl -sS -c "$J" -b "$J" -A "$UA" "https://www.utah.gov/pmn/search.html" -o "$OUT/pmn_form.html" || true
+            CSRF=$(grep -o 'name="_csrf" value="[^"]*"' "$OUT/pmn_form.html" | head -1 | sed 's/.*value="//;s/"//')
+            curl -sS -c "$J" -b "$J" -A "$UA" -X POST "https://www.utah.gov/pmn/search.html" \
+              --data-urlencode "entityName=Vineyard" --data-urlencode "_csrf=$CSRF" --data-urlencode "startDate=2026-08-01" \
+              -o "$OUT/pmn_results_vineyard.html" -w "pmn_results_vineyard.html %{http_code} %{size_download}\n" >> "$OUT/index.txt" || true
+            FIRST=$(grep -oE 'href="[^"]*(notice|sitemap)[^"]*"' "$OUT/pmn_results_vineyard.html" | head -3 | sed 's/href="//;s/"$//')
+            n=0; for u in $FIRST; do n=$((n+1)); case "$u" in http*) ;; /*) u="https://www.utah.gov$u";; *) u="https://www.utah.gov/pmn/$u";; esac; save "pmn_notice_$n.html" "$u"; done
+            save pmn_rss.html "https://www.utah.gov/pmn/rss.html"
             i=0; for u in $EXTRA; do i=$((i+1)); save "extra_$i" "$u"; done
           else
             sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils tesseract-ocr antiword > "$OUT/setup.txt" 2>&1 || true
