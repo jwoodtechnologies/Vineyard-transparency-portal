@@ -13,6 +13,8 @@
  * Pure, so it is tested.
  */
 
+import { isAboutFormerMember, isProceduralMotion } from '../../src/lib/voteRules';
+
 export type VoteValue = 'yes' | 'no' | 'abstain' | 'absent' | 'recused';
 
 export interface ParsedMotion {
@@ -415,14 +417,18 @@ export function parseMinutes(text: string, date: string | null = null): ParsedMi
     if (!mover && !votes.length && !res) return; // a stray "motion" with nothing recorded
     if (textOut.length < 4 && !votes.length) return;
     const refs = motionRefs(flat.slice(at, end));
+    const item = (() => {
+      const found = itemFor(textOut, flat) ?? lastItem(flat.slice(0, at));
+      if (found === 'Consent items') return found;
+      const ref = itemByRef(textOut, flat);
+      return ref?.heading && !found?.includes(ref.num) ? ref.heading : found;
+    })();
+    // Putting an item off, striking it, a stretch or recess, adjourning: moves the meeting along and is not a vote.
+    // An item whose own subject is a former member is not listed either (how he voted on a roll stays).
+    if (isProceduralMotion(textOut) || isAboutFormerMember(item, textOut)) return;
     motions.push({
       seq: motions.length + 1,
-      item: (() => {
-        const found = itemFor(textOut, flat) ?? lastItem(flat.slice(0, at));
-        if (found === 'Consent items') return found;
-        const ref = itemByRef(textOut, flat);
-        return ref?.heading && !found?.includes(ref.num) ? ref.heading : found;
-      })(),
+      item,
       text: sentenceCase(textOut).slice(0, 700),
       mover: mover ? namesIn(mover[1])[0] ?? null : null,
       // "Seconded: Council Member Holdaway The meeting adjourned" runs into the next sentence: the member is the first word.
