@@ -1,4 +1,4 @@
-// node:sqlite, as far as the test helpers use it (the tests run in Node; the Worker types have no Node modules).
+// node:sqlite and node:crypto, as far as the test helpers use them (the tests run in Node; the Worker types have no Node modules).
 declare module 'node:sqlite' {
   export interface StatementSync {
     all(...params: unknown[]): Record<string, unknown>[];
@@ -10,4 +10,8 @@ declare module 'node:sqlite' {
     exec(sql: string): void;
     prepare(sql: string): StatementSync;
   }
+}
+
+declare module 'node:crypto' {
+  export function createHash(algorithm: 'sha256'): { update(data: string): { digest(): Uint8Array } };
 }
