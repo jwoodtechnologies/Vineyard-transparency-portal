@@ -32,7 +32,7 @@ Motion: Council Member Nair moved approve item 5.4 as presented. (Ordinance 2026
 Council Member McCumber seconded the motion. Roll Call Vote. Yes: Council Members
 McCumber and Nair. No: Council Members Holdaway and Lauret. Tie Vote resolved by Mayor
 Stratton’s vote of Yes. Motion Passed 3-2.
-MOTION: Council Member McCumber motioned to go into a closed session to discuss pending litigation. Council Member Lauret seconded the motion. Roll Call Vote Yes: Nair, McCumber, and Lauret. No: None. Recused: Holdaway. Motion carried 3-0.`;
+MOTION: Council Member McCumber motioned to approve the settlement of the pending litigation as discussed. Council Member Lauret seconded the motion. Roll Call Vote Yes: Nair, McCumber, and Lauret. No: None. Recused: Holdaway. Motion carried 3-0.`;
   const p = parseMinutes(text, '2026-08-11');
   it('reads attendance, date and body', () => {
     expect(p.present).toEqual(['Stratton', 'Holdaway', 'Lauret', 'McCumber', 'Nair']);
@@ -101,7 +101,7 @@ describe('agenda item labels', () => {
     const p = parseMinutes(`REDEVELOPMENT AGENCY
 September 8, 2026
 3.  CLOSED SESSION The Chair and Board, pursuant to Utah Code 52-4-205, may vote to go into a closed session.
-MOTION: Board Member McCumber motion to go into a closed session. Board Member Lauret seconded the motion. Yes: Board Members Holdaway, Lauret, McCumber, and Wood. No: None. Motion carried 4-0.`, '2026-09-08');
+MOTION: Board Member McCumber motion to approve the closed session minutes. Board Member Lauret seconded the motion. Yes: Board Members Holdaway, Lauret, McCumber, and Wood. No: None. Motion carried 4-0.`, '2026-09-08');
     expect(p.motions[0].item).toBe('3 CLOSED SESSION');
   });
 });
@@ -170,7 +170,7 @@ Councilmember Ezra Nair
 Absent
 `;
   const p = parseMinutes(`${head}Motion: COUNCILMEMBER MCCUMBER MOVED TO APROVE THE AMENDMENTS TO THE FORGE DEVELOPMENT AGREEMENT AS PRESENTED. COUNCILMEMBER NAIR SECONDED. COUNCILMEMBERS NAIR, WOOD, AND MCCUMBER VOTED IN FAVOR. COUNCILMEBERS LAURET AND HOLDAWAY VOTED AGAINS. THE MOTION PASSED WITH A VOTE OF THREE (3) TO TWO (2)
-Motion: COUNCILMEMBER LAURET MOVED TO CONTINUE ITEM 8.6 TO THE NEXT REGULARLY SCHEDULED CITY COUNCIL MEETING. COUNCILMEMBER MCCUMBER SECONDED. COUNCILMEMBERS NAIR, LAURET, MCCUMBER AND WOOD VOTED IN FAVOR. COUNCILMEMBER HOLDAWAY WAS NOT IN
+Motion: COUNCILMEMBER LAURET MOVED TO APPROVE ITEM 8.6 AS AMENDED. COUNCILMEMBER MCCUMBER SECONDED. COUNCILMEMBERS NAIR, LAURET, MCCUMBER AND WOOD VOTED IN FAVOR. COUNCILMEMBER HOLDAWAY WAS NOT IN
 Page 5 of 7; March 24, 2026, City Council Minutes
 ATTENDANCE DURING THE VOTE. THE MOTION PASSED UNANIMOUSLY.
 Motion: COUNCILMEMBER HOLDAWAY MOVED TO APPROVE THE FORMATION OF THE SUBCOMMITTEE AS PRESENTED. COUNCILMEMBER MCCUMBER SECONDED. COUNCILMEMBERS NAIR, LAURET, WOOD, HOLDAWAY AND VOTED IN FAVOR. THE MOTION PASSED UNINMOUSLY.`, '2026-03-24');
@@ -269,7 +269,7 @@ describe('consent items', () => {
 });
 
 describe('public sign-in list', () => {
-  const minutes = `NOTICE OF A REDEVELOPMENT\n\nAGENCY BOARD MEETING\n\nMay 12, 2026, at 6:00 PM\n\nAGENDA\n\nMayor Zack Stratton\n\nRDA Board Member Jacob Holdaway\n\nRDA Board Member David Lauret\n\nRDA Board Member Parker McCumber\n\nRDA Board Member Ezra Nair\n\nRDA Board Member Jacob Wood\n\nStaff Present: Administrative Director David Herring; City Recorder Robin Bond; RDA Director Josh Daniels.\n\nAlso Attending: Daria Evans, Karen Cornelius, Emmeline McCumber, Trinity Ewing, and\nothers who did not sign in.\n\n1. CALL TO ORDER\n\nMotion: Board Member Lauret motioned to continue Resolution 2026-03 for two weeks. Second: Board Member Holdaway. Yes: Board\n\nMembers, Holdaway, Lauret, McCumber, Nair, and Wood. Motion Passed 5-0.\n`;
+  const minutes = `NOTICE OF A REDEVELOPMENT\n\nAGENCY BOARD MEETING\n\nMay 12, 2026, at 6:00 PM\n\nAGENDA\n\nMayor Zack Stratton\n\nRDA Board Member Jacob Holdaway\n\nRDA Board Member David Lauret\n\nRDA Board Member Parker McCumber\n\nRDA Board Member Ezra Nair\n\nRDA Board Member Jacob Wood\n\nStaff Present: Administrative Director David Herring; City Recorder Robin Bond; RDA Director Josh Daniels.\n\nAlso Attending: Daria Evans, Karen Cornelius, Emmeline McCumber, Trinity Ewing, and\nothers who did not sign in.\n\n1. CALL TO ORDER\n\nMotion: Board Member Lauret motioned to approve Resolution 2026-03 as presented. Second: Board Member Holdaway. Yes: Board\n\nMembers, Holdaway, Lauret, McCumber, Nair, and Wood. Motion Passed 5-0.\n`;
 
   it('does not count staff or visitors as present', () => {
     const r = parseMinutes(minutes, '2026-05-12');

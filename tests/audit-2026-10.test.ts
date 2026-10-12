@@ -25,6 +25,7 @@ Motion: Council Member Nair motioned to continue items 5.1, 5.3, 5.4, 5.5, 5.6, 
 Mayor Stratton called for a Mayor Pro Tem. He had another commitment to attend.
 Motion: Council Member Nair motioned, in honor of Council Member McCumber’s new son, that Council Member Parker McCumber should be Mayor Pro Tem. Second: Council Member Wood. Yes: Council Members, Holdaway, Lauret, McCumber, Nair, and Wood. No: None. Motion passed 5-0.
 5.2. Adopt Resolution 2026-23 to Establish a Complete Land Use Application and Applicant Vesting Control Policy.
+Motion: Council Member Wood motioned to approve Resolution 2026-23 as presented. Seconded: David Lauret No: None Yes: Council Members Holdaway, Lauret, McCumber, Nair, and Wood. Motion Passed 5-0
 Motion: Council Member Wood motioned to move Agenda item 5.2 to the next meeting. Seconded: David Lauret No: None Yes: Council Members Holdaway, Lauret, McCumber, Nair, and Wood. Motion Passed 5-0
 `;
   const r = parseMinutes(text, '2026-04-14');
@@ -32,14 +33,18 @@ Motion: Council Member Wood motioned to move Agenda item 5.2 to the next meeting
   it('reads "Second: Council Member Wood" and "Seconded: David Lauret"', () => {
     expect(r.motions.map((m) => [m.mover, m.seconder, m.tally])).toEqual([
       ['Nair', 'Wood', '5-0'],
-      ['Nair', 'Wood', '5-0'],
       ['Wood', 'Lauret', '5-0'],
     ]);
   });
 
+  it('does not list the motions that only put items off to another meeting', () => {
+    expect(r.motions.map((m) => m.text)).not.toContainEqual(expect.stringMatching(/continue|move agenda item/i));
+    expect(r.motions).toHaveLength(2);
+  });
+
   it('keeps the wording of a motion with a comma after the verb', () => {
-    expect(r.motions[1].text).toMatch(/^in honor of Council Member McCumber's new son, that Council Member Parker McCumber should be Mayor Pro Tem$/);
-    expect(r.motions[0].text).not.toMatch(/second/i);
+    expect(r.motions[0].text).toMatch(/^in honor of Council Member McCumber's new son, that Council Member Parker McCumber should be Mayor Pro Tem$/);
+    expect(r.motions[1].text).not.toMatch(/second/i);
   });
 });
 
@@ -57,7 +62,7 @@ Motion: Board Member Lauret.motioned toapprove the hiring of Jared Tamez as an R
   it('reads "COMISSIONER" and "COMMISSIONERR" (March 4, 2026 Planning Commission minutes, doc_87f4b9c0a818e65b, pages 1 and 2)', () => {
     const text = `PLANNING COMMISSION MEETING MINUTES
 Motion: COMISSIONER JORDAN CHRISTENSEN MOTIONED TO ELECT COMMISSIONER DAVID PEARCE AS CHAIR TEMPORE FOT THIS MEETING AT 6:00PM. COMMISSIONER GRADEN OSTLER SECONDED. ALL IN FAVOR SAID YES: HUNTINGTON, PEARCE, CHRISTENSEN, AND OSTLER. THE MOTION CARRIED UNANIMOUSLY.
-Motion: COMMISSIONERR CHRISTENSEN MOTIONED TO MOVE ITEMS 5.3. AND 5.4. TO THE MARCH 18TH PLANNING COMMISSION MEETING AT 6:11PM. COMMISSIONER HUNTINGTON SECONDED. ALL IN FAVOR VOTED YES: HUNTINGTON, PEARCE, CHRISTENSEN, AND OSTLER. THE VOTE CARRIED UNANIMOUSLY.
+Motion: COMMISSIONERR CHRISTENSEN MOTIONED TO APPROVE ITEMS 5.3. AND 5.4. AS PRESENTED AT 6:11PM. COMMISSIONER HUNTINGTON SECONDED. ALL IN FAVOR VOTED YES: HUNTINGTON, PEARCE, CHRISTENSEN, AND OSTLER. THE VOTE CARRIED UNANIMOUSLY.
 `;
     const ms = parseMinutes(text, '2026-03-04').motions;
     expect(ms.map((m) => [m.mover, m.seconder])).toEqual([
