@@ -23,7 +23,7 @@ export function countyPageUrl(page, box = AREA) {
     inSR: '4326',
     spatialRel: 'esriSpatialRelIntersects',
     where: '1=1',
-    outFields: 'PARCEL_NO,OWNER_NAME,SUB_NAME',
+    outFields: 'PARCEL_NO,OWNER_NAME,SUB_NAME,SITE_FULL_ADDRESS,ACREAGE',
     returnGeometry: 'true',
     outSR: '4326',
     geometryPrecision: '6',

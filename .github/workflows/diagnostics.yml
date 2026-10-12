@@ -117,7 +117,7 @@ jobs:
           elif [[ "$TASK" == "owner-filter" ]]; then
             # Every Vineyard parcel through worker/lib/ownerFilter.ts. Writes counts by reason and 30 random
             # SHOWN names only; withheld names are never printed or written (scripts/owner-filter/run.mjs).
-            node scripts/owner-filter/run.mjs --out "$OUT/owner-filter.json" > "$OUT/owner-filter.txt" 2>&1 || echo "exit=$?" >> "$OUT/owner-filter.txt"
+            node scripts/owner-filter/run.mjs --out "$OUT/owner-filter.json" --explain "${EXTRA}" --acres-over 90 --explain-exempt > "$OUT/owner-filter.txt" 2>&1 || echo "exit=$?" >> "$OUT/owner-filter.txt"
           elif [[ "$TASK" == "ask-timing" ]]; then
             # Questions through POST /api/ask (stream), the tests Neuron bucket: first words, total, engine, answer.
             IFS='|' read -r -a QS <<< "${QUESTIONS}"
