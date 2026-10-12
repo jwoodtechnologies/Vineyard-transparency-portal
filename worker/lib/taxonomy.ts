@@ -33,6 +33,7 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   resident_submission: 'Resident submission',
   tax_rate: 'Tax rates',
   election_result: 'Election results',
+  staff_update: 'Update',
   other: 'Other record',
 };
 
@@ -54,7 +55,7 @@ export const CATEGORY_DEFS: Array<Omit<Category, 'documentCount'> & { id: Catego
   { id: 'reports_studies', label: 'Reports & studies', description: 'Studies, reports, memoranda and presentations.', documentTypes: ['study', 'memorandum', 'presentation'] },
   { id: 'procurement', label: 'Procurement', description: 'Bids, RFPs and procurement records.', documentTypes: ['procurement'] },
   { id: 'maps', label: 'Maps', description: 'Maps.', documentTypes: ['map'] },
-  { id: 'other', label: 'Other records', description: 'Records not in another collection.', documentTypes: ['other', 'correspondence', 'exhibit', 'proclamation', 'municipal_code', 'project', 'note', 'web_link', 'election_result'] },
+  { id: 'other', label: 'Other records', description: 'Records not in another collection.', documentTypes: ['other', 'correspondence', 'exhibit', 'proclamation', 'municipal_code', 'project', 'note', 'web_link', 'election_result', 'staff_update'] },
   { id: 'resident_submissions', label: 'Resident submitted', description: 'Added by residents. Not city records.', documentTypes: ['resident_submission'] },
 ];
 

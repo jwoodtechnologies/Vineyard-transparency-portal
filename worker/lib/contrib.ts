@@ -9,10 +9,28 @@ export const RESIDENT_LABEL = 'Resident submitted. Not a city record.';
 export const RESIDENT_TYPE = 'resident_submission';
 export const PORTAL_SOURCES = new Set([STAFF_SOURCE_ID, RESIDENT_SOURCE_ID]);
 
+/** Updates posted from the panel's Updates tab (plain text, a record of their own). */
+export const UPDATE_TYPE = 'staff_update';
+export const UPDATE_LABEL = 'Update from Vineyard City staff';
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "2026-10-12" as "Oct 12, 2026" (the site's short date). */
+export function shortDate(iso: string | null | undefined): string | null {
+  const m = typeof iso === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(iso) : null;
+  if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) return null;
+  return `${SHORT_MONTHS[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`;
+}
+
+/** "Update from Vineyard City staff, Oct 12, 2026". */
+export function updateLabel(date: string | null | undefined): string {
+  const d = shortDate(date);
+  return d ? `${UPDATE_LABEL}, ${d}` : UPDATE_LABEL;
+}
+
 /** The label a record from this source carries wherever it is shown, or null for city records. */
-export function sourceLabelFor(sourceId: string | null | undefined): string | null {
+export function sourceLabelFor(sourceId: string | null | undefined, documentType?: string | null, date?: string | null): string | null {
   if (sourceId === RESIDENT_SOURCE_ID) return RESIDENT_LABEL;
-  if (sourceId === STAFF_SOURCE_ID) return STAFF_LABEL;
+  if (sourceId === STAFF_SOURCE_ID) return documentType === UPDATE_TYPE ? updateLabel(date) : STAFF_LABEL;
   return null;
 }
 

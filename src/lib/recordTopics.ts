@@ -54,6 +54,7 @@ export const RECORD_TOPICS: RecordTopic[] = [
   { id: 'fees', label: 'Fee schedule', hint: 'The consolidated fee schedule', titles: ['%fee schedule%'], excludeTypes: MEETING_TYPES },
   { id: 'notices', label: 'Public notices', hint: 'Hearings, meetings, notices', types: ['public_notice'], excludeSources: [SHERIFF_SOURCE] },
   { id: 'sheriff', label: 'Sheriff updates', hint: 'Utah County Sheriff releases', sources: [SHERIFF_SOURCE] },
+  { id: 'updates', label: 'Updates', hint: 'From Vineyard City staff', types: ['staff_update'] },
   { id: 'resident', label: 'Resident submissions', hint: 'Added by residents', notice: 'Resident submitted. Not a city record.', sources: [RESIDENT_SOURCE] },
 ];
 

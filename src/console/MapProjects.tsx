@@ -3,6 +3,8 @@
  * the FY 2027 amount, its stage, and Details for the votes and records), then the city's current
  * construction table as one card per row. One edge-cached call: GET /api/pages/construction (the
  * city's Capital Improvement Plan map layer and its Construction Projects page as last stored).
+ * A project with an update from Vineyard City staff (GET /api/updates, read fresh) shows the newest one
+ * on its card.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -10,6 +12,7 @@ import type { FeatureCollection, Geometry } from 'geojson';
 import { ArrowUpRight, ChevronDown, MapPin } from 'lucide-react';
 import { useJson } from './api';
 import { DocLink } from './DocLink';
+import type { StaffUpdate } from './RecordsHome';
 import { ProjectDetail } from './ProjectDetail';
 import { ALSO_FUNDED, CITY_PAGE, millions, money, plansFrom, type Plan, type PlanProps } from './construction';
 import { formatDate, normalizeDatesInText } from '@/lib/dates';
@@ -31,7 +34,7 @@ interface PageData {
 /** The FY 2026-2027 Capital Projects Reference Guide, as archived. */
 const REFERENCE_GUIDE = 'doc_4a2030ca2de99f44';
 
-function ProjectCard({ p, onShow }: { p: Plan; onShow: (gis: string) => void }) {
+function ProjectCard({ p, onShow, update }: { p: Plan; onShow: (gis: string) => void; update?: StaffUpdate }) {
   const [open, setOpen] = useState(false);
   return (
     <li className="vc-mp-card" data-open={open || undefined}>
@@ -40,6 +43,11 @@ function ProjectCard({ p, onShow }: { p: Plan; onShow: (gis: string) => void }) 
         {p.budget != null && <span className="vc-mp-amt">{money(p.budget)}</span>}
       </div>
       <p className="vc-mp-what">{p.about ?? p.category}</p>
+      {update && (
+        <Link to={`/documents/${encodeURIComponent(update.id)}`} className="vc-mp-upd">
+          <b>Latest update{update.date ? `, ${formatDate(update.date)}` : ''}:</b> {update.title}
+        </Link>
+      )}
       <div className="vc-mp-foot">
         <span className="vc-schip">{p.stage}</span>
         <span className="vc-mp-acts">
@@ -119,6 +127,13 @@ export function MapProjects({ onShow }: { onShow: (gis: string) => void }) {
   const plans = useMemo(() => (fc ? plansFrom(fc) : []), [fc]);
   const total = useMemo(() => plans.reduce((s, p) => s + (p.budget ?? 0), 0), [plans]);
   const snapshot = load.status === 'done' ? load.data.construction : null;
+  // The newest staff update for each project on the map (the list comes newest first).
+  const upd = useJson<{ items: StaffUpdate[] }>('/api/updates?limit=100');
+  const latest = useMemo(() => {
+    const m = new Map<string, StaffUpdate>();
+    for (const u of upd.status === 'done' ? upd.data.items : []) if (u.projectGis && !m.has(u.projectGis)) m.set(u.projectGis, u);
+    return m;
+  }, [upd]);
   const { hash } = useLocation();
   const ready = plans.length > 0;
 
@@ -152,7 +167,7 @@ export function MapProjects({ onShow }: { onShow: (gis: string) => void }) {
             </p>
             <ul className="vc-mp-list">
               {plans.map((p) => (
-                <ProjectCard key={p.key} p={p} onShow={onShow} />
+                <ProjectCard key={p.key} p={p} onShow={onShow} update={latest.get(p.gis)} />
               ))}
             </ul>
             <h3 className="vc-mp-sub">Also funded, not on the map</h3>

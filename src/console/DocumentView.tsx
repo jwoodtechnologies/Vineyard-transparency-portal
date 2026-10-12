@@ -228,7 +228,7 @@ export default function DocumentView() {
   const highlight = q.split(/\s+/).filter((w) => w.length > 2).slice(0, 8);
   const lb = labelsOf(doc);
   const facts = [lb.type, formatDate(doc.date) ?? (doc.adoption?.date ? null : doc.year ? String(doc.year) : null), doc.governmentBodyName, lb.item ? `Item ${lb.item}` : null, doc.pageCount ? `${doc.pageCount} pages` : null].filter(Boolean);
-  const label = sourceLabel(doc.sourceId);
+  const label = sourceLabel(doc.sourceId, doc.documentType, doc.date);
   // The record's own meeting, else the meeting its copy was filed with (a municipal code ordinance).
   const meeting = doc.meeting ?? trail?.meeting ?? null;
   const resident = doc.sourceId === 'resident-submitted';

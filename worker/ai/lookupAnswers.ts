@@ -80,7 +80,7 @@ export async function quotesResponse(env: Env, base: Base, question: string, hit
   const roster = officialRoster(staff);
   const citations = quotes.map((q, i) => {
     const c = citationOf(i + 1, q.hit.documentId, q.hit.pageStart, rows.get(q.hit.documentId), { title: q.hit.title, type: q.hit.documentType, date: q.hit.documentDate }, q.sentences.join(' '));
-    return { ...c, excerpt: { ...c.excerpt, chunkId: q.hit.chunkId }, sourceLabel: citationLabel(q.hit.sourceId) };
+    return { ...c, excerpt: { ...c.excerpt, chunkId: q.hit.chunkId }, sourceLabel: citationLabel(q.hit.sourceId, q.hit.documentType, q.hit.documentDate) };
   });
   const items = quotes.map((q: Quote<ChunkHit>, i) => ({ text: titleOfficials(quoteLine(q), roster, [q.hit.documentDate]), citations: [i + 1] }));
   const paragraphs: AnswerParagraph[] = [{ segments: [{ text: lead, citations: [] }] }, { segments: items, list: true }];

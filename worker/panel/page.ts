@@ -6,8 +6,10 @@
  * reject, approved ones to hide or remove), people and invites, and the
  * coverage check (what the archive is missing, with a CSV download), and job health (each scheduled
  * check and source: last run, last success, last error, failures in a row).
- * Uploader: adding records and its own uploads. An invite link (PANEL_PREFIX/invite/<token>) opens
- * the join form, where the invitee picks a display name and creates a passkey.
+ * Admin: the same, except people and invites, the submissions switch, and hiding or removing
+ * approved submissions. Uploader: adding records and its own uploads. An invite link
+ * (PANEL_PREFIX/invite/<token>) opens the join form: an uploader picks a display name and creates a
+ * passkey; an admin picks a sign-in name and a password, and may add a passkey.
  */
 import { PANEL_SCRIPT } from './pageScript';
 
@@ -117,6 +119,10 @@ html.dark .seg button[aria-pressed=true]{background:rgba(255,255,255,.1)}
 .filename{font-size:13px;font-weight:600;word-break:break-all}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 .status{font-size:13px;margin-top:10px;color:var(--muted)}
+.shared{margin-top:14px}.shared .label{margin-bottom:0}
+.file .filehead + label{margin-top:8px}.file label{margin-top:8px}
+.progress{height:6px;border-radius:999px;background:var(--bg2);overflow:hidden;margin:16px 0 0}.progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+#bulkCount{margin-top:10px}
 .status.ok{color:var(--good)}.status.bad{color:var(--bad)}
 .rowacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .linkbox{display:flex;gap:8px;align-items:center;margin-top:12px}
@@ -124,13 +130,16 @@ html.dark .seg button[aria-pressed=true]{background:rgba(255,255,255,.1)}
 .notice{padding:14px 16px;border-radius:14px;background:var(--soft);font-size:14px;line-height:1.5;margin:0 0 18px}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .edit{margin-top:12px;padding-top:4px;border-top:1px solid var(--line)}
+.hist{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--bg2);font-size:13px;line-height:1.5}
+.hist p{margin:0 0 8px;white-space:pre-wrap;word-break:break-word}.hist p:last-child{margin-bottom:0}
+.hist b{font-weight:600}
 a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
 @media (max-width:720px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.bar input[type=search]{width:100%}.item{grid-template-columns:1fr auto;gap:6px 12px}.when{grid-column:1/-1;display:flex;gap:8px}.when b{display:inline}.grid2{grid-template-columns:1fr}.who{display:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><div class="mark">Vineyard<small>Transparency Portal</small></div><div class="acts hidden" id="acts"><span class="who" id="who"></span><button class="btn ghost" id="secBtn" type="button">Passkeys</button><button class="btn" id="outBtn" type="button">Sign out</button></div></div>
+  <div class="top"><div class="mark">Vineyard<small>Transparency Portal</small></div><div class="acts hidden" id="acts"><span class="who" id="who"></span><button class="btn ghost" id="secBtn" type="button">Security</button><button class="btn" id="outBtn" type="button">Sign out</button></div></div>
 
   <section id="setup" class="auth hidden">
     <h1>Welcome</h1>
@@ -151,7 +160,7 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <p class="hint hidden" id="noPk">This browser cannot use passkeys. Try Safari or Chrome.</p>
     <div class="or hidden" id="orLine">or</div>
     <form id="loginForm" class="hidden">
-      <label for="lEmail">Email</label><input id="lEmail" type="email" autocomplete="username webauthn" required>
+      <label for="lEmail">Email or user name</label><input id="lEmail" type="text" autocomplete="username webauthn" autocapitalize="none" spellcheck="false" required>
       <label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password" required>
       <button class="btn big" id="lBtn" type="submit">Sign in</button>
     </form>
@@ -159,9 +168,16 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
   </section>
 
   <section id="invite" class="auth hidden">
-    <h1>Join</h1>
-    <p class="sub">You were invited to add records to the portal.</p>
-    <form id="inviteForm">
+    <h1 id="iHead">Join</h1>
+    <p class="sub" id="iSub">You were invited to add records to the portal.</p>
+    <form id="adminJoin" class="hidden">
+      <label for="aLogin">Sign-in name (email or user name)</label><input id="aLogin" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="100" required>
+      <label for="aPass">Password (12 or more characters)</label><input id="aPass" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+      <p class="hint">Next you can add a passkey (Face ID, Touch ID or Windows Hello), or add one later from Security.</p>
+      <p class="err" id="aErr"></p>
+      <button class="btn primary big" id="aBtn" type="submit">Create account</button>
+    </form>
+    <form id="inviteForm" class="hidden">
       <label for="iName">Your name</label><input id="iName" type="text" autocomplete="name" maxlength="60" required>
       <p class="hint">Next, your device asks to create a passkey (Face ID, Touch ID or Windows Hello). You sign in with it from then on.</p>
       <p class="err" id="iErr"></p>
@@ -193,10 +209,13 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
       <p class="notice hidden" id="pkNudge"></p>
 
       <div id="k-files">
-        <label class="drop" id="drop" for="fileInput"><b>Drop files here</b><span>or tap to choose. PDF, PNG, JPG, TXT or CSV, up to 25 MB each.</span></label>
+        <label class="drop" id="drop" for="fileInput"><b>Drop files here</b><span>One or many. Or tap to choose. PDF, PNG, JPG, TXT or CSV, up to 25 MB each.</span></label>
         <input id="fileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.txt,.csv,application/pdf,image/png,image/jpeg,text/plain,text/csv" class="hidden">
+        <div class="card pad shared hidden" id="bulkShared"><p class="label">For every file</p></div>
+        <div class="progress hidden" id="bulkBar"><span id="bulkFill"></span></div>
+        <p class="hint" id="bulkCount"></p>
         <ul class="files" id="fileList"></ul>
-        <div class="rowacts hidden" id="fileActs"><button class="btn primary" id="addAll" type="button">Add all</button><button class="btn ghost" id="clearFiles" type="button">Clear</button></div>
+        <div class="rowacts hidden" id="fileActs"><button class="btn primary" id="addAll" type="button">Add files</button><button class="btn hidden" id="retryFailed" type="button">Retry failed</button><button class="btn ghost" id="clearFiles" type="button">Clear</button></div>
       </div>
 
       <form id="k-project" class="card pad hidden">
@@ -223,6 +242,24 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
       </form>
     </div>
 
+    <div id="v-updates" class="view hidden">
+      <div class="head"><h1>Updates</h1></div>
+      <form id="upForm" class="card pad">
+        <label for="upTitle">Title (optional)</label><input id="upTitle" type="text" maxlength="200">
+        <label for="upText">Text</label><textarea id="upText" maxlength="20000" required placeholder="We finished the 400 North signal. The road is open again."></textarea>
+        <div class="grid2">
+          <div><label for="upDate">Date</label><input id="upDate" type="date" required></div>
+          <div><label for="upTopic">Project or topic (optional)</label><select id="upTopic"><option value="">None</option></select></div>
+        </div>
+        <p class="hint">Shows at once in search, chat answers and Records, and on a project's card under the map. Labelled "Update from Vineyard City staff".</p>
+        <p class="err" id="upErr"></p>
+        <button class="btn primary" type="submit">Publish</button>
+      </form>
+      <h2 class="sub">Published</h2>
+      <div class="card"><ul class="feed" id="updList"></ul><div class="empty hidden" id="updEmpty">No updates yet.</div></div>
+      <div class="hidden" id="updGoneWrap"><h2 class="sub">Removed</h2><div class="card"><ul class="feed" id="updGone"></ul></div></div>
+    </div>
+
     <div id="v-uploads" class="view hidden">
       <div class="head"><h1>Uploads</h1><label class="chk"><input id="mineOnly" type="checkbox"> Only mine</label></div>
       <div class="card"><ul class="feed" id="upList"></ul><div class="empty hidden" id="upEmpty">Nothing added yet.</div></div>
@@ -243,9 +280,9 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <div id="v-people" class="view hidden">
       <div class="head"><h1>People</h1></div>
       <div class="card pad">
-        <p class="label">Invite an uploader</p>
-        <p class="hint">The link works once and expires in 72 hours. It is shown only now.</p>
-        <form id="invForm"><label for="invName">Name (optional)</label><input id="invName" type="text" maxlength="60"><p class="err" id="invErr"></p><button class="btn primary" type="submit">Create invite link</button></form>
+        <div class="switch"><p class="label">Invite</p><div class="seg" id="invRole"><button type="button" data-r="admin" aria-pressed="true">Admin</button><button type="button" data-r="uploader" aria-pressed="false">Uploader</button></div></div>
+        <p class="hint" id="invHint"></p>
+        <form id="invForm"><label for="invName">Name</label><input id="invName" type="text" maxlength="60"><p class="err" id="invErr"></p><button class="btn primary" id="invBtn" type="submit">Invite admin</button></form>
         <div class="linkbox hidden" id="invBox"><input id="invLink" type="text" readonly aria-label="Invite link"><button class="btn" id="invCopy" type="button">Copy</button></div>
       </div>
       <h2 class="sub">Accounts</h2>
@@ -287,10 +324,12 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
 </div>
 
 <div class="sheetbg hidden" id="sheetBg"></div>
-<aside class="sheet hidden" id="sheet" role="dialog" aria-label="Passkeys">
-  <div class="sheethead"><h2>Passkeys</h2><button class="btn ghost" id="sheetClose" type="button">Close</button></div>
+<aside class="sheet hidden" id="sheet" role="dialog" aria-label="Security">
+  <div class="sheethead"><h2>Security</h2><button class="btn ghost" id="sheetClose" type="button">Close</button></div>
   <div class="sec">
-    <p class="hint">Sign in with Face ID, Touch ID or Windows Hello. Keep at least one.</p>
+    <p class="notice hidden" id="pkWelcome">Your account is ready. Add a passkey now for quick sign-in, or later from Security.</p>
+    <p class="label">Passkeys</p>
+    <p class="hint" id="pkHint">Sign in with Face ID, Touch ID or Windows Hello. Keep at least one.</p>
     <ul class="keys" id="keys"></ul>
     <button class="btn primary" id="pkAdd" type="button">Add a passkey</button>
     <p class="err" id="pkErr"></p>

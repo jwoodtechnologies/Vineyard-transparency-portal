@@ -37,10 +37,14 @@ export const PANEL_SCRIPT = String.raw`(function(){
   var TYPE_NAME = {}; TYPES.forEach(function(t){ TYPE_NAME[t[0]] = t[1]; });
 
   // ------------------------------------------------------------ navigation
-  var VIEWS = [['activity','Activity',true],['add','Add',false],['uploads','Uploads',false],['subs','Submissions',true],['people','People',true],['coverage','Coverage',true],['health','Health',true]];
+  // Who sees each tab: 'all' accounts, 'staff' (the owner and admins) or the 'owner' alone.
+  var VIEWS = [['activity','Activity','staff'],['add','Add','all'],['updates','Updates','staff'],['uploads','Uploads','all'],['subs','Submissions','staff'],['people','People','owner'],['coverage','Coverage','staff'],['health','Health','staff']];
+  function isOwner(){ return !!me && me.role === 'owner'; }
+  function isStaff(){ return !!me && (me.role === 'owner' || me.role === 'admin'); }
+  function mayView(v){ return v[2] === 'all' || (v[2] === 'staff' ? isStaff() : isOwner()); }
   function buildNav(){
     var nav = $('nav'); nav.textContent = '';
-    VIEWS.forEach(function(v){ if (v[2] && me.role !== 'owner') return; var b = el('button', null, v[1]); b.type = 'button'; b.dataset.v = v[0]; b.setAttribute('aria-pressed', 'false'); b.addEventListener('click', function(){ go(v[0]); }); nav.appendChild(b); });
+    VIEWS.forEach(function(v){ if (!mayView(v)) return; var b = el('button', null, v[1]); b.type = 'button'; b.dataset.v = v[0]; b.setAttribute('aria-pressed', 'false'); b.addEventListener('click', function(){ go(v[0]); }); nav.appendChild(b); });
   }
   function go(v){
     state.view = v;
@@ -49,6 +53,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
     Array.prototype.forEach.call(document.querySelectorAll('.view'), function(x){ x.classList.toggle('hidden', x.id !== 'v-' + v); });
     if (v === 'activity') { loadSummary(); setTab(state.tab); }
     if (v === 'add') { loadProjects(); }
+    if (v === 'updates') loadUpdates();
     if (v === 'uploads') loadUploads();
     if (v === 'subs') loadSubs();
     if (v === 'people') loadPeople();
@@ -160,47 +165,95 @@ export const PANEL_SCRIPT = String.raw`(function(){
     return sel;
   }
 
-  // ------------------------------------------------------------ add: files
+  // ------------------------------------------------------------ add: files (one or many)
+  // Shared details (type, date, text, meeting, project) apply to every file; each file has its own title.
+  // Files go up one at a time, each with its own status; failed ones can be retried.
+  var MAX_FILE = 25 * 1024 * 1024, MAX_TEXT = 1024 * 1024;
   var queue = [];
+  var shared = null;
   function titleFrom(name){ return name.replace(/\.[A-Za-z0-9]{1,8}$/, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) || 'Untitled'; }
+  function sharedFields(){
+    if (shared) return shared;
+    var box = $('bulkShared'); shared = {};
+    var g = el('div', 'grid2'); var a = el('div'); var b = el('div'); g.appendChild(a); g.appendChild(b); box.appendChild(g);
+    shared.type = field(a, 'Type', select(TYPES, 'other'));
+    shared.date = field(b, 'Date', input('date', '', 10));
+    shared.body = field(box, 'Body or source text (optional)', el('textarea')); shared.body.maxLength = 20000; shared.body.rows = 2;
+    shared.meeting = meetingPicker(box, null);
+    var ps = el('select'); ps.setAttribute('data-projects', '1'); fillProjects(ps); shared.project = field(box, 'Project (optional)', ps);
+    return shared;
+  }
+  function fileProblem(f){
+    var ext = (f.name.match(/\.([A-Za-z0-9]{1,8})$/) || [])[1]; ext = ext ? ext.toLowerCase() : '';
+    if (['pdf','png','jpg','jpeg','txt','csv'].indexOf(ext) < 0) return 'Only PDF, PNG, JPG, TXT or CSV files.';
+    if (f.size <= 0) return 'That file is empty.';
+    if (f.size > MAX_FILE) return 'Too big. Files can be up to 25 MB.';
+    if ((ext === 'txt' || ext === 'csv') && f.size > MAX_TEXT) return 'Text and CSV files can be up to 1 MB.';
+    return null;
+  }
+  function setStatus(e, kind, text){ e.state = kind; e.status.className = 'status' + (kind === 'done' ? ' ok' : kind === 'failed' || kind === 'skipped' ? ' bad' : ''); e.status.textContent = text; }
   function addFiles(list){
+    sharedFields(); $('bulkShared').classList.remove('hidden');
     Array.prototype.forEach.call(list, function(f){
       var li = el('li', 'card file'); var head = el('div', 'filehead'); head.appendChild(el('span', 'filename', f.name + ' (' + bytes(f.size) + ')'));
-      var entry = { file: f, li: li, done: false };
-      head.appendChild(btn('Remove', 'ghost', function(){ queue = queue.filter(function(x){ return x !== entry; }); li.remove(); refreshActs(); }));
+      var entry = { file: f, li: li, state: 'waiting' };
+      entry.remove = btn('Remove', 'ghost', function(){ queue = queue.filter(function(x){ return x !== entry; }); li.remove(); refreshActs(); });
+      head.appendChild(entry.remove);
       li.appendChild(head);
       entry.title = field(li, 'Title', input('text', titleFrom(f.name), 300));
-      var g = el('div', 'grid2'); var a = el('div'); var b = el('div'); g.appendChild(a); g.appendChild(b); li.appendChild(g);
-      entry.type = field(a, 'Type', select(TYPES, 'other'));
-      entry.date = field(b, 'Date', input('date', '', 10));
-      entry.body = field(li, 'Body or source text (optional)', el('textarea')); entry.body.maxLength = 20000;
-      entry.meeting = meetingPicker(li, null);
-      var ps = el('select'); ps.setAttribute('data-projects', '1'); fillProjects(ps); entry.project = field(li, 'Project (optional)', ps);
       entry.status = el('p', 'status'); li.appendChild(entry.status);
+      var problem = fileProblem(f);
+      if (problem) setStatus(entry, 'skipped', problem); else setStatus(entry, 'waiting', 'Ready');
       queue.push(entry); $('fileList').appendChild(li);
     });
     refreshActs();
   }
-  function refreshActs(){ $('fileActs').classList.toggle('hidden', !queue.some(function(e){ return !e.done; })); }
+  function counts(){ var c = { waiting: 0, adding: 0, done: 0, failed: 0, skipped: 0 }; queue.forEach(function(e){ c[e.state]++; }); return c; }
+  function refreshActs(){
+    var c = counts(); var busy = c.adding > 0 || adding;
+    $('fileActs').classList.toggle('hidden', !queue.length);
+    $('bulkShared').classList.toggle('hidden', !queue.length);
+    $('addAll').classList.toggle('hidden', !c.waiting); $('addAll').disabled = busy;
+    $('addAll').textContent = c.waiting === 1 ? 'Add 1 file' : 'Add ' + c.waiting + ' files';
+    $('retryFailed').classList.toggle('hidden', !c.failed || busy); $('retryFailed').textContent = c.failed === 1 ? 'Retry 1 failed' : 'Retry ' + c.failed + ' failed';
+    $('clearFiles').disabled = busy;
+    var total = queue.length, finished = c.done + c.failed + c.skipped;
+    var parts = [total === 1 ? '1 file' : total + ' files'];
+    if (c.done) parts.push(c.done + ' added'); if (c.failed) parts.push(c.failed + ' failed'); if (c.skipped) parts.push(c.skipped + ' skipped');
+    $('bulkCount').textContent = total ? parts.join(', ') + '.' : '';
+    $('bulkBar').classList.toggle('hidden', !total || (!busy && !finished));
+    $('bulkFill').style.width = (total ? Math.round(100 * finished / total) : 0) + '%';
+  }
+  var adding = false;
+  function run(todo){
+    if (!todo.length) return;
+    adding = true; var s = sharedFields(); refreshActs();
+    var stop = null;
+    var next = function(i){
+      if (i >= todo.length) { adding = false; refreshActs(); if (counts().done && !counts().waiting && !counts().failed) loadProjects(); return; }
+      var e = todo[i];
+      if (stop) { setStatus(e, 'failed', stop); return next(i + 1); }
+      setStatus(e, 'adding', 'Adding...'); refreshActs();
+      var fd = new FormData(); fd.append('file', e.file); fd.append('title', e.title.value); fd.append('type', s.type.value); fd.append('date', s.date.value); fd.append('body', s.body.value); fd.append('meetingId', s.meeting.value); fd.append('projectId', s.project.value);
+      api('/uploads/file', { method: 'POST', form: fd }).then(function(j){
+        setStatus(e, 'done', j.status === 'queued' ? 'Added. Title searchable now, full text within 5 minutes.' : j.status === 'no_text' ? 'Added. No text layer, so it is found by title and details.' : 'Added and searchable.');
+        e.title.disabled = true; e.remove.classList.add('hidden');
+      }, function(x){
+        setStatus(e, 'failed', x.message);
+        if (x.status === 401) { stop = 'Not added. Sign in again, then retry.'; boot(); }
+        if (x.status === 507) stop = 'Not added. The archive is full.';
+      }).then(function(){ next(i + 1); });
+    };
+    next(0);
+  }
   var drop = $('drop');
   ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
   ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
   drop.addEventListener('drop', function(e){ if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
   $('fileInput').addEventListener('change', function(){ addFiles(this.files); this.value = ''; });
   $('clearFiles').addEventListener('click', function(){ queue = []; $('fileList').textContent = ''; refreshActs(); });
-  $('addAll').addEventListener('click', function(){
-    var todo = queue.filter(function(e){ return !e.done; }); var b = $('addAll'); b.disabled = true;
-    var next = function(i){
-      if (i >= todo.length) { b.disabled = false; refreshActs(); return; }
-      var e = todo[i]; e.status.className = 'status'; e.status.textContent = 'Adding...';
-      var fd = new FormData(); fd.append('file', e.file); fd.append('title', e.title.value); fd.append('type', e.type.value); fd.append('date', e.date.value); fd.append('body', e.body.value); fd.append('meetingId', e.meeting.value); fd.append('projectId', e.project.value);
-      api('/uploads/file', { method: 'POST', form: fd }).then(function(j){
-        e.done = true; e.status.className = 'status ok'; e.status.textContent = j.status === 'queued' ? 'Added. Its title is searchable now; the full text within 5 minutes.' : j.status === 'no_text' ? 'Added. No text layer found, so it is found by title and details.' : 'Added and searchable.';
-        Array.prototype.forEach.call(e.li.querySelectorAll('input,select,textarea'), function(x){ x.disabled = true; });
-      }, function(x){ e.status.className = 'status bad'; e.status.textContent = x.message; if (x.status === 401) boot(); }).then(function(){ next(i + 1); });
-    };
-    next(0);
-  });
+  $('addAll').addEventListener('click', function(){ run(queue.filter(function(e){ return e.state === 'waiting'; })); });
+  $('retryFailed').addEventListener('click', function(){ var todo = queue.filter(function(e){ return e.state === 'failed'; }); todo.forEach(function(e){ setStatus(e, 'waiting', 'Ready'); }); run(todo); });
 
   // ------------------------------------------------------------ add: forms
   function formSubmit(id, err, fn){
@@ -213,6 +266,77 @@ export const PANEL_SCRIPT = String.raw`(function(){
   $('addKind').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; var k = b.dataset.k;
     Array.prototype.forEach.call($('addKind').children, function(x){ x.setAttribute('aria-pressed', String(x === b)); });
     ['files','project','note','link'].forEach(function(x){ $('k-' + x).classList.toggle('hidden', x !== k); }); });
+
+  // ------------------------------------------------------------ updates (owner and admins)
+  // Plain text that goes straight into the records: searchable, used by chat, shown on Records and on a project's card.
+  var upd = { projects: [], topics: [], today: '' };
+  function topicSelect(sel, value){
+    sel.textContent = ''; var none = el('option', null, 'None'); none.value = ''; sel.appendChild(none);
+    var g1 = el('optgroup'); g1.label = 'Funded projects'; upd.projects.forEach(function(p){ var o = el('option', null, p.name); o.value = 'project:' + p.key; g1.appendChild(o); });
+    var g2 = el('optgroup'); g2.label = 'Topics'; upd.topics.forEach(function(t){ var o = el('option', null, t.label); o.value = 'topic:' + t.id; g2.appendChild(o); });
+    if (upd.projects.length) sel.appendChild(g1); if (upd.topics.length) sel.appendChild(g2);
+    sel.value = value || '';
+  }
+  function shortDay(iso){ return iso ? fFull.format(new Date(iso + 'T12:00:00Z')) : ''; }
+  function histText(h){
+    var who = h.by ? ' by ' + h.by : '';
+    var when = fFull.format(new Date(h.at)) + ', ' + fTime.format(new Date(h.at));
+    var p = el('p'); p.appendChild(el('b', null, (h.action === 'add' ? 'Published' : h.action === 'edit' ? 'Edited' : 'Removed') + who + ', ' + when + '.'));
+    if (h.before) p.appendChild(document.createTextNode(' Before: ' + [h.before.title, shortDay(h.before.date), h.before.topic].filter(Boolean).join(', ') + '. ' + (h.before.text || '')));
+    return p;
+  }
+  function updEditor(main, u){
+    if (main.querySelector('.edit')) return;
+    var box = el('form', 'edit');
+    var title = field(box, 'Title', input('text', u.title, 200));
+    var text = field(box, 'Text', el('textarea')); text.value = u.body || ''; text.maxLength = 20000; text.required = true;
+    var g = el('div', 'grid2'); var a = el('div'); var b = el('div'); g.appendChild(a); g.appendChild(b); box.appendChild(g);
+    var date = field(a, 'Date', input('date', u.doc_date || '', 10));
+    var topic = field(b, 'Project or topic', el('select')); topicSelect(topic, u.topic);
+    var err = el('p', 'err'); box.appendChild(err);
+    var acts = el('div', 'rowacts'); var save = el('button', 'btn sm primary', 'Save'); save.type = 'submit'; acts.appendChild(save); acts.appendChild(btn('Cancel', 'ghost', function(){ box.remove(); })); box.appendChild(acts);
+    box.addEventListener('submit', function(e){ e.preventDefault(); save.disabled = true;
+      post('/updates/edit', { id: u.id, title: title.value, text: text.value, date: date.value, topic: topic.value }).then(loadUpdates, function(x){ save.disabled = false; err.textContent = x.message; if (x.status === 401) boot(); });
+    });
+    main.appendChild(box);
+  }
+  function updRow(u){
+    var li = el('li', 'item'); li.appendChild(whenEl(u.created_at));
+    var main = el('div', 'main'); main.appendChild(el('div', 'q', u.title));
+    if (u.body) main.appendChild(el('div', 'hint pre', u.body.length > 400 ? u.body.slice(0, 400) + '...' : u.body));
+    var meta = el('div', 'meta');
+    var edits = u.history.filter(function(h){ return h.action === 'edit'; }).length;
+    [shortDay(u.doc_date), u.topic_label, u.account_name ? 'By ' + u.account_name : null, edits ? (edits === 1 ? 'Edited once' : 'Edited ' + edits + ' times') : null].forEach(function(t){ if (t) meta.appendChild(el('span', null, t)); });
+    main.appendChild(meta);
+    var acts = el('div', 'rowacts');
+    if (u.document_id) { var v = el('a', 'open', 'View'); v.href = '/documents/' + encodeURIComponent(u.document_id); v.target = '_blank'; v.rel = 'noopener'; acts.appendChild(v); }
+    acts.appendChild(btn('Edit', '', function(){ updEditor(main, u); }));
+    if (u.history.length) acts.appendChild(btn('History', 'ghost', function(){ var h = main.querySelector('.hist'); if (h) { h.remove(); return; } h = el('div', 'hist'); u.history.forEach(function(x){ h.appendChild(histText(x)); }); main.insertBefore(h, acts.nextSibling); }));
+    acts.appendChild(btn('Remove', 'danger', function(){ if (confirm('Remove this update? It is taken off the portal. The log keeps its text.')) post('/updates/delete', { id: u.id }).then(loadUpdates, function(x){ alert(x.message); }); }));
+    main.appendChild(acts);
+    li.appendChild(main); li.appendChild(el('span', 'pill up', 'Live'));
+    return li;
+  }
+  function loadUpdates(){
+    return api('/updates').then(function(j){
+      upd.projects = j.projects || []; upd.topics = j.topics || []; upd.today = j.today || '';
+      var keep = $('upTopic').value; topicSelect($('upTopic'), keep);
+      if (!$('upDate').value) $('upDate').value = upd.today;
+      var ul = $('updList'); ul.textContent = ''; var items = j.items || [];
+      items.forEach(function(u){ ul.appendChild(updRow(u)); });
+      $('updEmpty').classList.toggle('hidden', items.length > 0);
+      var gone = j.removed || []; var gl = $('updGone'); gl.textContent = '';
+      gone.forEach(function(h){ var li = el('li', 'item'); li.appendChild(whenEl(h.at)); var m = el('div', 'main'); m.appendChild(el('div', 'q', h.title)); var d = el('div', 'hist'); d.appendChild(histText(h)); m.appendChild(d); li.appendChild(m); li.appendChild(el('span', 'pill soft', 'Removed')); gl.appendChild(li); });
+      $('updGoneWrap').classList.toggle('hidden', !gone.length);
+    }).catch(authFail);
+  }
+  $('upForm').addEventListener('submit', function(e){
+    e.preventDefault(); var er = $('upErr'); er.textContent = ''; er.classList.remove('ok'); var b = $('upForm').querySelector('button[type=submit]'); b.disabled = true;
+    post('/updates/create', { title: $('upTitle').value, text: $('upText').value, date: $('upDate').value, topic: $('upTopic').value }).then(function(){
+      b.disabled = false; er.textContent = 'Published. Residents can see it now.'; er.classList.add('ok');
+      $('upTitle').value = ''; $('upText').value = ''; $('upTopic').value = ''; $('upDate').value = upd.today; loadUpdates();
+    }, function(x){ b.disabled = false; er.textContent = x.message; if (x.status === 401) boot(); });
+  });
 
   // ------------------------------------------------------------ uploads
   var KIND = { file: 'File', project: 'Project', note: 'Note', link: 'Link' };
@@ -272,6 +396,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       subOpen = !!j.open;
       $('subState').textContent = (subOpen ? 'Open to everyone.' : 'Paused. The page shows "Submissions are paused."') + ' Files ' + bytes(j.storage.used) + ' of ' + bytes(j.storage.limit) + '.';
       $('subSwitch').textContent = subOpen ? 'Pause submissions' : 'Turn submissions on';
+      $('subSwitch').classList.toggle('hidden', !isOwner());
       var pl = $('subPending'); pl.textContent = ''; var pending = j.pending || [];
       pending.forEach(function(s){
         var li = el('li', 'item'); li.appendChild(whenEl(s.created_at));
@@ -303,7 +428,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
         main.appendChild(meta);
         var acts = el('div', 'rowacts');
         if (s.document_id && !s.hidden_at && !s.removed_at) { var a = el('a', 'open', 'View'); a.href = '/documents/' + encodeURIComponent(s.document_id); a.target = '_blank'; a.rel = 'noopener'; acts.appendChild(a); }
-        if (!s.removed_at) {
+        if (!s.removed_at && isOwner()) {
           if (s.hidden_at) acts.appendChild(btn('Restore', '', function(){ post('/submissions/restore', { id: s.id }).then(loadSubs, function(x){ alert(x.message); }); }));
           else acts.appendChild(btn('Hide', '', function(){ post('/submissions/hide', { id: s.id }).then(loadSubs, function(x){ alert(x.message); }); }));
           acts.appendChild(btn('Remove', 'danger', function(){ if (confirm('Remove this item and its file for good?')) post('/submissions/remove', { id: s.id }).then(loadSubs, function(x){ alert(x.message); }); }));
@@ -331,7 +456,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       (j.items || []).forEach(function(a){
         var li = el('li', 'item'); li.appendChild(whenEl(a.created_at));
         var main = el('div', 'main'); main.appendChild(el('div', 'q', a.name));
-        var meta = el('div', 'meta'); [a.role === 'owner' ? 'Owner' : 'Uploader', a.passkeys + (a.passkeys === 1 ? ' passkey' : ' passkeys'), a.uploads + ' uploads'].forEach(function(t){ meta.appendChild(el('span', null, t)); }); main.appendChild(meta);
+        var meta = el('div', 'meta'); [a.role === 'owner' ? 'Owner' : a.role === 'admin' ? 'Admin' : 'Uploader', a.login ? 'Signs in as ' + a.login : null, a.passkeys + (a.passkeys === 1 ? ' passkey' : ' passkeys'), a.uploads + ' uploads'].forEach(function(t){ if (t) meta.appendChild(el('span', null, t)); }); main.appendChild(meta);
         if (a.role !== 'owner') { var acts = el('div', 'rowacts');
           if (a.disabled_at) acts.appendChild(btn('Turn on', '', function(){ post('/accounts/enable', { id: a.id }).then(loadPeople); }));
           else acts.appendChild(btn('Turn off', 'danger', function(){ if (confirm('Turn off ' + a.name + '? They are signed out at once.')) post('/accounts/disable', { id: a.id }).then(loadPeople); }));
@@ -345,7 +470,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       items.forEach(function(v){
         var li = el('li', 'item'); li.appendChild(whenEl(v.created_at));
         var main = el('div', 'main'); main.appendChild(el('div', 'q', v.name || 'Unnamed invite'));
-        var stateText = v.used_at ? 'Used by ' + (v.used_by_name || 'an uploader') : v.revoked_at ? 'Revoked' : v.expires_at < j.now ? 'Expired' : 'Open until ' + fFull.format(new Date(v.expires_at));
+        var stateText = (v.role === 'admin' ? 'Admin. ' : 'Uploader. ') + (v.used_at ? 'Used by ' + (v.used_by_name || 'someone') : v.revoked_at ? 'Revoked' : v.expires_at < j.now ? 'Expired' : 'Open until ' + fFull.format(new Date(v.expires_at)));
         var meta = el('div', 'meta'); meta.appendChild(el('span', null, stateText)); main.appendChild(meta);
         if (!v.used_at && !v.revoked_at && v.expires_at >= j.now) { var acts = el('div', 'rowacts'); acts.appendChild(btn('Revoke', 'danger', function(){ post('/invites/revoke', { id: v.id }).then(loadPeople); })); main.appendChild(acts); }
         li.appendChild(main); li.appendChild(el('span'));
@@ -360,8 +485,19 @@ export const PANEL_SCRIPT = String.raw`(function(){
       $('auditEmpty').classList.toggle('hidden', items.length > 0);
     }).catch(authFail);
   }
+  var invRole = 'admin';
+  function setInvRole(r){
+    invRole = r;
+    Array.prototype.forEach.call($('invRole').children, function(x){ x.setAttribute('aria-pressed', String(x.dataset.r === r)); });
+    $('invHint').textContent = r === 'admin' ? 'Admins add records, post updates and review submissions. They set their own password. The link works once and expires in 7 days. It is shown only now.' : 'Uploaders add records with a passkey. The link works once and expires in 72 hours. It is shown only now.';
+    $('invName').value = r === 'admin' ? 'Vineyard Admin' : ''; $('invName').placeholder = r === 'admin' ? 'Vineyard Admin' : 'Optional';
+    $('invBtn').textContent = r === 'admin' ? 'Invite admin' : 'Invite uploader';
+    $('invBox').classList.add('hidden'); $('invErr').textContent = '';
+  }
+  $('invRole').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) setInvRole(b.dataset.r); });
+  setInvRole('admin');
   $('invForm').addEventListener('submit', function(e){ e.preventDefault(); $('invErr').textContent = '';
-    post('/invites/create', { name: $('invName').value }).then(function(j){ $('invLink').value = location.origin + j.path; $('invBox').classList.remove('hidden'); $('invName').value = ''; loadPeople(); }, function(x){ $('invErr').textContent = x.message; }); });
+    post('/invites/create', { name: $('invName').value, role: invRole }).then(function(j){ $('invLink').value = location.origin + j.path; $('invBox').classList.remove('hidden'); $('invCopy').textContent = 'Copy'; loadPeople(); }, function(x){ $('invErr').textContent = x.message; }); });
   $('invCopy').addEventListener('click', function(){ var i = $('invLink'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(function(){ $('invCopy').textContent = 'Copied'; }, function(){ document.execCommand && document.execCommand('copy'); $('invCopy').textContent = 'Copied'; }); });
 
   // ------------------------------------------------------------ coverage (owner)
@@ -483,20 +619,23 @@ export const PANEL_SCRIPT = String.raw`(function(){
   });
 
   // ------------------------------------------------------------ passkeys sheet
-  function openSheet(open){ $('sheet').classList.toggle('hidden', !open); $('sheetBg').classList.toggle('hidden', !open); if (open) loadKeys(); }
+  function openSheet(open){ $('sheet').classList.toggle('hidden', !open); $('sheetBg').classList.toggle('hidden', !open); if (open) loadKeys(); else $('pkWelcome').classList.add('hidden'); }
   $('secBtn').addEventListener('click', function(){ openSheet(true); });
   $('sheetClose').addEventListener('click', function(){ openSheet(false); });
   $('sheetBg').addEventListener('click', function(){ openSheet(false); });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') openSheet(false); });
   $('outBtn').addEventListener('click', function(){ post('/logout').then(boot, boot); });
   function loadKeys(){
-    $('pwSec').classList.toggle('hidden', !(me && me.role === 'owner' && passwordAllowed));
+    var hasPw = isOwner() ? passwordAllowed : !!me && me.role === 'admin';
+    $('pwSec').classList.toggle('hidden', !hasPw);
+    $('pNew').minLength = me && me.role === 'admin' ? 12 : 10;
+    $('pkHint').textContent = me && me.role === 'uploader' ? 'Sign in with Face ID, Touch ID or Windows Hello. Keep at least one.' : 'Sign in with Face ID, Touch ID or Windows Hello. Your password keeps working too.';
     return api('/passkeys').then(function(j){
       var ul = $('keys'); ul.textContent = ''; var items = j.items || [];
       items.forEach(function(k){
         var li = el('li'); var t = el('div', null, k.name || 'Passkey'); t.appendChild(el('small', null, 'Added ' + fFull.format(new Date(k.created_at)) + (k.last_used_at ? ', last used ' + fFull.format(new Date(k.last_used_at)) : '')));
         li.appendChild(t);
-        if (items.length > 1) li.appendChild(btn('Remove', 'ghost', function(){ if (confirm('Remove this passkey?')) post('/passkey/delete', { id: k.id }).then(loadKeys, function(x){ $('pkErr').textContent = x.message; }); }));
+        if (items.length > 1 || (me && me.role !== 'uploader')) li.appendChild(btn('Remove', 'ghost', function(){ if (confirm('Remove this passkey?')) post('/passkey/delete', { id: k.id }).then(loadKeys, function(x){ $('pkErr').textContent = x.message; }); }));
         ul.appendChild(li);
       });
       if (!items.length) ul.appendChild(el('li', null, 'No passkeys yet.'));
@@ -538,6 +677,11 @@ export const PANEL_SCRIPT = String.raw`(function(){
   submit('setupForm', 'sErr', function(){ return post('/setup', { code: $('sCode').value, email: $('sEmail').value, password: $('sPass').value }).then(function(){ return boot().then(function(){ openSheet(true); }); }); });
   submit('loginForm', 'lErr', function(){ return post('/login', { email: $('lEmail').value, password: $('lPass').value }).then(function(){ $('lPass').value = ''; return boot(); }); });
   submit('pwForm', 'pErr', function(){ return post('/password', { current: $('pCur').value, next: $('pNew').value }).then(function(){ $('pCur').value = ''; $('pNew').value = ''; $('pErr').textContent = 'Saved. Other sessions were signed out.'; $('pErr').classList.add('ok'); }); });
+  submit('adminJoin', 'aErr', function(){
+    return post('/invite/accept', { token: inviteToken, login: $('aLogin').value, password: $('aPass').value })
+      .then(function(){ $('aPass').value = ''; history.replaceState(null, '', '__PREFIX__'); inviteToken = null; return boot(); })
+      .then(function(){ openSheet(true); $('pkWelcome').classList.remove('hidden'); });
+  });
   submit('inviteForm', 'iErr', function(){
     if (!canPasskey) return Promise.reject(new Error('This browser cannot create a passkey. Try Safari or Chrome.'));
     var name = $('iName').value.trim();
@@ -549,7 +693,12 @@ export const PANEL_SCRIPT = String.raw`(function(){
   function boot(){
     if (inviteToken) {
       show('invite');
-      return post('/invite/check', { token: inviteToken }).then(function(j){ if (j.name && !$('iName').value) $('iName').value = j.name; }, function(x){ $('iErr').textContent = x.message; $('iBtn').disabled = true; });
+      return post('/invite/check', { token: inviteToken }).then(function(j){
+        var admin = j.role === 'admin';
+        $('adminJoin').classList.toggle('hidden', !admin); $('inviteForm').classList.toggle('hidden', admin);
+        if (admin) { $('iHead').textContent = 'Welcome'; $('iSub').textContent = 'Set up the ' + (j.name || 'Vineyard Admin') + ' account. Choose how you sign in.'; }
+        else if (j.name && !$('iName').value) $('iName').value = j.name;
+      }, function(x){ $('inviteForm').classList.remove('hidden'); $('iErr').textContent = x.message; $('iBtn').disabled = true; });
     }
     return api('/state').then(function(s){
       if (!s.hasOwner) return show('setup');
@@ -567,7 +716,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       me = s.account; $('who').textContent = me.name;
       show('dash'); buildNav();
       var saved = null; try { saved = sessionStorage.getItem('vtp:panel'); } catch (e) {}
-      var allowed = VIEWS.filter(function(v){ return !v[2] || me.role === 'owner'; }).map(function(v){ return v[0]; });
+      var allowed = VIEWS.filter(mayView).map(function(v){ return v[0]; });
       go(allowed.indexOf(saved) >= 0 ? saved : allowed[0]);
       if (me.role === 'owner' && passwordAllowed) openSheet(true);
     });

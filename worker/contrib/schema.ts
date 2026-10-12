@@ -1,5 +1,5 @@
 /**
- * Tables for panel accounts (owner and invited uploaders), staff uploads, resident submissions and
+ * Tables for panel accounts (owner, invited admins and uploaders), admin sign-in names and passwords, staff uploads, resident submissions and
  * their logs. Created on first use, like the activity tables (worker/panel/store.ts).
  */
 import type { Env } from '../env';
@@ -7,8 +7,12 @@ import { ensureActivityTables } from '../panel/store';
 
 export const CONTRIB_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS panel_accounts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('owner', 'uploader')),
+    id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('owner', 'uploader', 'admin')),
     created_at TEXT NOT NULL, disabled_at TEXT)`,
+  // Admin sign-in: a name (email or user name) and a salted PBKDF2 hash, as for the owner. Bumping epoch ends the admin's sessions.
+  `CREATE TABLE IF NOT EXISTS panel_logins (
+    account_id INTEGER PRIMARY KEY, login TEXT NOT NULL UNIQUE, pass_hash TEXT NOT NULL, salt TEXT NOT NULL, iterations INTEGER NOT NULL,
+    epoch INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS panel_invites (
     token_hash TEXT PRIMARY KEY, role TEXT NOT NULL, name TEXT, created_by INTEGER NOT NULL, created_at TEXT NOT NULL,
     expires_at TEXT NOT NULL, used_at TEXT, used_by INTEGER, revoked_at TEXT)`,
@@ -61,6 +65,14 @@ export function ensureContribTables(env: Env): Promise<void> {
       .prepare("ALTER TABLE resident_submissions ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'")
       .run()
       .catch(() => undefined);
+    await allowAdminRole(env);
+    // Updates name a funded project or a topic; edits keep what was there before in the log.
+    for (const sql of ['ALTER TABLE uploads ADD COLUMN topic TEXT', 'ALTER TABLE uploads ADD COLUMN topic_label TEXT', 'ALTER TABLE upload_audit ADD COLUMN before_json TEXT']) {
+      await db
+        .prepare(sql)
+        .run()
+        .catch(() => undefined);
+    }
     await syncOwnerAccount(env);
   })().catch((e: unknown) => {
     ready.delete(key);
@@ -68,6 +80,27 @@ export function ensureContribTables(env: Env): Promise<void> {
   });
   ready.set(key, p);
   return p;
+}
+
+/**
+ * Tables made before admin accounts existed allow only 'owner' and 'uploader'. SQLite cannot change a
+ * CHECK in place, so the table is copied once into one that also allows 'admin' (ids kept), in one transaction.
+ */
+export async function allowAdminRole(env: Env): Promise<void> {
+  const db = env.CATALOG_DB;
+  const row = await db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'panel_accounts'").first<{ sql: string }>();
+  if (!row || row.sql.includes("'admin'")) return;
+  await db.batch([
+    db.prepare('DROP TABLE IF EXISTS panel_accounts_next'),
+    db.prepare(
+      `CREATE TABLE panel_accounts_next (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('owner', 'uploader', 'admin')),
+    created_at TEXT NOT NULL, disabled_at TEXT)`,
+    ),
+    db.prepare('INSERT INTO panel_accounts_next (id, name, role, created_at, disabled_at) SELECT id, name, role, created_at, disabled_at FROM panel_accounts'),
+    db.prepare('DROP TABLE panel_accounts'),
+    db.prepare('ALTER TABLE panel_accounts_next RENAME TO panel_accounts'),
+  ]);
 }
 
 /** The owner (panel_owner, created with the one-time setup code) is always account 1. */

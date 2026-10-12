@@ -1,7 +1,8 @@
 /**
  * Resident submissions in chat. They are never used for votes, the budget, meetings or construction,
  * and whenever an answer cites one, its citation carries the label "Resident submitted. Not a city
- * record." Staff uploads carry "Added by portal staff".
+ * record." Staff uploads carry "Added by portal staff", and staff updates "Update from Vineyard City
+ * staff, <date>".
  */
 import { RESIDENT_SOURCE_ID, sourceLabelFor } from '../lib/contrib';
 
@@ -23,7 +24,7 @@ export function withoutResidentFor<T extends { sourceId?: string | null; documen
   return hits.filter((h) => !isResidentHit(h));
 }
 
-/** The label a citation carries for a record added on the portal, or null for city records. */
-export function citationLabel(sourceId: string | null | undefined): string | null {
-  return sourceLabelFor(sourceId);
+/** The label a citation carries for a record added on the portal (an update names its date), or null for city records. */
+export function citationLabel(sourceId: string | null | undefined, documentType?: string | null, date?: string | null): string | null {
+  return sourceLabelFor(sourceId, documentType, date);
 }

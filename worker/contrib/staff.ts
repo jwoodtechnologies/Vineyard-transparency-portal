@@ -1,6 +1,6 @@
 /**
  * Staff uploads from the private panel: files (PDF, PNG, JPG, TXT, CSV), projects, notes and links.
- * Every account can add; an uploader edits and deletes only its own uploads, the owner any of them.
+ * Every account can add; an uploader edits and deletes only its own uploads, the owner and admins any of them.
  * Every add, edit and delete is written to the audit log.
  */
 import type { Env } from '../env';
@@ -12,20 +12,21 @@ import { MIME, STAFF_TYPES, plainLine, plainText, sanitizeName, sniffFile, title
 import { sha256Hex } from '../sync/ingest';
 import { SYNC_PDF_BYTES, archiveRoom, contributionFrom, createRecord, removeRecord, updateRecord, type ContribKind, type Contribution } from './indexing';
 import { ensureContribTables, ensurePortalSources } from './schema';
+import type { Role } from '../panel/auth';
 
 export interface Me {
   id: number;
   name: string;
-  role: 'owner' | 'uploader';
+  role: Role;
 }
 
 const TEXT_FILE_MAX = 1024 * 1024;
 
 const randomHex = (bytes: number) => [...crypto.getRandomValues(new Uint8Array(bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-/** May this account change this upload? The owner may change any; an uploader only its own. */
+/** May this account change this upload? The owner and admins may change any; an uploader only its own. */
 export function canModify(me: Me, row: { account_id: number }): boolean {
-  return me.role === 'owner' || Number(row.account_id) === me.id;
+  return me.role === 'owner' || me.role === 'admin' || Number(row.account_id) === me.id;
 }
 
 async function audit(env: Env, me: Me, action: 'add' | 'edit' | 'delete', uploadId: string, documentId: string | null, title: string): Promise<void> {
@@ -261,7 +262,7 @@ export async function listUploads(env: Env, me: Me, url: URL): Promise<Record<st
     `SELECT u.id, u.account_id, u.document_id, u.kind, u.title, u.doc_type, u.doc_date, u.body, u.url, u.status_text, u.location, u.meeting_id, u.project_id,
             u.file_name, u.file_size, u.index_status, u.created_at, u.updated_at, a.name AS account_name, p.title AS project_title
      FROM uploads u LEFT JOIN panel_accounts a ON a.id = u.account_id LEFT JOIN uploads p ON p.id = u.project_id
-     WHERE (? = 0 OR u.account_id = ?) ORDER BY u.created_at DESC LIMIT 200`,
+     WHERE u.kind != 'update' AND (? = 0 OR u.account_id = ?) ORDER BY u.created_at DESC LIMIT 200`,
   )
     .bind(mine ? 1 : 0, me.id)
     .all<Record<string, unknown>>();

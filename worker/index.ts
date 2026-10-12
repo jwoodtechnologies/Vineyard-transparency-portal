@@ -36,6 +36,7 @@ import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/
 import { logQuestion, who } from './panel/store';
 import { addFile, addForm, addStatus, reportSubmission } from './contrib/resident';
 import { coverageSummary } from './api/coverage';
+import { publicUpdates } from './contrib/updates';
 import { handleFeed } from './api/feeds';
 import { isIndexKind, recordIndex, recordTopics } from './api/records';
 import { assetHeaders, buildId, cacheKey } from './lib/edgeCache';
@@ -172,6 +173,10 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     case 'records':
       if (b === 'topics' && !c) return recordTopics(env);
       if (isIndexKind(b) && !c) return recordIndex(env, b, url);
+      break;
+    case 'updates':
+      // Staff updates, newest first (not edge cached, so a new one shows at once).
+      if (!b) return publicUpdates(env, url);
       break;
     case 'suggestions':
       return suggestions(env);

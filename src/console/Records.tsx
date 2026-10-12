@@ -185,7 +185,7 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
                   )}
                 </div>
                 <h3 className="vc-result-title">{lb.title}</h3>
-                {sourceLabel(d.sourceId) && <p className="vc-source-label">{sourceLabel(d.sourceId)}</p>}
+                {sourceLabel(d.sourceId, d.documentType, d.date) && <p className="vc-source-label">{sourceLabel(d.sourceId, d.documentType, d.date)}</p>}
                 {ex && (
                   <p className="vc-excerpt">
                     <Highlighted text={ex.text} ranges={ex.highlights} />
@@ -194,7 +194,7 @@ export function Records({ turn, onFilters, onMore, onPreview, onHide, exclude, t
                 <div className="vc-result-foot">
                   {ex?.page != null && <span className="vc-tag">Page {ex.page}</span>}
                   {d.pageCount != null && <span className="vc-tag">{d.pageCount} pages</span>}
-                  {!sourceLabel(d.sourceId) && (
+                  {!sourceLabel(d.sourceId, d.documentType, d.date) && (
                     <span className="vc-tag">
                       <Archive size={11} strokeWidth={2} /> Archived
                     </span>

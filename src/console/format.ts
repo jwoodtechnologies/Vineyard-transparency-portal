@@ -34,14 +34,21 @@ export const TYPE_LABEL: Record<DocumentType, string> = {
   resident_submission: 'Resident submission',
   tax_rate: 'Tax rates',
   election_result: 'Election results',
+  staff_update: 'Update',
   other: 'Record',
 };
 
 /** Records added on the portal carry a label wherever they are shown; city records carry none. */
 export const RESIDENT_LABEL = 'Resident submitted. Not a city record.';
 export const STAFF_LABEL = 'Added by portal staff';
-export function sourceLabel(sourceId: string | null | undefined): string | null {
-  return sourceId === 'resident-submitted' ? RESIDENT_LABEL : sourceId === 'portal-staff' ? STAFF_LABEL : null;
+export const UPDATE_LABEL = 'Update from Vineyard City staff';
+/** "Update from Vineyard City staff, Oct 12, 2026" for an update posted from the panel; the plain staff label for other staff records. */
+export function sourceLabel(sourceId: string | null | undefined, documentType?: string | null, date?: string | null): string | null {
+  if (sourceId === 'resident-submitted') return RESIDENT_LABEL;
+  if (sourceId !== 'portal-staff') return null;
+  if (documentType !== 'staff_update') return STAFF_LABEL;
+  const d = oneDate(date);
+  return d ? `${UPDATE_LABEL}, ${d}` : UPDATE_LABEL;
 }
 
 /** "Oct 13, 2026" (src/lib/dates.ts), or null when there is no date. */

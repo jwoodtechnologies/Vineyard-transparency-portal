@@ -46,7 +46,7 @@ export function Drawer({ preview, onClose }: { preview: Preview; onClose: () => 
           excerpt: preview.result.excerpts[0] ?? null,
           original: null,
           label: 'Record',
-          source: sourceLabel(preview.result.document.sourceId),
+          source: sourceLabel(preview.result.document.sourceId, preview.result.document.documentType, preview.result.document.date),
         };
 
   return (

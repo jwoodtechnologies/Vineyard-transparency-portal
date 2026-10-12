@@ -48,7 +48,7 @@ export function RecordDetails({ doc }: { doc: DocumentDetail }) {
   if (doc.pageCount) rows.push(['Pages', String(doc.pageCount)]);
   const size = sizeText(doc.fileSize);
   if (size) rows.push(['File size', size]);
-  const src = sourceLabel(doc.sourceId);
+  const src = sourceLabel(doc.sourceId, doc.documentType, doc.date);
   if (src) rows.push(['Source', src]);
   if (doc.documentNumber) rows.push(['Number', doc.documentNumber]);
   if (!rows.length) return null;
