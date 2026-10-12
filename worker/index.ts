@@ -34,6 +34,7 @@ import { runFrequent, runHourly } from './cron';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
 import { logQuestion, who } from './panel/store';
+import { handleStaff } from './staff/routes';
 import { addFile, addForm, addStatus, reportSubmission } from './contrib/resident';
 import { coverageSummary } from './api/coverage';
 import { publicUpdates } from './contrib/updates';
@@ -58,6 +59,8 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
   const method = request.method;
 
   if (path.startsWith('/api/admin/')) return changed(env, ctx, method, await handleAdmin(env, request, url));
+  // The staff portal publishes its own changes (see worker/staff/core.ts `published`), so signing in never refreshes the public caches.
+  if (path === '/api/staff' || path.startsWith('/api/staff/')) return handleStaff(env, request, url, ctx);
   if (path === PANEL_PREFIX || path.startsWith(`${PANEL_PREFIX}/`)) return changed(env, ctx, method, await handlePanel(env, request, url));
 
   if (method === 'OPTIONS') return new Response(null, { status: 204, headers: { allow: 'GET, HEAD, POST, OPTIONS' } });
