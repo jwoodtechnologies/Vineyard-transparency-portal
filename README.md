@@ -18,7 +18,7 @@ the records, not by the model. If AI is unavailable, search still works.
   page header with filter chips; RSS feeds (`/feeds/records.xml`, `/feeds/meetings.xml`).
 - **Meetings** (`/meetings`): calendar from the city's agenda portal (CivicClerk), the state Public
   Notice Website and the city events calendar; agendas, packets, minutes and video.
-- **Voting records** (`/votes`, `/planning`): every recorded motion with each member's vote, the
+- **Voting records** (`/votes`): every recorded motion with each member's vote, the
   recorded tally, absent and not-yet-seated marks, CSV download.
 - **Budget** (`/budget`): fiscal 2027 adopted budget by fund and department, revenue, sales tax and
   every budgeted capital project with its funding vote and related records.

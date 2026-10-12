@@ -31,7 +31,7 @@ describe('one date format', () => {
 
 describe('route titles and descriptions', () => {
   it('names every route', () => {
-    for (const path of ['/meetings', '/meetings/mtg_1', '/documents/doc_1', '/map', '/records', '/records/ordinances', '/records/resolutions', '/records/rda-resolutions', '/people', '/votes', '/boards', '/planning', '/budget', '/add', '/sources', '/services', '/services/water']) {
+    for (const path of ['/meetings', '/meetings/mtg_1', '/documents/doc_1', '/map', '/records', '/records/ordinances', '/records/resolutions', '/records/rda-resolutions', '/people', '/votes', '/boards', '/budget', '/add', '/sources', '/services', '/services/water']) {
       const h = headFor(path);
       expect(h.title, path).toBeTruthy();
       expect(h.description.length, path).toBeGreaterThan(40);

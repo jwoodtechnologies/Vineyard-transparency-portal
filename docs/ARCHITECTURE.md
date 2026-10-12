@@ -75,7 +75,7 @@ Routes live in `src/app/router.tsx`; every screen is in `src/console/`.
 | `/budget`, `/map`, `/records` | Budget, map (with funded projects and city construction under it), records |
 | `/construction` | Redirect to `/map?layers=projects#projects` |
 | `/latest`, `/news` | Redirect to `/meetings` (the calendar) |
-| `/votes`, `/boards`, `/planning`, `/people`, `/people/:slug` | Voting records, boards, Planning Commission, people |
+| `/votes`, `/boards`, `/people`, `/people/:slug` | Voting records, boards, people (`/planning` redirects to `/boards`) |
 | `/search`, `/ask` | Redirect to `/` with the question |
 | `*` | Redirect to `/` |
 

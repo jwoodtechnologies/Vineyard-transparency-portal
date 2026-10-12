@@ -19,7 +19,6 @@ const load = {
   people: () => import('@/console/PeoplePage'),
   votes: () => import('@/console/VotesPage'),
   boards: () => import('@/console/BoardsPage'),
-  planning: () => import('@/console/PlanningPage'),
   budget: () => import('@/console/BudgetPage'),
   add: () => import('@/console/AddPage'),
   sources: () => import('@/console/SourcesPage'),
@@ -38,7 +37,6 @@ const RecordsIndexPage = lazy(load.recordsIndex);
 const PeoplePage = lazy(load.people);
 const VotesPage = lazy(load.votes);
 const BoardsPage = lazy(load.boards);
-const PlanningPage = lazy(load.planning);
 const BudgetPage = lazy(load.budget);
 const AddPage = lazy(load.add);
 const SourcesPage = lazy(load.sources);
@@ -57,7 +55,7 @@ export function screenFor(path: string): Screen | null {
     records: seg[1] ? 'recordsIndex' : 'records',
     votes: 'votes',
     boards: 'boards',
-    planning: 'planning',
+    planning: 'boards',
     people: 'people',
     add: 'add',
     sources: 'sources',
@@ -137,7 +135,7 @@ export const router = createBrowserRouter([
   { path: '/records/:index', element: quiet(<RecordsIndexPage />) },
   { path: '/votes', element: quiet(<VotesPage />) },
   { path: '/boards', element: quiet(<BoardsPage />) },
-  { path: '/planning', element: quiet(<PlanningPage />) },
+  { path: '/planning', element: <Navigate to="/boards" replace /> },
   { path: '/people', element: quiet(<PeoplePage />) },
   { path: '/people/:slug', element: quiet(<PeoplePage />) },
   { path: '/add', element: quiet(<AddPage />) },

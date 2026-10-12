@@ -37,7 +37,6 @@ const PAGES = {
   '/': { title: '.vc-hero-title, #vtp-shell .s-hero', content: '.vc-composer textarea, .vc-input' },
   '/add': { title: 'main h1, #vtp-shell .s-title', content: '.vc-add-kinds, .vc-add-form' },
   '/votes': { title: 'main h1, #vtp-shell .s-title', content: '.vc-sh-table tbody tr' },
-  '/planning': { title: 'main h1, #vtp-shell .s-title', content: '.vc-sh-table tbody tr' },
   '/map': { title: '.vc-map-top, .vc-map-search', content: '.maplibregl-canvas' },
   '/budget': { title: 'main h1, #vtp-shell .s-title', content: '.vc-bud-hero' },
 };

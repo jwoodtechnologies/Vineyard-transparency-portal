@@ -37,7 +37,7 @@
     }
     // 3. The page's own data starts loading now, alongside its code (src/console/api.ts picks it up).
     var q = location.search;
-    var api = { votes: '/api/pages/votes', planning: '/api/pages/planning', budget: '/api/budget' }[screen];
+    var api = { votes: '/api/pages/votes', budget: '/api/budget' }[screen];
     if (api && (screen === 'votes' || screen === 'planning') && /[?&](member|q|result|vote)=/.test(q)) api = null;
     if (api && screen === 'votes' && /[?&]body=redevelopment-agency(&|$)/.test(q)) api += '?body=redevelopment-agency';
     if (api && window.fetch) {

@@ -27,7 +27,7 @@ interface Board {
   members: Array<{ slug: string; name: string; role: string; term: string | null; photo: string | null }>;
 }
 
-const VOTING = new Set(['city-council', 'redevelopment-agency', 'planning-commission']);
+const VOTING = new Set(['city-council', 'redevelopment-agency']);
 
 function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: () => void }) {
   return (
@@ -94,8 +94,8 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
               </Link>
             )}
             {VOTING.has(b.id) && (
-              <Link to={b.id === 'planning-commission' ? '/planning' : `/votes?body=${encodeURIComponent(b.id)}`} className="vc-chip">
-                <Vote size={13} /> {b.id === 'planning-commission' ? 'Votes and attendance' : 'Voting records'}
+              <Link to={`/votes?body=${encodeURIComponent(b.id)}`} className="vc-chip">
+                <Vote size={13} /> Voting records
               </Link>
             )}
             {b.firstMeeting && <span className="vc-board-since">Meetings on file since {b.firstMeeting.slice(0, 4)}</span>}
