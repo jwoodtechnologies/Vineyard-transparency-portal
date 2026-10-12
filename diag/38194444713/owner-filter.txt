@@ -1,0 +1,12 @@
+live cards: 25 checked, 20 with owner, 5 missing, 0 errors
+total 4818, shown 446, withheld 4372
+  withheld joined-names: 1274
+  withheld no-entity-word: 1233
+  withheld et-al: 897
+  withheld residential: 366
+  withheld name-only: 272
+  withheld type-unknown: 253
+  withheld trust-or-estate: 51
+  withheld generational-suffix: 25
+  withheld care-of-or-title: 1
+sample of 30 shown names written to diag/38194444713/owner-filter.json
