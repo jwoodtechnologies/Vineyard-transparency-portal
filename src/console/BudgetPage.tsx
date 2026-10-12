@@ -366,6 +366,12 @@ export default function BudgetPage() {
           <p className="vc-page-sub">
             Adopted {longDay(b.adopted)} by{' '}
             {b.adoptionOrdinanceDoc ? <Link to={docHref(b.adoptionOrdinanceDoc)}>{b.adoptionOrdinance}</Link> : b.adoptionOrdinance}
+            {b.adoptionBudgetDoc && (
+              <>
+                {' · '}
+                <Link to={docHref(b.adoptionBudgetDoc.id)}>Budget document</Link>
+              </>
+            )}
           </p>
         )}
       </header>

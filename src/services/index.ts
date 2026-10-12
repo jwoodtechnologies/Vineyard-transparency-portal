@@ -22,6 +22,7 @@ export const DocumentService = {
   get: (id: string) => cached(key('doc', id), 5 * MIN, async () => (await getAdapter()).getDocument(id)),
   text: (id: string) => cached(key('doc-text', id), 5 * MIN, async () => (await getAdapter()).getDocumentText(id)),
   related: (id: string) => cached(key('doc-related', id), 5 * MIN, async () => (await getAdapter()).getRelatedDocuments(id)),
+  trail: (id: string) => cached(key('doc-trail', id), 5 * MIN, async () => (await getAdapter()).getDocumentTrail(id)),
   byIds: (ids: string[]) => cached(key('doc-ids', ids), MIN, async () => (await getAdapter()).getDocumentsByIds(ids)),
   fileUrl: async (id: string, archiveUrl: string | null) => (await getAdapter()).getDocumentFileUrl(id, archiveUrl),
 };

@@ -41,6 +41,8 @@ export interface Budget {
   /** The ordinance that adopted the budget ("Ordinance 2026-08") and its document; absent from an older cached response. */
   adoptionOrdinance?: string;
   adoptionOrdinanceDoc?: string;
+  /** The budget book filed with the adopting ordinance on the same agenda item (found from the records). */
+  adoptionBudgetDoc?: { id: string; title: string };
   docs: { book: string; slides: string; amendment: string; amendmentSummary: string; tentative: string };
   funds: BudgetFund[];
   general: {

@@ -45,7 +45,7 @@ each hour is the hourly tick.
 Run by hand (`workflow_dispatch`): `diagnostics.yml` (fixtures, logs, perf timings, parcel owner filter counts (task `owner-filter`) to the
 `diagnostics` branch), `add-e2e.yml` (end to end check of the submit page: pending, approval, reports; removes its own test item),
 `backfill.yml` (parallel indexing of the whole archive), and `ingest.yml` with any command
-(`run`, `crawl`, `migrate`, `archive-plan`, `archive-apply`, and others).
+(`run`, `crawl`, `migrate`, `archive-plan`, `archive-apply`, `archive-size`, `archive-fill`, and others).
 
 ## Workers AI budget and the chat suite
 
@@ -71,5 +71,5 @@ owner panel's Activity tab.
 
 ## Limits
 
-The daily AI caps (9,000 public, 1,000 tests), D1 write budget and R2 6 GB stop are enforced by the
+The daily AI caps (9,000 public, 1,000 tests), D1 write budget and R2 7.5 GB stop are enforced by the
 Worker. See [FREE_TIER_LIMITS.md](FREE_TIER_LIMITS.md).

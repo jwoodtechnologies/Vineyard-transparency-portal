@@ -8,6 +8,8 @@
   index              Merge FTS5 segments (run after large batches)
   verify             Consistency checks + live test searches against real indexed text
   stats              Archive statistics, quota usage and queue state
+  archive-size       Files not stored on the portal yet: counts, bytes and the monthly cost to store all (reads only)
+  archive-fill       Queue files not stored yet, priority first, only what fits under the storage stop
   migrate            Apply the D1 schema through the Worker (idempotent)
 """
 from __future__ import annotations
@@ -23,6 +25,41 @@ from .api import BUDGET_MESSAGE, BudgetReached, PortalApi
 from .discover import discover
 from .http import PoliteClient
 from .pipeline import crawl, ingest, log, new_run_id, sync_sources
+
+
+def format_archive_size(r: dict) -> str:
+    """The archive-size report: plain lines of counts and bytes, then the full JSON."""
+
+    def n(x) -> str:
+        return f"{int(x or 0):,}"
+
+    def line(label: str, t: dict) -> str:
+        est = f" (sizes known for {n(t.get('knownSizeFiles'))}; {n(t.get('unknownSizeFiles'))} estimated at {n(t.get('estimatedBytes'))} bytes)" if t.get("unknownSizeFiles") else ""
+        return f"{label}: {n(t.get('files'))} files, {n(t.get('totalBytes'))} bytes{est}"
+
+    stop = r.get("stop") or {}
+    cost = r.get("cost") or {}
+    out = [
+        f"Stored now: {n((r.get('stored') or {}).get('objects'))} files, {n((r.get('stored') or {}).get('bytes'))} bytes",
+        f"Stop: {n(stop.get('hardStopBytes'))} bytes (other files stop at {n(stop.get('otherFilesStopBytes'))}); largest file stored {n(stop.get('maxObjectBytes'))} bytes",
+        line("Not stored yet", r.get("remaining") or {}),
+        line("  priority records", r.get("remainingPriority") or {}),
+        line("  other files", r.get("remainingOther") or {}),
+        line("Fits under the stop", r.get("fitsUnderStop") or {}),
+        line("Past the stop", r.get("pastStop") or {}),
+        line("Over the largest file size (linked only)", r.get("overMaxObjectSize") or {}),
+    ]
+    for t, v in sorted((r.get("remainingByType") or {}).items(), key=lambda kv: -int(kv[1].get("totalBytes") or 0)):
+        out.append(line(f"  {t}", v))
+    out += [
+        f"Storing all of it, this bucket: {n(cost.get('thisBucketAllBytes'))} bytes, ${cost.get('thisBucketMonthlyUsd', 0):.2f} a month beyond the free 10 GB",
+        f"With the other buckets ({n(cost.get('otherBucketsBytesAssumed'))} bytes assumed): {n(cost.get('accountAllBytes'))} bytes, ${cost.get('accountMonthlyUsd', 0):.2f} a month",
+        f"Also storing the files over the size limit: {n(cost.get('accountWithLargeFilesBytes'))} bytes, ${cost.get('accountWithLargeFilesMonthlyUsd', 0):.2f} a month",
+        f"Uploads needed: {n(cost.get('classAWritesNeeded'))} Class A writes (free: {n(cost.get('classAWritesFreePerMonth'))} a month), at ${cost.get('pricePerGbMonth', 0.015)} per GB-month",
+        "",
+        json.dumps(r, indent=2),
+    ]
+    return "\n".join(out)
 
 
 def cmd_verify(api: PortalApi) -> int:
@@ -102,6 +139,15 @@ def main(argv: list[str] | None = None) -> int:
                 if cmd in ("crawl", "run"):
                     c = crawl(api, client, run_id, set(a.source) if a.source else None, a.manifest, a.since)
                     total.update(c.api())
+                if cmd in ("ingest", "ingest:resume", "run") and not a.source and a.shard is None and not a.no_archive:
+                    # Files not stored on the portal yet go back on the queue (after new records, priority
+                    # records first, only what fits under the storage stop) so this run stores them.
+                    try:
+                        log(f"Archive fill: {json.dumps(api.post('/archive/fill', {'limit': max(1, min(a.limit, 1000))}))}")
+                    except BudgetReached:
+                        raise
+                    except Exception as e:  # noqa: BLE001 - never stops the queue
+                        log(f"Archive fill failed: {e}")
                 if cmd in ("ingest", "ingest:resume", "run"):
                     c = ingest(api, client, run_id, a.limit, archive=not a.no_archive, ocr=a.ocr, time_budget_s=int(a.hours * 3600), statuses=("pending", "error") if a.include_errors else ("pending",), shard=a.shard, shards=a.shards)
                     for k, v in c.api().items():
@@ -128,6 +174,12 @@ def main(argv: list[str] | None = None) -> int:
         elif cmd in ("archive-plan", "archive-apply"):
             # Make room in the archive for priority records (see worker/admin/rebalance.ts). Plan reads only.
             print(json.dumps(api.post("/archive/rebalance", {"apply": cmd == "archive-apply", "limit": a.limit}), indent=2))
+        elif cmd == "archive-size":
+            # Read only: every file not stored yet (counts and bytes) and the monthly cost of storing all of it.
+            print(format_archive_size(api.get("/archive/remaining")))
+        elif cmd == "archive-fill":
+            # Queue files not stored yet (priority first, only what fits under the stop). Deletes nothing.
+            print(json.dumps(api.post("/archive/fill", {"limit": max(1, min(a.limit, 1000))}), indent=2))
         elif cmd == "gis":
             from . import gis, parcel_lines
 

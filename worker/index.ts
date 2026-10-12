@@ -13,6 +13,7 @@ import type { Env } from './env';
 import { API_SECURITY_HEADERS, HttpError, errorResponse, json, notFound } from './lib/http';
 import { isSafeId } from './lib/util';
 import { getDocumentDetail, getDocumentFile, getDocumentText, getRelated, listDocuments } from './api/documents';
+import { getTrail } from './api/trail';
 import { filtersFromUrl, handleSearch } from './api/search';
 import { browseFacets, getMeeting, handleHealth, handleHealthJobs, handleStats, listBodies, listCategories, listMeetings, listSources, notImplementedYet, submitReport, suggestions } from './api/misc';
 import { handleAsk } from './ai/rag';
@@ -109,6 +110,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       if (c === 'file') return getDocumentFile(env, request, id(b), url);
       if (c === 'text') return getDocumentText(env, request, id(b));
       if (c === 'related') return getRelated(env, request, id(b));
+      if (c === 'trail') return getTrail(env, request, id(b));
       break;
     case 'events':
       if (!b) return listEvents(env, url);
@@ -192,7 +194,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * nothing from D1. Nothing personal is ever cached: there are no cookies, and POST /api/ask, admin, panel,
  * health (except the job list, /api/health/jobs) and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|construction|pages\/(votes|planning|construction)|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related)?|documents|bodies|sources|categories|browse\/facets|records\/(?:topics|ordinances|resolutions|rda-resolutions)|suggestions|stats|coverage\/summary|health\/jobs)$/;
+const EDGE_CACHEABLE = /^\/api\/(search|events|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|construction|pages\/(votes|planning|construction)|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related|\/trail)?|documents|bodies|sources|categories|browse\/facets|records\/(?:topics|ordinances|resolutions|rda-resolutions)|suggestions|stats|coverage\/summary|health\/jobs)$/;
 /** Lists that depend on today's date (upcoming meetings, "today") are recomputed after five minutes; everything else after an hour, or as soon as the data version changes. */
 const TIME_BOUND = /^\/api\/(events|latest|meetings|stats|health\/jobs)/;
 const STORE_SECONDS = 7 * 86400;

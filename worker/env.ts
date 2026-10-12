@@ -38,6 +38,10 @@ export interface Env {
   /** Set per request by spenderEnv (worker/ai/meter.ts), never in config: 'public' or 'tests'. */
   AI_SPENDER?: string;
   ARCHIVE_STORAGE_HARD_STOP_BYTES?: string;
+  /** Kept free below the hard stop for priority records (minutes, agendas, ordinances...) when other files are stored. */
+  ARCHIVE_PRIORITY_RESERVE_BYTES?: string;
+  /** What the account's other R2 buckets hold, in bytes (for the storage cost estimate only; never a limit). */
+  R2_OTHER_BUCKETS_BYTES?: string;
   ARCHIVE_MAX_OBJECT_BYTES?: string;
   MAX_D1_INGEST_ROWS_PER_DAY?: string;
   /** GitHub Actions OIDC trust for the ingestion endpoints. */

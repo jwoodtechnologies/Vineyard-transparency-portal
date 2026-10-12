@@ -4,7 +4,7 @@ import { chunkPages } from '../worker/sync/chunk';
 import { extractHtml, looksScanned } from '../worker/sync/extract';
 import { noticeBody, noticeStatus, parsePmnResults } from '../worker/sync/pmnParse';
 import { findGlance, glanceText } from '../worker/lib/glance';
-import { shouldArchive } from '../worker/lib/archivePolicy';
+import { archiveLimitFor, archiveRank, isPriorityArchive, shouldArchive } from '../worker/lib/archivePolicy';
 import { estimateNeurons } from '../worker/ai/meter';
 import { calendarText } from '../worker/sync/calendarText';
 
@@ -100,12 +100,19 @@ describe('chunking and scans', () => {
 });
 
 describe('archive policy', () => {
-  it('archives minutes, agendas, ordinances, resolutions, notices, budgets and audits only', () => {
-    for (const t of ['minutes', 'agenda', 'ordinance', 'resolution', 'public_notice', 'budget', 'audit', 'financial_report']) expect(shouldArchive(t, 'X')).toBe(true);
-    for (const t of ['agenda_packet', 'staff_report', 'presentation', 'contract', 'other']) expect(shouldArchive(t, 'X')).toBe(false);
-    expect(shouldArchive('agenda', '10.13.26 RDA Packet')).toBe(false);
-    expect(shouldArchive('minutes', 'Draft minutes (City Council, 2026-09-15, item 3)')).toBe(false);
-    expect(shouldArchive('resolution', 'Resolution 2026-40 (City Council, 2026-09-15, item 3)')).toBe(true);
+  it('stores every file, minutes, agendas, ordinances, resolutions, notices, budgets and audits first', () => {
+    for (const t of ['minutes', 'agenda', 'ordinance', 'resolution', 'public_notice', 'budget', 'audit', 'financial_report', 'agenda_packet', 'staff_report', 'presentation', 'other']) expect(shouldArchive(t, 'X')).toBe(true);
+    for (const t of ['minutes', 'agenda', 'ordinance', 'resolution', 'public_notice', 'budget', 'audit', 'financial_report']) expect(isPriorityArchive(t, 'X')).toBe(true);
+    for (const t of ['agenda_packet', 'staff_report', 'presentation', 'contract', 'other']) expect(isPriorityArchive(t, 'X')).toBe(false);
+    expect(isPriorityArchive('agenda', '10.13.26 RDA Packet')).toBe(false);
+    expect(isPriorityArchive('minutes', 'Draft minutes (City Council, 2026-09-15, item 3)')).toBe(false);
+    expect(isPriorityArchive('resolution', 'Resolution 2026-40 (City Council, 2026-09-15, item 3)')).toBe(true);
+    expect(archiveRank('minutes', 'X')).toBeLessThan(archiveRank('audit', 'X'));
+    expect(archiveRank('audit', 'X')).toBeLessThan(archiveRank('staff_report', 'X'));
+    expect(archiveRank('staff_report', 'X')).toBeLessThan(archiveRank('agenda_packet', 'X'));
+    // Other files stop the reserve below the hard stop; priority records may use all of it.
+    expect(archiveLimitFor('minutes', 'X', 7_500_000_000, 500_000_000)).toBe(7_500_000_000);
+    expect(archiveLimitFor('presentation', 'X', 7_500_000_000, 500_000_000)).toBe(7_000_000_000);
   });
 });
 

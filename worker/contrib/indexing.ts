@@ -15,6 +15,7 @@ import { chunkPages } from '../sync/chunk';
 import { extractPdf, looksScanned, type Page } from '../sync/extract';
 import { indexRecord, sha256Hex } from '../sync/ingest';
 import { ensureContribTables } from './schema';
+import { DEFAULT_HARD_STOP_BYTES } from '../lib/archivePolicy';
 
 /** PDFs up to this size are read in the request; bigger ones are queued for the cron. */
 export const SYNC_PDF_BYTES = 4 * 1024 * 1024;
@@ -231,16 +232,16 @@ export async function purgeCached(documentId: string): Promise<void> {
   try {
     const cache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default;
     if (!cache) return;
-    for (const p of ['', '/text', '/related']) await cache.delete(new Request(`https://vineyardportal.org/api/documents/${documentId}${p}`));
+    for (const p of ['', '/text', '/related', '/trail']) await cache.delete(new Request(`https://vineyardportal.org/api/documents/${documentId}${p}`));
   } catch {
     /* nothing cached here */
   }
 }
 
-/** Free archive space left before the 6 GB stop. */
+/** Free archive space left before the storage stop (ARCHIVE_STORAGE_HARD_STOP_BYTES). */
 export async function archiveRoom(env: Env): Promise<{ stored: number; hardStop: number }> {
   const stats = await env.CATALOG_DB.prepare('SELECT stored_bytes FROM archive_stats WHERE id = 1').first<{ stored_bytes: number }>();
-  return { stored: Number(stats?.stored_bytes ?? 0), hardStop: intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, 6_000_000_000) };
+  return { stored: Number(stats?.stored_bytes ?? 0), hardStop: intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, DEFAULT_HARD_STOP_BYTES) };
 }
 
 type ItemRow = Record<string, unknown>;

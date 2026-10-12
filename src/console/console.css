@@ -4795,7 +4795,6 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-topic[data-resident='true'] .vc-topic-hint { color: var(--vc-accent); font-weight: 600; }
 .vc-doc-filed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 0; font-size: var(--vc-fs-sm); color: var(--vc-muted); }
 .vc-doc-adopted { color: var(--vc-accent); font-weight: 600; text-decoration: none; }
-.vc-doc-file { overflow-wrap: anywhere; }
 /* Year chips: one row of years that scrolls sideways and never wraps. */
 .vc-ychips { position: relative; display: flex; gap: var(--vc-sp-2); margin: 0 calc(-1 * var(--vc-sp-4)) var(--vc-sp-3); padding: 2px var(--vc-sp-4); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: var(--vc-sp-4); scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--vc-sp-4), #000 calc(100% - var(--vc-sp-6)), transparent); mask-image: linear-gradient(90deg, transparent 0, #000 var(--vc-sp-4), #000 calc(100% - var(--vc-sp-6)), transparent); }
 .vc-ychips::-webkit-scrollbar { display: none; }

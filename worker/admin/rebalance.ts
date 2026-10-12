@@ -1,6 +1,8 @@
 /**
- * Archive rebalance (admin, run from the GitHub ingest job). The R2 archive stops at
- * ARCHIVE_STORAGE_HARD_STOP_BYTES, which is never raised. To make room for the priority records
+ * Archive rebalance (admin, run from the GitHub ingest job). Since every file is now archived while space
+ * lasts (worker/lib/archivePolicy.ts), no stored copy is removable and apply removes nothing; it is kept for
+ * a future policy change. Historical note: the R2 archive stops at
+ * ARCHIVE_STORAGE_HARD_STOP_BYTES. To make room for the priority records
  * (minutes, agendas, ordinances, resolutions, notices, budgets, audits), stored copies of other
  * records (agenda packets, attachments, studies) are removed; those records stay indexed and link to
  * the city's own copy. Deferred priority records are queued again so the next sync archives them.
@@ -10,7 +12,7 @@
  */
 import type { Env } from '../env';
 import { json } from '../lib/http';
-import { ARCHIVE_TYPES, shouldArchive } from '../lib/archivePolicy';
+import { ARCHIVE_TYPES, isPriorityArchive, shouldArchive } from '../lib/archivePolicy';
 import { PORTAL_SOURCES } from '../lib/contrib';
 
 type Row = { id: string; title: string; document_type: string; archive_key: string; file_size: number | null; source_id: string };
@@ -34,7 +36,7 @@ export async function rebalanceArchive(env: Env, body: Record<string, unknown>):
     .prepare(`SELECT document_type, title, file_size FROM documents WHERE archive_status = 'quota_deferred' AND document_type IN (SELECT value FROM json_each(?))`)
     .bind(JSON.stringify([...ARCHIVE_TYPES]))
     .all<{ document_type: string; title: string; file_size: number | null }>();
-  const priorityDeferred = (deferred.results ?? []).filter((d) => shouldArchive(d.document_type, d.title));
+  const priorityDeferred = (deferred.results ?? []).filter((d) => isPriorityArchive(d.document_type, d.title));
   const priorityDeferredBytes = priorityDeferred.reduce((n, d) => n + Number(d.file_size ?? 0), 0);
   const stats = await db.prepare('SELECT stored_bytes, stored_objects FROM archive_stats WHERE id = 1').first<{ stored_bytes: number; stored_objects: number }>();
 
