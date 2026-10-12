@@ -827,6 +827,9 @@ export function undatedRates<T extends { segments: Array<{ text: string; citatio
   return paragraphs.map((p) => ({ ...p, segments: p.segments.filter((x) => !(/(?:^|[\s(])0?\.\d{4,6}\b|\b\d+(?:\.\d+)?\s?(?:%|percent)/.test(x.text) && !/\b(?:19|20)\d{2}\b|\bfy\s?'?\d{2}\b/i.test(x.text))) })).filter((p) => p.segments.length);
 }
 
+/** "Who is my council member?", "who is on the city council?", "list the council members". */
+export const COUNCIL_ROSTER_Q = /\b(?:who(?:'s| is| are)\s+(?:my|our|the)\s+(?:city\s+)?council\s*(?:members?|person|people|rep(?:resentative)?s?)|who(?:'s| is| are)\s+on\s+(?:the\s+)?(?:city\s+)?council|(?:list|name)\s+(?:the|all|all the)\s+(?:city\s+)?council\s*members|my\s+(?:city\s+)?council\s*(?:member|person|rep(?:resentative)?))\b/i;
+
 type Prepared =
   | { kind: 'final'; response: AskResponse }
   | { kind: 'model'; messages: Msg[]; lite: Msg[]; useBig: boolean; finish: (raw: string, engine?: string) => Promise<AskResponse>; fail: (e: unknown) => Promise<AskResponse> };
@@ -850,6 +853,20 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   if (who && isIdentityQuestion(body.question, namedNow ?? who)) {
     const text = whoIsAnswer(who);
     return { kind: 'final', response: { ...base, question: body.question, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'directory', people: [who.slug] } as AskResponse };
+  }
+  // "Who is my council member?", "who is on the city council?": the elected officials the city's own
+  // directory lists today, by title, written by code (never a model's count of them).
+  if (COUNCIL_ROSTER_Q.test(body.question)) {
+    const elected = staff.filter((p) => p.kind === 'elected');
+    const council = elected.filter((p) => !/\bmayor\b/i.test(p.role) || /pro tem/i.test(p.role));
+    const mayor = elected.find((p) => /^mayor$/i.test(p.role.trim()));
+    if (council.length) {
+      const last = (n: string) => n.trim().split(/\s+/).pop() ?? n;
+      const names = council.map((p) => `Council Member ${last(p.name)}`);
+      const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+      const text = `The city's directory lists ${council.length === 1 ? 'one City Council member' : `${council.length} City Council members`}: ${list}.${mayor ? ` The mayor is Mayor ${last(mayor.name)}.` : ''} Their phone numbers and email addresses are on the cards below.`;
+      return { kind: 'final', response: { ...base, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'directory (council)', people: [...council, ...(mayor ? [mayor] : [])].map((p) => p.slug) } as AskResponse };
+    }
   }
   if (who && !namedNow && PERSON_PRONOUN.test(body.question)) body = { ...body, question: body.question.replace(PERSON_PRONOUN, who.name) };
   const filters = body.filters ?? {};

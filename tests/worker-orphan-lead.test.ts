@@ -33,3 +33,11 @@ describe('a question about now answered from old records', () => {
     );
   });
 });
+
+describe('council roster questions', () => {
+  it('are recognized', async () => {
+    const { COUNCIL_ROSTER_Q } = await import('../worker/ai/rag');
+    for (const q of ['Who is my council member?', 'who are the city council members', 'Who is on the City Council?', 'List all the council members']) expect(COUNCIL_ROSTER_Q.test(q), q).toBe(true);
+    for (const q of ['What did the council vote on?', 'How did Council Member Wood vote?']) expect(COUNCIL_ROSTER_Q.test(q), q).toBe(false);
+  });
+});
