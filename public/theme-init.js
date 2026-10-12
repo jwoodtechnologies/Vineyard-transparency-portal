@@ -17,7 +17,7 @@
     var seg = location.pathname.split('/').filter(Boolean);
     var table = {
       '': 'console', meetings: seg[1] ? 'meeting' : 'meetings', calendar: 'meetings', documents: 'document',
-      services: seg[1] ? 'service' : 'services', budget: 'budget', map: 'map', construction: 'construction',
+      services: seg[1] ? 'service' : 'services', budget: 'budget', map: 'map',
       records: seg[1] ? 'recordsIndex' : 'records', votes: 'votes', boards: 'boards', planning: 'planning', people: 'people', add: 'add', sources: 'sources'
     };
     var screen = table[seg[0] || ''] || 'other';
@@ -37,7 +37,7 @@
     }
     // 3. The page's own data starts loading now, alongside its code (src/console/api.ts picks it up).
     var q = location.search;
-    var api = { votes: '/api/pages/votes', planning: '/api/pages/planning', construction: '/api/pages/construction', budget: '/api/budget' }[screen];
+    var api = { votes: '/api/pages/votes', planning: '/api/pages/planning', budget: '/api/budget' }[screen];
     if (api && (screen === 'votes' || screen === 'planning') && /[?&](member|q|result|vote)=/.test(q)) api = null;
     if (api && screen === 'votes' && /[?&]body=redevelopment-agency(&|$)/.test(q)) api += '?body=redevelopment-agency';
     if (api && window.fetch) {

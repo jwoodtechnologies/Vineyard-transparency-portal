@@ -1,5 +1,5 @@
 /**
- * Basemaps shared by /map and the Construction page's map, built so the streets map draws as soon
+ * Basemaps for /map, built so the streets map draws as soon
  * as possible:
  *  - the OpenFreeMap style and its tile index (TileJSON) are fetched at the same time, not one after
  *    the other, and the tile index is written into the style so MapLibre makes no extra round trip;

@@ -72,7 +72,8 @@ Routes live in `src/app/router.tsx`; every screen is in `src/console/`.
 | `/meetings`, `/calendar`, `/meetings/:meetingId` | Meetings calendar and one meeting |
 | `/documents/:documentId` | Document viewer |
 | `/services`, `/services/:id` | City services |
-| `/budget`, `/map`, `/construction`, `/records` | Budget, map, construction, records |
+| `/budget`, `/map`, `/records` | Budget, map (with funded projects and city construction under it), records |
+| `/construction` | Redirect to `/map?layers=projects#projects` |
 | `/latest`, `/news` | Redirect to `/meetings` (the calendar) |
 | `/votes`, `/boards`, `/planning`, `/people`, `/people/:slug` | Voting records, boards, Planning Commission, people |
 | `/search`, `/ask` | Redirect to `/` with the question |

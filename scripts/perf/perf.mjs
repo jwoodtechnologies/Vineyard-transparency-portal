@@ -35,7 +35,6 @@ const TIMEOUT = Number(args.timeout ?? 45000);
 /** What counts as the title and as content on each page. */
 const PAGES = {
   '/': { title: '.vc-hero-title, #vtp-shell .s-hero', content: '.vc-composer textarea, .vc-input' },
-  '/construction': { title: 'main h1, #vtp-shell .s-title', content: '.vc-cp-rows li' },
   '/add': { title: 'main h1, #vtp-shell .s-title', content: '.vc-add-kinds, .vc-add-form' },
   '/votes': { title: 'main h1, #vtp-shell .s-title', content: '.vc-sh-table tbody tr' },
   '/planning': { title: 'main h1, #vtp-shell .s-title', content: '.vc-sh-table tbody tr' },

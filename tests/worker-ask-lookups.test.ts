@@ -378,7 +378,7 @@ describe('pure parts', () => {
   it('routes to the right page when nothing can be quoted', () => {
     expect(routeFor('When does the Planning Commission meet?').section.path).toBe('/meetings?view=past&type=meetings&body=planning-commission');
     expect(routeFor('How did the council vote on the splash pad?').section.path).toBe('/votes');
-    expect(routeFor('What roads are closed for construction?').section.path).toBe('/construction');
+    expect(routeFor('What roads are closed for construction?').section.path).toBe('/map?layers=projects#projects');
     expect(routeFor('What is the zoning of my lot?').section.path).toBe('/map');
     expect(routeFor('Who were the 2025 candidates?').section.path).toMatch(/^\/records\?q=/);
     for (const q of ['anything at all', 'What is the RDA?', 'pavilion reservation']) expect(routeFor(q).text).not.toMatch(DEAD_END);

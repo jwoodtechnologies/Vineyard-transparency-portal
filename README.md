@@ -22,8 +22,9 @@ the records, not by the model. If AI is unavailable, search still works.
   recorded tally, absent and not-yet-seated marks, CSV download.
 - **Budget** (`/budget`): fiscal 2027 adopted budget by fund and department, revenue, sales tax and
   every budgeted capital project with its funding vote and related records.
-- **Construction** (`/construction`): the city's construction page, read every five minutes and kept
-  by version, with the project map.
+- **Construction** (under the map, `/map#projects`; `/construction` redirects there): every funded project as a card
+  (amount, stage, Details for its votes and records) and the city construction page's table, read every five minutes and kept
+  by version.
 - **Map** (`/map`): city GIS layers, Utah County parcels (owner shown on the parcel card only for companies,
   churches, HOAs and government, never for individuals or a business-held home) and aerial imagery, UDOT projects.
 - **Submit a public record** (`/add`): residents can submit a document, project, note or link. Nothing

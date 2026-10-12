@@ -1073,7 +1073,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // "What construction is going on right now?": the city's page as last stored, with its date.
   if (isConstructionNowQuestion(body.question)) {
     const c = await constructionAnswer(env).catch(() => null);
-    if (c) return quick(c.text, undefined, c.followUps, { path: '/construction', label: 'Open construction', hint: "The city's construction page, by version, with the map" });
+    if (c) return quick(c.text, undefined, c.followUps, { path: '/map?layers=projects#projects', label: 'Open construction projects', hint: 'Funded projects and work now, under the map' });
   }
   const service = serviceAnswer(body.question);
   if (service) return quick(service.text, undefined, service.followUps);

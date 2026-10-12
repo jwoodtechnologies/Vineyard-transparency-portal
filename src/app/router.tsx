@@ -21,7 +21,6 @@ const load = {
   boards: () => import('@/console/BoardsPage'),
   planning: () => import('@/console/PlanningPage'),
   budget: () => import('@/console/BudgetPage'),
-  construction: () => import('@/console/ConstructionPage'),
   add: () => import('@/console/AddPage'),
   sources: () => import('@/console/SourcesPage'),
 };
@@ -41,7 +40,6 @@ const VotesPage = lazy(load.votes);
 const BoardsPage = lazy(load.boards);
 const PlanningPage = lazy(load.planning);
 const BudgetPage = lazy(load.budget);
-const ConstructionPage = lazy(load.construction);
 const AddPage = lazy(load.add);
 const SourcesPage = lazy(load.sources);
 
@@ -56,7 +54,6 @@ export function screenFor(path: string): Screen | null {
     services: seg[1] ? 'service' : 'services',
     budget: 'budget',
     map: 'map',
-    construction: 'construction',
     records: seg[1] ? 'recordsIndex' : 'records',
     votes: 'votes',
     boards: 'boards',
@@ -134,7 +131,8 @@ export const router = createBrowserRouter([
   { path: '/news', element: <Navigate to="/meetings" replace /> },
   { path: '/budget', element: quiet(<BudgetPage />) },
   { path: '/map', element: quiet(<MapPage />) },
-  { path: '/construction', element: quiet(<ConstructionPage />) },
+  // Construction is a map layer: the funded projects and the city's construction table are listed under the map.
+  { path: '/construction', element: <Navigate to="/map?layers=projects#projects" replace /> },
   { path: '/records', element: quiet(<RecordsPage />) },
   { path: '/records/:index', element: quiet(<RecordsIndexPage />) },
   { path: '/votes', element: quiet(<VotesPage />) },

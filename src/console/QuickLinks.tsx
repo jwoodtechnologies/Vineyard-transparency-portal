@@ -156,7 +156,7 @@ function serviceBubbles(question: string, hasCard = false): Bubble[] {
   if (/\b(budget|general fund|capital projects?|city spend\w*|tax revenue|property tax|sales tax|fiscal (year )?(20)?27|fy ?27)\b/i.test(q)) out.push({ key: 'budget', label: 'See the budget', hint: 'Fiscal year 2027, in pictures', href: '/budget', kind: 'page', internal: true });
 
   if (/\b(construction|road ?work|road closures?|lane closures?|detours?|chip ?seal\w*|pavement preservation|paving|repav\w*|what('?s| is) being built)\b/i.test(q) && !/\b(permits?|codes?|standards?|fees?|inspections?|licen[cs]es?|contractors?|bids?|rfp|jobs?|employ\w*|apply|zoning)\b/i.test(q)) {
-    out.push({ key: 'construction', label: 'Construction projects', hint: 'Timelines, closures and map', href: '/construction', kind: 'page', internal: true });
+    out.push({ key: 'construction', label: 'Construction projects', hint: 'Funded projects and work now, under the map', href: '/map?layers=projects#projects', kind: 'page', internal: true });
   }
 
   // Every form, portal and report the city links from its Transparency Portal, when asked for.

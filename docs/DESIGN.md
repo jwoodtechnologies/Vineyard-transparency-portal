@@ -102,7 +102,7 @@ indexes. One row, newest first, 40 px tall, 14 px; it scrolls sideways and never
 hairlines, title at 16 px, then one 14 px line of facts led by a status chip `.vc-schip` (Adopted, Draft,
 Cited; 14 px, neutral, never wraps).
 
-**Table** `.vc` tables (vote sheets, budget, the city construction table, numbered indexes): 14 px cells,
+**Table** `.vc` tables (vote sheets, budget): 14 px cells,
 12 px 600 header in `--vc-muted` on `--vc-bg-2`, cell padding 12 px by 12 px, 1 px `--vc-line` rules between
 rows, no zebra striping except vote sheets (which need row tracking across many columns), tabular figures,
 money right aligned. On phones a table that cannot fit becomes cards (one card per row, label above value)

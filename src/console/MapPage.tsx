@@ -3,7 +3,8 @@
  * subdivisions, roads, parks, schools, businesses) served through the portal's API, drawn with
  * MapLibre on free OpenFreeMap streets and Utah County aerial imagery. Click anything for details;
  * search any road or project. The basemap draws first; city layers are fetched in parallel and added
- * as they arrive, never holding the map back.
+ * as they arrive, never holding the map back. Under the map: every funded project and the city's
+ * construction table (MapProjects; /construction opens there).
  */
 import './styles';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -21,6 +22,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
 import { ProjectDetail } from './ProjectDetail';
+import { MapProjects } from './MapProjects';
 import { BASE_BG, blankStyle, byZoom, CASING, firstLabelLayer, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
 import { hasTile, loadedTileCount, loadTile, mergedParcels, tilesFor } from './parcelTiles';
 import { FullscreenToggle } from './mapFullscreen';
@@ -1084,6 +1086,14 @@ export default function MapPage() {
 
   const ask = picked ? `/?q=${encodeURIComponent(askFor(picked))}` : '/';
 
+  // A project tapped in the list under the map: the projects layer on, the map back in view, the project framed.
+  const showProject = useCallback((gis: string) => {
+    focusRef.current = `project:${gis}`;
+    setOn((cur) => (cur.has('projects') ? cur : new Set([...cur, 'projects'])));
+    wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    setTimeout(() => applyRef.current(), 0);
+  }, []);
+
   return (
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
@@ -1315,6 +1325,7 @@ export default function MapPage() {
           </div>
         )}
       </div>
+      <MapProjects onShow={showProject} />
     </div>
   );
 }
