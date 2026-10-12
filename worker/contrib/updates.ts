@@ -128,11 +128,12 @@ const contribution = (id: string, f: Fields): Contribution => ({
 });
 
 /** Publishes an update: stored, made a record and indexed for search and chat at once. */
-export async function createUpdate(env: Env, b: Record<string, unknown>, me: Me): Promise<Record<string, unknown>> {
+export async function createUpdate(env: Env, b: Record<string, unknown>, me: Me, restoreId?: string): Promise<Record<string, unknown>> {
   staffOnly(me);
   const f = fieldsOf(b);
   const budget = await prepare(env);
-  const id = `upl_${randomHex(8)}`;
+  // The staff portal's undo posts a removed update again under the id it had, so earlier log entries still find it.
+  const id = restoreId ?? `upl_${randomHex(8)}`;
   const now = nowIso();
   await env.CATALOG_DB.prepare(
     `INSERT INTO uploads (id, account_id, kind, title, doc_type, doc_date, body, topic, topic_label, index_status, created_at, updated_at)
