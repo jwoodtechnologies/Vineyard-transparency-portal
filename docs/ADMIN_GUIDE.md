@@ -63,7 +63,7 @@ in **History**.
 
 ## 7. What residents see
 
-- Your update gets its own page, marked **Update from Vineyard City staff** with its date.
+- Your update gets its own page, marked **Update posted on the portal** with its date.
 - It shows up in search and on the **Records** page under **Updates**.
 - If you picked a project, it appears on that project's card under the map as its latest update.
 - The chat assistant uses it right away and links to it when it answers. When your update is newer

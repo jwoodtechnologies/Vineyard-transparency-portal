@@ -54,9 +54,9 @@ The panel shows page visits, questions asked, and thumbs up or down on answers.
   a short topic list), Publish.
 - Each update is an `uploads` row (kind `update`, author `account_id`, `topic`, `topic_label`) and a
   record (`document_type` `staff_update`, source `portal-staff`) indexed into search in the same
-  request. Its search text starts with the title, "Update from Vineyard City staff, <date>" and the
+  request. Its search text starts with the title, "Update posted on the portal, <date>" and the
   project or topic line.
-- Public: the record page and search results carry the label "Update from Vineyard City staff,
+- Public: the record page and search results carry the label "Update posted on the portal,
   <date>"; Records shows an "Updates" row (three newest, `GET /api/updates`, not edge cached) and a
   topic `/records?topic=updates`; a project's card under the map shows its newest update.
 - Chat: updates are retrieved like any record; the prompt tells the model to cite them and to give

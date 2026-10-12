@@ -251,7 +251,7 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
           <div><label for="upDate">Date</label><input id="upDate" type="date" required></div>
           <div><label for="upTopic">Project or topic (optional)</label><select id="upTopic"><option value="">None</option></select></div>
         </div>
-        <p class="hint">Shows at once in search, chat answers and Records, and on a project's card under the map. Labelled "Update from Vineyard City staff".</p>
+        <p class="hint">Shows at once in search, chat answers and Records, and on a project's card under the map. Labelled "Update posted on the portal".</p>
         <p class="err" id="upErr"></p>
         <button class="btn primary" type="submit">Publish</button>
       </form>

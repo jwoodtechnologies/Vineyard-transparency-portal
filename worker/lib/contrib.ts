@@ -11,7 +11,7 @@ export const PORTAL_SOURCES = new Set([STAFF_SOURCE_ID, RESIDENT_SOURCE_ID]);
 
 /** Updates posted from the panel's Updates tab (plain text, a record of their own). */
 export const UPDATE_TYPE = 'staff_update';
-export const UPDATE_LABEL = 'Update from Vineyard City staff';
+export const UPDATE_LABEL = 'Update posted on the portal';
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** "2026-10-12" as "Oct 12, 2026" (the site's short date). */
@@ -21,7 +21,7 @@ export function shortDate(iso: string | null | undefined): string | null {
   return `${SHORT_MONTHS[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`;
 }
 
-/** "Update from Vineyard City staff, Oct 12, 2026". */
+/** "Update posted on the portal, Oct 12, 2026". */
 export function updateLabel(date: string | null | undefined): string {
   const d = shortDate(date);
   return d ? `${UPDATE_LABEL}, ${d}` : UPDATE_LABEL;

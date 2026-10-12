@@ -42,14 +42,14 @@ describe('updates', () => {
     const doc = env.CATALOG_DB.db.prepare('SELECT source_id, document_type, document_date, title FROM documents WHERE id = ?').get(documentId);
     expect(doc).toEqual({ source_id: 'portal-staff', document_type: 'staff_update', document_date: '2026-10-12', title: 'Grove Park pickleball courts open' });
     const text = chunks(env, documentId);
-    expect(text).toContain('Update from Vineyard City staff, Oct 12, 2026');
+    expect(text).toContain('Update posted on the portal, Oct 12, 2026');
     expect(text).toContain('Topic: Parks and trails');
     expect(text).toContain('eight courts are lit');
     expect(await search(env, 'pickleball courts lit')).toContain(documentId);
     // The author is kept with the update.
     const row = env.CATALOG_DB.db.prepare("SELECT u.account_id, a.name FROM uploads u JOIN panel_accounts a ON a.id = u.account_id WHERE u.kind = 'update'").get();
     expect(row).toMatchObject({ name: 'Vineyard Admin' });
-    expect(sourceLabelFor('portal-staff', 'staff_update', '2026-10-12')).toBe('Update from Vineyard City staff, Oct 12, 2026');
+    expect(sourceLabelFor('portal-staff', 'staff_update', '2026-10-12')).toBe('Update posted on the portal, Oct 12, 2026');
     expect(sourceLabelFor('portal-staff', 'note', '2026-10-12')).toBe('Added by portal staff');
   });
 
@@ -167,9 +167,9 @@ describe('chat reads updates as records', () => {
     // The model saw the update as a dated source of type "staff update", and the prompt says how to treat it.
     expect(seen.length).toBeGreaterThan(0);
     expect(seen[0]).toMatch(/\[\d+\] Grove Park pickleball courts open \| staff update \| 2026-10-12/);
-    expect(RAG_SYSTEM_PROMPT).toContain('"staff update" is an update posted by Vineyard City staff');
+    expect(RAG_SYSTEM_PROMPT).toContain('"staff update" is an update posted on this portal by its administrators');
     // The answer cites the update, with its label.
     expect(r.answer).toContain('eight are lit');
-    expect(r.citations).toEqual([expect.objectContaining({ documentId, sourceLabel: 'Update from Vineyard City staff, Oct 12, 2026' })]);
+    expect(r.citations).toEqual([expect.objectContaining({ documentId, sourceLabel: 'Update posted on the portal, Oct 12, 2026' })]);
   });
 });

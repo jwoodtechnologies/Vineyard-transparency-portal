@@ -41,8 +41,8 @@ export const TYPE_LABEL: Record<DocumentType, string> = {
 /** Records added on the portal carry a label wherever they are shown; city records carry none. */
 export const RESIDENT_LABEL = 'Resident submitted. Not a city record.';
 export const STAFF_LABEL = 'Added by portal staff';
-export const UPDATE_LABEL = 'Update from Vineyard City staff';
-/** "Update from Vineyard City staff, Oct 12, 2026" for an update posted from the panel; the plain staff label for other staff records. */
+export const UPDATE_LABEL = 'Update posted on the portal';
+/** "Update posted on the portal, Oct 12, 2026" for an update posted from the panel; the plain staff label for other staff records. */
 export function sourceLabel(sourceId: string | null | undefined, documentType?: string | null, date?: string | null): string | null {
   if (sourceId === 'resident-submitted') return RESIDENT_LABEL;
   if (sourceId !== 'portal-staff') return null;
