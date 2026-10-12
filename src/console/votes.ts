@@ -226,7 +226,8 @@ function shown(raw: string): string {
     .replace(/[\s:;,.-]+$/, '')
     .trim();
   if (t === t.toLowerCase() || /\b[a-z]{3,}\b/.test(t.replace(PROPER, 'X')))
-    t = t.replace(PROPER, (w) => (ACRONYM.has(w.toUpperCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()));
+    // A name already written with its own capitals (McCumber) is left alone; only plain lower or upper case is fixed.
+    t = t.replace(PROPER, (w) => (ACRONYM.has(w.toUpperCase()) ? w.toUpperCase() : /[a-z]/.test(w) && /[A-Z]/.test(w.slice(1)) ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()));
   for (const [re, to] of PHRASES) t = typeof to === 'string' ? t.replace(re, to) : t.replace(re, to);
   // A title typed in capitals-for-every-word keeps its small words small: "In Support Of Parking" reads "In Support of Parking".
   t = t.replace(/(?<=\b[A-Z][\w'-]*\s)(A|An|And|As|At|By|For|From|In|Of|On|Or|The|To|With)(?=\s)/g, (w) => w.toLowerCase());
@@ -252,6 +253,9 @@ function trimTitle(t: string): string {
 
 function sentence(t: string): string {
   const first = t.split(/\.\s+(?=[A-Z])/)[0] ?? t;
+  // "In honor of Council Member McCumber's new son, that Council Member Parker McCumber should be Mayor Pro Tem": the vote is on the appointment.
+  const named = /^in (?:honou?r|memory|recognition) of [^,]+,\s*that\s+(?:(?:council ?member|councilmember|commissioner|mayor)\s+)?(.+?)\s+should be\s+(.+)$/i.exec(first);
+  if (named) return `${named[2]}: ${named[1]}`;
   return first.replace(/^(?:to|td)[-\s]*(?=approve|adopt|appoint|accept|deny|authorize)/i, '').replace(/^to\s+/i, '');
 }
 
@@ -338,7 +342,9 @@ function classify(m: MotionRow): SheetRow | null {
     // A motion that names its agenda item by number ("approve 5.5 with an amendment") is about that item.
     const number = /^(\d+\.\d+)/.exec(m.item ?? '')?.[1];
     const names = !!number && new RegExp(`\\b${number.replace('.', '\\.')}\\b`).test(text);
-    if (specific && !names && !words(itemShown).some((w) => words(text).includes(w)) && !tag) title = ownShown;
+    // Words that describe who did what with a motion ("Mayor Pro Tem Lauret brought back the original motion") are not the thing decided: the agenda item names it.
+    const describesMotion = /\b(?:original|amended|substitute|previous|revised|second) motion\b|^(?:mayor|council ?members?|councilm[ae]n|commissioner|board member)\b/i.test(own);
+    if (specific && !names && !describesMotion && !words(itemShown).some((w) => words(text).includes(w)) && !tag) title = ownShown;
     else title = tag && !itemShown.includes(tag.replace(/^\w+\s+/, '')) ? `${tag}: ${itemShown}` : itemShown;
   }
   if (!title) title = ownShown;
