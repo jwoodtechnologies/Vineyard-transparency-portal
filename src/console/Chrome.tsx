@@ -8,6 +8,7 @@ import { ArrowLeft, Building2, CalendarDays, CircleDollarSign, ClipboardList, Fi
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { HeaderSearch } from './HeaderSearch';
+import { NoticeBar } from './NoticeBar';
 
 function useScrolled() {
   const [scrolled, setScrolled] = useState(() => typeof window !== 'undefined' && window.scrollY > 8);
@@ -77,7 +78,6 @@ function isHere(to: string, path: string, search: string): boolean {
   if (p !== path && !(p === '/meetings' && path === '/calendar')) return false;
   return !q || new URLSearchParams(search).toString().includes(q);
 }
-
 
 /**
  * The one menu, on desktop and phones: the calendar, people, map and every record category, then
@@ -162,29 +162,32 @@ interface TopBarProps {
 export function TopBar({ onHome, onHistory, children }: TopBarProps) {
   const scrolled = useScrolled();
   return (
-    <header className="vc-topbar" data-scrolled={scrolled}>
-      <div className="vc-topbar-start">
-        {onHistory && (
-          <button type="button" className="vc-ghost" data-icon-only="true" onClick={onHistory} aria-label="Chat history" title="Chat history">
-            <History size={17} strokeWidth={1.8} />
-          </button>
-        )}
-        {onHome ? (
-          <button type="button" className="vc-wordmark-home" onClick={onHome} aria-label="Vineyard Transparency Portal, start over">
-            <Wordmark />
-          </button>
-        ) : (
-          <Link to="/" className="vc-wordmark-home" aria-label="Vineyard Transparency Portal home">
-            <Wordmark />
-          </Link>
-        )}
-      </div>
-      <nav className="vc-topbar-actions" aria-label="Main">
-        {children}
-        <HeaderSearch />
-        <SettingsMenu />
-      </nav>
-    </header>
+    <>
+      <header className="vc-topbar" data-scrolled={scrolled}>
+        <div className="vc-topbar-start">
+          {onHistory && (
+            <button type="button" className="vc-ghost" data-icon-only="true" onClick={onHistory} aria-label="Chat history" title="Chat history">
+              <History size={17} strokeWidth={1.8} />
+            </button>
+          )}
+          {onHome ? (
+            <button type="button" className="vc-wordmark-home" onClick={onHome} aria-label="Vineyard Transparency Portal, start over">
+              <Wordmark />
+            </button>
+          ) : (
+            <Link to="/" className="vc-wordmark-home" aria-label="Vineyard Transparency Portal home">
+              <Wordmark />
+            </Link>
+          )}
+        </div>
+        <nav className="vc-topbar-actions" aria-label="Main">
+          {children}
+          <HeaderSearch />
+          <SettingsMenu />
+        </nav>
+      </header>
+      <NoticeBar />
+    </>
   );
 }
 

@@ -27,6 +27,7 @@ import { peopleIn, usePeople, type Person } from './people';
 import { Drawer } from './Drawer';
 import { SettingsMenu, TopBar } from './Chrome';
 import { HeaderSearch } from './HeaderSearch';
+import { NoticeBar } from './NoticeBar';
 import { HistoryPanel } from './HistoryPanel';
 import { getChat, newChatId, saveChat, type SavedChat } from './history';
 import type { ConsoleAnswer, Preview, Turn } from './types';
@@ -391,6 +392,7 @@ export default function ConsolePage() {
           </div>
         </div>
         <main className="vc-landing">
+          <NoticeBar />
           <header className="vc-hero">
             <h1 className="vc-hero-title">
               Vineyard <em>Transparency</em> Portal
