@@ -6,7 +6,7 @@
 import './styles';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CalendarDays, ChevronRight, FileText, Search, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, Search, X } from 'lucide-react';
 import { Frame } from './Chrome';
 import { fresh, getJson, useJson } from './api';
 import { categoryById } from './categories';
@@ -15,9 +15,9 @@ import { TYPE_LABEL, formatDate, sourceLabel } from './format';
 import { RssLink } from './RssLink';
 import { ResultChips, type ChipFacets } from './ResultChips';
 import { RECORD_TOPICS, topicById } from '@/lib/recordTopics';
-import type { RecordStatus } from '@/lib/recordTitle';
+import { STATUS_LABEL, type RecordStatus } from '@/lib/recordTitle';
+import { YearChips } from './YearChips';
 import { labelsOf } from './recordLabels';
-import { RecordChips } from './RecordChips';
 import { RecordsHome } from './RecordsHome';
 import { setHead } from '@/lib/head';
 import { ErrorNote } from './ErrorNote';
@@ -93,7 +93,7 @@ const monthOf = (d: string | null, y: number | null) => (d && /^\d{4}-\d{2}/.tes
 /** The day a record sorts and groups by: its own date, else the meeting that adopted it, else its year. */
 const effectiveDate = (r: Row) => r.date ?? r.adoption?.date ?? (r.year ? `${r.year}-00-00` : '');
 
-function RecordList({ rows, q, grouped, oldest = false }: { rows: Row[]; q: string; grouped: boolean; oldest?: boolean }) {
+function RecordList({ rows, q, grouped, oldest = false, hideType, hideBody = false }: { rows: Row[]; q: string; grouped: boolean; oldest?: boolean; /** A type label every row shares, left out of the rows. */ hideType?: string; hideBody?: boolean }) {
   const groups: Array<{ label: string; rows: Row[] }> = [];
   // The server orders by the stored date; an ordinance dated only by its adopting meeting is moved to that day.
   const ordered = grouped ? [...rows].sort((a, b) => (oldest ? effectiveDate(a).localeCompare(effectiveDate(b)) : effectiveDate(b).localeCompare(effectiveDate(a)))) : rows;
@@ -109,22 +109,25 @@ function RecordList({ rows, q, grouped, oldest = false }: { rows: Row[]; q: stri
       {groups.map((g, i) => (
         <section key={`${g.label}-${i}`} className="vc-rec-group">
           {g.label && <h2 className="vc-rec-month">{g.label}</h2>}
-          <ul className="vc-mdocs">
+          <ul className="vc-rrows">
             {g.rows.map((d) => {
               const lb = labelsOf(d);
+              // One quiet line of facts: date, then the type and body when the list is not already only that.
+              const meta = [lb.date, lb.type === hideType ? null : lb.type, hideBody ? null : lb.body, lb.item ? `Item ${lb.item}` : null].filter(Boolean).join(' · ');
               return (
               <li key={d.id}>
-                <DocLink id={d.id} query={q || undefined} className="vc-mdoc">
-                  <span className="vc-mdoc-icon" data-kind={['agenda', 'agenda_packet', 'minutes'].includes(d.documentType) ? d.documentType : 'other'}>
-                    <FileText size={15} strokeWidth={1.8} />
+                <DocLink id={d.id} query={q || undefined} className="vc-rrow">
+                  <span className="vc-rrow-title">{lb.title}</span>
+                  <span className="vc-rrow-meta">
+                    {lb.status && (
+                      <span className="vc-schip" data-status={lb.status}>
+                        {STATUS_LABEL[lb.status]}
+                      </span>
+                    )}
+                    <span>{meta}</span>
                   </span>
-                  <span className="vc-mdoc-main">
-                    <span className="vc-mdoc-title">{lb.title}</span>
-                    <RecordChips labels={lb} />
-                    {sourceLabel(d.sourceId) && <span className="vc-source-label">{sourceLabel(d.sourceId)}</span>}
-                    {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
-                  </span>
-                  <ChevronRight size={16} className="vc-mdoc-go" />
+                  {sourceLabel(d.sourceId) && <span className="vc-source-label">{sourceLabel(d.sourceId)}</span>}
+                  {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
                 </DocLink>
               </li>
               );
@@ -421,17 +424,6 @@ function RecordsList() {
             </label>
           )}
           <label className="vc-rec-select">
-            <span>Year</span>
-            <select value={year} onChange={(e) => update({ y: e.target.value || null })}>
-              <option value="">All years</option>
-              {years.map((y) => (
-                <option key={y.value} value={y.value}>
-                  {y.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="vc-rec-select">
             <span>Body</span>
             <select value={body} onChange={(e) => update({ b: e.target.value || null })}>
               <option value="">All bodies</option>
@@ -470,6 +462,7 @@ function RecordsList() {
             </button>
           )}
         </div>
+        <YearChips years={years.map((y) => y.value)} value={year} all="All years" onPick={(y) => update({ y: y || null })} />
       </div>
 
       {meetingMode ? (
@@ -504,7 +497,14 @@ function RecordsList() {
       ) : state.rows.length === 0 ? (
         cat?.topics && !filtered ? null : <div className="vc-empty">No records match these filters.</div>
       ) : (
-        <RecordList rows={state.rows} q={q} grouped={sort !== 'title'} oldest={sort === 'date_asc'} />
+        <RecordList
+          rows={state.rows}
+          q={q}
+          grouped={sort !== 'title'}
+          oldest={sort === 'date_asc'}
+          hideType={types.length === 1 ? TYPE_LABEL[types[0] as keyof typeof TYPE_LABEL] : topic?.types?.length === 1 ? TYPE_LABEL[topic.types[0] as keyof typeof TYPE_LABEL] : undefined}
+          hideBody={Boolean(body || cat?.body || topic?.bodies?.length === 1)}
+        />
       )}
         </>
       )}

@@ -1,17 +1,19 @@
 /**
  * /records/ordinances, /records/resolutions, /records/rda-resolutions: each numbered measure of a
- * year, with its title, adoption date and tally from the minutes, and links to the record and the
- * minutes page. One edge-cached call per index (GET /api/records/<index>?year=).
+ * year, one row each: number, short title, a status chip, the adoption date and tally from the
+ * minutes, and the minutes page. One edge-cached call per index (GET /api/records/<index>?year=).
  */
 import './styles';
 import { useEffect } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import { Frame } from './Chrome';
 import { useJson } from './api';
 import { DocLink } from './DocLink';
 import { formatDate } from './format';
 import { setHead } from '@/lib/head';
 import { ErrorNote } from './ErrorNote';
+import { YearChips } from './YearChips';
 
 interface IndexRow {
   number: string;
@@ -38,9 +40,9 @@ interface RecordIndex {
 }
 
 const KINDS: Record<string, { title: string; word: string; topic: string; every: string }> = {
-  ordinances: { title: 'Ordinances', word: 'Ordinance', topic: 'ordinances', every: 'Every ordinance' },
-  resolutions: { title: 'Resolutions', word: 'Resolution', topic: 'resolutions', every: 'Every resolution' },
-  'rda-resolutions': { title: 'RDA resolutions', word: 'RDA Resolution', topic: 'rda', every: 'Every RDA resolution' },
+  ordinances: { title: 'Ordinances', word: 'Ordinance', topic: 'ordinances', every: 'All ordinances' },
+  resolutions: { title: 'Resolutions', word: 'Resolution', topic: 'resolutions', every: 'All resolutions' },
+  'rda-resolutions': { title: 'RDA resolutions', word: 'RDA Resolution', topic: 'rda', every: 'All RDA records' },
 };
 
 /** Adopted, Draft, or no adoption in the archive (from the state when an older response has no status). */
@@ -50,21 +52,41 @@ function rowStatus(r: IndexRow): 'adopted' | 'draft' | 'none' {
   return r.document?.status === 'draft' ? 'draft' : 'none';
 }
 
-/** The vote as recorded: the tally, else "Carried" for a carried motion with no tally; nothing for a row not adopted. */
+/** The vote as recorded: "Vote 4 to 0", else "Carried" for a carried motion with no tally; nothing otherwise. */
 function voteLabel(r: IndexRow): string | null {
   if (r.state === 'missing' || rowStatus(r) !== 'adopted') return null;
   if (r.tally) return `Vote ${r.tally.replace(/^(\d+)\s*-\s*(\d+)/, '$1 to $2')}`;
   if (r.vote === 'carried' || (r.vote === undefined && r.minutes)) return 'Carried';
-  return 'Vote not in the archive';
+  return null;
 }
 
-/** The status line: "Adopted Aug 25, 2026", "Draft, Planning Commission, Oct 7, 2026", "Not in the archive". */
-function statusLabel(r: IndexRow): string {
-  if (r.state === 'missing') return 'Cited in the minutes';
+/** The status chip: Adopted, Draft, Cited (named in the minutes, no copy held), or none. */
+function chipLabel(r: IndexRow): string | null {
+  if (r.state === 'missing') return 'Cited';
   const s = rowStatus(r);
-  if (s === 'adopted') return r.adoptedOn ? `Adopted ${formatDate(r.adoptedOn)}` : 'Adopted, date not found';
-  if (s === 'draft') return ['Draft', r.draft?.body, r.draft?.date ? formatDate(r.draft.date) : null].filter(Boolean).join(', ');
+  return s === 'adopted' ? 'Adopted' : s === 'draft' ? 'Draft' : null;
+}
+
+/** The date line: the adoption date, the draft's body and date, or what is not in the archive. */
+function dateLabel(r: IndexRow): string {
+  if (r.state === 'missing') return 'Named in the minutes';
+  const s = rowStatus(r);
+  if (s === 'adopted') return formatDate(r.adoptedOn) ?? 'Date not found';
+  if (s === 'draft') return [r.draft?.body, r.draft?.date ? formatDate(r.draft.date) : null].filter(Boolean).join(', ') || 'Not adopted';
   return 'Adoption not in the archive';
+}
+
+/** What to draw: each number held, and each run of numbers not held as one quiet line. */
+type Item = { row: IndexRow } | { gap: [string, string] };
+function itemsOf(rows: IndexRow[]): Item[] {
+  const out: Item[] = [];
+  for (const r of rows) {
+    const last = out[out.length - 1];
+    if (r.state !== 'absent') out.push({ row: r });
+    else if (last && 'gap' in last) last.gap[1] = r.number;
+    else out.push({ gap: [r.number, r.number] });
+  }
+  return out;
 }
 
 export default function RecordsIndexPage() {
@@ -87,26 +109,11 @@ export default function RecordsIndexPage() {
           Records
         </Link>
         <h1 className="vc-page-title">{kind.title} by number</h1>
+        <Link to={`/records?topic=${kind.topic}`} className="vc-rec-index-link">
+          {kind.every} <ChevronRight size={14} />
+        </Link>
       </header>
-      <div className="vc-rec-filters">
-        <div className="vc-rec-selects">
-          {data && data.years.length > 0 && (
-            <label className="vc-rec-select">
-              <span>Year</span>
-              <select value={String(data.year ?? '')} onChange={(e) => setParams(e.target.value ? { year: e.target.value } : {}, { replace: true })}>
-                {data.years.map((y) => (
-                  <option key={y.year} value={y.year}>
-                    {y.year} ({y.count})
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <Link to={`/records?topic=${kind.topic}`} className="vc-rec-reset">
-            {kind.every}
-          </Link>
-        </div>
-      </div>
+      {data && <YearChips years={data.years.map((y) => y.year)} value={String(data.year ?? '')} onPick={(y) => setParams(y ? { year: y } : {}, { replace: true })} />}
 
       {load.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
@@ -119,41 +126,61 @@ export default function RecordsIndexPage() {
       {data && data.rows.length > 0 && (
         <>
           <p className="vc-mdocs-count">
-            {held} of {data.rows.length} numbers for {data.year} in the archive. Dates and tallies are from the minutes.
+            {held} of {data.rows.length} numbers in the archive
           </p>
-          <ol className="vc-idx">
-            {data.rows.map((r) =>
-              r.state === 'absent' ? (
-                <li key={r.number} className="vc-idx-absent" data-state="absent">
-                  {kind.word} {r.number}. Not in the archive.
+          <ol className="vc-irows">
+            {itemsOf(data.rows).map((it) => {
+              if ('gap' in it) {
+                const [a, b] = it.gap;
+                return (
+                  <li key={a} className="vc-irow" data-state="absent">
+                    <span className="vc-irow-num">{a === b ? a : `${a} to ${b.replace(/^\d{4}-/, '')}`}</span>
+                    <span className="vc-irow-gap">Not in the archive</span>
+                  </li>
+                );
+              }
+              const r = it.row;
+              const chip = chipLabel(r);
+              const vote = voteLabel(r);
+              const title = r.state === 'missing' ? 'No copy in the archive' : (r.title ?? 'Title not in the archive');
+              // The row opens the measure itself, else the minutes that record it.
+              const open = r.document ? { id: r.document.id, page: null } : r.minutes ? { id: r.minutes.documentId, page: r.minutes.page } : null;
+              const minutesToo = r.document && r.minutes ? r.minutes : null;
+              return (
+                <li key={r.number} className="vc-irow" data-state={r.state} data-status={rowStatus(r)}>
+                  <span className="vc-irow-num">{r.number}</span>
+                  <span className="vc-irow-main">
+                    {open ? (
+                      <DocLink id={open.id} page={open.page} className="vc-irow-title" aria-label={`${kind.word} ${r.number}: ${title}`}>
+                        {title}
+                      </DocLink>
+                    ) : (
+                      <span className="vc-irow-title">{title}</span>
+                    )}
+                    <span className="vc-irow-meta">
+                      <span className="vc-irow-pair">
+                        {chip && (
+                          <span className="vc-schip" data-status={r.state === 'missing' ? 'cited' : rowStatus(r)}>
+                            {chip}
+                          </span>
+                        )}
+                        <span>{dateLabel(r)}</span>
+                      </span>
+                      {(vote || minutesToo) && (
+                        <span className="vc-irow-pair">
+                          {vote && <span>{vote}</span>}
+                          {minutesToo && (
+                            <DocLink id={minutesToo.documentId} page={minutesToo.page} className="vc-irow-link">
+                              Minutes
+                            </DocLink>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </span>
                 </li>
-              ) : (
-              <li key={r.number} className="vc-idx-row" data-state={r.state} data-status={rowStatus(r)}>
-                <div className="vc-idx-num">
-                  {kind.word} {r.number}
-                </div>
-                <div className="vc-idx-main">
-                  <div className="vc-idx-title">{r.state === 'missing' ? 'Not in the archive' : (r.title ?? 'Title not in the archive')}</div>
-                  <div className="vc-idx-meta">
-                    <span>{statusLabel(r)}</span>
-                    {voteLabel(r) && <span>{voteLabel(r)}</span>}
-                  </div>
-                  <div className="vc-idx-links">
-                    {r.document && (
-                      <DocLink id={r.document.id} className="vc-idx-link">
-                        {r.document.status === 'draft' ? 'Draft copy' : 'Document'}
-                      </DocLink>
-                    )}
-                    {r.minutes && (
-                      <DocLink id={r.minutes.documentId} page={r.minutes.page} className="vc-idx-link">
-                        Minutes{r.minutes.page ? `, page ${r.minutes.page}` : ''}
-                      </DocLink>
-                    )}
-                  </div>
-                </div>
-              </li>
-              ),
-            )}
+              );
+            })}
           </ol>
         </>
       )}

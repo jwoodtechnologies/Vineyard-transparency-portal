@@ -2708,7 +2708,7 @@ html.vc-locked .vc-landing {
 .vc-mdocs-count {
   min-height: 1.45em;
   margin: 0 0 var(--vc-sp-2);
-  font-size: var(--vc-fs-sm);
+  font-size: var(--vc-fs-ui);
   line-height: var(--vc-lh-ui);
   color: var(--vc-muted);
 }
@@ -3529,12 +3529,12 @@ html.vc-locked .vc-landing {
 .vc-rec-type-n { font-size: var(--vc-fs-micro); opacity: .6; font-variant-numeric: tabular-nums; }
 .vc-rec-selects { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .vc-rec-select { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; border: 1px solid var(--vc-line-2); border-radius: 10px; background: var(--vc-surface); font-size: var(--vc-fs-sm); }
-.vc-rec-select span { color: var(--vc-muted); font-size: var(--vc-fs-xs); }
+.vc-rec-select span { color: var(--vc-muted); font-size: var(--vc-fs-ui); }
 .vc-rec-select select { border: 0; background: transparent; color: var(--vc-ink); font: inherit; font-size: var(--vc-fs-sm); padding: 4px 2px; max-width: 46vw; }
 .vc-rec-select select:focus { outline: none; }
-.vc-rec-reset { border: 0; background: none; color: var(--vc-accent); font: inherit; font-size: var(--vc-fs-sm); font-weight: 600; cursor: pointer; padding: 6px 4px; }
-.vc-rec-group { margin-top: 14px; }
-.vc-rec-month { font-size: var(--vc-fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--vc-muted); margin: 0 0 8px; }
+.vc-rec-reset { border: 0; background: none; color: var(--vc-accent); font: inherit; font-size: var(--vc-fs-ui); font-weight: 600; cursor: pointer; padding: 6px 4px; }
+.vc-rec-group { margin-top: 20px; }
+.vc-rec-month { font-size: var(--vc-fs-ui); font-weight: 600; color: var(--vc-ink-2); margin: 0 0 6px; }
 @media (max-width: 560px) { .vc-rec-select { flex: 1 1 calc(50% - 8px); } .vc-rec-select select { max-width: none; width: 100%; } }
 
 /* People: cards, profile, directory */
@@ -4701,13 +4701,13 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
   .vc-bud-proj-meta a[href],
   .vc-bud-fine a[href],
   .maplibregl-ctrl-attrib a[href],
-  li > a[href]:not(.vc-topic):not([class*='card']),
+  li > a[href]:not(.vc-topic):not(.vc-rrow):not([class*='card']),
   .vc-latest-more,
   .vc-pd a[href],
   .vc-snap a[href] {
     min-height: 44px;
   }
-  li > a[href]:not(.vc-topic):not([class*='card']),
+  li > a[href]:not(.vc-topic):not(.vc-rrow):not([class*='card']),
   .vc-latest-more,
   .vc-pd a[href],
   .vc-snap a[href],
@@ -4920,9 +4920,9 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 /* Status chips stay neutral: a draft is dashed, an adopted record solid and in ink. */
 .vc-rchip[data-status='draft'] { border-style: dashed; border-color: var(--vc-line-2); background: transparent; font-weight: 600; }
 .vc-rchip[data-status='adopted'] { border-color: var(--vc-line-2); color: var(--vc-ink); font-weight: 600; }
-.vc-rec-back { display: inline-block; margin-bottom: 4px; font-size: var(--vc-fs-sm); color: var(--vc-muted); text-decoration: none; }
+.vc-rec-back { display: inline-block; margin-bottom: 4px; font-size: var(--vc-fs-ui); color: var(--vc-muted); text-decoration: none; }
 .vc-rec-back:hover { color: var(--vc-accent); }
-.vc-rec-index-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: var(--vc-fs-sm); font-weight: 600; color: var(--vc-accent); text-decoration: none; min-height: 32px; }
+.vc-rec-index-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: var(--vc-fs-ui); font-weight: 600; color: var(--vc-accent); text-decoration: none; min-height: 40px; }
 .vc-rec-links { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 18px; }
 .vc-topics { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 10px; }
 .vc-topic { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto 1fr; align-content: start; gap: 2px 10px; height: 100%; box-sizing: border-box; padding: var(--vc-sp-4); border: 1px solid var(--vc-line); border-radius: var(--vc-radius-lg); background: var(--vc-surface); color: inherit; text-decoration: none; transition: border-color 0.2s, box-shadow 0.3s, transform 0.3s var(--vc-ease); }
@@ -4937,18 +4937,44 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-doc-filed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 0; font-size: var(--vc-fs-sm); color: var(--vc-muted); }
 .vc-doc-adopted { color: var(--vc-accent); font-weight: 600; text-decoration: none; }
 .vc-doc-file { overflow-wrap: anywhere; }
-.vc-idx { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
-.vc-idx-row { display: grid; grid-template-columns: 9.5rem 1fr; gap: 4px 14px; padding: 12px 14px; border: 1px solid var(--vc-line); border-radius: 14px; background: var(--vc-surface); }
-.vc-idx-row[data-state='missing'] { border-style: dashed; background: transparent; }
-.vc-idx-row[data-state='missing'] .vc-idx-title { color: var(--vc-muted); font-style: italic; }
-.vc-idx-absent { padding: 2px 14px; font-size: var(--vc-fs-sm); line-height: 1.4; color: var(--vc-muted); overflow-wrap: break-word; }
-.vc-idx-num { font-weight: 650; font-size: var(--vc-fs-ui); }
-.vc-idx-main { display: grid; gap: 3px; min-width: 0; }
-.vc-idx-title { font-size: var(--vc-fs-ui); line-height: 1.35; overflow-wrap: break-word; }
-.vc-idx-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: var(--vc-fs-xs); color: var(--vc-muted); }
-.vc-idx-links { display: flex; flex-wrap: wrap; gap: 2px 16px; }
-.vc-idx-link { display: inline-flex; align-items: center; min-height: 32px; font-size: var(--vc-fs-sm); font-weight: 600; color: var(--vc-accent); text-decoration: none; }
-@media (max-width: 560px) { .vc-idx-row { grid-template-columns: 1fr; } .vc-topics { grid-template-columns: 1fr; gap: 8px; } .vc-topic { padding: 12px 14px; grid-template-rows: auto auto; } .vc-topic-label { font-size: var(--vc-fs-ui); hyphens: manual; } .vc-topic-newest { padding-top: 2px; } }
+/* Year chips: one row of years that scrolls sideways and never wraps. */
+.vc-ychips { position: relative; display: flex; gap: var(--vc-sp-2); margin: 0 calc(-1 * var(--vc-sp-4)) var(--vc-sp-3); padding: 2px var(--vc-sp-4); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: var(--vc-sp-4); scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--vc-sp-4), #000 calc(100% - var(--vc-sp-6)), transparent); mask-image: linear-gradient(90deg, transparent 0, #000 var(--vc-sp-4), #000 calc(100% - var(--vc-sp-6)), transparent); }
+.vc-ychips::-webkit-scrollbar { display: none; }
+.vc-ychip { flex: none; scroll-snap-align: start; height: 40px; min-width: 52px; padding: 0 14px; border: 1px solid var(--vc-line-2); border-radius: 999px; background: var(--vc-surface); color: var(--vc-ink-2); font: inherit; font-size: var(--vc-fs-ui); font-weight: 550; white-space: nowrap; cursor: pointer; transition: background 0.2s, border-color 0.2s, color 0.2s; }
+.vc-ychip:hover { border-color: var(--vc-muted); color: var(--vc-ink); }
+.vc-ychip[aria-pressed='true'] { background: var(--vc-ink); border-color: var(--vc-ink); color: var(--vc-bg); }
+.vc-rec-filters .vc-ychips { margin-bottom: 0; }
+
+/* Status chip in a record row: small, neutral, never wraps. */
+.vc-schip { display: inline-flex; flex: none; align-items: center; height: 24px; padding: 0 8px; border: 1px solid var(--vc-line); border-radius: 6px; background: var(--vc-surface-2); color: var(--vc-ink-2); font-size: var(--vc-fs-ui); font-weight: 600; line-height: 1; white-space: nowrap; }
+.vc-schip[data-status='draft'] { border-style: dashed; border-color: var(--vc-line-2); background: transparent; }
+.vc-schip[data-status='cited'] { background: transparent; color: var(--vc-muted); }
+
+/* Record rows: one per record, title then one line of facts. */
+.vc-rrows, .vc-irows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--vc-line); }
+.vc-rrows > li, .vc-irow { border-bottom: 1px solid var(--vc-line); }
+.vc-rrow { display: grid; gap: 6px; padding: 14px 8px; margin: 0 -8px; border-radius: 10px; color: inherit; text-decoration: none; }
+.vc-rrow:hover { background: var(--vc-bg-2); }
+.vc-rrow-title, .vc-irow-title { font-size: var(--vc-fs-md); font-weight: 550; line-height: 1.35; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.vc-rrow-meta { display: flex; align-items: center; gap: var(--vc-sp-2); min-width: 0; font-size: var(--vc-fs-ui); line-height: 1.45; color: var(--vc-muted); }
+.vc-rrow-meta > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vc-rrow .vc-source-label, .vc-rrow .vc-rec-snippet { margin: 0; font-size: var(--vc-fs-ui); }
+
+/* Numbered index rows: the number, then title and facts. The title link covers the row. */
+.vc-irow { position: relative; display: grid; grid-template-columns: 4.75rem minmax(0, 1fr); gap: 2px 12px; padding: 14px 0; }
+.vc-irow:has(.vc-irow-title[href]):hover { background: var(--vc-bg-2); }
+.vc-irow-num { font-size: var(--vc-fs-ui); font-weight: 650; line-height: 1.6; color: var(--vc-ink); white-space: nowrap; }
+.vc-irow-main { display: grid; gap: 6px; min-width: 0; }
+.vc-irow-title { color: var(--vc-ink); text-decoration: none; }
+a.vc-irow-title::after { content: ''; position: absolute; inset: 0; }
+.vc-irow[data-state='missing'] .vc-irow-title { color: var(--vc-muted); font-weight: 500; }
+.vc-irow-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: var(--vc-fs-ui); line-height: 1.45; color: var(--vc-muted); }
+.vc-irow-pair { display: inline-flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; }
+.vc-irow-link { position: relative; z-index: 1; margin: -10px -6px; padding: 10px 6px; color: var(--vc-accent); font-weight: 600; text-decoration: none; }
+.vc-irow-link:hover { text-decoration: underline; }
+.vc-irow[data-state='absent'] { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 10px 0; font-size: var(--vc-fs-ui); color: var(--vc-muted); }
+.vc-irow[data-state='absent'] .vc-irow-num { color: var(--vc-muted); font-weight: 550; min-width: 4.75rem; }
+@media (max-width: 560px) { .vc-topics { grid-template-columns: 1fr; gap: 8px; } .vc-topic { padding: 12px 14px; grid-template-rows: auto auto; } .vc-topic-label { font-size: var(--vc-fs-ui); hyphens: manual; } .vc-topic-newest { padding-top: 2px; } }
 /* Voting charts: the full desktop width (up to 1200 px), titles at most three lines (the whole title shows
    when the row is opened, and on hover), member columns narrow, equal and aligned, the tally compact. */
 .vc-page[data-wide='sheet'] {
@@ -5090,7 +5116,7 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
   }
   .vc tr,
   .vc li,
-  .vc-idx-row,
+  .vc-irow,
   .vc-att2-row,
   .vc-card {
     break-inside: avoid;
@@ -5143,14 +5169,17 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
     color: #000 !important;
     text-decoration: underline;
   }
-  .vc :is(.vc-sh, .vc-idx, .vc-doc-head, .vc-att2, .vc-snap) a[href^='/documents/']::after {
+  .vc :is(.vc-sh, .vc-irows, .vc-doc-head, .vc-att2, .vc-snap) a[href^='/documents/']::after {
     content: '(vineyardportal.org' attr(href) ')';
     margin-left: 0.35em;
     font-size: 8pt;
     font-weight: 400;
     word-break: break-all;
   }
-  .vc :is(.vc-sh, .vc-idx, .vc-doc-head, .vc-snap) a[href^='http']::after {
+  .vc a.vc-irow-title::after {
+    position: static;
+  }
+  .vc :is(.vc-sh, .vc-irows, .vc-doc-head, .vc-snap) a[href^='http']::after {
     content: '(' attr(href) ')';
     margin-left: 0.35em;
     font-size: 8pt;

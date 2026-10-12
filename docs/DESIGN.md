@@ -95,6 +95,13 @@ at rest.
 - Label chip `.vc-tag` (static: a status, a type, a body): 24 px tall, radius 999, 12 px at 550,
   `--vc-surface-2` fill, `--vc-line` border, `--vc-ink-2` text. Status is always a neutral label chip.
 
+**Year chips** `.vc-ychips` (`YearChips.tsx`): the quick year picker on record lists and the numbered
+indexes. One row, newest first, 40 px tall, 14 px; it scrolls sideways and never wraps.
+
+**Record row** `.vc-rrow` (record lists) and `.vc-irow` (numbered indexes): one row per record between
+hairlines, title at 16 px, then one 14 px line of facts led by a status chip `.vc-schip` (Adopted, Draft,
+Cited; 14 px, neutral, never wraps).
+
 **Table** `.vc` tables (vote sheets, budget, the city construction table, numbered indexes): 14 px cells,
 12 px 600 header in `--vc-muted` on `--vc-bg-2`, cell padding 12 px by 12 px, 1 px `--vc-line` rules between
 rows, no zebra striping except vote sheets (which need row tracking across many columns), tabular figures,
