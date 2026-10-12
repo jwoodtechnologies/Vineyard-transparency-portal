@@ -12,9 +12,12 @@ on:
         description: What to capture
         type: choice
         default: fixtures
-        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf, owner-filter]
+        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf, owner-filter, ask-timing]
       urls:
         description: Extra URLs to save (space separated, optional)
+        default: ""
+      questions:
+        description: For ask-timing, questions separated by | (billed to the tests Neuron bucket)
         default: ""
 
 permissions:
@@ -34,18 +37,19 @@ jobs:
       VTP_OIDC_AUDIENCE: vineyardportal.org
       VTP_TRIGGER: diagnostics
       TASK: ${{ inputs.task }}
+      QUESTIONS: ${{ inputs.questions }}
       EXTRA: ${{ inputs.urls }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf' && inputs.task != 'owner-filter'
+        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf' && inputs.task != 'owner-filter' && inputs.task != 'ask-timing'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-ingest.txt
       # Node 24 runs the Worker's TypeScript owner filter as is (type stripping), for owner-filter.
       - uses: actions/setup-node@v4
-        if: inputs.task == 'owner-filter'
+        if: inputs.task == 'owner-filter' || inputs.task == 'ask-timing'
         with:
           node-version: 24
       - name: Capture
@@ -114,6 +118,10 @@ jobs:
             # Every Vineyard parcel through worker/lib/ownerFilter.ts. Writes counts by reason and 30 random
             # SHOWN names only; withheld names are never printed or written (scripts/owner-filter/run.mjs).
             node scripts/owner-filter/run.mjs --out "$OUT/owner-filter.json" > "$OUT/owner-filter.txt" 2>&1 || echo "exit=$?" >> "$OUT/owner-filter.txt"
+          elif [[ "$TASK" == "ask-timing" ]]; then
+            # Questions through POST /api/ask (stream), the tests Neuron bucket: first words, total, engine, answer.
+            IFS='|' read -r -a QS <<< "${QUESTIONS}"
+            node scripts/ask-timing/run.mjs --base https://vineyardportal.org --out "$OUT/ask-timing.json" "${QS[@]}" > "$OUT/ask-timing.txt" 2>&1 || echo "exit=$?" >> "$OUT/ask-timing.txt"
           elif [[ "$TASK" == "map-perf" ]]; then
             # Parcel lines on /map at zoom 12 to 15 on the phone profile: bytes over the wire and time until drawn.
             PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
