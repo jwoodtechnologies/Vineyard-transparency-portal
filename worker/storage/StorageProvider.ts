@@ -73,9 +73,11 @@ export class R2StorageProvider implements StorageProvider {
   }
 
   async put(key: string, body: ReadableStream | ArrayBuffer, size: number, contentType: string, sha256: string): Promise<StoredObjectInfo> {
-    const value = body instanceof ArrayBuffer ? body : new FixedLengthStream(size);
-    if (!(body instanceof ArrayBuffer)) void body.pipeTo((value as FixedLengthStream).writable);
-    const stream = body instanceof ArrayBuffer ? body : (value as FixedLengthStream).readable;
+    // A stream goes through a FixedLengthStream so R2 knows its length (it is never read into memory). Outside
+    // Workers (tests) the stream is passed as it is.
+    const fixed = !(body instanceof ArrayBuffer) && typeof FixedLengthStream === 'function' ? new FixedLengthStream(size) : null;
+    if (fixed) void (body as ReadableStream).pipeTo(fixed.writable);
+    const stream = fixed ? fixed.readable : body;
     const o = await this.bucket.put(key, stream, { httpMetadata: { contentType }, sha256, customMetadata: { sha256 } });
     return { key, size: o.size, etag: o.etag, contentType };
   }

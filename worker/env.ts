@@ -38,6 +38,10 @@ export interface Env {
   /** Set per request by spenderEnv (worker/ai/meter.ts), never in config: 'public' or 'tests'. */
   AI_SPENDER?: string;
   ARCHIVE_STORAGE_HARD_STOP_BYTES?: string;
+  /** The stop can never pass this (worker/lib/archivePolicy.ts), so storage cost has a fixed worst case. */
+  ARCHIVE_STORAGE_CEILING_BYTES?: string;
+  /** The largest file stored at all; files over ARCHIVE_MAX_OBJECT_BYTES go up in parts. */
+  ARCHIVE_MAX_LARGE_OBJECT_BYTES?: string;
   /** Kept free below the hard stop for priority records (minutes, agendas, ordinances...) when other files are stored. */
   ARCHIVE_PRIORITY_RESERVE_BYTES?: string;
   /** What the account's other R2 buckets hold, in bytes (for the storage cost estimate only; never a limit). */

@@ -9,7 +9,7 @@
   verify             Consistency checks + live test searches against real indexed text
   stats              Archive statistics, quota usage and queue state
   archive-size       Files not stored on the portal yet: counts, bytes and the monthly cost to store all (reads only)
-  archive-fill       Queue files not stored yet, priority first, only what fits under the storage stop
+  archive-fill       Queue files not stored yet (priority first, newest first, large files in parts), then store them for --hours
   migrate            Apply the D1 schema through the Worker (idempotent)
 """
 from __future__ import annotations
@@ -27,6 +27,26 @@ from .http import PoliteClient
 from .pipeline import crawl, ingest, log, new_run_id, sync_sources
 
 
+def run_archive_fill(api: PortalApi, client: PoliteClient, run_id: str, limit: int, hours: float, ocr: bool = False) -> dict:
+    """archive-fill: queue up to 1,000 files not stored yet, then store queued files until `limit` or `hours`."""
+    queued = api.post("/archive/fill", {"limit": max(1, min(limit, 1000))})
+    log(f"Archive fill: {json.dumps(queued)}")
+    api.post("/runs", {"id": run_id, "trigger": f"{os.environ.get('VTP_TRIGGER', 'manual')}:archive-fill", "sources": []})
+    status, message, counts = "completed", None, {}
+    try:
+        c = ingest(api, client, run_id, limit, archive=True, ocr=ocr, time_budget_s=int(hours * 3600))
+        counts = c.api()
+        log(f"Archive fill stored {c.archived} files ({c.bytes_archived:,} bytes); deferred={c.quota_deferred} errors={c.errors}")
+    except BudgetReached:
+        status, message = "budget_reached", BUDGET_MESSAGE
+        log(BUDGET_MESSAGE)
+    try:
+        api.post(f"/runs/{run_id}", {"status": status, "counts": counts, "message": message})
+    except BudgetReached:
+        pass
+    return {"queued": queued, "status": status, "counts": counts}
+
+
 def format_archive_size(r: dict) -> str:
     """The archive-size report: plain lines of counts and bytes, then the full JSON."""
 
@@ -41,10 +61,12 @@ def format_archive_size(r: dict) -> str:
     cost = r.get("cost") or {}
     out = [
         f"Stored now: {n((r.get('stored') or {}).get('objects'))} files, {n((r.get('stored') or {}).get('bytes'))} bytes",
-        f"Stop: {n(stop.get('hardStopBytes'))} bytes (other files stop at {n(stop.get('otherFilesStopBytes'))}); largest file stored {n(stop.get('maxObjectBytes'))} bytes",
+        f"Stop: {n(stop.get('hardStopBytes'))} bytes (other files stop at {n(stop.get('otherFilesStopBytes'))}; ceiling {n(stop.get('ceilingBytes'))}); "
+        f"one request up to {n(stop.get('maxObjectBytes'))} bytes, in parts up to {n(stop.get('maxLargeObjectBytes') or stop.get('maxObjectBytes'))} bytes",
         line("Not stored yet", r.get("remaining") or {}),
         line("  priority records", r.get("remainingPriority") or {}),
         line("  other files", r.get("remainingOther") or {}),
+        line("  uploaded in parts (over the one-request size)", r.get("uploadedInParts") or {}),
         line("Fits under the stop", r.get("fitsUnderStop") or {}),
         line("Past the stop", r.get("pastStop") or {}),
         line("Over the largest file size (linked only)", r.get("overMaxObjectSize") or {}),
@@ -55,6 +77,7 @@ def format_archive_size(r: dict) -> str:
         f"Storing all of it, this bucket: {n(cost.get('thisBucketAllBytes'))} bytes, ${cost.get('thisBucketMonthlyUsd', 0):.2f} a month beyond the free 10 GB",
         f"With the other buckets ({n(cost.get('otherBucketsBytesAssumed'))} bytes assumed): {n(cost.get('accountAllBytes'))} bytes, ${cost.get('accountMonthlyUsd', 0):.2f} a month",
         f"Also storing the files over the size limit: {n(cost.get('accountWithLargeFilesBytes'))} bytes, ${cost.get('accountWithLargeFilesMonthlyUsd', 0):.2f} a month",
+        f"Worst case, this bucket filled to the stop: ${cost.get('atStopMonthlyUsd', 0):.2f} a month",
         f"Uploads needed: {n(cost.get('classAWritesNeeded'))} Class A writes (free: {n(cost.get('classAWritesFreePerMonth'))} a month), at ${cost.get('pricePerGbMonth', 0.015)} per GB-month",
         "",
         json.dumps(r, indent=2),
@@ -178,8 +201,10 @@ def main(argv: list[str] | None = None) -> int:
             # Read only: every file not stored yet (counts and bytes) and the monthly cost of storing all of it.
             print(format_archive_size(api.get("/archive/remaining")))
         elif cmd == "archive-fill":
-            # Queue files not stored yet (priority first, only what fits under the stop). Deletes nothing.
-            print(json.dumps(api.post("/archive/fill", {"limit": max(1, min(a.limit, 1000))}), indent=2))
+            # Queue files not stored yet (priority first, newest first, only what fits under the stop, large files
+            # included), then download and store them for --hours. Run it again (Actions, Ingest public records,
+            # command archive-fill) to go faster than the nightly run alone. Deletes nothing.
+            run_archive_fill(api, client, run_id, a.limit, a.hours, a.ocr)
         elif cmd == "gis":
             from . import gis, parcel_lines
 

@@ -8,6 +8,7 @@
  */
 import type { Env } from '../env';
 import { Budget, putChunks, storeArchive, upsertDocument } from '../admin/routes';
+import { archiveLimits } from '../lib/archivePolicy';
 import { CC_API, classifyType } from '../lib/civicclerk';
 import { chunkPages } from './chunk';
 import { extractHtml, extractPdf, looksScanned, type Page } from './extract';
@@ -167,6 +168,40 @@ export async function indexRecord(env: Env, x: IndexInput, budget: Budget): Prom
   return { documentId: out.documentId, status: out.status, chunks, archive };
 }
 
+/**
+ * A file over 25 MiB that is already a record (put back on the queue by the archive fill): its bytes stream from the
+ * source straight into R2 (never into memory), checked by R2 against the SHA-256 the record already has, and no
+ * text is extracted (the record keeps the text it has). Files up to ARCHIVE_MAX_LARGE_OBJECT_BYTES (500 MB); larger
+ * ones are linked and logged. A file that is not a record yet is still left for the GitHub job.
+ */
+async function archiveLargeKnownFile(env: Env, item: QueueRow, res: Response, len: number, urlExt: string, budget: Budget): Promise<ItemOutcome> {
+  const known = await env.CATALOG_DB.prepare(
+    `SELECT d.id, d.sha256, d.mime_type, d.archive_status FROM document_sources ds JOIN documents d ON d.id = ds.document_id WHERE ds.canonical_key = ? LIMIT 1`,
+  )
+    .bind(item.url_key)
+    .first<{ id: string; sha256: string | null; mime_type: string | null; archive_status: string }>();
+  if (!known?.sha256 || !/^[0-9a-f]{64}$/.test(known.sha256) || /^(text|video|audio)\//.test(known.mime_type ?? '')) {
+    await res.body?.cancel().catch(() => undefined);
+    return 'left_for_github';
+  }
+  const done = (archive: string) => setStatus(env, item.url_key, 'done', { documentId: known.id, etag: res.headers.get('etag'), lastModified: res.headers.get('last-modified'), sha: known.sha256, error: archive === 'archived' || archive === 'exists' ? null : `archive: ${archive}` });
+  if (known.archive_status === 'archived') {
+    await res.body?.cancel().catch(() => undefined);
+    await done('exists');
+    return 'done';
+  }
+  const mime = known.mime_type || 'application/octet-stream';
+  const ext = mime === 'application/pdf' ? 'pdf' : urlExt || 'bin';
+  const { maxLargeObject } = archiveLimits(env);
+  if (len > maxLargeObject) await res.body?.cancel().catch(() => undefined);
+  // R2 refuses the upload if the bytes no longer match the record's SHA-256 (the file changed at the source):
+  // the error is recorded and the GitHub job re-reads it as a new version.
+  const a = await storeArchive(env, known.sha256, len > maxLargeObject ? null : res.body, len, ext, mime, budget);
+  console.log(JSON.stringify({ event: 'archive_large_stream', key: item.url_key, size: len, status: a.status }));
+  await done(String(a.status));
+  return 'done';
+}
+
 /** Processes one queue item. Never throws; the outcome is recorded on the queue row. */
 export async function ingestItem(env: Env, item: QueueRow, budget: Budget): Promise<ItemOutcome> {
   const meta = ((): Meta => {
@@ -209,7 +244,7 @@ export async function ingestItem(env: Env, item: QueueRow, budget: Budget): Prom
     }
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url.slice(0, 160)}`);
     const len = Number(res.headers.get('content-length') ?? 0);
-    if (len > MAX_BYTES) return 'left_for_github';
+    if (len > MAX_BYTES) return archiveLargeKnownFile(env, item, res, len, extOf(url, meta), budget);
     const contentType = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
     let ext = extOf(url, meta);
     if (contentType.startsWith('video/') || contentType.startsWith('audio/')) {

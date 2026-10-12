@@ -71,5 +71,6 @@ owner panel's Activity tab.
 
 ## Limits
 
-The daily AI caps (9,000 public, 1,000 tests), D1 write budget and R2 7.5 GB stop are enforced by the
-Worker. See [FREE_TIER_LIMITS.md](FREE_TIER_LIMITS.md).
+The daily AI caps (9,000 public, 1,000 tests), D1 write budget and R2 60 GB stop (never past the 60 GB ceiling;
+paid R2 storage approved by Jacob on 2026-10-12) are enforced by the Worker. `archive-fill` queues the next 1,000
+files not stored yet and stores them for the hours given; run it again to finish the backlog sooner. See [FREE_TIER_LIMITS.md](FREE_TIER_LIMITS.md).

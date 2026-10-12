@@ -7,6 +7,8 @@ import time
 import requests
 
 BUDGET_MESSAGE = "Daily free-tier ingestion budget reached. Resume next UTC quota period."
+# Files over the single-request size (ARCHIVE_MAX_OBJECT_BYTES, 25 MiB) go up in parts of this size.
+MULTIPART_PART_BYTES = 20 * 1024 * 1024
 
 
 class BudgetReached(Exception):
@@ -98,6 +100,36 @@ class PortalApi:
     def put_archive(self, sha256: str, path: str, size: int, content_type: str, ext: str):
         with open(path, "rb") as f:
             return self.call("PUT", f"/archive/{sha256}", data=f, headers={"Content-Type": content_type or "application/octet-stream", "Content-Length": str(size)}, params={"ext": ext})
+
+    def put_archive_multipart(self, sha256: str, path: str, size: int, content_type: str, ext: str, part_bytes: int = MULTIPART_PART_BYTES):
+        """A file over the single-request size, in parts (R2 multipart through /archive/multipart/<sha>/...).
+
+        The Worker checks the archive policy and the storage stop when the upload is created and before it completes,
+        and checks the stored object's size and SHA-256. One part (20 MiB) is read into memory at a time."""
+        base = f"/archive/multipart/{sha256}"
+        created = self.call("POST", f"{base}/create", json_body={"size": size, "ext": ext, "contentType": content_type or "application/octet-stream"})
+        if created.get("status") != "created":
+            return created  # exists, quota_deferred, link_only or remote_only_large_file
+        upload_id = created["uploadId"]
+        part_bytes = int(created.get("partBytes") or part_bytes)
+        parts = []
+        try:
+            with open(path, "rb") as f:
+                number = 1
+                while True:
+                    block = f.read(part_bytes)
+                    if not block:
+                        break
+                    r = self.call("PUT", f"{base}/part", data=block, headers={"Content-Type": "application/octet-stream", "Content-Length": str(len(block))}, params={"uploadId": upload_id, "partNumber": number, "ext": ext})
+                    parts.append({"partNumber": int(r["partNumber"]), "etag": r["etag"]})
+                    number += 1
+            return self.call("POST", f"{base}/complete", json_body={"uploadId": upload_id, "ext": ext, "size": size, "parts": parts}, ok=(200, 201, 422))
+        except BaseException:
+            try:
+                self.call("POST", f"{base}/abort", json_body={"uploadId": upload_id, "ext": ext})
+            except Exception:  # noqa: BLE001 - the original error is the one to report
+                pass
+            raise
 
     def public(self, path: str, **params):
         r = self.session.get(f"{self.base}/api{path}", params=params, timeout=60)

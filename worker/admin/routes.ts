@@ -6,7 +6,8 @@
  *    MAX_D1_INGEST_ROWS_PER_DAY and returns 429 quota_exhausted when the budget is reached. The
  *    recorded number is D1's own meta.rows_written for the statements we ran.
  *  - R2: uploads are refused (archive_status = quota_deferred) when stored bytes + the new object
- *    would exceed ARCHIVE_STORAGE_HARD_STOP_BYTES, or when one object exceeds ARCHIVE_MAX_OBJECT_BYTES.
+ *    would exceed ARCHIVE_STORAGE_HARD_STOP_BYTES (never above ARCHIVE_STORAGE_CEILING_BYTES), or when one
+ *    object exceeds ARCHIVE_MAX_LARGE_OBJECT_BYTES. Files over ARCHIVE_MAX_OBJECT_BYTES go up in parts (./multipart.ts).
  */
 import { e2eApprove, e2eCleanup, e2eState } from '../contrib/resident';
 import catalogSql from '../../migrations/catalog/0001_catalog.sql';
@@ -25,8 +26,9 @@ import { MEETING_COPY_GROUPS_SQL } from '../lib/meetingCopies';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
-import { archiveLimitFor, DEFAULT_HARD_STOP_BYTES, DEFAULT_PRIORITY_RESERVE_BYTES, shouldArchive } from '../lib/archivePolicy';
+import { archiveLimitFor, archiveLimits, shouldArchive } from '../lib/archivePolicy';
 import { archiveRemaining, fillArchiveQueue } from './archiveFill';
+import { handleMultipart } from './multipart';
 import { rebalanceArchive } from './rebalance';
 import { ensureActivityTables } from '../panel/store';
 import { newSetupCode } from '../panel/auth';
@@ -314,9 +316,11 @@ async function quota(env: Env): Promise<Response> {
       storedBytes: Number(archive?.stored_bytes ?? 0),
       storedObjects: Number(archive?.stored_objects ?? 0),
       deferred: Number(archive?.deferred_count ?? 0),
-      hardStopBytes: intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, DEFAULT_HARD_STOP_BYTES),
-      priorityReserveBytes: intVar(env.ARCHIVE_PRIORITY_RESERVE_BYTES, DEFAULT_PRIORITY_RESERVE_BYTES),
-      maxObjectBytes: intVar(env.ARCHIVE_MAX_OBJECT_BYTES, 25 * 1024 * 1024),
+      hardStopBytes: archiveLimits(env).hardStop,
+      ceilingBytes: archiveLimits(env).ceiling,
+      priorityReserveBytes: archiveLimits(env).reserve,
+      maxObjectBytes: archiveLimits(env).maxObject,
+      maxLargeObjectBytes: archiveLimits(env).maxLargeObject,
     },
     aiRequests: Number(usage?.ai_requests ?? 0),
     searchShards: new SearchRepository(env).activeShards,
@@ -863,6 +867,9 @@ async function putArchive(env: Env, request: Request, sha: string, url: URL, bud
   if (!storage.available) return json({ status: 'unavailable', message: 'No archive bucket is bound.' }, { status: 409 });
   const size = Number(request.headers.get('content-length') ?? NaN);
   if (!Number.isFinite(size) || size <= 0) throw badRequest('Content-Length is required.');
+  const limits = archiveLimits(env);
+  // Larger files go up in parts (./multipart.ts); nothing is recorded on the documents here.
+  if (size > limits.maxObject && size <= limits.maxLargeObject) return json({ status: 'use_multipart', maxObjectBytes: limits.maxObject }, { status: 413 });
   const ext = (url.searchParams.get('ext') ?? 'bin').toLowerCase();
   const contentType = (request.headers.get('content-type') ?? 'application/octet-stream').split(';')[0].slice(0, 100);
   const out = await storeArchive(env, sha, request.body, size, ext, contentType, budget);
@@ -876,21 +883,49 @@ async function putArchive(env: Env, request: Request, sha: string, url: URL, bud
  * own five-minute sync.
  */
 export async function storeArchive(env: Env, sha: string, body: ReadableStream | ArrayBuffer | null, size: number, ext: string, contentType: string, budget: Budget, opts: { always?: boolean } = {}): Promise<Json> {
+  const gate = await archiveGate(env, sha, size, ext, budget, opts);
+  if ('done' in gate) return gate.done;
+  if (!body) throw badRequest('Missing body.');
+  await budget.check(5);
+  const stored = await storageFor(env.ARCHIVE).put(gate.key, body, size, contentType, sha);
+  return recordStored(env, sha, gate.key, stored.size, budget, 1);
+}
+
+const markDocsStatement = (env: Env, sha: string, key: string, status: string, withKey: boolean) =>
+  env.CATALOG_DB
+    .prepare(`UPDATE documents SET archive_status = ?, archive_key = ${withKey ? '?' : 'archive_key'}, archived_at = ${withKey ? '?' : 'archived_at'} WHERE sha256 = ? AND archive_status != 'archived'`)
+    .bind(...(withKey ? [status, key, nowIso(), sha] : [status, sha]));
+
+/** Records a stored object on every document with that content hash, and in the archive totals. */
+export async function recordStored(env: Env, sha: string, key: string, size: number, budget: Budget, r2Ops: number): Promise<Json> {
+  const db = env.CATALOG_DB;
+  const r = await db.batch([
+    markDocsStatement(env, sha, key, 'archived', true),
+    db.prepare('UPDATE document_versions SET archive_key = ? WHERE sha256 = ? AND archive_key IS NULL').bind(key, sha),
+    db.prepare('UPDATE archive_stats SET stored_bytes = stored_bytes + ?, stored_objects = stored_objects + 1, updated_at = ? WHERE id = 1').bind(size, nowIso()),
+  ]);
+  await budget.record(sum(r), { r2Bytes: size, r2Ops });
+  return { status: 'archived', key, size };
+}
+
+/**
+ * Whether a file may be stored: the archive policy, the largest stored size (ARCHIVE_MAX_LARGE_OBJECT_BYTES), an
+ * existing copy, and the storage stop (never above ARCHIVE_STORAGE_CEILING_BYTES). Returns the outcome when the
+ * file is not to be uploaded (recorded on its documents), or the key to upload it to.
+ */
+export async function archiveGate(env: Env, sha: string, size: number, ext: string, budget: Budget, opts: { always?: boolean } = {}): Promise<{ done: Json } | { key: string }> {
   const storage = storageFor(env.ARCHIVE);
-  if (!storage.available) return { status: 'unavailable', message: 'No archive bucket is bound.' };
-  const maxObject = intVar(env.ARCHIVE_MAX_OBJECT_BYTES, 25 * 1024 * 1024);
+  if (!storage.available) return { done: { status: 'unavailable', message: 'No archive bucket is bound.' } };
+  const limits = archiveLimits(env);
   const key = archiveKey(sha, ext);
   const db = env.CATALOG_DB;
+  const markDocs = (status: string, withKey: boolean) => markDocsStatement(env, sha, key, status, withKey);
 
-  const markDocs = (status: string, withKey: boolean) =>
-    db
-      .prepare(`UPDATE documents SET archive_status = ?, archive_key = ${withKey ? '?' : 'archive_key'}, archived_at = ${withKey ? '?' : 'archived_at'} WHERE sha256 = ? AND archive_status != 'archived'`)
-      .bind(...(withKey ? [status, key, nowIso(), sha] : [status, sha]));
-
-  if (size > maxObject) {
+  if (size > limits.maxLargeObject) {
     const r = await markDocs('remote_only_large_file', false).run();
     await budget.record(Number(r.meta?.rows_written ?? 0));
-    return { status: 'remote_only_large_file', maxObjectBytes: maxObject };
+    console.warn(JSON.stringify({ event: 'archive_file_too_large', sha, size, maxLargeObjectBytes: limits.maxLargeObject }));
+    return { done: { status: 'remote_only_large_file', maxObjectBytes: limits.maxLargeObject } };
   }
 
   // Archive policy (worker/lib/archivePolicy.ts): every file is stored while space lasts; priority records may fill
@@ -900,39 +935,28 @@ export async function storeArchive(env: Env, sha: string, body: ReadableStream |
   if (!opts.always && list.length && !list.some((c) => shouldArchive(c.document_type, c.title))) {
     const r = await markDocs('link_only', false).run();
     await budget.record(Number(r.meta?.rows_written ?? 0));
-    return { status: 'link_only' };
+    return { done: { status: 'link_only' } };
   }
 
   const existing = await storage.head(key);
   if (existing) {
     const r = await db.batch([markDocs('archived', true), db.prepare('UPDATE document_versions SET archive_key = ? WHERE sha256 = ? AND archive_key IS NULL').bind(key, sha)]);
     await budget.record(sum(r));
-    return { status: 'exists', key, size: existing.size };
+    return { done: { status: 'exists', key, size: existing.size } };
   }
 
   const stats = await db.prepare('SELECT stored_bytes FROM archive_stats WHERE id = 1').first<{ stored_bytes: number }>();
-  const hardStopAll = intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, DEFAULT_HARD_STOP_BYTES);
-  const reserve = intVar(env.ARCHIVE_PRIORITY_RESERVE_BYTES, DEFAULT_PRIORITY_RESERVE_BYTES);
-  // The highest limit any record with this file may use (one priority record lets the file go to the hard stop).
-  const hardStop = opts.always || !list.length ? hardStopAll : Math.max(...list.map((c) => archiveLimitFor(c.document_type, c.title, hardStopAll, reserve)));
+  // The stop is already clamped to the ceiling (archiveLimits). The highest limit any record with this file may use
+  // (one priority record lets the file go to the stop itself; other files stop the reserve below it).
+  const hardStop = opts.always || !list.length ? limits.hardStop : Math.max(...list.map((c) => archiveLimitFor(c.document_type, c.title, limits.hardStop, limits.reserve)));
   const projected = Number(stats?.stored_bytes ?? 0) + size;
-  if (projected > hardStop) {
+  if (projected > hardStop || projected > limits.ceiling) {
     const r = await db.batch([markDocs('quota_deferred', false), db.prepare('UPDATE archive_stats SET deferred_count = deferred_count + 1, updated_at = ? WHERE id = 1').bind(nowIso())]);
     await budget.record(sum(r));
     console.warn(JSON.stringify({ event: 'archive_quota_deferred', sha, size, projected, hardStop }));
-    return { status: 'quota_deferred', projectedBytes: projected, hardStopBytes: hardStop };
+    return { done: { status: 'quota_deferred', projectedBytes: projected, hardStopBytes: hardStop } };
   }
-
-  if (!body) throw badRequest('Missing body.');
-  await budget.check(5);
-  const stored = await storage.put(key, body, size, contentType, sha);
-  const r = await db.batch([
-    markDocs('archived', true),
-    db.prepare('UPDATE document_versions SET archive_key = ? WHERE sha256 = ? AND archive_key IS NULL').bind(key, sha),
-    db.prepare('UPDATE archive_stats SET stored_bytes = stored_bytes + ?, stored_objects = stored_objects + 1, updated_at = ? WHERE id = 1').bind(stored.size, nowIso()),
-  ]);
-  await budget.record(sum(r), { r2Bytes: stored.size, r2Ops: 1 });
-  return { status: 'archived', key, size: stored.size };
+  return { key };
 }
 
 async function runs(env: Env, id: string | null, body: Json, budget: Budget): Promise<Response> {
@@ -1102,6 +1126,8 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
     return pruneBackups(env, Number(b.keepDays ?? 90) || 90);
   }
 
+  // Files over the single-request size, in parts: create, put each part, complete (or abort).
+  if (path.startsWith('/archive/multipart/')) return handleMultipart(env, request, url, path.slice('/archive/multipart/'.length), budget);
   if (method === 'PUT') {
     const m = /^\/archive\/([0-9a-f]{64})$/.exec(path);
     if (m) {
