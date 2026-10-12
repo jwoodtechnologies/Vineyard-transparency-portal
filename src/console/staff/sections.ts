@@ -21,7 +21,9 @@ export interface Section {
 
 export const SECTIONS: Section[] = [
   { path: 'records', label: 'Records', blurb: 'Add agendas, minutes, reports and other documents.', area: 'records', tile: true, Component: lazy(() => import('./Records')) },
-  { path: 'people', label: 'People', blurb: 'Add staff, choose what each person can edit, turn accounts off.', managers: true, tile: true, Component: lazy(() => import('./People')) },
+  { path: 'votes', label: 'Votes', blurb: 'Correct how a vote was recorded, add one the minutes missed, or take one down.', area: 'votes', tile: true, Component: lazy(() => import('./Votes')) },
+  { path: 'directory', label: 'People', blurb: 'Keep the Mayor and Council, city staff and board members up to date.', area: 'people', tile: true, Component: lazy(() => import('./Directory')) },
+  { path: 'people', label: 'Accounts', blurb: 'Add staff, choose what each person can edit, turn accounts off.', managers: true, tile: true, Component: lazy(() => import('./People')) },
   { path: 'activity', label: 'Activity', blurb: 'See every change and undo a mistake.', tile: true, Component: lazy(() => import('./Activity')) },
 ];
 

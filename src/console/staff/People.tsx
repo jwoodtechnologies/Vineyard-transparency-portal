@@ -198,11 +198,11 @@ export default function People() {
     <section className="vs-stack" aria-labelledby="vs-people">
       <div className="vs-head">
         <h1 id="vs-people" className="vs-title">
-          People
+          Accounts
         </h1>
         {!adding && (
           <button type="button" className="vs-btn vs-btn-primary" onClick={() => { setAdding(true); setInvite(null); }}>
-            <UserPlus size={16} aria-hidden="true" /> Add a person
+            <UserPlus size={16} aria-hidden="true" /> Add an account
           </button>
         )}
       </div>
@@ -216,8 +216,8 @@ export default function People() {
       {invite && <InviteBox invite={invite} onDone={() => setInvite(null)} />}
 
       {adding && (
-        <form className="vs-card" onSubmit={add} noValidate aria-label="Add a person">
-          <h2 className="vs-h2">Add a person</h2>
+        <form className="vs-card" onSubmit={add} noValidate aria-label="Add an account">
+          <h2 className="vs-h2">Add an account</h2>
           <Field label="Name">{(id) => <input id={id} autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />}</Field>
           <Field label="Work email" hint="Used to sign in. Send them the link yourself after you create the account.">
             {(id) => <input id={id} type="email" autoComplete="off" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />}

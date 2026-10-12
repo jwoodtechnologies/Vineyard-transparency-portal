@@ -684,3 +684,109 @@
 .vs-search input {
   padding-left: 2.6rem !important;
 }
+
+/* ---- votes */
+.vs fieldset.vs-field {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.vs fieldset.vs-field legend {
+  padding: 0;
+  margin-bottom: 0.3rem;
+  color: var(--vc-ink-2);
+  font-size: 0.84rem;
+  font-weight: 560;
+}
+.vs-choice .vs-seg {
+  margin-bottom: 0;
+}
+.vs-mot-item {
+  margin: 0 0 0.2rem;
+}
+.vs-mot-text {
+  font-weight: 560;
+}
+.vs-roll .vs-list {
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.vs-roll-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.vs-field .vs-roll-row label {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--vc-ink);
+  font-size: 0.95rem;
+  font-weight: 540;
+  overflow-wrap: anywhere;
+}
+.vs-roll-row select {
+  flex: none;
+  width: 9.5rem;
+  min-height: 2.75rem;
+}
+.vs-roll-row select[data-vote='yes'] {
+  border-color: var(--vc-accent);
+}
+.vs-roll-row select[data-vote='no'] {
+  border-color: #a52222;
+}
+.vs-roll-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.vs-roll-add input {
+  flex: 1;
+  min-width: 0;
+}
+.vs-match {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.vs-match:focus-visible {
+  outline: 2px solid var(--vc-accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.vs-card.vs-stack > .vs-field,
+.vs-card.vs-stack .vs-search {
+  margin: 0;
+}
+.vs-card.vs-stack > .vs-actions {
+  margin-top: 0;
+}
+.vs-row-sub .vs-badge:first-child {
+  margin-left: 0;
+}
+
+/* ---- people and boards */
+.vs-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-right: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.vs-contact svg {
+  flex: none;
+}
+.vs-areas .vs-roll-add {
+  margin: 0.4rem 0 0.2rem;
+}
