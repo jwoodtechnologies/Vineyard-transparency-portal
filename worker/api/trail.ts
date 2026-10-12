@@ -33,6 +33,27 @@ export function titleWords(text: string, number: string | null): Set<string> {
   return new Set(words.filter((w) => !STOP.has(w)));
 }
 
+const MEASURE_NO = /\b(?:ord(?:inance)?|res(?:olution)?)\.?\s*(?:no\.?\s*)?((?:19|20)\d{2})\s*-\s*(\d{1,3})\b/gi;
+
+/**
+ * True when a file belongs to the agenda item: it names the item's own measure, or it names no other
+ * measure and shares a title word with the item ("FY 27 Budget DRAFT" under "Accept the Final FY 2026-2027
+ * Budget"; not "Floodplain Ord Presentation"). With no item title known, every file of the item counts.
+ */
+export function fitsItem(fileTitle: string, itemTitle: string | null, number: string | null): boolean {
+  if (number && namesNumber(fileTitle, number)) return true;
+  const named = [...fileTitle.matchAll(MEASURE_NO)].map((m) => `${m[1]}-${m[2].padStart(2, '0')}`);
+  const own = itemTitle ? [...itemTitle.matchAll(MEASURE_NO)].map((m) => `${m[1]}-${m[2].padStart(2, '0')}`) : [];
+  if (named.some((n) => n !== number && !own.includes(n))) return false;
+  if (!itemTitle) return true;
+  const item = titleWords(itemTitle.replace(/\([^)]*\)/g, ' '), null);
+  const words = titleWords(fileTitle, null);
+  if ([...words].some((w) => item.has(w))) return true;
+  // "FY 27" against "FY 2026-2027": the fiscal year written short.
+  const fy = /\bfy\s*'?(\d{2})\b/i.exec(fileTitle);
+  return Boolean(fy && new RegExp(`20${fy[1]}\\b`).test(itemTitle));
+}
+
 /** True when the text names the measure's number ("2026-08", "2026-8", "Ord 2026-08"). */
 export function namesNumber(text: string, number: string): boolean {
   const year = number.slice(0, 4);
@@ -137,7 +158,11 @@ export async function computeTrail(env: Env, row: Row): Promise<DocumentTrail> {
   const ordered = orderMeetingDocs(docs, new Map(itemRows.map((r) => [String(r.id), Number(r.sort ?? 0)])));
 
   if (!itemKey && via === 'date' && number) itemKey = itemForMeasure(docs, number, displayTitle(self).title);
-  const sameItem = itemKey ? ordered.filter((d) => itemKeyOf(d) === itemKey && d.id !== self.id) : [];
+  const grouped = itemKey ? ordered.filter((d) => itemKeyOf(d) === itemKey && d.id !== self.id) : [];
+  // The portal's item numbers come from file listings, which can put two agenda items' files under one
+  // number: only files that fit the item (its measure, or a word of its title) count as its attachments.
+  const itemTitle = [twin, via === 'meeting' ? self : null, ...grouped].find((d): d is Doc => Boolean(d && itemKeyOf(d) === itemKey))?.description ?? null;
+  const sameItem = grouped.filter((d) => fitsItem(displayTitle(d).title, itemTitle, number) || d.id === twin?.id);
   const attachmentIds = new Set(sameItem.map((d) => d.id));
   const strip = ({ agendaItemId: _a, ...d }: Doc): DocumentSummary => {
     void _a;

@@ -31,3 +31,16 @@ describe('vote on an item named in words: which item', () => {
     expect(pickItem([sep, jun], key, 'Holdaway Fields agreement')).toEqual([]);
   });
 });
+
+describe('paper trail: files that fit the agenda item', () => {
+  it('keeps the budget book and drops another item\'s floodplain files', async () => {
+    const { fitsItem } = await import('../worker/api/trail');
+    const item = 'Accept the Final FY 2026-2027 Budget (Evan Smith)';
+    expect(fitsItem('ORDINANCE 2026-08 FINAL BUDGET FY 2026-2027', item, '2026-08')).toBe(true);
+    expect(fitsItem('FY 27 Budget DRAFT- updated 6.16.2026', item, '2026-08')).toBe(true);
+    expect(fitsItem('Ordinance 2026-06 - Utah DEM Model E Vineyard UT', item, '2026-08')).toBe(false);
+    expect(fitsItem('2024-06-20 Prelim FIRM & FIS Letter', item, '2026-08')).toBe(false);
+    expect(fitsItem('Vineyard City Council - Floodplain Ord Presentation - 05122026', item, '2026-08')).toBe(false);
+    expect(fitsItem('Exhibit A', null, null)).toBe(true);
+  });
+});
