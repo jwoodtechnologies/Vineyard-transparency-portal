@@ -8,7 +8,7 @@ Everyone has their own named account. A department is only a label; what a perso
 
 - **Owner**: every area, and who may sign in. At least one owner is always active.
 - **Admin**: every area, and can add and manage editors.
-- **Editor**: only the areas they were given. Areas: records and meetings, votes, people and boards, map and projects, budget, events and notices, site pages and links.
+- **Editor**: only the areas they were given. Areas: records and meetings, votes, people and boards, map and projects, budget, events and notices (notices, events and updates), site pages and links.
 
 An owner or admin adds a person (name, email, department, role, areas). The portal shows a one-time sign-in link, valid for 7 days. The link carries its token after the `#`, so it never reaches a server log. The person opens it and chooses a passkey (fastest) or a password of at least 12 characters. Turning an account off signs it out at once. "Reset sign-in" removes every passkey, password and open session and makes a new link.
 
@@ -48,6 +48,18 @@ Anyone with the people area opens `/staff/directory`. It lists the Mayor and Cou
 The city website is still read every day. A person staff added or changed is marked `manual` in the `people` table, and that read (`upsertPeople` in `worker/api/people.ts`) leaves them exactly as staff set them: it does not overwrite them, hide them, or bring back someone staff took off. Board members are placed by the board names in their `department` list, matched to the portal's boards by `boardIdFor` in `worker/api/boards.ts`. A term that ends with a past year hides a board member unless the minutes show them still serving. Every change can be undone from Activity. The sitting council is cached for ten minutes on each server, so a change to who sits on it can take up to ten minutes to reach vote totals everywhere; the People and Boards pages follow at once. The server side is `worker/staff/people.ts`.
 
 The login accounts screen is `/staff/people`, labeled Accounts, and is for owners and admins only.
+
+## Notices, events and updates
+
+All three belong to the events and notices area.
+
+**Notices** (`/staff/notices`) are short messages at the top of every public page, such as an office closure or a change to a meeting (`worker/staff/notices.ts`, public list at `GET /api/notices`). A notice is up to 280 characters, can carry a link, can be an alert (a warm color, shown first) or plain information, and can have a first and last day. Up to three show at once, and a resident can close one for their visit; a notice staff change comes back for them. Hiding a notice keeps it on file so it can be shown again.
+
+**Events** (`/staff/events`) add a community event, a special meeting or a closure day to the portal calendar (`worker/staff/events.ts`, table in `worker/api/siteEvents.ts`). They are merged with the city calendar's events by `GET /api/events` and look the same there, with the same category groups. An event can be all day, run over several days, have a place, details and a link. If the city's own calendar cannot be reached for six seconds, the events staff added still show.
+
+**Updates** (`/staff/updates`) post a short note such as "We finished the 400 North signal" (`worker/staff/updates.ts`, using the same storage and indexing as the owner panel's Updates tab in `worker/contrib/updates.ts`). An update is a record of its own: searchable, cited by the assistant, listed on the Records page and, when it names a funded project, shown on that project's card under the map. A removed update can be put back from Activity under the same id, with the same words.
+
+Every change to a notice, event or update is in Activity and can be undone. Public pages follow within moments; a reader's browser may keep the previous copy for up to a minute.
 
 ## Adding an area
 
