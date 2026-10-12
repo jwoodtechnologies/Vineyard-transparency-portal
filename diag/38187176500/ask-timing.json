@@ -1,0 +1,66 @@
+{
+  "base": "https://vineyardportal.org",
+  "at": "2026-10-12T00:13:54.749Z",
+  "results": [
+    {
+      "question": "Can you tell me about the retention policy for Vineyard right now when it comes to data?",
+      "status": 200,
+      "firstWordsSeconds": 4.21,
+      "totalSeconds": 5.55,
+      "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+      "answer": "Vineyard's current data retention policy is outlined in the Vineyard Records Retention Schedule, which was last amended on June 28, 2023. [3] This schedule specifies how long different types of records must be kept before they can be destroyed. For example, fixed asset records are kept for 10 years after the asset is disposed of. [3] Information governance records are retained until they are superseded or until the lifespan of the related record is met. [3] The policy is managed by the Records Officer, who classifies and reclassifies records as needed. [1]\n\nIn general, cities in Utah follow retention schedules to ensure important records are kept for the appropriate amount of time. In Vineyard, the retention schedule is part of the municipal code and is updated as needed. [1] The city also has a privacy policy that explains how personal data is shared and stored, including which record series it is included in. [2]\n\nThese records are from 2023. The portal has nothing newer on this, so the current status may differ.",
+      "cards": 5,
+      "citations": 3
+    },
+    {
+      "question": "What is the RDA and why does it matter?",
+      "status": 200,
+      "firstWordsSeconds": 3.45,
+      "totalSeconds": 4.27,
+      "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + plan",
+      "answer": "The RDA, or Redevelopment Agency, is a local government entity responsible for planning and implementing redevelopment projects in Vineyard, Utah. [2] It plays a key role in managing tax increment financing, which helps fund community improvements and economic development initiatives. [4]\n\nIn general, redevelopment agencies work by capturing increased property tax revenues from areas they designate as \"redevelopment zones\" and using those funds to support projects that promote growth and revitalization. In Vineyard's records, the RDA has been involved in discussions about projects like the Vineyard Center, which was evaluated for its eligibility to use redevelopment funds. [3] The agency also oversees financial obligations, such as bonds, that are used to finance these projects. [1]",
+      "cards": 5,
+      "citations": 4
+    },
+    {
+      "question": "Is Vineyard growing?",
+      "status": 200,
+      "firstWordsSeconds": 2.5,
+      "totalSeconds": 2.98,
+      "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+      "answer": "Yes, Vineyard is growing. [1] The city is experiencing significant residential growth, and its population is expected to capture a portion of the projected population growth. [1] Vineyard is one of the fastest-growing cities in Utah, with increasing demands for services and resources as the population expands. [2]",
+      "cards": 5,
+      "citations": 2
+    },
+    {
+      "question": "How do I speak at a city council meeting?",
+      "status": 200,
+      "firstWordsSeconds": 3.41,
+      "totalSeconds": 4.56,
+      "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+      "answer": "To speak at a city council meeting, you need to sign up during the designated public comment period on the agenda. [1] Members of the public wishing to speak must provide their name and the topic they wish to discuss. [2] During the public comment period, the mayor or chair may allot each speaker a maximum amount of time to present their comments, subject to extension by the mayor or by a majority vote of the council. [2]\n\nIn general, public comment periods allow residents to share their views on agenda items. In Vineyard's records, the current rules for public comment are outlined in the Municipal Code, which requires a designated period for public comment at every regular City Council meeting with a business item. [1] The rules also allow the chair to organize comments by topic and limit duplicate comments. [2]",
+      "cards": 5,
+      "citations": 2
+    },
+    {
+      "question": "Who is my council member?",
+      "status": 200,
+      "firstWordsSeconds": 3.76,
+      "totalSeconds": 4.27,
+      "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + plan + general",
+      "answer": "Your council members as of October 11, 2026, are Mayor Stratton and five City Council members: Council Member Price, Council Member Lauret, Council Member Holdaway, Council Member Wood, and Council Member McCumber.",
+      "cards": 4,
+      "citations": 0
+    },
+    {
+      "question": "What is happening with Holdaway Fields?",
+      "status": 200,
+      "firstWordsSeconds": 2.81,
+      "totalSeconds": 4.63,
+      "engine": "@cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan",
+      "answer": "Holdaway Fields is the site of a development agreement that has gone through several changes and approvals. [1][2] The City Council rejected an amendment to the Holdaway Fields Development Agreement in June 2026, but later approved a First Amendment to the agreement in September 2026. [2] The council also accepted a quit claim deed for Council Member Holdaway properties. [3] A fire occurred in the development in August 2025, but no one was harmed. [4] There was a public hearing in March 2026 regarding the amendment to the development agreement. [5]\n\nIn general, development agreements outline the terms between a city and a developer for a specific project. In Vineyard's records, the Holdaway Fields Development Agreement was amended to align with the developer's current build strategy and implementation schedule. [5] The amendment included updates to the phasing plan and park dedication timing. [6]\n\nThe city is continuing to work on infrastructure and development projects in the area, including updates to public infrastructure specifications and standards. [7]",
+      "cards": 0,
+      "citations": 7
+    }
+  ]
+}
