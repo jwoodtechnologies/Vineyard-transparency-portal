@@ -662,7 +662,7 @@ export default function MapPage() {
       setPicked((p) => (p?.layer === 'parcels' ? null : p));
       clearHighlight(m);
     };
-    getJson<ParcelCardResponse>(`/api/map/parcel?lng=${ll.lng.toFixed(6)}&lat=${ll.lat.toFixed(6)}`).then(
+    getJson<ParcelCardResponse>(`/api/map/parcel?lng=${ll.lng.toFixed(6)}&lat=${ll.lat.toFixed(6)}&v=2`).then(
       (r) => (r.found ? settle({ ...r.properties, __src: r.city.length ? 'county+city' : 'county', ...(r.owner ? { __owner: r.owner } : {}) }, r.geometry) : no ? settle(fromLayer) : nothing()),
       () => settle(fromLayer),
     );

@@ -153,7 +153,8 @@ export async function getParcelAt(url: URL): Promise<Response> {
   if (!url.searchParams.get('lng') || !url.searchParams.get('lat') || !pt) throw new HttpError(400, 'bad_request', 'Give a point in Vineyard as lng and lat.');
   const [county, city, owner] = await Promise.all([arcgisJson(countyParcelAtUrl(pt[0], pt[1])), arcgisJson(cityParcelAtUrl(pt[0], pt[1])), ownerJson(countyOwnerAtUrl(pt[0], pt[1]))]);
   if (!county) throw new HttpError(502, 'backend_unavailable', 'The county parcel records did not respond. Try again shortly.');
-  return json(parcelCard(county, city, owner), { cache: DAY });
+  // Browsers keep a card for ten minutes (the owner line follows the county record closely).
+  return json(parcelCard(county, city, owner), { cache: 'public, max-age=600, stale-while-revalidate=3600' });
 }
 
 /**

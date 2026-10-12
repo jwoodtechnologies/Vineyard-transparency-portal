@@ -214,8 +214,14 @@ function joinsNames(ws: string[]): boolean {
   return false;
 }
 
+/**
+ * Words that mark an institution. On tax-exempt land only (owned by governments, schools, churches and
+ * nonprofits, never a private home), one of them stands in for a legal form: "FRANKLIN DISCOVERY ACADEMY".
+ */
+const INSTITUTIONAL = setOf('ACADEMY SCHOOL SCHOOLS CHARTER COLLEGE EDUCATION CEMETERY LIBRARY WATER IRRIGATION CANAL CONSERVANCY ASSN ASSOC ASSOCIATION HOMEOWNERS OWNERS STAKE WARD PARISH CONGREGATION MINISTRIES MISSION HOSPITAL CLINIC MUSEUM BOARD DEPARTMENT DEPT DIVISION BUREAU');
+
 /** One owner (no ; | or line breaks): the decision for its normalized text. */
-function classifyOne(norm: string): OwnerClass {
+function classifyOne(norm: string, institutional = false): OwnerClass {
   if (!norm) return { show: false, reason: 'empty' };
   const checked = norm.replace(SITLA, ' ');
   for (const [re, reason] of MARKERS) if (re.test(checked)) return { show: false, reason };
@@ -226,7 +232,7 @@ function classifyOne(norm: string): OwnerClass {
   const blocked = pub && (pub[1] === 'government' ? forms.some((w) => w !== 'CORP' && w !== 'CORPORATION') : pub[1] === 'hoa' ? forms.some((w) => !HOA_FORMS.has(w)) : false);
   if (pub && !blocked) return { show: true, name: '', kind: pub[1] };
   if (joinsNames(ws)) return { show: false, reason: 'joined-names' };
-  if (!ws.some(isEntityWord) && !/\bCREDIT UNION\b/.test(norm)) return { show: false, reason: 'no-entity-word' };
+  if (!ws.some(isEntityWord) && !/\bCREDIT UNION\b/.test(norm) && !(institutional && ws.some((w) => INSTITUTIONAL.has(w)))) return { show: false, reason: 'no-entity-word' };
   const core = ws.filter((w) => !LEGAL.has(w) && w !== 'THE' && w !== 'OF' && w !== 'AND' && w !== '&' && !/^\d+$/.test(w));
   const brand = BRANDS.some((b) => ` ${norm} `.includes(` ${b} `));
   if (!brand && !core.some((w) => BUSINESS.has(w) && !nameLike(w))) return { show: false, reason: 'name-only' };
@@ -254,7 +260,7 @@ const tidy = (raw: unknown) => (typeof raw === 'string' ? raw.replace(/\s+/g, ' 
  * Whether an owner name may be shown, by the name alone (see the rules at the top). The shown name is
  * the county's own text with its spacing tidied.
  */
-export function classifyOwner(raw: unknown): OwnerClass {
+export function classifyOwner(raw: unknown, institutional = false): OwnerClass {
   const text = tidy(raw);
   if (!text) return { show: false, reason: 'empty' };
   if (text.length > OWNER_MAX) return { show: false, reason: 'too-long' };
@@ -263,7 +269,7 @@ export function classifyOwner(raw: unknown): OwnerClass {
   if (!parts.length) return { show: false, reason: 'empty' };
   let kind: OwnerKind | null = null;
   for (const part of parts) {
-    const r = classifyOne(part);
+    const r = classifyOne(part, institutional);
     if (!r.show) return r;
     kind = kind ?? r.kind;
   }
@@ -302,7 +308,9 @@ export function propertyClass(propType: unknown, subName?: unknown): PropertyCla
  * when the property type is unknown, only a government or an HOA is shown).
  */
 export function ownerDecision(input: { owner: unknown; propType?: unknown; subName?: unknown }): OwnerClass {
-  const c = classifyOwner(input.owner);
+  let c = classifyOwner(input.owner);
+  // Tax-exempt land: an institutional word may stand in for a legal form (every person rule still applies).
+  if (!c.show && c.reason === 'no-entity-word' && /\bEXEMPT\b/i.test(String(input.propType ?? ''))) c = classifyOwner(input.owner, true);
   if (!c.show) return c;
   if (c.kind === 'government' || c.kind === 'hoa') return c;
   const p = propertyClass(input.propType, input.subName);

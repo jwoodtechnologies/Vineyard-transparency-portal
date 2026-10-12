@@ -390,3 +390,19 @@ describe('shown names are tidy', () => {
     expect(r.show && r.name).toBe('TOWN OF VINEYARD');
   });
 });
+
+describe('tax-exempt land: an institutional word stands in for a legal form', () => {
+  it('shows a charter school or an HOA on exempt land, never a person', async () => {
+    const { ownerDecision } = await import('../worker/lib/ownerFilter');
+    const ex = (owner: string) => ownerDecision({ owner, propType: 'EXEMPT' });
+    expect(ex('FRANKLIN DISCOVERY ACADEMY')).toMatchObject({ show: true });
+    expect(ex('WATERS EDGE MASTER ASSN')).toMatchObject({ show: true });
+    expect(ex('SMITH JOHN A')).toMatchObject({ show: false });
+    expect(ex('SMITH FAMILY TRUST')).toMatchObject({ show: false });
+    expect(ex('JOHN SMITH ACADEMY TRUST')).toMatchObject({ show: false });
+    expect(ex('JOHN AND MARY SMITH')).toMatchObject({ show: false });
+    expect(ex('JOHN SMITH')).toMatchObject({ show: false });
+    // Not exempt: the old rule (a legal form or listed entity word) still applies.
+    expect(ownerDecision({ owner: 'FRANKLIN DISCOVERY ACADEMY', propType: 'VACANT' })).toMatchObject({ show: false, reason: 'no-entity-word' });
+  });
+});
