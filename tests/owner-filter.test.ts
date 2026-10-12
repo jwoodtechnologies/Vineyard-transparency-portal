@@ -406,3 +406,15 @@ describe('tax-exempt land: an institutional word stands in for a legal form', ()
     expect(ownerDecision({ owner: 'FRANKLIN DISCOVERY ACADEMY', propType: 'VACANT' })).toMatchObject({ show: false, reason: 'no-entity-word' });
   });
 });
+
+describe('no property type: a subdivision named for a school or business is not housing', () => {
+  it('reads the subdivision name only when the type is missing', async () => {
+    const { propertyClass, ownerDecision } = await import('../worker/lib/ownerFilter');
+    expect(propertyClass(null, 'FRANKLIN DISCOVERY ACADEMY, PLAT A')).toBe('other');
+    expect(propertyClass(null, 'GENEVA COMMERCIAL PLAT B')).toBe('other');
+    expect(propertyClass(null, 'ACADEMY ESTATES PLAT C')).toBe('unknown');
+    expect(propertyClass(null, 'SLEEPY RIDGE PHASE 2')).toBe('unknown');
+    expect(propertyClass('SINGLE FAMILY RES', 'FRANKLIN DISCOVERY ACADEMY, PLAT A')).toBe('residential');
+    expect(ownerDecision({ owner: 'SMITH JOHN A', subName: 'FRANKLIN DISCOVERY ACADEMY, PLAT A' })).toMatchObject({ show: false });
+  });
+});

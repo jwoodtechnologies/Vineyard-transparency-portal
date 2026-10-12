@@ -294,11 +294,16 @@ const VACANT = /\b(?:VACANT|UNIMPROVED|UNDEVELOPED|BARE LAND)\b/;
  * mobile home, apartments) is residential; a vacant lot is not; no type at all is unknown. A
  * subdivision name naming a condominium also makes the parcel residential (stacked condo units).
  */
+const NONRES_SUB = /\b(?:ACADEMY|SCHOOL|ELEMENTARY|CHARTER|CHURCH|CHAPEL|STAKE CENTER|COMMERCIAL|BUSINESS PARK|INDUSTRIAL|RETAIL|OFFICE PARK|SHOPPING|HOSPITAL|FIRE STATION|PUBLIC WORKS)\b/;
+const HOME_SUB = /\b(?:HOMES|TOWNHOMES|TOWNHOUSES|CONDO\w*|RESIDENTIAL|ESTATES|COTTAGES|VILLAS|APARTMENTS|LOFTS)\b/;
+
 export function propertyClass(propType: unknown, subName?: unknown): PropertyClass {
   const sub = typeof subName === 'string' ? normalizeOwner(subName) : '';
   if (/\bCONDO\w*\b/.test(sub)) return 'residential';
   const t = typeof propType === 'string' ? normalizeOwner(propType.replace(/[-_/]/g, ' ')) : '';
-  if (!t) return 'unknown';
+  // No type (a parcel missing from the city's layer): a subdivision named for a school, church or business
+  // ("FRANKLIN DISCOVERY ACADEMY, PLAT A") is not housing; anything else stays unknown.
+  if (!t) return NONRES_SUB.test(sub) && !HOME_SUB.test(sub) ? 'other' : 'unknown';
   if (VACANT.test(t) && !/\b(?:CONDO\w*|UNIT)\b/.test(t)) return 'other';
   return HOME.test(t) ? 'residential' : 'other';
 }
