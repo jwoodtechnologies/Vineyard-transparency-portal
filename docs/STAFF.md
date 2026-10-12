@@ -27,6 +27,12 @@ While no staff owner exists, `/staff/setup` accepts the email and password of th
 
 Every change is written to `staff_audit` with the person, the area, a sentence, and the before and after values. The Activity screen shows it (editors see only their own areas), and a change that registered an undo can be put back with one tap (`worker/staff/undo.ts`). Publishing moves the archive data version (`worker/lib/dataVersion.ts`), so public pages refresh within moments.
 
+## Records
+
+Anyone with the records area adds agendas, minutes, reports and other documents at `/staff/records`: a file (PDF, picture, text or CSV, up to 25 MB), a note, or a link. A file gets a type, a date, an optional meeting and a short description; the type is suggested from the file name. Whatever is added is stored, indexed for search and chat, and shown on the public site at once. Minutes are also read for votes by the same cron that reads the city's own minutes, so the Votes page follows within about ten minutes.
+
+Staff can change the details of anything added (including items added from the owner panel) and remove it. A change or an add can be undone from Activity; a removal cannot, because the stored file is deleted. The server side is `worker/staff/records.ts`, which reuses the storage, indexing and size rules of `worker/contrib/staff.ts`. Uploads reach it as a form, which the router passes to the module unread (`worker/staff/routes.ts`).
+
 ## Adding an area
 
 Each content area plugs in through `worker/staff/modules.ts` (API routes, which check `requireArea`) and `src/console/staff/sections.ts` (the screen). Writes go through `auditStatement` in the same batch as the change, and call `published(env)` afterward.
