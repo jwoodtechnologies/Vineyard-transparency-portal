@@ -18,13 +18,14 @@ describe('RAG system prompt', () => {
 });
 
 describe('segmentAnswer', () => {
-  it('keeps cited sentences and drops uncited claims', () => {
+  it('keeps cited sentences and passes uncited ones on to the source check', () => {
     const r = segmentAnswer('The commission met on June 3, 2026 [1]. It approved a $4 million bond. The motion was continued [2][3].', 2);
     expect(r.paragraphs[0].segments).toEqual([
       { text: 'The commission met on June 3, 2026.', citations: [1] },
+      { text: 'It approved a $4 million bond.', citations: [] },
       { text: 'The motion was continued.', citations: [2] },
     ]);
-    expect(r.dropped).toBe(1);
+    expect(r.dropped).toBe(0);
     expect([...r.used]).toEqual([1, 2]);
   });
 

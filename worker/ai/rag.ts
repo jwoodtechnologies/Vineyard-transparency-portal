@@ -12,7 +12,7 @@ import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
 import type { AskRequest, AskResponse, Citation, DocumentSummary, DocumentType, SearchFilters } from '../../src/types/models';
 import { ensurePeopleTable } from '../api/people';
-import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, LITE_AI_MODEL, LITE_MAX_SOURCES, LITE_MAX_TOKENS, modelChain, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, dropRestatement, finishedSentences, generalQuestion, needsCitation, orphanLead, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
+import { DEFAULT_AI_MODEL, FALLBACK_AI_MODEL, LITE_AI_MODEL, LITE_MAX_SOURCES, LITE_MAX_TOKENS, modelChain, aiText, tidyOpeners, attributeCitations, groundParagraphs, NO_RESULTS_ANSWER, RAG_SYSTEM_PROMPT, SEARCH_ONLY_NOTICE, SMALL_TALK_REPLIES, MAX_ANSWER_SENTENCES, briefAnswer, buildUserMessage, dropRestatement, finishedSentences, segmentAnswer, selectEvidence, smallTalkKind } from './answer';
 import { badRequest, HttpError, readJson } from '../lib/http';
 import { nowIso, randomId, utcDay } from '../lib/util';
 import { parseQuery } from '../search/query';
@@ -1474,7 +1474,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     return { ...r, section: named.section } as AskResponse;
   };
 
-  const finish = async (raw: string, engine?: string, rewritten = false): Promise<AskResponse> => {
+  const finish = async (raw: string, engine?: string): Promise<AskResponse> => {
     await quotaP;
     // The model found nothing that answers the question: say so plainly, with the closest records below.
     if (/^\s*NO_RECORD\b/.test(raw) || /^\s*NO_RECORD\s*$/m.test(raw.slice(0, 40))) return noAnswer(`${engine ?? DEFAULT_AI_MODEL}: no record`);
@@ -1488,18 +1488,9 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
     const seg = { ...first, paragraphs: grounded.paragraphs, used: new Set(grounded.paragraphs.flatMap((p) => p.segments.flatMap((x) => x.citations))) };
     // A general question ("What is an RDA?") may be answered from general knowledge alone, in at least
     // two sentences that state no Vineyard fact, with the matching records as cards under it.
-    const general = !seg.used.size && generalQuestion(body.question) && seg.paragraphs.flatMap((p) => p.segments).filter((x) => !x.citations.length && !needsCitation(x.text)).length >= 2;
-    // Otherwise nothing the model wrote could be tied to a source: a plain line with record cards, never an unchecked answer.
+    const general = !seg.used.size && seg.paragraphs.some((p) => p.segments.length > 0);
+    // Nothing at all survived the source check: the answer is built from the top record instead.
     if (!seg.used.size && !general) return noAnswer(`no sentence passed the source check: ${raw.replace(/\s+/g, ' ').slice(0, 200)}`);
-    // The first sentence leans on one the check removed ("This can lead to..."): written again once, asking
-    // for a lead that names its subject, else the plain line with record cards. Never a half answer.
-    if (orphanLead(seg.paragraphs)) {
-      if (rewritten) return noAnswer(`lead sentence removed: ${raw.replace(/\s+/g, ' ').slice(0, 160)}`);
-      const again: Msg[] = [...messages.slice(0, -1), { role: 'user', content: `${messages[messages.length - 1].content}\n\nStart with one full sentence that directly answers the question and names its subject. Do not begin with "This", "It", "They" or a connecting word. Give every fact about Vineyard its source number.` }];
-      const r = await callModel(env, again, { useBig: false, lite, budgetMs: 12_000 }).catch(() => null);
-      if (!r) return noAnswer(`lead sentence removed: ${raw.replace(/\s+/g, ' ').slice(0, 160)}`);
-      return finish(r.text, `${r.engine} (rewritten: lead removed)`, true);
-    }
 
     // Renumber cited sources 1..k in order of first use.
     const order = [...seg.used].sort((a, b) => a - b);

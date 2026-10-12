@@ -63,10 +63,23 @@ describe('which sentences need a source', () => {
 });
 
 describe('uncited explanation is kept, uncited Vineyard facts are not', () => {
-  it('keeps general and connective sentences in segmentAnswer and drops an uncited figure', () => {
+  it('keeps general and connective sentences and drops an uncited figure no record holds', () => {
     const r = segmentAnswer('A redevelopment agency is a separate public body a city creates to renew one area. The Agency proposes capturing 75 percent of the tax increment [1]. The RDA also approved a $900 million bond.', 1);
-    expect(r.paragraphs[0].segments.map((s) => s.text)).toEqual(['A redevelopment agency is a separate public body a city creates to renew one area.', 'The Agency proposes capturing 75 percent of the tax increment.']);
-    expect(r.dropped).toBe(1);
+    const g = groundParagraphs(r.paragraphs, [src('The Agency proposes capturing 75 percent of the tax increment.')]);
+    expect(g.paragraphs[0].segments.map((s) => s.text)).toEqual(['A redevelopment agency is a separate public body a city creates to renew one area.', 'The Agency proposes capturing 75 percent of the tax increment.']);
+    expect(g.removed).toBe(1);
+  });
+
+  it('never deletes the lead: a plain explanation with no citation stays first', () => {
+    const r = segmentAnswer('Yes, the Redevelopment Agency (RDA) in Vineyard, Utah is a special entity created to help the city improve its neighborhoods. This can lead to increased property values and job creation [1].', 1);
+    const g = groundParagraphs(r.paragraphs, [src('Redevelopment raises property values and creates jobs.')]);
+    expect(g.paragraphs[0].segments[0].text).toMatch(/^Yes, the Redevelopment Agency/);
+  });
+
+  it('a lead with a figure no record holds keeps its other clauses', () => {
+    const r = segmentAnswer('The RDA, created in 1999, funds roads and utilities in the Geneva area.', 1);
+    const g = groundParagraphs(r.paragraphs, [src('The Agency funds roads and utilities in the Geneva project area.')]);
+    expect(g.paragraphs[0].segments[0].text).toBe('The RDA funds roads and utilities in the Geneva area.');
   });
 
   it('keeps a paragraph of general explanation with no citation, but not a bare lead-in', () => {
@@ -189,6 +202,7 @@ describe('before and after on a model answer (simulated model text, run through 
   it('the old pipeline rule (every uncited sentence removed) would have kept only the cited lines', () => {
     const first = segmentAnswer(briefAnswer(attributeCitations(raw, evidence)), evidence.length);
     const uncitedKept = first.paragraphs.flatMap((p) => p.segments).filter((s) => !s.citations.length).length;
-    expect(uncitedKept).toBe(2);
+    // The uncited sentences now all reach the source check, which removes only the unsupported $900 million.
+    expect(uncitedKept).toBe(3);
   });
 });

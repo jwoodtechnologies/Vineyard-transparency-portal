@@ -175,7 +175,7 @@ const INSUFFICIENT = /(do not|does not|don't|doesn't) (provide|contain|include) 
  */
 export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: AnswerParagraph[]; dropped: number; used: Set<number>; insufficient: boolean } {
   const used = new Set<number>();
-  let dropped = 0;
+  const dropped = 0;
   let insufficient = false;
   const paragraphs: AnswerParagraph[] = [];
   const cleaned = raw
@@ -226,12 +226,11 @@ export function segmentAnswer(raw: string, maxIndex: number): { paragraphs: Answ
         insufficient = true;
       } else if (/:\s*$/.test(plain)) {
         segments.push({ text: plain, citations: [] });
-      } else if (!needsCitation(plain)) {
-        // Explanation, general background and connecting sentences stand without a source.
-        segments.push({ text: plain, citations: [] });
       } else {
-        // A fact about Vineyard (a number, date, name, vote or decision) with no source is never shown.
-        dropped++;
+        // Uncited sentences go on to the source check (groundParagraphs), which keeps explanation and
+        // general background, ties a Vineyard figure or name to the record that holds it, and removes
+        // only a specific figure or name that no retrieved record holds.
+        segments.push({ text: plain, citations: [] });
       }
     }
     if (segments.length) paragraphs.push({ segments });
@@ -456,17 +455,43 @@ export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: Ground
   let removed = 0;
   let recited = 0;
   const out: AnswerParagraph[] = [];
+  // Figures and names a sentence states, and whether a record (or the checked notes) holds each of them.
+  const supportedBy = (text: string) => {
+    const nums = sentenceNumbers(text);
+    const names = sentenceNames(text);
+    const ok = (i: number) => nums.every((forms) => hasFigure(texts[i - 1] ?? '', forms)) && names.every((n) => new RegExp(`\\b${n}\\b`, 'i').test(texts[i - 1] ?? ''));
+    return { specific: nums.length + names.length > 0, sources: texts.map((_, i) => i + 1).filter(ok) };
+  };
+  let lead = true;
   for (const p of paragraphs) {
     const segments: AnswerSegment[] = [];
     for (let seg of p.segments) {
+      const isLead = lead;
+      lead = false;
       if (!seg.citations.length) {
-        // Uncited sentences reaching here state no Vineyard fact; one that does (or talks about the
-        // sources themselves) is removed.
-        if (needsCitation(seg.text) || ABSENCE.test(seg.text) || META.test(seg.text)) {
+        // Talk about the sources themselves ("the records do not show") is never an answer.
+        if (ABSENCE.test(seg.text) || META.test(seg.text)) {
           removed++;
+          if (isLead) lead = true;
           continue;
         }
-        segments.push(seg);
+        const s0 = supportedBy(seg.text);
+        // Explanation and general background stand as written.
+        if (!s0.specific) {
+          segments.push(seg);
+          continue;
+        }
+        // A Vineyard figure or name a record holds: cite that record.
+        if (s0.sources.length) {
+          segments.push({ ...seg, citations: s0.sources.slice(0, 2) });
+          recited++;
+          continue;
+        }
+        // A figure or name no record holds: the lead keeps its other clauses; any other sentence goes.
+        const fixed = isLead ? repairClauses(seg.text, (t) => { const r = supportedBy(t); return !r.specific || r.sources.length > 0; }) : null;
+        if (fixed) segments.push({ ...seg, text: fixed });
+        else if (isLead) lead = true;
+        removed++;
         continue;
       }
       if (ABSENCE.test(seg.text) || META.test(seg.text)) {
@@ -503,11 +528,18 @@ export function groundParagraphs(paragraphs: AnswerParagraph[], evidence: Ground
       if (other.length) {
         segments.push({ ...seg, citations: other });
         recited++;
-      } else removed++;
+      } else {
+        // The lead is never blanked: its clauses that a record supports (or that state no figure) stay.
+        const fixed = isLead ? repairClauses(seg.text, (t) => { const r = supportedBy(t); return !r.specific || r.sources.length > 0; }) : null;
+        if (fixed) {
+          const r = supportedBy(fixed);
+          segments.push({ ...seg, text: fixed, citations: r.sources.slice(0, 2) });
+        } else if (isLead) lead = true;
+        removed++;
+      }
     }
-    // A paragraph stands when a cited sentence survived, or when it explains something in sentences
-    // that need no source (not just a lead-in such as "Here is what was decided:").
-    if (segments.some((x) => x.citations.length) || segments.some((x) => !x.citations.length && !/:\s*$/.test(x.text) && !needsCitation(x.text))) out.push({ segments });
+    // A paragraph stands when any sentence survived that is more than a lead-in ("Here is what was decided:").
+    if (segments.some((x) => x.citations.length || !/:\s*$/.test(x.text))) out.push({ segments });
   }
   return { paragraphs: out, removed, recited };
 }
@@ -680,4 +712,26 @@ const TIME_LEAD = /^(?:this|that)\s+(?:year|week|month|morning|afternoon|evening
 export function orphanLead(paragraphs: AnswerParagraph[]): boolean {
   const first = paragraphs.flatMap((p) => p.segments)[0]?.text.trim() ?? '';
   return Boolean(first) && ORPHAN_LEAD.test(first) && !TIME_LEAD.test(first);
+}
+
+/**
+ * A sentence with the clauses `keep` rejects taken out ("The RDA, created in 1999, funds roads." without
+ * an unsupported year reads "The RDA funds roads."), or null when no clause is left worth showing.
+ */
+export function repairClauses(sentence: string, keep: (clause: string) => boolean): string | null {
+  const end = /[.!?]$/.test(sentence) ? sentence.slice(-1) : '.';
+  const clauses = sentence.replace(/[.!?]$/, '').split(/,\s+|;\s+|\s+\(|\)\s*/).map((c) => c.trim()).filter(Boolean);
+  let text = '';
+  let gap = false;
+  for (const c of clauses) {
+    if (!keep(c)) {
+      // An aside between two kept clauses ("The RDA, created in 1999, funds roads") leaves no comma behind.
+      gap = Boolean(text);
+      continue;
+    }
+    text = text ? `${text}${gap ? ' ' : ', '}${c}` : c;
+    gap = false;
+  }
+  if (!text || text.split(/\s+/).length < 4) return null;
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}${end}`;
 }
