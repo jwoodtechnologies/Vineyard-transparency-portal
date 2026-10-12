@@ -1,6 +1,6 @@
 /** /documents/:documentId : one record, shown in the same quiet frame as the rest of the portal. */
 import './styles';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, CalendarDays, Flag, Layers, MessageSquare, Paperclip, Share2 } from 'lucide-react';
 import { DocumentService } from '@/services';
@@ -11,12 +11,18 @@ import { BackButton, Frame } from './Chrome';
 import { formatDate, sourceLabel } from './format';
 import { meetingHref } from './meetings';
 import { PaperTrail } from './PaperTrail';
+import { TrailNav, type TrailStep } from './TrailNav';
+import type { DocumentSummary } from '@/types/models';
+import { useFullScreen } from '@/components/documents/fullScreen';
+import { isTypingTarget } from '@/components/documents/gestures';
+import type { Zoom } from '@/components/documents/zoom';
 import { DocLink } from './DocLink';
 import { labelsOf } from './recordLabels';
 import { STATUS_LABEL } from '@/lib/recordTitle';
 import { setHead } from '@/lib/head';
 
-type Load<T> = { status: 'loading' } | { status: 'error'; error: unknown } | { status: 'done'; data: T };
+/** While a new answer loads, `stale` is the previous one (the record page keeps showing it, so full screen stays on). */
+type Load<T> = { status: 'loading'; stale?: T } | { status: 'error'; error: unknown } | { status: 'done'; data: T };
 
 function useLoad<T>(key: string | null, fn: () => Promise<T>): Load<T> {
   const [state, setState] = useState<{ key: string | null; value: Load<T> }>({ key: null, value: { status: 'loading' } });
@@ -33,7 +39,13 @@ function useLoad<T>(key: string | null, fn: () => Promise<T>): Load<T> {
     // fn is recreated every render; the key identifies the request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  return state.key === key ? state.value : { status: 'loading' };
+  return state.key === key ? state.value : { status: 'loading', stale: state.value.status === 'done' ? state.value.data : undefined };
+}
+
+/** One record in the viewer's previous and next: its short title and agenda item. */
+function stepOf(d: DocumentSummary): TrailStep {
+  const lb = labelsOf(d);
+  return { id: d.id, title: lb.title, item: lb.item };
 }
 
 const safeHttp = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u) ? u : null);
@@ -92,11 +104,68 @@ export default function DocumentView() {
   const q = (params.get('q') ?? '').slice(0, 200);
   const [attempt, setAttempt] = useState(0);
   const load = useLoad(`doc:${documentId}:${attempt}`, () => DocumentService.get(documentId));
-  const doc = load.status === 'done' ? load.data : null;
+  const fresh = load.status === 'done' ? load.data : null;
+  // Moving to another record keeps the one on screen until the next one has loaded (no blank page, full screen kept).
+  const doc = fresh ?? (load.status === 'loading' ? (load.stale ?? null) : null);
+  const stage = useRef<HTMLDivElement>(null);
+  const screen = useFullScreen(stage);
+  // The zoom carries over from one record to the next.
+  const [zoom, setZoom] = useState<Zoom>({ mode: 'auto' });
   const [shareNote, setShareNote] = useState<string | null>(null);
   // The paper trail: the meeting, the files on the same agenda item, the meeting's other records.
   const trailLoad = useLoad(doc ? `trail:${doc.id}` : null, () => DocumentService.trail(doc!.id));
-  const trail = trailLoad.status === 'done' ? trailLoad.data : null;
+  const trail = trailLoad.status === 'done' ? trailLoad.data : trailLoad.status === 'loading' ? (trailLoad.stale ?? null) : null;
+
+  // Previous and next through the meeting's records, in agenda order (this record, or its copy filed with the meeting).
+  const nav = useMemo(() => {
+    if (!doc || !trail || trail.sequence.length < 2) return null;
+    const anchor = trail.sequence.includes(doc.id) ? doc.id : trail.twinId;
+    const index = anchor ? trail.sequence.indexOf(anchor) : -1;
+    if (index < 0) return null;
+    const byId = new Map([...trail.attachments, ...trail.meeting_docs, doc].map((d) => [d.id, stepOf(d)]));
+    const steps = trail.sequence.map((id) => byId.get(id)).filter((s): s is NonNullable<typeof s> => Boolean(s));
+    if (steps.length !== trail.sequence.length) return null;
+    return { steps, index, attachmentIds: new Set([anchor!, ...trail.attachments.map((d) => d.id)]) };
+  }, [doc, trail]);
+  const viewerParam = params.get('viewer');
+  const goTo = useCallback(
+    (id: string) => {
+      // In full screen the move replaces this entry (Back then leaves the record, Exit stays on the new one).
+      navigate(`/documents/${encodeURIComponent(id)}${viewerParam ? `?viewer=${encodeURIComponent(viewerParam)}` : ''}`, { replace: screen.full });
+    },
+    [navigate, viewerParam, screen.full],
+  );
+  const step = useCallback(
+    (dir: -1 | 1) => {
+      const target = nav?.steps[nav.index + dir];
+      if (target) goTo(target.id);
+    },
+    [nav, goTo],
+  );
+  // The neighbours load ahead, so moving is quick.
+  useEffect(() => {
+    if (!nav) return;
+    for (const s of [nav.steps[nav.index - 1], nav.steps[nav.index + 1]]) if (s) void DocumentService.get(s.id).catch(() => undefined);
+  }, [nav]);
+  // Arrow keys on a computer (never while typing in a box, or with a modifier key held).
+  useEffect(() => {
+    if (!nav) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.defaultPrevented || isTypingTarget(e.target)) return;
+      e.preventDefault();
+      step(e.key === 'ArrowLeft' ? -1 : 1);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [nav, step]);
+  // A new record starts at the top of the page (full screen keeps its own scroll box).
+  const fullNow = useRef(screen.full);
+  useEffect(() => {
+    fullNow.current = screen.full;
+  }, [screen.full]);
+  useEffect(() => {
+    if (!fullNow.current) window.scrollTo({ top: 0 });
+  }, [documentId]);
   const [page, setPage] = useState<{ for: string; page: number }>({ for: documentId, page: urlPage });
   const current = page.for === documentId ? page.page : urlPage;
   const notFound = load.status === 'error' && isDataError(load.error) && load.error.kind === 'not_found';
@@ -107,8 +176,8 @@ export default function DocumentView() {
 
   // An old id that now answers with the record it was folded into: the address shows the current id.
   useEffect(() => {
-    if (doc && doc.id !== documentId && documentId.startsWith('doc_')) navigate(`/documents/${encodeURIComponent(doc.id)}${window.location.search}`, { replace: true });
-  }, [doc, documentId, navigate]);
+    if (fresh && fresh.id !== documentId && documentId.startsWith('doc_')) navigate(`/documents/${encodeURIComponent(fresh.id)}${window.location.search}`, { replace: true });
+  }, [fresh, documentId, navigate]);
 
   // A slow or failed answer (not a missing record) is tried again once on its own.
   useEffect(() => {
@@ -239,7 +308,20 @@ export default function DocumentView() {
           {resident && <ReportButton documentId={doc.id} />}
         </div>
       </header>
-      <RecordViewer key={doc.id} doc={doc} page={current} onPage={onPage} highlight={highlight} />
+      <div ref={stage} className="vc-viewer-stage" aria-busy={load.status === 'loading'}>
+        <RecordViewer
+          key={doc.id}
+          doc={doc}
+          page={doc.id === documentId ? current : 1}
+          onPage={onPage}
+          highlight={highlight}
+          screen={screen}
+          zoom={zoom}
+          onZoom={setZoom}
+          onSwipe={nav ? step : undefined}
+          trailNav={nav ? <TrailNav steps={nav.steps} index={nav.index} attachmentIds={nav.attachmentIds} onGo={goTo} /> : null}
+        />
+      </div>
       <PaperTrail trail={trail} />
     </Frame>
   );

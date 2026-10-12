@@ -22,6 +22,8 @@ import { fileKind, fileRoute, FILE_KIND_LABEL, type FileKind } from '@/lib/docum
 import { viewerMode, isPhoneOrTablet, type ViewerMode } from '@/components/documents/viewerMode';
 import { probePdf } from '@/components/documents/probe';
 import { AUTO_MIN_PCT, CHROME_PX, LETTER, nativeFragment, zoomStep, type Zoom } from '@/components/documents/zoom';
+import { useFullScreen, type FullScreen } from '@/components/documents/fullScreen';
+import { swipeDirection } from '@/components/documents/gestures';
 
 const PdfViewer = lazy(() => import('@/components/documents/PdfViewer'));
 
@@ -99,53 +101,6 @@ function printPdf(fileUrl: string) {
     setTimeout(() => frame.remove(), 120_000);
   };
   document.body.appendChild(frame);
-}
-
-/**
- * Full screen: a fixed layer over the whole screen (works on iPhone, where pages cannot use the browser
- * Fullscreen API) plus the Fullscreen API where it exists. Back and Esc leave it.
- */
-function useFullScreen(shell: RefObject<HTMLDivElement | null>) {
-  const [full, setFull] = useState(false);
-  const exit = useCallback(() => {
-    setFull(false);
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-    if ((window.history.state as { vcFull?: boolean } | null)?.vcFull) window.history.back();
-  }, []);
-  const enter = useCallback(() => {
-    setFull(true);
-    window.history.pushState({ ...(window.history.state ?? {}), vcFull: true }, '');
-    const el = shell.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
-    try {
-      if (el?.requestFullscreen) void el.requestFullscreen({ navigationUI: 'hide' }).catch(() => undefined);
-      else el?.webkitRequestFullscreen?.();
-    } catch {
-      /* the fixed layer alone still fills the screen */
-    }
-  }, [shell]);
-  useEffect(() => {
-    if (!full) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && exit();
-    const onPop = () => {
-      setFull(false);
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-    };
-    const onFs = () => {
-      if (!document.fullscreenElement) exit();
-    };
-    document.addEventListener('keydown', onKey);
-    window.addEventListener('popstate', onPop);
-    document.addEventListener('fullscreenchange', onFs);
-    return () => {
-      document.body.style.overflow = prev;
-      document.removeEventListener('keydown', onKey);
-      window.removeEventListener('popstate', onPop);
-      document.removeEventListener('fullscreenchange', onFs);
-    };
-  }, [full, exit]);
-  return { full, enter, exit };
 }
 
 interface BarProps {
@@ -338,11 +293,22 @@ export interface RecordViewerProps {
   /** Keeps the address in step with the page on screen (replaces history). */
   onPage: (page: number) => void;
   highlight: string[];
+  /** Full screen held by the record page, so it stays on while moving to the next record. */
+  screen?: FullScreen;
+  /** The zoom, held by the record page so it carries over to the next record. */
+  zoom?: Zoom;
+  onZoom?: (zoom: Zoom) => void;
+  /** Previous and next through the meeting's records, under the toolbar (also in full screen). */
+  trailNav?: ReactNode;
+  /** A sideways swipe on the record: -1 previous, 1 next. */
+  onSwipe?: (dir: -1 | 1) => void;
 }
 
-export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps) {
+export function RecordViewer({ doc, page, onPage, highlight, screen, zoom: heldZoom, onZoom, trailNav, onSwipe }: RecordViewerProps) {
   const shell = useRef<HTMLDivElement>(null);
-  const { full, enter, exit } = useFullScreen(shell);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const own = useFullScreen(shell);
+  const { full, enter, exit } = screen ?? own;
   const kind = fileKind(doc.mimeType, doc.fileName);
   const route = fileRoute(doc);
   const fileUrl = `/api/documents/${encodeURIComponent(doc.id)}/file`;
@@ -351,7 +317,9 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
   const [source, fallback] = usePdfSource(doc, fileUrl, kind === 'pdf');
   const mode: ViewerMode = source.status === 'ready' && !source.sameOrigin ? 'pdfjs' : viewerMode(navigator, override);
   const [count, setCount] = useState<number | null>(doc.pageCount ?? null);
-  const [zoom, setZoomState] = useState<Zoom>({ mode: 'auto' });
+  const [ownZoom, setOwnZoom] = useState<Zoom>({ mode: 'auto' });
+  const zoom = heldZoom ?? ownZoom;
+  const setZoomState = onZoom ?? setOwnZoom;
   /** pdf.js: the percent on screen and the percent that fits the width, as drawn. */
   const [scale, setScale] = useState<{ pct: number; fit: number } | null>(null);
   const onScale = useCallback((pct: number, fit: number) => setScale((s) => (s && Math.abs(s.pct - pct) < 0.05 && Math.abs(s.fit - fit) < 0.05 ? s : { pct, fit })), []);
@@ -400,13 +368,54 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
     };
   };
 
-  let body: ReactNode;
+  // A sideways swipe moves to the previous or next record (not during a pinch, not while a zoomed page scrolls).
+  const swipe = useRef(onSwipe);
+  useEffect(() => {
+    swipe.current = onSwipe;
+  });
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    let start: { x: number; y: number; t: number; atLeft: boolean; atRight: boolean } | null = null;
+    let pinched = false;
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || (window.visualViewport?.scale ?? 1) > 1.01) {
+        pinched = true;
+        start = null;
+        return;
+      }
+      pinched = false;
+      const box = (e.target as HTMLElement).closest?.('.vc-pdf-pages') as HTMLElement | null;
+      const t = e.touches[0];
+      start = { x: t.clientX, y: t.clientY, t: Date.now(), atLeft: !box || box.scrollLeft <= 2, atRight: !box || box.scrollLeft + box.clientWidth >= box.scrollWidth - 2 };
+    };
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length > 1) pinched = true;
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (!start || !swipe.current) return;
+      const t = e.changedTouches[0];
+      const dir = t ? swipeDirection(start, { x: t.clientX, y: t.clientY, t: Date.now() }, pinched) : 0;
+      start = null;
+      if (dir) swipe.current(dir);
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: true });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+    };
+  }, []);
+
+  let content: ReactNode;
   let bar: Omit<BarProps, 'title' | 'full' | 'onFull' | 'onExit'> = {};
   const downloadable = route === 'archive' || route === 'proxy' ? fileUrl : original;
 
   if (kind === 'pdf') {
     if (source.status === 'checking') {
-      body = (
+      content = (
         <div className="vc-pdf-pages">
           <div className="vc-pdf-page vc-pdf-loading" role="status" aria-label="Loading the PDF">
             <span className="vc-pdf-shimmer" />
@@ -414,7 +423,7 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
         </div>
       );
     } else if (source.status === 'none') {
-      body = (
+      content = (
         <>
           <FileCard
             kind="pdf"
@@ -428,7 +437,7 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
       bar = { download: null, open: original };
     } else if (mode === 'native') {
       const fragment = nativeFragment(nativePage, zoom, nativeAuto);
-      body = (
+      content = (
         // Drawn once the viewer's width is known, so the first zoom is right and the frame loads once.
         shellSize.firstWidth ? <iframe key={`${source.url}#${fragment}`} className="vc-pdf-frame" title={doc.title} src={`${source.url}#${fragment}`} /> : <div className="vc-pdf-frame" />
       );
@@ -440,7 +449,7 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
         open: `${source.url}#page=${nativePage}`,
       };
     } else {
-      body = (
+      content = (
         <Suspense
           fallback={
             <div className="vc-pdf-pages">
@@ -472,18 +481,18 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
       };
     }
   } else if (kind === 'image' && doc.archiveUrl && !imageFailed) {
-    body = (
+    content = (
       <div className="vc-viewer-image">
         <img src={doc.archiveUrl} alt={doc.title} onError={() => setImageFailed(true)} />
       </div>
     );
     bar = { download: doc.archiveUrl, open: doc.archiveUrl };
   } else if (kind === 'text') {
-    body = <RecordText id={doc.id} page={page} />;
+    content = <RecordText id={doc.id} page={page} />;
     bar = { print: () => window.print(), open: original };
   } else {
     const href = route === 'archive' ? fileUrl : original;
-    body = (
+    content = (
       <>
         <FileCard
           kind={kind}
@@ -512,7 +521,10 @@ export function RecordViewer({ doc, page, onPage, highlight }: RecordViewerProps
           relocate();
         }}
       />
-      <div className="vc-viewer-body">{body}</div>
+      {trailNav}
+      <div ref={bodyRef} className="vc-viewer-body">
+        {content}
+      </div>
     </div>
   );
 }
