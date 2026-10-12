@@ -4936,7 +4936,6 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
 .vc-topic[data-resident='true'] .vc-topic-hint { color: var(--vc-accent); font-weight: 600; }
 .vc-doc-filed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 0; font-size: var(--vc-fs-sm); color: var(--vc-muted); }
 .vc-doc-adopted { color: var(--vc-accent); font-weight: 600; text-decoration: none; }
-.vc-doc-file { overflow-wrap: anywhere; }
 .vc-idx { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
 .vc-idx-row { display: grid; grid-template-columns: 9.5rem 1fr; gap: 4px 14px; padding: 12px 14px; border: 1px solid var(--vc-line); border-radius: 14px; background: var(--vc-surface); }
 .vc-idx-row[data-state='missing'] { border-style: dashed; background: transparent; }

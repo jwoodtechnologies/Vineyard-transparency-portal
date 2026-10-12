@@ -10,7 +10,7 @@ import { RecordViewer } from './RecordViewer';
 import { BackButton, Frame } from './Chrome';
 import { formatDate, sourceLabel } from './format';
 import { meetingHref } from './meetings';
-import { PaperTrail } from './PaperTrail';
+import { PaperTrail, RecordDetails } from './PaperTrail';
 import { TrailNav, type TrailStep } from './TrailNav';
 import type { DocumentSummary } from '@/types/models';
 import { useFullScreen } from '@/components/documents/fullScreen';
@@ -228,8 +228,6 @@ export default function DocumentView() {
   const highlight = q.split(/\s+/).filter((w) => w.length > 2).slice(0, 8);
   const lb = labelsOf(doc);
   const facts = [lb.type, formatDate(doc.date) ?? (doc.adoption?.date ? null : doc.year ? String(doc.year) : null), doc.governmentBodyName, lb.item ? `Item ${lb.item}` : null, doc.pageCount ? `${doc.pageCount} pages` : null].filter(Boolean);
-  // The file as filed: its original name (the title above is shortened for reading).
-  const filedAs = doc.fileName && doc.fileName !== lb.title ? doc.fileName : doc.title !== lb.title ? doc.title : null;
   const label = sourceLabel(doc.sourceId);
   // The record's own meeting, else the meeting its copy was filed with (a municipal code ordinance).
   const meeting = doc.meeting ?? trail?.meeting ?? null;
@@ -237,7 +235,7 @@ export default function DocumentView() {
 
   return (
     <Frame wide>
-      {/* Short, so most of the first page shows under it: Back, the facts and the file name on one line, the title, one row of actions. */}
+      {/* Short, so most of the first page shows under it: Back and the facts on one line, the title, one row of actions. */}
       <header className="vc-doc-head">
         <div className="vc-doc-top">
           <BackButton fallback="/records" />
@@ -246,7 +244,7 @@ export default function DocumentView() {
               <span key={i}>{f}</span>
             ))}
           </p>
-          {(lb.status || filedAs || doc.adoption?.date) && (
+          {(lb.status || doc.adoption?.date) && (
             <p className="vc-doc-filed">
               {lb.status && (
                 <span className="vc-rchip" data-status={lb.status}>
@@ -258,7 +256,6 @@ export default function DocumentView() {
                   Adopted {formatDate(doc.adoption.date)}, minutes{doc.adoption.page ? ` page ${doc.adoption.page}` : ''}
                 </DocLink>
               )}
-              {filedAs && <span className="vc-doc-file">File name: {filedAs}</span>}
             </p>
           )}
           {label && <p className="vc-source-label vc-doc-source">{label}</p>}
@@ -323,6 +320,8 @@ export default function DocumentView() {
         />
       </div>
       <PaperTrail trail={trail} />
+      {/* The original file name and other details, folded away. */}
+      <RecordDetails doc={doc} />
     </Frame>
   );
 }
