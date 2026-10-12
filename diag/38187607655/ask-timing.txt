@@ -1,0 +1,6 @@
+5.13s total, 4.32s to first words | @cf/qwen/qwen3-30b-a3b-fp8 + plan | Can you tell me about the retention policy for Vineyard right now when it comes to data?
+3.76s total, 2.59s to first words | @cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan | What is the RDA and why does it matter?
+2.92s total, 2.6s to first words | @cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan | Is Vineyard growing?
+4.41s total, 3.25s to first words | @cf/qwen/qwen3-30b-a3b-fp8 + rerank + plan | How do I speak at a city council meeting?
+0.27s total, -s to first words | directory (council) | Who is my council member?
+4.92s total, 3.3s to first words | @cf/qwen/qwen3-30b-a3b-fp8 + plan | What is happening with Holdaway Fields?
