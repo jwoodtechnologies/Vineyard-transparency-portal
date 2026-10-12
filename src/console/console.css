@@ -4445,7 +4445,6 @@ a.vc-tag:hover { color: var(--vc-ink); border-color: var(--vc-muted); }
 /* Motion status cells stay neutral (grays only): the word carries the meaning, never a color. */
 .vc-sh-status-m[data-status='passed'], .vc-sh-status[data-status='passed'], .vc-sh-note[data-tone='good'] { background: color-mix(in srgb, var(--vc-ink) 8%, transparent); color: var(--vc-ink); }
 .vc-sh-status-m[data-status='failed'], .vc-sh-status[data-status='failed'], .vc-sh-status-m[data-status='denied'], .vc-sh-status[data-status='denied'] { background: color-mix(in srgb, var(--vc-ink) 14%, transparent); color: var(--vc-ink); }
-.vc-sh-status-m[data-status='continued'], .vc-sh-status-m[data-status='tabled'], .vc-sh-status-m[data-status='removed'], .vc-sh-status[data-status='continued'], .vc-sh-status[data-status='tabled'], .vc-sh-status[data-status='removed'] { background: color-mix(in srgb, var(--vc-ink) 4%, transparent); color: var(--vc-ink-2); }
 .vc-sh-status { width: 1%; padding: 0 10px; border-left: 1px solid var(--vc-line); font-size: var(--vc-fs-micro); font-weight: 600; text-align: center; white-space: nowrap; color: var(--vc-ink-2); }
 .vc-sh-status[data-status='none'], .vc-sh-status[data-status='pending'], .vc-sh-status[data-status='canceled'] { font-weight: 500; color: var(--vc-muted); }
 .vc-sh-table tbody[data-pending='true'] .vc-sh-title { color: var(--vc-muted); }

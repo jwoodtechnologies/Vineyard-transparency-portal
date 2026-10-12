@@ -6,6 +6,7 @@
  * Matching records stay tucked away behind "Browse records" until the reader asks for them.
  * Chats are saved in this browser only (see history.ts) and can be reopened or deleted.
  */
+import { AI_NOTE } from '@/lib/aiNote';
 import './styles';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -398,7 +399,7 @@ export default function ConsolePage() {
           </header>
           <Composer variant="hero" busy={false} onSubmit={ask} autoFocus />
         </main>
-        <p className="vc-legal" data-hide={keys}>Independent project, not an official Vineyard City website.</p>
+        <p className="vc-legal" data-hide={keys}>{AI_NOTE} Independent project, not an official Vineyard City website.</p>
         {historyPanel}
       </div>
     );
@@ -511,6 +512,7 @@ export default function ConsolePage() {
 
       <div className="vc-dock">
         <Composer variant="dock" busy={Boolean(busyTurn)} onSubmit={ask} onStop={stop} autoFocus />
+        <p className="vc-dock-hint">{AI_NOTE}</p>
       </div>
 
       {preview && <Drawer preview={preview} onClose={closePreview} />}

@@ -1,6 +1,7 @@
 /** Voting records: shapes from /api/votes and how a member's name is shown. */
 import { usePeople, type Person } from './people';
 import { formatMonthDay } from '@/lib/dates';
+import { isAboutFormerMember, isProceduralMotion } from '@/lib/voteRules';
 
 export interface VoteRow {
   member: string;
@@ -95,15 +96,12 @@ export function motionDetail(m: MotionRow): string | null {
 }
 
 /** How a row of the vote list ended. */
-export type SheetStatus = 'passed' | 'failed' | 'denied' | 'continued' | 'tabled' | 'removed' | 'pending' | 'canceled' | 'none';
+export type SheetStatus = 'passed' | 'failed' | 'denied' | 'pending' | 'canceled' | 'none';
 
 export const STATUS_WORD: Record<SheetStatus, string> = {
   passed: 'Passed',
   failed: 'Failed',
   denied: 'Denied',
-  continued: 'Continued',
-  tabled: 'Tabled',
-  removed: 'Removed',
   pending: 'Pending',
   canceled: 'Canceled',
   none: 'No result',
@@ -297,6 +295,9 @@ function classify(m: MotionRow): SheetRow | null {
   const itemShown = shown(itemRaw);
   const generic = itemRaw.length < 6 || SECTION.test(itemRaw) || SECTION.test(itemShown);
   if (!text && generic) return null;
+  // Every entry is a vote on something the body decided. Putting an item off, striking it, a stretch or recess, and adjourning are motions, not votes;
+  // nor is an item whose own subject is a former member (how he voted on a roll stays on the roll).
+  if (isProceduralMotion(text) || isAboutFormerMember(m.item, text)) return null;
   // A motion nobody seconded, one that only closes the session, and the choosing of a chair for the night are not decisions.
   if (/\bno second\b|\black of (?:a )?second\b|\bdied for\b/i.test(text)) return null;
   if (/\bclose (?:the )?session\b|\bclosed session\b/i.test(text)) return null;
@@ -307,7 +308,7 @@ function classify(m: MotionRow): SheetRow | null {
   // Approving minutes is housekeeping. A motion made under the minutes heading that decides something else keeps its own name.
   const minutesItem = MINUTES.test(itemRaw);
   const aboutItem = !minutesItem;
-  if (minutesItem && (!text || MINUTES.test(text) || /^(?:continue|table|postpone|defer|move\s+(?:agenda\s+)?items?|strike|approve|accept)\b/i.test(text) || text.split(' ').length < 4)) return null;
+  if (minutesItem && (!text || MINUTES.test(text) || /^(?:approve|accept)\b/i.test(text) || text.split(' ').length < 4)) return null;
   // Consent items: a bundle of routine items. Minutes alone are housekeeping; one real item takes its own name.
   let title = '';
   let own = sentence(text);
@@ -326,14 +327,6 @@ function classify(m: MotionRow): SheetRow | null {
     status = 'denied';
     own = sentence(text.replace(negative[0], '').trim());
   }
-  const defer = /^(continue|table|postpone|defer|move\s+(?:agenda\s+)?items?|strike)\b/i.exec(text);
-  if (defer) {
-    // Continuing or tabling counts when it names the one item being put off; "continue items 5.1 through 6.1" does not.
-    const several = /\bitems?\s+[\d.]+\s*(?:,|and|through|to)\s*[\d.]+/i.test(text) || /\bcontinue all\b/i.test(text);
-    if (generic || !aboutItem || several || m.result !== 'carried') return null;
-    const verb = (defer[1] ?? '').toLowerCase();
-    status = verb === 'table' ? 'tabled' : verb === 'strike' ? 'removed' : 'continued';
-  }
   // A motion whose result the minutes never state, and that names no votes, cannot be reported either way.
   if (status === 'none' && m.votes.length === 0) return null;
   const ownShown = shown(own);
@@ -341,12 +334,12 @@ function classify(m: MotionRow): SheetRow | null {
     // The agenda heading names the item. When the motion adopts a numbered resolution or ordinance that the heading does not mention, the number leads ("Resolution 2026-12: Municipal Financial Institution Signatory Authorization").
     const num = /\b(resolution|ordinance)\s+(u?(?:19|20)\d{2})\s*-?\s*(\d{2,3})\b/i.exec(text);
     const tag = num ? `${num[1].charAt(0).toUpperCase()}${num[1].slice(1).toLowerCase()} ${num[2].toUpperCase()}-${num[3]}` : '';
-    const specific = text.split(' ').length >= 5 && !/^(?:continue|table|move|strike|approve|accept|adopt)\b[^.]{0,30}\b(?:item|consent|agenda|as presented)\b/i.test(text);
+    const specific = text.split(' ').length >= 5 && !/^(?:approve|accept|adopt)\b[^.]{0,30}\b(?:item|consent|agenda|as presented)\b/i.test(text);
     // A motion that names its agenda item by number ("approve 5.5 with an amendment") is about that item.
     const number = /^(\d+\.\d+)/.exec(m.item ?? '')?.[1];
     const names = !!number && new RegExp(`\\b${number.replace('.', '\\.')}\\b`).test(text);
     if (specific && !names && !words(itemShown).some((w) => words(text).includes(w)) && !tag) title = ownShown;
-    else title = tag && !itemShown.includes(tag.replace(/^\w+\s+/, '')) && !defer ? `${tag}: ${itemShown}` : itemShown;
+    else title = tag && !itemShown.includes(tag.replace(/^\w+\s+/, '')) ? `${tag}: ${itemShown}` : itemShown;
   }
   if (!title) title = ownShown;
   if (m.bodyId === 'redevelopment-agency') title = title.replace(/\b(Resolution|Ordinance)\s+U(?=(?:19|20)\d{2}-)/g, '$1 RDA-');

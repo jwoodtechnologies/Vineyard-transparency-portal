@@ -2,6 +2,7 @@
  * Voting records as a chart, like a spreadsheet: one row for each thing the council or commission decided,
  * with the date, how it ended, and a column for every member. Selecting a row opens the motion and each vote.
  */
+import { AI_NOTE } from '@/lib/aiNote';
 import './styles';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -383,7 +384,7 @@ function VoteSheet({ rows, member, seats, mayor, showBody }: { rows: SheetRow[];
           })}
         </table>
       </div>
-      <p className="vc-sh-note">Tallies include members no longer on the {mayor ? 'council' : 'commission'}.</p>
+      <p className="vc-sh-note">{AI_NOTE}</p>
     </div>
   );
 }
