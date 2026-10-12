@@ -9,6 +9,7 @@
 import type { Env } from '../env';
 import { badRequest, json } from '../lib/http';
 import { CITY_CALENDAR_PAGE, expandCityEvents, type CityEvent } from '../lib/cityEvents';
+import { siteEventsIn } from './siteEvents';
 
 export const CITY_CALENDAR_URL =
   'https://www.vineyardutah.gov/_assets_/plugins/revizeCalendar/calendar_data_handler.php?webspace=vineyard&relative_revize_url=//cms3.revize.com&protocol=https:';
@@ -19,6 +20,8 @@ export async function loadCity(): Promise<CityEvent[]> {
   if (memo && Date.now() - memo.at < 5 * 60_000) return memo.events;
   const res = await fetch(CITY_CALENDAR_URL, {
     headers: { accept: 'application/json', 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)' },
+    // A slow city site must not hold the calendar (and the events staff added) hostage.
+    signal: AbortSignal.timeout(6000),
     cf: { cacheTtl: 300, cacheEverything: true },
   } as RequestInit);
   if (!res.ok) throw new Error(`city calendar ${res.status}`);
@@ -28,17 +31,19 @@ export async function loadCity(): Promise<CityEvent[]> {
   return events;
 }
 
-export async function listEvents(_env: Env, url: URL): Promise<Response> {
+export async function listEvents(env: Env, url: URL): Promise<Response> {
   const from = url.searchParams.get('from') ?? '';
   const to = url.searchParams.get('to') ?? '';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) throw badRequest('`from` and `to` must be YYYY-MM-DD dates.');
   const span = (Date.parse(to) - Date.parse(from)) / 86_400_000;
   if (!(span >= 0 && span <= 800)) throw badRequest('The date range must be between 0 and 800 days.');
+  // Events staff added are always listed, even when the city's calendar cannot be read.
+  const added = await siteEventsIn(env, from, to);
   try {
-    const items = expandCityEvents(await loadCity(), from, to);
-    return json({ items, source: CITY_CALENDAR_PAGE }, { cache: 'public, max-age=300, stale-while-revalidate=900' });
+    const items = [...expandCityEvents(await loadCity(), from, to), ...added].sort((a, b) => a.start.localeCompare(b.start));
+    return json({ items, source: CITY_CALENDAR_PAGE }, { cache: 'public, max-age=60, stale-while-revalidate=900' });
   } catch {
     // The city site being down never breaks the portal's calendar; meetings still show.
-    return json({ items: [], source: CITY_CALENDAR_PAGE, unavailable: true }, { cache: 'public, max-age=60' });
+    return json({ items: added, source: CITY_CALENDAR_PAGE, unavailable: true }, { cache: 'public, max-age=60' });
   }
 }
