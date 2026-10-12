@@ -111,6 +111,16 @@ async function main() {
     explain.push({ match: hit, parcel: r.no, address: r.address, acres: r.acres, propertyType: r.propType ?? 'unknown', shown: d.show, ...(d.show ? { name: d.name } : { reason: d.reason }) });
   }
 
+  // Common words in withheld names on tax-exempt land: only words found in at least 5 of those names, so
+  // no single owner can be picked out (a person's name almost never repeats that often).
+  const freq = new Map();
+  for (const r of rows.values()) {
+    if (!/exempt/i.test(String(r.propType ?? ''))) continue;
+    if (ownerDecision({ owner: r.owner, propType: r.propType, subName: r.subName }).show) continue;
+    for (const w of new Set(String(r.owner ?? '').toUpperCase().split(/[^A-Z0-9&]+/).filter((x) => x.length >= 2))) freq.set(w, (freq.get(w) ?? 0) + 1);
+  }
+  const exemptWithheldWords = Object.fromEntries([...freq].filter(([, n]) => n >= 5).sort((a, b) => b[1] - a[1]));
+
   // The live site end to end: the Worker's own card for shown parcels must carry the owner.
   const live = { checked: 0, ownerOnCard: 0, ownerMissing: 0, errors: 0, missingParcels: [] };
   const shownRows = [...rows.values()].filter((r) => ownerDecision({ owner: r.owner, propType: r.propType, subName: r.subName }).show).slice(0, 25);
@@ -129,7 +139,7 @@ async function main() {
       live.errors++;
     }
   }
-  writeFileSync(out, `${JSON.stringify({ generatedAt: new Date().toISOString(), ...s, explain, live }, null, 2)}\n`);
+  writeFileSync(out, `${JSON.stringify({ generatedAt: new Date().toISOString(), ...s, explain, live, exemptWithheldWords }, null, 2)}\n`);
   console.log(`live cards: ${live.checked} checked, ${live.ownerOnCard} with owner, ${live.ownerMissing} missing, ${live.errors} errors`);
   // Counts only on stdout.
   console.log(`total ${s.total}, shown ${s.shown}, withheld ${s.withheld}`);
