@@ -12,7 +12,7 @@ import { json } from '../lib/http';
 import { motionMatches, placeWords, termTries } from '../ai/voteMatch';
 
 /** Bump to re-read every set of minutes after a parser change. */
-export const VOTES_PARSER = 19;
+export const VOTES_PARSER = 20;
 
 let ready = false;
 export async function ensureVotesTables(env: Env): Promise<void> {
