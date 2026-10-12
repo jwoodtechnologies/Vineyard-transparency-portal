@@ -26,7 +26,6 @@ const SCREENS: Record<string, string> = {
   votes: 'VotesPage',
   boards: 'BoardsPage',
   planning: 'PlanningPage',
-  latest: 'LatestPage',
   budget: 'BudgetPage',
   construction: 'ConstructionPage',
   add: 'AddPage',

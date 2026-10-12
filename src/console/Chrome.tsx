@@ -1,10 +1,10 @@
 /**
  * The one piece of chrome every screen shares: chat history on the left, the wordmark, and one menu on the right.
- * The menu holds the calendar, people, map, every record category, appearance and chat history.
+ * The menu holds the calendar, the map, people, services, the record groups and appearance.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, CalendarDays, ClipboardList, FileText, HardHat, History, Landmark, Map as MapIcon, Moon, Newspaper, Scale, Sun, Users, Vote } from 'lucide-react';
+import { ArrowLeft, Building2, CalendarDays, CircleDollarSign, ClipboardList, FileText, History, Landmark, Map as MapIcon, Moon, Scale, Sun, Users, Vote } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { HeaderSearch } from './HeaderSearch';
@@ -53,16 +53,30 @@ function MenuMark() {
   );
 }
 
-/** The menu keeps the main record groups; the Records page has every category. */
-/** The records menu, shortest to longest so it reads as one clean column. */
-const MENU_ROWS: Array<{ to: string; label: string; Icon: typeof FileText }> = [
-  { to: '/votes', label: 'Voting records', Icon: Vote },
-  { to: '/budget', label: 'Budget and finance', Icon: Landmark },
-  { to: '/records?c=meetings', label: 'Agendas & minutes', Icon: FileText },
-  { to: '/boards', label: 'Boards and commissions', Icon: Users },
-  { to: '/records?c=laws', label: 'Ordinances & resolutions', Icon: Scale },
-  { to: '/records?c=rda', label: 'RDA (Redevelopment Agency)', Icon: Building2 },
+/** The places: four tiles at the top of the menu. */
+const MENU_TILES: Array<{ to: string; label: string; Icon: typeof FileText }> = [
+  { to: '/meetings', label: 'Calendar', Icon: CalendarDays },
+  { to: '/map', label: 'Map', Icon: MapIcon },
+  { to: '/people', label: 'People', Icon: Users },
+  { to: '/services', label: 'Services', Icon: ClipboardList },
 ];
+
+/** The record groups, meetings first; the Records page has every category. */
+const MENU_ROWS: Array<{ to: string; label: string; Icon: typeof FileText }> = [
+  { to: '/records?c=meetings', label: 'Agendas and minutes', Icon: FileText },
+  { to: '/votes', label: 'Voting records', Icon: Vote },
+  { to: '/records?c=laws', label: 'Ordinances and resolutions', Icon: Scale },
+  { to: '/budget', label: 'Budget and finance', Icon: CircleDollarSign },
+  { to: '/boards', label: 'Boards and commissions', Icon: Landmark },
+  { to: '/records?c=rda', label: 'Redevelopment Agency', Icon: Building2 },
+];
+
+/** True when a menu link is the page being shown (its path, and its query when it has one). */
+function isHere(to: string, path: string, search: string): boolean {
+  const [p, q] = to.split('?');
+  if (p !== path && !(p === '/meetings' && path === '/calendar')) return false;
+  return !q || new URLSearchParams(search).toString().includes(q);
+}
 
 
 /**
@@ -72,6 +86,7 @@ const MENU_ROWS: Array<{ to: string; label: string; Icon: typeof FileText }> = [
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const { resolved, setPreference } = useTheme();
+  const { pathname, search } = useLocation();
   const close = () => setOpen(false);
   const box = useDismiss(open, close);
   // Only one panel at a time: opening chat history closes the menu, and the other way round.
@@ -106,36 +121,18 @@ export function SettingsMenu() {
       {open && (
         <div className="vc-panel vc-menu-panel" role="dialog" aria-label="Menu" onClick={(e) => (e.target as HTMLElement).closest('a') && close()}>
           <div className="vc-menu-grid">
-            <Link to="/meetings" className="vc-menu-tile">
-              <CalendarDays size={17} strokeWidth={1.8} />
-              <span>Calendar</span>
-            </Link>
-            <Link to="/people" className="vc-menu-tile">
-              <Users size={17} strokeWidth={1.8} />
-              <span>People</span>
-            </Link>
-            <Link to="/map" className="vc-menu-tile">
-              <MapIcon size={17} strokeWidth={1.8} />
-              <span>Map</span>
-            </Link>
-            <Link to="/services" className="vc-menu-tile">
-              <ClipboardList size={17} strokeWidth={1.8} />
-              <span>Services</span>
-            </Link>
-            <Link to="/construction" className="vc-menu-tile">
-              <HardHat size={17} strokeWidth={1.8} />
-              <span>Construction</span>
-            </Link>
-            <Link to="/latest" className="vc-menu-tile">
-              <Newspaper size={17} strokeWidth={1.8} />
-              <span>Latest</span>
-            </Link>
+            {MENU_TILES.map(({ to, label, Icon }) => (
+              <Link key={to} to={to} className="vc-menu-tile" aria-current={isHere(to, pathname, search) ? 'page' : undefined}>
+                <Icon size={18} strokeWidth={1.8} />
+                <span>{label}</span>
+              </Link>
+            ))}
           </div>
 
           <p className="vc-panel-label">Records</p>
           {MENU_ROWS.map(({ to, label, Icon }) => (
-            <Link key={to} to={to} className="vc-panel-row">
-              <Icon size={15} strokeWidth={1.8} />
+            <Link key={to} to={to} className="vc-panel-row" aria-current={isHere(to, pathname, search) ? 'page' : undefined}>
+              <Icon size={17} strokeWidth={1.8} />
               <span>{label}</span>
             </Link>
           ))}

@@ -17,7 +17,7 @@
     var seg = location.pathname.split('/').filter(Boolean);
     var table = {
       '': 'console', meetings: seg[1] ? 'meeting' : 'meetings', calendar: 'meetings', documents: 'document',
-      services: seg[1] ? 'service' : 'services', latest: 'latest', budget: 'budget', map: 'map', construction: 'construction',
+      services: seg[1] ? 'service' : 'services', budget: 'budget', map: 'map', construction: 'construction',
       records: seg[1] ? 'recordsIndex' : 'records', votes: 'votes', boards: 'boards', planning: 'planning', people: 'people', add: 'add', sources: 'sources'
     };
     var screen = table[seg[0] || ''] || 'other';

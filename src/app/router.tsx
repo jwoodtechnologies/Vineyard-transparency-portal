@@ -20,7 +20,6 @@ const load = {
   votes: () => import('@/console/VotesPage'),
   boards: () => import('@/console/BoardsPage'),
   planning: () => import('@/console/PlanningPage'),
-  latest: () => import('@/console/LatestPage'),
   budget: () => import('@/console/BudgetPage'),
   construction: () => import('@/console/ConstructionPage'),
   add: () => import('@/console/AddPage'),
@@ -41,7 +40,6 @@ const PeoplePage = lazy(load.people);
 const VotesPage = lazy(load.votes);
 const BoardsPage = lazy(load.boards);
 const PlanningPage = lazy(load.planning);
-const LatestPage = lazy(load.latest);
 const BudgetPage = lazy(load.budget);
 const ConstructionPage = lazy(load.construction);
 const AddPage = lazy(load.add);
@@ -56,7 +54,6 @@ export function screenFor(path: string): Screen | null {
     calendar: 'meetings',
     documents: 'document',
     services: seg[1] ? 'service' : 'services',
-    latest: 'latest',
     budget: 'budget',
     map: 'map',
     construction: 'construction',
@@ -132,8 +129,9 @@ export const router = createBrowserRouter([
   { path: '/documents/:documentId', element: quiet(<DocumentView />) },
   { path: '/services', element: quiet(<ServicesPage />) },
   { path: '/services/:id', element: quiet(<ServiceView />) },
-  { path: '/latest', element: quiet(<LatestPage />) },
-  { path: '/news', element: <Navigate to="/latest" replace /> },
+  // Latest was retired: its address opens the calendar.
+  { path: '/latest', element: <Navigate to="/meetings" replace /> },
+  { path: '/news', element: <Navigate to="/meetings" replace /> },
   { path: '/budget', element: quiet(<BudgetPage />) },
   { path: '/map', element: quiet(<MapPage />) },
   { path: '/construction', element: quiet(<ConstructionPage />) },

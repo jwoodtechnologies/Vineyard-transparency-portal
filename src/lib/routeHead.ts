@@ -22,7 +22,6 @@ const TABLE: Array<[RegExp, Head]> = [
   [/^\/votes\/?$/, { title: 'City Council Voting Recap', description: 'How each Vineyard City Council member voted on every motion this year, from the posted minutes.' }],
   [/^\/planning\/?$/, { title: 'Planning Commission Voting Recap', description: 'How each Vineyard Planning Commission member voted on every motion this year, with attendance.' }],
   [/^\/boards\/?$/, { title: 'Boards and commissions', description: 'Vineyard boards and commissions: members, meetings and records.' }],
-  [/^\/latest\/?$/, { title: 'Latest', description: 'The newest Vineyard records, meetings and city announcements.' }],
   [/^\/budget\/?$/, { title: 'Budget', description: 'The Vineyard city budget: spending, revenue, sales tax and funded projects, from the adopted budget.' }],
   [/^\/construction\/?$/, { title: 'Construction projects', description: 'Vineyard construction projects: the city construction page and the funded projects on a map.' }],
   [/^\/add\/?$/, { title: 'Submit a public record', description: 'Submit a public record about Vineyard. It appears on the portal after review.' }],
