@@ -40,6 +40,8 @@ const BoardsPage = lazy(load.boards);
 const BudgetPage = lazy(load.budget);
 const AddPage = lazy(load.add);
 const SourcesPage = lazy(load.sources);
+// Staff sign-in and tools: not linked from the public site, so there is nothing to preload for it.
+const StaffPage = lazy(() => import('@/console/staff/StaffPage'));
 
 /** The screen a path opens (by its first segment), or null. */
 export function screenFor(path: string): Screen | null {
@@ -140,6 +142,7 @@ export const router = createBrowserRouter([
   { path: '/people/:slug', element: quiet(<PeoplePage />) },
   { path: '/add', element: quiet(<AddPage />) },
   { path: '/sources', element: quiet(<SourcesPage />) },
+  { path: '/staff/*', element: quiet(<StaffPage />) },
   { path: '/search', element: <SearchRedirect /> },
   { path: '/ask', element: <SearchRedirect /> },
   { path: '*', element: <Navigate to="/" replace /> },
