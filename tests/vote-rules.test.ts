@@ -94,6 +94,37 @@ describe('the votes list', () => {
   });
 });
 
+describe('the headline is the thing voted on', () => {
+  // April 14, 2026 City Council minutes (doc_750d956cc3d5a4a2), the Mayor Pro Tem vote under the work session.
+  it('names the appointment, not the occasion', () => {
+    const rows = sheetRows([
+      motion({
+        item: '2 WORK SESSION',
+        motion: "in honor of Council Member McCumber's new son, that Council Member Parker McCumber should be Mayor Pro Tem",
+        mover: 'Ezra Nair',
+        seconder: 'Jacob Wood',
+      }),
+    ]);
+    expect(rows.map((r) => r.title)).toEqual(['Mayor Pro Tem: Parker McCumber']);
+  });
+
+  // January 27, 2026 City Council minutes (doc_cf31e9aab11422d8), item 9.1.
+  it('names the agenda item when the motion only says who brought it back', () => {
+    const rows = sheetRows([
+      motion({
+        item: '9.1 Municipal Code Title 2 and 3 Amendments',
+        motion: 'Mayor pro tempore lauret brought back the original motion presented by councilmember mccumber',
+      }),
+    ]);
+    expect(rows.map((r) => r.title)).toEqual(['Municipal Code Title 2 and 3 Amendments']);
+  });
+
+  it('keeps a name written with its own capitals', () => {
+    const rows = sheetRows([motion({ item: '5.2 Appoint a Treasurer', motion: "approve the Mayor's appointment of Dave Sanderson as the City Treasurer, as discussed with Council Member McCumber" })]);
+    expect(rows[0].title).not.toMatch(/Mccumber/);
+  });
+});
+
 describe('minutes read for the list', () => {
   const text = `CITY COUNCIL MEETING MINUTES
 August 4, 2026
