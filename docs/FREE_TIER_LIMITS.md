@@ -9,7 +9,7 @@ cause zero overage: every guard keeps usage inside the plan's included amounts a
 | D1 rows written: 50 million/month | `MAX_D1_INGEST_ROWS_PER_DAY=1000000` |
 | D1 storage: 5 GB | `SEARCH_SHARD_MAX_BYTES=2000000000` per shard (2 shards) |
 | Workers CPU: 30 million ms/month | `limits.cpu_ms=120000` per invocation; five-minute ticks stop new work after 3.5 minutes |
-| R2: 10 GB storage | `ARCHIVE_STORAGE_HARD_STOP_BYTES=6000000000` (unchanged). Archive policy: minutes, agendas, ordinances, resolutions, notices, budgets and audits only (worker/lib/archivePolicy.ts) |
+| R2: 10 GB-month storage (every bucket on the account together) | `ARCHIVE_STORAGE_HARD_STOP_BYTES=7500000000`. The other buckets hold about 1.7 GB, and this bucket's weekly catalog backups and residents' files are not counted by the stop, so 7.5 GB leaves about 0.8 GB of headroom (decimal GB, the smaller reading). Archive policy (worker/lib/archivePolicy.ts): every file is stored while space lasts, minutes, agendas, ordinances, resolutions, notices, budgets and audits first; other files stop `ARCHIVE_PRIORITY_RESERVE_BYTES=500000000` below the stop so new priority records always find room. Each `run`/`ingest` queues files not stored yet in that order, only what fits (`POST /api/admin/archive/fill`). `archive-size` prints what is left and what storing all of it would cost |
 
 The table below is the original free-plan design, kept for reference.
 
@@ -20,7 +20,7 @@ The table below is the original free-plan design, kept for reference.
 | D1 rows written | 100,000/day | `MAX_D1_INGEST_ROWS_PER_DAY=75000`, counted from D1's own `rows_written` for every ingestion statement (`quota_usage`). At the limit the API returns 429 `quota_exhausted`, the run saves progress and reports "Daily free-tier ingestion budget reached. Resume next UTC quota period." |
 | D1 rows read | 5,000,000/day | FTS5 index lookups, candidate cap of 400 chunks per shard, counts only when needed. |
 | D1 storage | 500 MB/database, 5 GB/account, 10 databases | Catalog and search shards separated; add shards before 400 MB (SEARCH.md). 2 of 10 databases used by this project (1 pre-existing). |
-| R2 storage | 10 GB-month | `ARCHIVE_STORAGE_HARD_STOP_BYTES=6000000000`. The account's other buckets already use ~1.7 GB, so the suggested 8 GB would leave under 0.4 GB headroom; 6 GB leaves ~2.3 GB. Projected size is checked before every upload; over the limit the document is `quota_deferred` (metadata, provenance and text are kept). The threshold is never raised automatically. |
+| R2 storage | 10 GB-month | `ARCHIVE_STORAGE_HARD_STOP_BYTES=7500000000` (was 6 GB). The account's other buckets already use ~1.7 GB, so 7.5 GB leaves ~0.8 GB for backups, residents' files and the other buckets' growth. Projected size is checked before every upload; over the limit the document is `quota_deferred` (metadata, provenance and text are kept). The threshold is never raised automatically. |
 | R2 operations | 1M Class A, 10M Class B / month | One PUT per unique binary (content-addressed, duplicates never re-uploaded). |
 | Max archived object | project rule | 25 MB (`ARCHIVE_MAX_OBJECT_BYTES`); larger files are `remote_only_large_file`. Video/audio never downloaded. |
 | Workers AI | 10,000 neurons/day | `AI_MAX_REQUESTS_PER_DAY=120` (about 70 neurons per answer with `llama-3.1-8b-instruct-fp8`: 13,778 input and 26,128 output neurons per million tokens); errors open a breaker; search-only fallback. |
@@ -36,3 +36,8 @@ a few weeks of daily runs. Incremental days afterwards cost very little.
 
 `npm run stats` (or the workflow with `stats`) shows today's rows written against the budget and
 stored archive bytes against the hard stop.
+
+`archive-size` (Actions, Ingest public records, command `archive-size`; reads only) prints every file not stored
+on the portal yet: counts and bytes by type (unknown sizes estimated from the average known size of the same
+type, and labelled as estimates), what fits under the stop, and the monthly cost of storing all of it beyond the
+free 10 GB at $0.015 per GB-month. One upload is one Class A write; the free allowance is 1 million a month.

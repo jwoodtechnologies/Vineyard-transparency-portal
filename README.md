@@ -38,7 +38,7 @@ the records, not by the model. If AI is unavailable, search still works.
 | Site and API | Cloudflare Worker `vineyard-transparency-portal` (`worker/`), static assets from `dist/` | Workers Paid plan shared with other projects; limits set to stay inside included usage |
 | Catalog | D1 `vtp-catalog` (records, meetings, votes, sources, page copies) | |
 | Search | D1 FTS5 shards `SEARCH_DB_0`, `SEARCH_DB_1` | |
-| Archive | R2 `vtp-public-records`, hard stop at 6 GB | Priority types first (minutes, agendas, ordinances, resolutions, notices, budgets, audits) |
+| Archive | R2 `vtp-public-records`, hard stop at 7.5 GB | Every file while space lasts; priority types first (minutes, agendas, ordinances, resolutions, notices, budgets, audits) |
 | Chat | Workers AI, metered to 9,000 neurons a day for residents and 1,000 for the chat suite | |
 | Scheduled work | Worker cron every 5 minutes, plus GitHub Actions | See [docs/SCHEDULE.md](docs/SCHEDULE.md) |
 | Ingest | Python in `ingest/`, run by `.github/workflows/ingest.yml` | Reaches sites that refuse Cloudflare (CivicClerk) |

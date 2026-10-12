@@ -47,8 +47,13 @@
     "SEARCH_SHARD_MAX_BYTES": "2000000000",
     // D1 rows written included: 50 million per month per account. 1 million a day leaves room for other projects.
     "MAX_D1_INGEST_ROWS_PER_DAY": "1000000",
-    // 6 GB: the account's other buckets already hold ~1.7 GB of the 10 GB free allowance.
-    "ARCHIVE_STORAGE_HARD_STOP_BYTES": "6000000000",
+    // R2 storage included: 10 GB-month per account, every bucket together. The other buckets hold ~1.7 GB,
+    // and this bucket's backups and residents' files are not counted by the stop: 7.5 GB leaves ~0.8 GB headroom.
+    "ARCHIVE_STORAGE_HARD_STOP_BYTES": "7500000000",
+    // Other files (packets, staff reports, slides) stop 0.5 GB earlier so new minutes, agendas and ordinances find room.
+    "ARCHIVE_PRIORITY_RESERVE_BYTES": "500000000",
+    // The other buckets' size, for the storage cost estimate (GET /api/admin/archive/remaining) only.
+    "R2_OTHER_BUCKETS_BYTES": "1700000000",
     "ARCHIVE_MAX_OBJECT_BYTES": "26214400",
     "OIDC_AUDIENCE": "vineyardportal.org",
     "OIDC_REPOSITORY": "jwoodtechnologies/Vineyard-transparency-portal",

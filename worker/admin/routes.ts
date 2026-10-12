@@ -25,7 +25,8 @@ import { MEETING_COPY_GROUPS_SQL } from '../lib/meetingCopies';
 import { SearchRepository, type ChunkInput } from '../search/SearchRepository';
 import { upsertPeople, type PersonInput } from '../api/people';
 import { archiveKey, storageFor } from '../storage/StorageProvider';
-import { shouldArchive } from '../lib/archivePolicy';
+import { archiveLimitFor, DEFAULT_HARD_STOP_BYTES, DEFAULT_PRIORITY_RESERVE_BYTES, shouldArchive } from '../lib/archivePolicy';
+import { archiveRemaining, fillArchiveQueue } from './archiveFill';
 import { rebalanceArchive } from './rebalance';
 import { ensureActivityTables } from '../panel/store';
 import { newSetupCode } from '../panel/auth';
@@ -313,7 +314,8 @@ async function quota(env: Env): Promise<Response> {
       storedBytes: Number(archive?.stored_bytes ?? 0),
       storedObjects: Number(archive?.stored_objects ?? 0),
       deferred: Number(archive?.deferred_count ?? 0),
-      hardStopBytes: intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, 6_000_000_000),
+      hardStopBytes: intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, DEFAULT_HARD_STOP_BYTES),
+      priorityReserveBytes: intVar(env.ARCHIVE_PRIORITY_RESERVE_BYTES, DEFAULT_PRIORITY_RESERVE_BYTES),
       maxObjectBytes: intVar(env.ARCHIVE_MAX_OBJECT_BYTES, 25 * 1024 * 1024),
     },
     aiRequests: Number(usage?.ai_requests ?? 0),
@@ -891,9 +893,11 @@ export async function storeArchive(env: Env, sha: string, body: ReadableStream |
     return { status: 'remote_only_large_file', maxObjectBytes: maxObject };
   }
 
-  // Archive policy: only priority records get a stored copy; everything else stays a link to the city's copy.
+  // Archive policy (worker/lib/archivePolicy.ts): every file is stored while space lasts; priority records may fill
+  // the archive to the hard stop, other files stop the priority reserve below it.
   const candidates = await db.prepare("SELECT document_type, title FROM documents WHERE sha256 = ? AND archive_status != 'archived'").bind(sha).all<{ document_type: string; title: string }>();
-  if (!opts.always && (candidates.results ?? []).length && !(candidates.results ?? []).some((c) => shouldArchive(c.document_type, c.title))) {
+  const list = candidates.results ?? [];
+  if (!opts.always && list.length && !list.some((c) => shouldArchive(c.document_type, c.title))) {
     const r = await markDocs('link_only', false).run();
     await budget.record(Number(r.meta?.rows_written ?? 0));
     return { status: 'link_only' };
@@ -907,7 +911,10 @@ export async function storeArchive(env: Env, sha: string, body: ReadableStream |
   }
 
   const stats = await db.prepare('SELECT stored_bytes FROM archive_stats WHERE id = 1').first<{ stored_bytes: number }>();
-  const hardStop = intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, 6_000_000_000);
+  const hardStopAll = intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, DEFAULT_HARD_STOP_BYTES);
+  const reserve = intVar(env.ARCHIVE_PRIORITY_RESERVE_BYTES, DEFAULT_PRIORITY_RESERVE_BYTES);
+  // The highest limit any record with this file may use (one priority record lets the file go to the hard stop).
+  const hardStop = opts.always || !list.length ? hardStopAll : Math.max(...list.map((c) => archiveLimitFor(c.document_type, c.title, hardStopAll, reserve)));
   const projected = Number(stats?.stored_bytes ?? 0) + size;
   if (projected > hardStop) {
     const r = await db.batch([markDocs('quota_deferred', false), db.prepare('UPDATE archive_stats SET deferred_count = deferred_count + 1, updated_at = ? WHERE id = 1').bind(nowIso())]);
@@ -1083,6 +1090,8 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   if (path === '/export/tables' && method === 'GET') return exportTables(env);
   // Archive rebalance: reads by default; with {"apply": true} removes non-priority stored copies.
   if (path === '/archive/rebalance' && method === 'POST') return rebalanceArchive(env, await readJson<Json>(request, 4096));
+  // What is not stored yet: counts and bytes, and the monthly cost of storing all of it (reads only).
+  if (path === '/archive/remaining' && method === 'GET') return json(await archiveRemaining(env));
   if (path === '/export' && method === 'GET') return exportPage(env, url);
   // Backups are reads plus R2 writes, so they run even after the day's D1 write budget is spent.
   if (method === 'PUT' && path.startsWith('/backup/')) return putBackup(env, request, path.slice('/backup/'.length));
@@ -1112,6 +1121,8 @@ export async function handleAdmin(env: Env, request: Request, url: URL): Promise
   if (path === '/queue') return upsertQueue(env, body, budget);
   if (path === '/queue/status') return queueStatus(env, body, budget);
   if (path === '/queue/retry-errors') return retryErrors(env, budget);
+  // Files not stored yet go back on the queue (priority order, only what fits) so the next sync stores them.
+  if (path === '/archive/fill') return json(await fillArchiveQueue(env, body, budget));
   if (path === '/documents') return upsertDocument(env, body, budget);
   if (path === '/gis/prune') return pruneGis(env, body);
   if (path === '/tax-rates/withdraw') return withdrawTaxYears(env, body);

@@ -312,7 +312,7 @@ describe('staff uploads', () => {
   it('refuses a file over the archive stop with a clear message', async () => {
     const env = testEnv();
     const owner = await setupOwner(env);
-    env.CATALOG_DB.db.prepare('UPDATE archive_stats SET stored_bytes = ?').run(6_000_000_000 - 5);
+    env.CATALOG_DB.db.prepare('UPDATE archive_stats SET stored_bytes = ?').run(7_500_000_000 - 5);
     const r = await panel(env, 'POST', '/api/uploads/file', { form: fileForm(PNG, 'map.png'), cookie: owner });
     expect(r.status).toBe(507);
     expect(((await r.json()) as { error: { message: string } }).error.message).toMatch(/archive is full/);
