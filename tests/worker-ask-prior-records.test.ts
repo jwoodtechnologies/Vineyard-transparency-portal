@@ -84,7 +84,8 @@ describe('a follow-up reads the records the previous answer cited', () => {
     const r = await ask({ ...env, AI: ai(() => 'The Redevelopment Agency has a cap of $900 million on the tax increment [1].') } as unknown as Env, { question: 'Is there a cap on what it can collect?', conversation: convo });
     // No dead end and no quote dump: one plain line, with the closest record as a card.
     expect(r.engine).toMatch(/^records \(/);
-    expect(r.answer).toBe('Nothing in the archive answers that directly. These records come closest.');
+    // A short answer from the closest record (the one the previous answer relied on), never an error line.
+    expect(r.answer).toMatch(/^The closest record on this is "Geneva urban renewal share report/);
     expect(r.answer).not.toContain('$900 million');
     expect(r.answer).not.toMatch(/couldn't find|unavailable|unable to/i);
     expect(r.citations).toEqual([]);

@@ -276,6 +276,8 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <div id="v-health" class="view hidden">
       <div class="head"><h1>Health</h1><div class="rowacts"><button class="btn" id="hlRefresh" type="button">Reload</button></div></div>
       <p class="hint" id="hlWhen"></p>
+      <h2 class="sub">Chat answers not written by the first model today</h2>
+      <div class="card"><ul class="feed" id="hlFallbacks"></ul><div class="empty hidden" id="hlFallbacksEmpty">None today.</div></div>
       <h2 class="sub">Scheduled checks</h2>
       <div class="card"><ul class="feed" id="hlJobs"></ul><div class="empty hidden" id="hlJobsEmpty">No checks recorded yet.</div></div>
       <h2 class="sub">Sources</h2>

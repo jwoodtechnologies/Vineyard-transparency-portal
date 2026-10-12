@@ -457,6 +457,9 @@ export const PANEL_SCRIPT = String.raw`(function(){
       var failing = j.jobs.concat(j.sources).filter(function(r){ return r.failing; }).length;
       $('hlWhen').textContent = 'Read ' + stamp(j.generatedAt) + '. Marked when failing ' + j.threshold + ' times in a row. ' + (failing ? failing + ' failing.' : 'None failing.');
       healthList('hlJobs', j.jobs); healthList('hlSources', j.sources);
+      var fb = (j.aiFallbacks && j.aiFallbacks.byReason) || []; var fu = $('hlFallbacks'); fu.textContent = '';
+      fb.forEach(function(r){ var li = document.createElement('li'); li.textContent = r.n + '  ' + r.reason; fu.appendChild(li); });
+      $('hlFallbacksEmpty').classList.toggle('hidden', fb.length > 0);
     }).catch(function(x){ authFail(x); $('hlWhen').textContent = x.message; });
   }
   $('hlRefresh').addEventListener('click', loadHealth);

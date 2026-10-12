@@ -63,7 +63,7 @@ export async function rewriteQuestion(env: Env, question: string, conversation: 
       max_tokens: 200,
       temperature: 0,
     });
-    const out = aiText(await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), 4500))]));
+    const out = aiText(await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), 2000))]));
     return parseRewrite(out, question);
   } catch {
     return null;

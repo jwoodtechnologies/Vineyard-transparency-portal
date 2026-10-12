@@ -25,6 +25,7 @@ import { auditLog, listUploads, lookupMeetings, lookupProjects, staffDelete, sta
 import { approveSubmission, hideSubmission, listSubmissions, rejectSubmission, removeSubmission, restoreSubmission, setSubmissionsOpen, submissionFile, submissionLog } from '../contrib/resident';
 import { coverage, refreshCoverage } from '../lib/coverage';
 import { jobHealth } from '../sync/jobHealth';
+import { fallbackCounts } from '../ai/fallbackLog';
 import { neuronUsage } from '../ai/meter';
 
 export const PANEL_PREFIX = '/api/k/x79k82r8fjjz9ki9b3dpi2';
@@ -462,7 +463,7 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
   // The file of a submission, pending ones included: shown to the owner only.
   if (route === '/submissions/file') return submissionFile(env, p.get('id'));
   if (route === '/coverage') return reply(await coverage(env));
-  if (route === '/health') return reply(await jobHealth(env));
+  if (route === '/health') return reply({ ...(await jobHealth(env)), aiFallbacks: await fallbackCounts(env).catch(() => null) });
 
   if (route === '/accounts') {
     const r = await db

@@ -14,7 +14,7 @@ import { citationLabel } from './submissions';
 import { BODY_LABEL, longDay, type MeetingBody } from './meetingVotes';
 import { DOC_LABEL, latestMinutesDate, minutesOf, recordLookupText, suggestFollowUps, type DocLookup, type IndexRow, type RecordLookup } from './lookups';
 import { pickQuotes, plainRecordText, QUOTES_LEAD, questionWords, quoteLine, routeFor, sentenceScore, recordSentences, type Quote } from './quotes';
-import { noModelLine, noModelReason, relevanceFloor, relevantRecords } from './fallback';
+import { noModelLine, noModelReason, topRecordLine, relevanceFloor, relevantRecords } from './fallback';
 import { officialRoster, titleOfficials } from './officials';
 import type { StaffPerson } from './contacts';
 
@@ -116,9 +116,11 @@ export async function recordsAnswer(env: Env, base: Base, question: string, hits
   const related = await closest(env, matched);
   const reason = noModelReason(why);
   const route = routeFor(question);
-  const line = noModelLine(reason, related.length > 0, now);
+  // No model wrote an answer (it failed, or nothing it wrote held up): a short answer from the best record.
+  const top = reason === 'failed' || reason === 'no-answer' ? matched.map((h) => topRecordLine(question, h)).find(Boolean) : null;
+  const line = top ?? noModelLine(reason, related.length > 0, now);
   // With no record to show, the page that holds the subject says where to look.
-  const text = related.length || reason === 'failed' ? line : `${line} ${route.text}`;
+  const text = related.length || top ? line : `${line} ${route.text}`;
   return codeResponse(base, `records (${why})`, [{ segments: [{ text, citations: [] }] }], { section: route.section, relatedDocuments: related });
 }
 

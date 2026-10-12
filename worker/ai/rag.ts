@@ -7,6 +7,7 @@
  * If Workers AI is missing, disabled, over the daily budget, or failing, the response is a
  * search-only result with the fixed notice below and the site keeps working.
  */
+import { fallbackReason, logFallback } from './fallbackLog';
 import { meteredRun, spenderOf } from './meter';
 import type { Env } from '../env';
 import { boolVar, intVar } from '../env';
@@ -20,7 +21,6 @@ import { SearchRepository } from '../search/SearchRepository';
 import type { ChunkHit } from '../search/types';
 import { summariesByIds } from '../api/documents';
 import { normalizeType } from '../lib/taxonomy';
-import { readAiStream } from './sse';
 import { asksCurrentValue, interleave, planSearch, recencyWeighted, relevant, rerank, type SearchPlan } from './retrieval';
 import { AGENDA_NOT_POSTED, AGENDA_TYPES, PLACE_TIME_Q, meetingPlaceText, countAnswer, countKind, isMeetingCountQuestion, isNextAgendaQuestion, isScheduleQuestion, meetingsInFrame, nextAgenda, scheduleAnswer, type ScheduleAnswer } from './schedule';
 import { bodyOf } from './scheduleIntent';
@@ -245,9 +245,9 @@ async function aiBudgetLeft(env: Env): Promise<number | null> {
 type Msg = { role: string; content: string };
 const MAX_TOKENS = 400;
 /** The longest one model may take, and the longest the whole chain may take, before Ask moves on. */
-const AI_TIMEOUT_MS = 14_000;
-const LITE_TIMEOUT_MS = 8_000;
-const CHAIN_BUDGET_MS = 22_000;
+const AI_TIMEOUT_MS = 7_000;
+const LITE_TIMEOUT_MS = 5_000;
+const CHAIN_BUDGET_MS = 11_000;
 /**
  * The larger model costs about 200 Neurons an answer, so it answers the first 35 questions of the
  * day (about 7,000 of the 10,000 free daily Neurons) and the small model answers the rest.
@@ -259,7 +259,7 @@ async function runOnce(env: Env, model: string, messages: Msg[], maxTokens: numb
   const qwen = model.includes('qwen');
   // Qwen 3 thinks out loud unless told not to; answers here need no visible reasoning.
   const msgs = qwen ? messages.map((m, i) => (i === 0 && m.role === 'system' ? { ...m, content: `${m.content}\n/no_think` } : m)) : messages;
-  const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : qwen ? { messages: msgs, max_tokens: 900, temperature: 0 } : { messages, max_tokens: maxTokens, temperature };
+  const input = big ? { messages, max_tokens: 1800, reasoning: { effort: 'low' } } : qwen ? { messages: msgs, max_tokens: 520, temperature: 0 } : { messages, max_tokens: maxTokens, temperature };
   const run = meteredRun(env, model, input);
   const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), waitMs));
   const text = aiText(await Promise.race([run, timeout]))
@@ -300,20 +300,84 @@ async function callModel(env: Env, messages: Msg[], opts: { maxTokens?: number; 
   throw last instanceof Error ? last : new Error(String(last));
 }
 
-/** Small-model streaming (server-sent events: `data: {"response":"..."}` ... `data: [DONE]`). */
-async function streamSmall(env: Env, messages: Msg[], onDelta: (text: string) => Promise<void>): Promise<string> {
-  const out = await meteredRun(env, FALLBACK_AI_MODEL, { messages, max_tokens: MAX_TOKENS, temperature: 0, stream: true });
-  let sofar = '';
-  const forward = async (piece: string) => {
-    sofar += piece;
-    await onDelta(piece);
-    // Stop once the answer is long enough; the final answer is trimmed to the same length.
-    return finishedSentences(sofar) < MAX_ANSWER_SENTENCES;
-  };
-  if (out instanceof ReadableStream) return readAiStream(out as ReadableStream<Uint8Array>, forward, Date.now() + AI_TIMEOUT_MS);
-  const text = aiText(out);
-  if (text) await onDelta(text);
-  return text;
+/** Text pieces from a Workers AI stream line: the legacy `response` field or a chat-completions delta. */
+export function streamPiece(payload: string): string {
+  try {
+    const o = JSON.parse(payload) as { response?: unknown; choices?: Array<{ delta?: { content?: unknown }; text?: unknown }> };
+    if (typeof o.response === 'string') return o.response;
+    const c = o.choices?.[0];
+    if (typeof c?.delta?.content === 'string') return c.delta.content;
+    if (typeof c?.text === 'string') return c.text;
+  } catch {
+    /* partial or non-JSON line */
+  }
+  return '';
+}
+
+/** Drops a leading <think>...</think> block from streamed text; null while that block is still open. */
+export function visibleText(sofar: string): string | null {
+  const t = sofar.replace(/^\s+/, '');
+  if (!t.startsWith('<think>')) return sofar;
+  const end = t.indexOf('</think>');
+  return end < 0 ? null : t.slice(end + 8).replace(/^\s+/, '');
+}
+
+/**
+ * Streams one model's answer, forwarding the visible text as it arrives. Fails fast: no visible word
+ * within `firstMs` (a queued or overloaded model) or no finish within `totalMs` throws, unless some
+ * finished sentences already arrived, which are kept. Stops once the answer is long enough.
+ */
+async function streamModel(env: Env, model: string, messages: Msg[], onDelta: (text: string) => Promise<void>, firstMs: number, totalMs: number): Promise<string> {
+  const start = Date.now();
+  const qwen = model.includes('qwen');
+  const msgs = qwen ? messages.map((m, i) => (i === 0 && m.role === 'system' ? { ...m, content: `${m.content}\n/no_think` } : m)) : messages;
+  const later = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<never>((_, r) => setTimeout(() => r(new Error('AI timeout')), Math.max(1, ms)))]);
+  const out = await later(meteredRun(env, model, { messages: msgs, max_tokens: qwen ? 520 : MAX_TOKENS, temperature: 0, stream: true }), firstMs);
+  if (!(out instanceof ReadableStream)) {
+    const text = visibleText(aiText(out)) ?? '';
+    if (!text.trim()) throw new Error('Empty AI response');
+    await onDelta(text);
+    return text;
+  }
+  const reader = (out as ReadableStream<Uint8Array>).getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let raw = '';
+  let shown = '';
+  try {
+    for (;;) {
+      const limit = shown ? start + totalMs : start + firstMs;
+      const left = limit - Date.now();
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await later(reader.read(), left);
+      } catch (e) {
+        if (finishedSentences(shown) >= 1) return shown;
+        throw e;
+      }
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (payload === '[DONE]') return shown;
+        raw += streamPiece(payload);
+        const vis = visibleText(raw);
+        if (vis == null || vis.length <= shown.length) continue;
+        const add = vis.slice(shown.length);
+        shown = vis;
+        await onDelta(add);
+        if (finishedSentences(shown) >= MAX_ANSWER_SENTENCES) return shown;
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  if (!shown.trim()) throw new Error('Empty AI response');
+  return shown;
 }
 
 const RECENT = /\b(most recent|latest|last|recent|previous|past|upcoming|next|this week'?s|tonight'?s|today'?s)\b/i;
@@ -1612,32 +1676,42 @@ function streamAnswer(env: Env, ctx: ExecutionContext | undefined, prep: Extract
     let final: AskResponse;
     try {
       await send('status', { phase: 'writing' });
-      let raw: string;
-      let engine = FALLBACK_AI_MODEL;
-      if (prep.useBig) {
-        // The larger model reasons before it writes, so its answer is sent whole once ready.
-        const r = await callModel(env, prep.messages, { useBig: true, lite: prep.lite });
-        raw = r.text;
-        engine = r.engine;
-        if (!/NO_RECORD/.test(raw)) await send('delta', { t: raw });
-      } else {
-        let streamed = false;
+      // Streamed: the larger model while today's share lasts, else the small one, then the other one, then the
+      // lite model. Each must show its first words within 3 seconds; the first that does writes the answer.
+      const primary = env.AI_MODEL && env.AI_MODEL !== FALLBACK_AI_MODEL ? env.AI_MODEL : DEFAULT_AI_MODEL;
+      const first = prep.useBig ? primary : FALLBACK_AI_MODEL;
+      const chain = [...new Set([first, first === primary ? FALLBACK_AI_MODEL : primary, env.AI_LITE_MODEL || LITE_AI_MODEL])];
+      let raw = '';
+      let engine = first;
+      let streamed = false;
+      const forward = async (t: string) => {
+        streamed = true;
+        await send('delta', { t });
+      };
+      const errors: string[] = [];
+      for (const [i, model] of chain.entries()) {
+        const isLite = i === chain.length - 1 && i > 0;
         try {
-          raw = await streamSmall(env, prep.messages, async (t) => {
-            streamed = true;
-            await send('delta', { t });
-          });
-          if (!raw.trim()) throw new Error('Empty AI response');
+          raw = await streamModel(env, model, isLite ? prep.lite : prep.messages, forward, 3_000, isLite ? 6_000 : 9_000);
+          engine = errors.length ? `${model} (after ${errors.join('; ').slice(0, 120)})` : model;
+          if (raw.trim()) break;
         } catch (e) {
-          // Nothing shown yet: one more try on the small model, then the lite one, whole (only after an error).
-          if (streamed) throw e;
-          const r = await callModel(env, prep.messages, { useBig: false, lite: prep.lite });
-          raw = r.text;
-          engine = `${r.engine} (retry after ${String(e instanceof Error ? e.message : e).slice(0, 80)})`;
-          if (!/NO_RECORD/.test(raw)) await send('delta', { t: raw });
+          errors.push(String(e instanceof Error ? e.message : e).slice(0, 60));
+          if (streamed) break;
         }
       }
-      if (!raw.trim()) throw new Error('Empty AI response');
+      // Nothing came back: one quiet retry of the first model, whole.
+      if (!raw.trim() && !streamed) {
+        const r = await callModel(env, prep.lite, { useBig: prep.useBig, budgetMs: 5_000 }).catch((e: unknown) => {
+          errors.push(String(e instanceof Error ? e.message : e).slice(0, 60));
+          return null;
+        });
+        if (r) {
+          raw = r.text;
+          engine = `${r.engine} (retry after ${errors.join('; ').slice(0, 120)})`;
+        }
+      }
+      if (!raw.trim()) throw new Error(errors.join('; ') || 'Empty AI response');
       final = await prep.finish(raw, engine);
     } catch (e) {
       final = await prep.fail(e);
@@ -1683,6 +1757,9 @@ export type AskLogger = (response: AskResponse, latencyMs: number) => void;
 export async function handleAsk(env: Env, request: Request, ctx?: ExecutionContext, onDone?: AskLogger): Promise<Response> {
   const started = Date.now();
   const done = (r: AskResponse) => {
+    // Every answer the first model did not write is counted by reason (panel Health tab).
+    const fell = fallbackReason((r as { engine?: string }).engine);
+    if (fell) ctx?.waitUntil(logFallback(env, fell).catch(() => undefined));
     try {
       onDone?.(r, Date.now() - started);
     } catch {

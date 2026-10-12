@@ -269,7 +269,8 @@ describe('no dead ends', () => {
     for (const write of [() => 'NO_RECORD', () => 'The splash pad costs $900 a day to open [1].']) {
       const r = await ask({ ...env, AI: ai(write) } as unknown as Env, { question: 'When is the splash pad at Grove Park open?' });
       expect(r.engine).toMatch(/^records \(/);
-      expect(r.answer).toBe('Nothing in the archive answers that directly. These records come closest.');
+      // A short answer from the best record, never an error line.
+      expect(r.answer).toMatch(/^The closest record on this is "Parks and Recreation Master Plan 2024", dated May 1, 2024\. It says: "The splash pad at Grove Park is open/);
       expect(r.relatedDocuments.map((d) => d.id)).toContain('doc_8f_parks');
       expect(r.answer).not.toContain('$900');
       expect(r.answer).not.toMatch(DEAD_END);

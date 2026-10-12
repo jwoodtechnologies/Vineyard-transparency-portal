@@ -8,6 +8,7 @@
  */
 import { aiResumesAt, TESTS_SPENT } from './meter';
 import { questionWords, sentenceScore } from './quotes';
+import { longDay } from './meetingVotes';
 
 /** "6 PM Mountain" (daylight time) or "5 PM Mountain" (standard time): when AI answers resume (meter.ts aiResumesAt). */
 export function resumeLabel(now: Date = new Date()): string {
@@ -36,7 +37,7 @@ export function noModelLine(reason: NoModelReason, records: boolean, now: Date =
     case 'off':
       return `AI answers are off right now.${tail}`;
     case 'failed':
-      return `The AI answer did not finish.${tail}${records ? '' : ' Please ask again.'}`;
+      return records ? 'These records cover your question.' : 'The Records page has every archived record on this.';
     default:
       return records ? 'Nothing in the archive answers that directly. These records come closest.' : 'Nothing in the archive answers that directly.';
   }
@@ -84,4 +85,23 @@ export function relevantRecords<T extends RelevanceSource & { chunkId?: string }
   const all = [...best.values()].sort((a, b) => Number(b.prior) - Number(a.prior) || a.at - b.at);
   const top = all.reduce((m, x) => Math.max(m, x.score), 0);
   return all.filter((x) => x.prior || x.score >= top / 2).slice(0, max).map((x) => x.h);
+}
+
+/**
+ * A short answer from the best matching record when no model wrote one: its title and date, then the
+ * sentence in it that shares the most words with the question, as a normal sentence (never an error and
+ * never a list of quotes). Null when no sentence of it shares at least two words with the question.
+ */
+export function topRecordLine(question: string, hit: { title: string; documentDate?: string | null; text?: string | null }): string | null {
+  const words = questionWords(question);
+  const sentences = (hit.text ?? '').replace(/\s+/g, ' ').match(/[^.!?]{25,400}[.!]/g) ?? [];
+  let best = '';
+  let top = 0;
+  for (const x of sentences) {
+    const n = sentenceScore(x, words);
+    if (n > top) [best, top] = [x.trim(), n];
+  }
+  if (!best || top < 2) return null;
+  const date = hit.documentDate && /^\d{4}-\d{2}-\d{2}/.test(hit.documentDate) ? `, dated ${longDay(hit.documentDate.slice(0, 10))}` : '';
+  return `The closest record on this is "${hit.title.replace(/\s+/g, ' ').trim()}"${date}. It says: "${best}"`;
 }

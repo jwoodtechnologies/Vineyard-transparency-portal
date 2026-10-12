@@ -82,7 +82,7 @@ export async function planSearch(env: Env, question: string, previous: string | 
       max_tokens: 220,
       temperature: 0,
     });
-    const out = aiText(await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), 5000))]));
+    const out = aiText(await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), 1800))]));
     return parsePlan(out, question);
   } catch {
     return null;
@@ -124,7 +124,7 @@ export async function rerank(env: Env, question: string, hits: ChunkHit[]): Prom
     const scored = await Promise.all(
       batches.map(async (b, bi) => {
         const run = meteredRun(env, RERANK_MODEL, { query: question.slice(0, 500), contexts: b.map((h) => ({ text: passage(h) })), top_k: b.length });
-        const out = (await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('rerank timeout')), 6000))])) as { response?: Array<{ id?: number; score?: number }> };
+        const out = (await Promise.race([run, new Promise<never>((_, r) => setTimeout(() => r(new Error('rerank timeout')), 1500))])) as { response?: Array<{ id?: number; score?: number }> };
         const list = out?.response;
         if (!Array.isArray(list) || !list.length) throw new Error('rerank: empty');
         return list.filter((x) => typeof x.id === 'number' && typeof x.score === 'number' && b[x.id]).map((x) => ({ ...b[x.id as number], rel: Number(x.score), order: bi * BATCH + (x.id as number) }));

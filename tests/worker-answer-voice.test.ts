@@ -162,8 +162,9 @@ describe('when no model answers', () => {
     expect(noModelLine(noModelReason('daily answer limit reached'), true, now)).toMatch(/^AI answers are paused/);
     expect(noModelLine(noModelReason('suite allowance spent for today (1000 of 1000)'), true, now)).toMatch(/^AI answers are paused/);
     expect(noModelLine(noModelReason('no sentence passed the source check: x'), true, now)).toBe('Nothing in the archive answers that directly. These records come closest.');
-    expect(noModelLine(noModelReason('AI timeout'), true, now)).toBe('The AI answer did not finish. Here are the best matching records.');
-    for (const line of ['4006', 'AI timeout', 'no record', 'AI not configured'].map((w) => noModelLine(noModelReason(w), true, now))) expect(line).not.toMatch(/[–—]|couldn'?t find|unavailable|unable to/i);
+    expect(noModelLine(noModelReason('AI timeout'), true, now)).toBe('These records cover your question.');
+    expect(noModelLine(noModelReason('AI timeout'), false, now)).toBe('The Records page has every archived record on this.');
+    for (const line of ['4006', 'AI timeout', 'no record', 'AI not configured'].map((w) => noModelLine(noModelReason(w), true, now))) expect(line).not.toMatch(/[–—]|couldn'?t find|unavailable|unable to|did not finish|ask again/i);
   });
 
   it('never shows a record that only shares a word with the question', () => {

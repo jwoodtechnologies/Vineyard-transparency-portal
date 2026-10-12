@@ -1,4 +1,5 @@
 import type { Env } from '../env';
+import { fallbackCounts } from '../ai/fallbackLog';
 import type { AgendaItem, ArchiveStatistics, BrowseFacets, Category, FacetBucket, IssueReportReceipt, Meeting, MeetingSummary, Paginated, SuggestedQuery } from '../../src/types/models';
 import { CACHE, HttpError, json, jsonWithEtag, notFound, badRequest, readJson } from '../lib/http';
 import { toGovernmentBody, toMeetingSummary, toSource, parseMedia, type Row } from '../lib/mappers';
@@ -42,6 +43,7 @@ export async function handleHealth(env: Env): Promise<Response> {
   // Today's estimated Workers AI Neurons by spender, each cap and the reset time (numbers only). The chat
   // suite reads tests.used and tests.cap before it starts.
   const aiNeurons = database ? await neuronUsage(env).catch(() => null) : null;
+  const aiFallbacks = database ? await fallbackCounts(env).then((f) => ({ day: f.day, total: f.total })).catch(() => null) : null;
   const status = database && search ? 'ok' : 'degraded';
   return json(
     {
@@ -59,6 +61,7 @@ export async function handleHealth(env: Env): Promise<Response> {
       lastCrawl: lastCrawl ? { kind: lastCrawl.trigger === 'worker-site-pass' ? 'city website pass' : 'nightly crawl', status: lastCrawl.status, startedAt: lastCrawl.started_at, finishedAt: lastCrawl.finished_at } : null,
       checks,
       aiNeurons,
+      aiFallbacks,
     },
     { cache: CACHE.none },
   );
