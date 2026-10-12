@@ -68,15 +68,21 @@ async function hmac(key: string, data: string): Promise<string> {
   return b64url(await crypto.subtle.sign('HMAC', k, enc.encode(data)));
 }
 
+export type Role = 'owner' | 'uploader' | 'admin';
+
 export interface SessionAccount {
   id: number;
-  role: 'owner' | 'uploader';
+  role: Role;
+  /** Admin accounts only: their password epoch. Changing the admin's password bumps it, which ends that admin's other sessions. */
+  epoch?: number;
 }
 
 /** A signed session naming the account and its role. The signing key is the owner's session key, so rotating it signs everyone out. */
 export async function issueSession(owner: Owner, account: SessionAccount = { id: 1, role: 'owner' }): Promise<{ value: string; maxAge: number }> {
   const maxAge = SESSION_HOURS * 3600;
-  const payload = b64url(enc.encode(JSON.stringify({ a: account.id, r: account.role, x: Math.floor(Date.now() / 1000) + maxAge })));
+  const body: Record<string, unknown> = { a: account.id, r: account.role, x: Math.floor(Date.now() / 1000) + maxAge };
+  if (account.epoch !== undefined) body.e = account.epoch;
+  const payload = b64url(enc.encode(JSON.stringify(body)));
   return { value: `${payload}.${await hmac(owner.session_key, payload)}`, maxAge };
 }
 
@@ -90,10 +96,12 @@ export async function readSession(env: Env, request: Request): Promise<{ owner: 
   const [payload, sig] = m[1].split('.');
   if (!sameString(await hmac(owner.session_key, payload), sig)) return null;
   try {
-    const data = JSON.parse(new TextDecoder().decode(fromB64url(payload))) as { a?: unknown; r?: unknown; x?: unknown };
+    const data = JSON.parse(new TextDecoder().decode(fromB64url(payload))) as { a?: unknown; r?: unknown; x?: unknown; e?: unknown };
     if (typeof data.x !== 'number' || data.x < Date.now() / 1000) return null;
-    if (typeof data.a !== 'number' || !Number.isInteger(data.a) || (data.r !== 'owner' && data.r !== 'uploader')) return null;
-    return { owner, account: { id: data.a, role: data.r } };
+    if (typeof data.a !== 'number' || !Number.isInteger(data.a) || (data.r !== 'owner' && data.r !== 'uploader' && data.r !== 'admin')) return null;
+    const account: SessionAccount = { id: data.a, role: data.r };
+    if (typeof data.e === 'number' && Number.isInteger(data.e)) account.epoch = data.e;
+    return { owner, account };
   } catch {
     return null;
   }

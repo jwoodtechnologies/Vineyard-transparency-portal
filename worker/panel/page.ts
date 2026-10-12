@@ -6,8 +6,10 @@
  * reject, approved ones to hide or remove), people and invites, and the
  * coverage check (what the archive is missing, with a CSV download), and job health (each scheduled
  * check and source: last run, last success, last error, failures in a row).
- * Uploader: adding records and its own uploads. An invite link (PANEL_PREFIX/invite/<token>) opens
- * the join form, where the invitee picks a display name and creates a passkey.
+ * Admin: the same, except people and invites, the submissions switch, and hiding or removing
+ * approved submissions. Uploader: adding records and its own uploads. An invite link
+ * (PANEL_PREFIX/invite/<token>) opens the join form: an uploader picks a display name and creates a
+ * passkey; an admin picks a sign-in name and a password, and may add a passkey.
  */
 import { PANEL_SCRIPT } from './pageScript';
 
@@ -130,7 +132,7 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><div class="mark">Vineyard<small>Transparency Portal</small></div><div class="acts hidden" id="acts"><span class="who" id="who"></span><button class="btn ghost" id="secBtn" type="button">Passkeys</button><button class="btn" id="outBtn" type="button">Sign out</button></div></div>
+  <div class="top"><div class="mark">Vineyard<small>Transparency Portal</small></div><div class="acts hidden" id="acts"><span class="who" id="who"></span><button class="btn ghost" id="secBtn" type="button">Security</button><button class="btn" id="outBtn" type="button">Sign out</button></div></div>
 
   <section id="setup" class="auth hidden">
     <h1>Welcome</h1>
@@ -151,7 +153,7 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <p class="hint hidden" id="noPk">This browser cannot use passkeys. Try Safari or Chrome.</p>
     <div class="or hidden" id="orLine">or</div>
     <form id="loginForm" class="hidden">
-      <label for="lEmail">Email</label><input id="lEmail" type="email" autocomplete="username webauthn" required>
+      <label for="lEmail">Email or user name</label><input id="lEmail" type="text" autocomplete="username webauthn" autocapitalize="none" spellcheck="false" required>
       <label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password" required>
       <button class="btn big" id="lBtn" type="submit">Sign in</button>
     </form>
@@ -159,9 +161,16 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
   </section>
 
   <section id="invite" class="auth hidden">
-    <h1>Join</h1>
-    <p class="sub">You were invited to add records to the portal.</p>
-    <form id="inviteForm">
+    <h1 id="iHead">Join</h1>
+    <p class="sub" id="iSub">You were invited to add records to the portal.</p>
+    <form id="adminJoin" class="hidden">
+      <label for="aLogin">Sign-in name (email or user name)</label><input id="aLogin" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="100" required>
+      <label for="aPass">Password (12 or more characters)</label><input id="aPass" type="password" autocomplete="new-password" minlength="12" maxlength="200" required>
+      <p class="hint">Next you can add a passkey (Face ID, Touch ID or Windows Hello), or add one later from Security.</p>
+      <p class="err" id="aErr"></p>
+      <button class="btn primary big" id="aBtn" type="submit">Create account</button>
+    </form>
+    <form id="inviteForm" class="hidden">
       <label for="iName">Your name</label><input id="iName" type="text" autocomplete="name" maxlength="60" required>
       <p class="hint">Next, your device asks to create a passkey (Face ID, Touch ID or Windows Hello). You sign in with it from then on.</p>
       <p class="err" id="iErr"></p>
@@ -243,9 +252,9 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <div id="v-people" class="view hidden">
       <div class="head"><h1>People</h1></div>
       <div class="card pad">
-        <p class="label">Invite an uploader</p>
-        <p class="hint">The link works once and expires in 72 hours. It is shown only now.</p>
-        <form id="invForm"><label for="invName">Name (optional)</label><input id="invName" type="text" maxlength="60"><p class="err" id="invErr"></p><button class="btn primary" type="submit">Create invite link</button></form>
+        <div class="switch"><p class="label">Invite</p><div class="seg" id="invRole"><button type="button" data-r="admin" aria-pressed="true">Admin</button><button type="button" data-r="uploader" aria-pressed="false">Uploader</button></div></div>
+        <p class="hint" id="invHint"></p>
+        <form id="invForm"><label for="invName">Name</label><input id="invName" type="text" maxlength="60"><p class="err" id="invErr"></p><button class="btn primary" id="invBtn" type="submit">Invite admin</button></form>
         <div class="linkbox hidden" id="invBox"><input id="invLink" type="text" readonly aria-label="Invite link"><button class="btn" id="invCopy" type="button">Copy</button></div>
       </div>
       <h2 class="sub">Accounts</h2>
@@ -287,10 +296,12 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
 </div>
 
 <div class="sheetbg hidden" id="sheetBg"></div>
-<aside class="sheet hidden" id="sheet" role="dialog" aria-label="Passkeys">
-  <div class="sheethead"><h2>Passkeys</h2><button class="btn ghost" id="sheetClose" type="button">Close</button></div>
+<aside class="sheet hidden" id="sheet" role="dialog" aria-label="Security">
+  <div class="sheethead"><h2>Security</h2><button class="btn ghost" id="sheetClose" type="button">Close</button></div>
   <div class="sec">
-    <p class="hint">Sign in with Face ID, Touch ID or Windows Hello. Keep at least one.</p>
+    <p class="notice hidden" id="pkWelcome">Your account is ready. Add a passkey now for quick sign-in, or later from Security.</p>
+    <p class="label">Passkeys</p>
+    <p class="hint" id="pkHint">Sign in with Face ID, Touch ID or Windows Hello. Keep at least one.</p>
     <ul class="keys" id="keys"></ul>
     <button class="btn primary" id="pkAdd" type="button">Add a passkey</button>
     <p class="err" id="pkErr"></p>

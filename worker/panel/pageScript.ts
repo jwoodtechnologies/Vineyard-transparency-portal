@@ -37,10 +37,14 @@ export const PANEL_SCRIPT = String.raw`(function(){
   var TYPE_NAME = {}; TYPES.forEach(function(t){ TYPE_NAME[t[0]] = t[1]; });
 
   // ------------------------------------------------------------ navigation
-  var VIEWS = [['activity','Activity',true],['add','Add',false],['uploads','Uploads',false],['subs','Submissions',true],['people','People',true],['coverage','Coverage',true],['health','Health',true]];
+  // Who sees each tab: 'all' accounts, 'staff' (the owner and admins) or the 'owner' alone.
+  var VIEWS = [['activity','Activity','staff'],['add','Add','all'],['uploads','Uploads','all'],['subs','Submissions','staff'],['people','People','owner'],['coverage','Coverage','staff'],['health','Health','staff']];
+  function isOwner(){ return !!me && me.role === 'owner'; }
+  function isStaff(){ return !!me && (me.role === 'owner' || me.role === 'admin'); }
+  function mayView(v){ return v[2] === 'all' || (v[2] === 'staff' ? isStaff() : isOwner()); }
   function buildNav(){
     var nav = $('nav'); nav.textContent = '';
-    VIEWS.forEach(function(v){ if (v[2] && me.role !== 'owner') return; var b = el('button', null, v[1]); b.type = 'button'; b.dataset.v = v[0]; b.setAttribute('aria-pressed', 'false'); b.addEventListener('click', function(){ go(v[0]); }); nav.appendChild(b); });
+    VIEWS.forEach(function(v){ if (!mayView(v)) return; var b = el('button', null, v[1]); b.type = 'button'; b.dataset.v = v[0]; b.setAttribute('aria-pressed', 'false'); b.addEventListener('click', function(){ go(v[0]); }); nav.appendChild(b); });
   }
   function go(v){
     state.view = v;
@@ -272,6 +276,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       subOpen = !!j.open;
       $('subState').textContent = (subOpen ? 'Open to everyone.' : 'Paused. The page shows "Submissions are paused."') + ' Files ' + bytes(j.storage.used) + ' of ' + bytes(j.storage.limit) + '.';
       $('subSwitch').textContent = subOpen ? 'Pause submissions' : 'Turn submissions on';
+      $('subSwitch').classList.toggle('hidden', !isOwner());
       var pl = $('subPending'); pl.textContent = ''; var pending = j.pending || [];
       pending.forEach(function(s){
         var li = el('li', 'item'); li.appendChild(whenEl(s.created_at));
@@ -303,7 +308,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
         main.appendChild(meta);
         var acts = el('div', 'rowacts');
         if (s.document_id && !s.hidden_at && !s.removed_at) { var a = el('a', 'open', 'View'); a.href = '/documents/' + encodeURIComponent(s.document_id); a.target = '_blank'; a.rel = 'noopener'; acts.appendChild(a); }
-        if (!s.removed_at) {
+        if (!s.removed_at && isOwner()) {
           if (s.hidden_at) acts.appendChild(btn('Restore', '', function(){ post('/submissions/restore', { id: s.id }).then(loadSubs, function(x){ alert(x.message); }); }));
           else acts.appendChild(btn('Hide', '', function(){ post('/submissions/hide', { id: s.id }).then(loadSubs, function(x){ alert(x.message); }); }));
           acts.appendChild(btn('Remove', 'danger', function(){ if (confirm('Remove this item and its file for good?')) post('/submissions/remove', { id: s.id }).then(loadSubs, function(x){ alert(x.message); }); }));
@@ -331,7 +336,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       (j.items || []).forEach(function(a){
         var li = el('li', 'item'); li.appendChild(whenEl(a.created_at));
         var main = el('div', 'main'); main.appendChild(el('div', 'q', a.name));
-        var meta = el('div', 'meta'); [a.role === 'owner' ? 'Owner' : 'Uploader', a.passkeys + (a.passkeys === 1 ? ' passkey' : ' passkeys'), a.uploads + ' uploads'].forEach(function(t){ meta.appendChild(el('span', null, t)); }); main.appendChild(meta);
+        var meta = el('div', 'meta'); [a.role === 'owner' ? 'Owner' : a.role === 'admin' ? 'Admin' : 'Uploader', a.login ? 'Signs in as ' + a.login : null, a.passkeys + (a.passkeys === 1 ? ' passkey' : ' passkeys'), a.uploads + ' uploads'].forEach(function(t){ if (t) meta.appendChild(el('span', null, t)); }); main.appendChild(meta);
         if (a.role !== 'owner') { var acts = el('div', 'rowacts');
           if (a.disabled_at) acts.appendChild(btn('Turn on', '', function(){ post('/accounts/enable', { id: a.id }).then(loadPeople); }));
           else acts.appendChild(btn('Turn off', 'danger', function(){ if (confirm('Turn off ' + a.name + '? They are signed out at once.')) post('/accounts/disable', { id: a.id }).then(loadPeople); }));
@@ -345,7 +350,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       items.forEach(function(v){
         var li = el('li', 'item'); li.appendChild(whenEl(v.created_at));
         var main = el('div', 'main'); main.appendChild(el('div', 'q', v.name || 'Unnamed invite'));
-        var stateText = v.used_at ? 'Used by ' + (v.used_by_name || 'an uploader') : v.revoked_at ? 'Revoked' : v.expires_at < j.now ? 'Expired' : 'Open until ' + fFull.format(new Date(v.expires_at));
+        var stateText = (v.role === 'admin' ? 'Admin. ' : 'Uploader. ') + (v.used_at ? 'Used by ' + (v.used_by_name || 'someone') : v.revoked_at ? 'Revoked' : v.expires_at < j.now ? 'Expired' : 'Open until ' + fFull.format(new Date(v.expires_at)));
         var meta = el('div', 'meta'); meta.appendChild(el('span', null, stateText)); main.appendChild(meta);
         if (!v.used_at && !v.revoked_at && v.expires_at >= j.now) { var acts = el('div', 'rowacts'); acts.appendChild(btn('Revoke', 'danger', function(){ post('/invites/revoke', { id: v.id }).then(loadPeople); })); main.appendChild(acts); }
         li.appendChild(main); li.appendChild(el('span'));
@@ -360,8 +365,19 @@ export const PANEL_SCRIPT = String.raw`(function(){
       $('auditEmpty').classList.toggle('hidden', items.length > 0);
     }).catch(authFail);
   }
+  var invRole = 'admin';
+  function setInvRole(r){
+    invRole = r;
+    Array.prototype.forEach.call($('invRole').children, function(x){ x.setAttribute('aria-pressed', String(x.dataset.r === r)); });
+    $('invHint').textContent = r === 'admin' ? 'Admins add records, post updates and review submissions. They set their own password. The link works once and expires in 7 days. It is shown only now.' : 'Uploaders add records with a passkey. The link works once and expires in 72 hours. It is shown only now.';
+    $('invName').value = r === 'admin' ? 'Vineyard Admin' : ''; $('invName').placeholder = r === 'admin' ? 'Vineyard Admin' : 'Optional';
+    $('invBtn').textContent = r === 'admin' ? 'Invite admin' : 'Invite uploader';
+    $('invBox').classList.add('hidden'); $('invErr').textContent = '';
+  }
+  $('invRole').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) setInvRole(b.dataset.r); });
+  setInvRole('admin');
   $('invForm').addEventListener('submit', function(e){ e.preventDefault(); $('invErr').textContent = '';
-    post('/invites/create', { name: $('invName').value }).then(function(j){ $('invLink').value = location.origin + j.path; $('invBox').classList.remove('hidden'); $('invName').value = ''; loadPeople(); }, function(x){ $('invErr').textContent = x.message; }); });
+    post('/invites/create', { name: $('invName').value, role: invRole }).then(function(j){ $('invLink').value = location.origin + j.path; $('invBox').classList.remove('hidden'); $('invCopy').textContent = 'Copy'; loadPeople(); }, function(x){ $('invErr').textContent = x.message; }); });
   $('invCopy').addEventListener('click', function(){ var i = $('invLink'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(function(){ $('invCopy').textContent = 'Copied'; }, function(){ document.execCommand && document.execCommand('copy'); $('invCopy').textContent = 'Copied'; }); });
 
   // ------------------------------------------------------------ coverage (owner)
@@ -483,20 +499,23 @@ export const PANEL_SCRIPT = String.raw`(function(){
   });
 
   // ------------------------------------------------------------ passkeys sheet
-  function openSheet(open){ $('sheet').classList.toggle('hidden', !open); $('sheetBg').classList.toggle('hidden', !open); if (open) loadKeys(); }
+  function openSheet(open){ $('sheet').classList.toggle('hidden', !open); $('sheetBg').classList.toggle('hidden', !open); if (open) loadKeys(); else $('pkWelcome').classList.add('hidden'); }
   $('secBtn').addEventListener('click', function(){ openSheet(true); });
   $('sheetClose').addEventListener('click', function(){ openSheet(false); });
   $('sheetBg').addEventListener('click', function(){ openSheet(false); });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape') openSheet(false); });
   $('outBtn').addEventListener('click', function(){ post('/logout').then(boot, boot); });
   function loadKeys(){
-    $('pwSec').classList.toggle('hidden', !(me && me.role === 'owner' && passwordAllowed));
+    var hasPw = isOwner() ? passwordAllowed : !!me && me.role === 'admin';
+    $('pwSec').classList.toggle('hidden', !hasPw);
+    $('pNew').minLength = me && me.role === 'admin' ? 12 : 10;
+    $('pkHint').textContent = me && me.role === 'uploader' ? 'Sign in with Face ID, Touch ID or Windows Hello. Keep at least one.' : 'Sign in with Face ID, Touch ID or Windows Hello. Your password keeps working too.';
     return api('/passkeys').then(function(j){
       var ul = $('keys'); ul.textContent = ''; var items = j.items || [];
       items.forEach(function(k){
         var li = el('li'); var t = el('div', null, k.name || 'Passkey'); t.appendChild(el('small', null, 'Added ' + fFull.format(new Date(k.created_at)) + (k.last_used_at ? ', last used ' + fFull.format(new Date(k.last_used_at)) : '')));
         li.appendChild(t);
-        if (items.length > 1) li.appendChild(btn('Remove', 'ghost', function(){ if (confirm('Remove this passkey?')) post('/passkey/delete', { id: k.id }).then(loadKeys, function(x){ $('pkErr').textContent = x.message; }); }));
+        if (items.length > 1 || (me && me.role !== 'uploader')) li.appendChild(btn('Remove', 'ghost', function(){ if (confirm('Remove this passkey?')) post('/passkey/delete', { id: k.id }).then(loadKeys, function(x){ $('pkErr').textContent = x.message; }); }));
         ul.appendChild(li);
       });
       if (!items.length) ul.appendChild(el('li', null, 'No passkeys yet.'));
@@ -538,6 +557,11 @@ export const PANEL_SCRIPT = String.raw`(function(){
   submit('setupForm', 'sErr', function(){ return post('/setup', { code: $('sCode').value, email: $('sEmail').value, password: $('sPass').value }).then(function(){ return boot().then(function(){ openSheet(true); }); }); });
   submit('loginForm', 'lErr', function(){ return post('/login', { email: $('lEmail').value, password: $('lPass').value }).then(function(){ $('lPass').value = ''; return boot(); }); });
   submit('pwForm', 'pErr', function(){ return post('/password', { current: $('pCur').value, next: $('pNew').value }).then(function(){ $('pCur').value = ''; $('pNew').value = ''; $('pErr').textContent = 'Saved. Other sessions were signed out.'; $('pErr').classList.add('ok'); }); });
+  submit('adminJoin', 'aErr', function(){
+    return post('/invite/accept', { token: inviteToken, login: $('aLogin').value, password: $('aPass').value })
+      .then(function(){ $('aPass').value = ''; history.replaceState(null, '', '__PREFIX__'); inviteToken = null; return boot(); })
+      .then(function(){ openSheet(true); $('pkWelcome').classList.remove('hidden'); });
+  });
   submit('inviteForm', 'iErr', function(){
     if (!canPasskey) return Promise.reject(new Error('This browser cannot create a passkey. Try Safari or Chrome.'));
     var name = $('iName').value.trim();
@@ -549,7 +573,12 @@ export const PANEL_SCRIPT = String.raw`(function(){
   function boot(){
     if (inviteToken) {
       show('invite');
-      return post('/invite/check', { token: inviteToken }).then(function(j){ if (j.name && !$('iName').value) $('iName').value = j.name; }, function(x){ $('iErr').textContent = x.message; $('iBtn').disabled = true; });
+      return post('/invite/check', { token: inviteToken }).then(function(j){
+        var admin = j.role === 'admin';
+        $('adminJoin').classList.toggle('hidden', !admin); $('inviteForm').classList.toggle('hidden', admin);
+        if (admin) { $('iHead').textContent = 'Welcome'; $('iSub').textContent = 'Set up the ' + (j.name || 'Vineyard Admin') + ' account. Choose how you sign in.'; }
+        else if (j.name && !$('iName').value) $('iName').value = j.name;
+      }, function(x){ $('inviteForm').classList.remove('hidden'); $('iErr').textContent = x.message; $('iBtn').disabled = true; });
     }
     return api('/state').then(function(s){
       if (!s.hasOwner) return show('setup');
@@ -567,7 +596,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       me = s.account; $('who').textContent = me.name;
       show('dash'); buildNav();
       var saved = null; try { saved = sessionStorage.getItem('vtp:panel'); } catch (e) {}
-      var allowed = VIEWS.filter(function(v){ return !v[2] || me.role === 'owner'; }).map(function(v){ return v[0]; });
+      var allowed = VIEWS.filter(mayView).map(function(v){ return v[0]; });
       go(allowed.indexOf(saved) >= 0 ? saved : allowed[0]);
       if (me.role === 'owner' && passwordAllowed) openSheet(true);
     });

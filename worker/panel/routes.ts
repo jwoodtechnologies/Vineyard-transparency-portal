@@ -4,10 +4,16 @@
  * The panel lives under an unguessable path (PANEL_PREFIX) that is not linked anywhere and does not
  * appear in the public site's JavaScript. It is also marked noindex and requires a sign-in.
  *
- * Accounts: one owner (account 1) and uploaders the owner invites with a one-time link
- * (PANEL_PREFIX/invite/<token>, 72 hours). Uploaders sign in with a passkey only. The owner's
- * signs in with email and password (passkeys optional), unchanged; uploaders use passkeys only. Sessions name the
- * account and role, and the account is checked (exists, role, not turned off) on every request.
+ * Accounts: one owner (account 1), plus admins and uploaders the owner invites with a one-time link
+ * (PANEL_PREFIX/invite/<token>; 7 days for an admin, 72 hours for an uploader). The owner signs in
+ * with email and password (passkeys optional), unchanged. Admins sign in with the name and password
+ * they set when joining (12 or more characters, PBKDF2 like the owner's, same lockout) or a passkey.
+ * Uploaders use passkeys only. Sessions name the account and role, and the account is checked
+ * (exists, role, not turned off, and for admins the password epoch) on every request.
+ *
+ * Who can do what: every account adds records (Add) and sees uploads. Admins also post Updates,
+ * approve or reject resident submissions, and see Activity, Coverage and Health. Only the owner
+ * invites people, turns accounts off and on, and changes the submissions switch.
  *
  * Public:  POST /api/visit     (page view beacon)   POST /api/feedback  (thumbs up or down)
  * Private: GET  PANEL_PREFIX   (the page)           PANEL_PREFIX/api/*  (sign-in and data)
@@ -15,7 +21,7 @@
 import type { Env } from '../env';
 import { HttpError, badRequest, json, notFound, readJson } from '../lib/http';
 import { PANEL_PAGE } from './page';
-import { PBKDF2_ITERATIONS, getOwner, hashPassword, issueSession, lockedOut, randomToken, readSession, recordAttempt, sameString, sessionCookie, sha256, type Owner } from './auth';
+import { PBKDF2_ITERATIONS, getOwner, hashPassword, issueSession, lockedOut, randomToken, readSession, recordAttempt, sameString, sessionCookie, sha256, type Owner, type Role } from './auth';
 import { databaseBytes, ensureActivityTables, logFeedback, logVisit, STORAGE_CEILING_BYTES, who } from './store';
 import { bytesToB64url, newChallenge, registerPasskey, verifyPasskey, type LoginInput, type RegisterInput } from './passkey';
 import { ensureContribTables, syncOwnerAccount } from '../contrib/schema';
@@ -30,6 +36,9 @@ import { neuronUsage } from '../ai/meter';
 
 export const PANEL_PREFIX = '/api/k/x79k82r8fjjz9ki9b3dpi2';
 export const INVITE_HOURS = 72;
+export const ADMIN_INVITE_DAYS = 7;
+export const ADMIN_DEFAULT_NAME = 'Vineyard Admin';
+export const ADMIN_PASSWORD_MIN = 12;
 
 const PRIVATE_HEADERS = { 'x-robots-tag': 'noindex, nofollow, noarchive', 'referrer-policy': 'no-referrer' };
 
@@ -102,6 +111,25 @@ function checkPost(request: Request, url: URL) {
 
 const validEmail = (e: unknown): e is string => typeof e === 'string' && e.length <= 200 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 const validPassword = (p: unknown): p is string => typeof p === 'string' && p.length >= 10 && p.length <= 200;
+const validAdminPassword = (p: unknown): p is string => typeof p === 'string' && p.length >= ADMIN_PASSWORD_MIN && p.length <= 200;
+/** An admin's sign-in name: an email address or a user name (letters, digits, dot, dash, underscore), kept in lower case. */
+export function loginName(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const t = v.trim().toLowerCase();
+  if (validEmail(t)) return t;
+  return /^[a-z0-9][a-z0-9._-]{2,59}$/.test(t) ? t : null;
+}
+
+interface Login {
+  account_id: number;
+  login: string;
+  pass_hash: string;
+  salt: string;
+  iterations: number;
+  epoch: number;
+}
+
+const loginOf = (env: Env, accountId: number) => env.CATALOG_DB.prepare('SELECT * FROM panel_logins WHERE account_id = ?').bind(accountId).first<Login>();
 
 interface Session {
   owner: Owner;
@@ -113,8 +141,13 @@ export async function currentAccount(env: Env, request: Request): Promise<Sessio
   const s = await readSession(env, request);
   if (!s) return null;
   await ensureContribTables(env);
-  const a = await env.CATALOG_DB.prepare('SELECT id, name, role, disabled_at FROM panel_accounts WHERE id = ?').bind(s.account.id).first<{ id: number; name: string; role: 'owner' | 'uploader'; disabled_at: string | null }>();
+  const a = await env.CATALOG_DB.prepare('SELECT id, name, role, disabled_at FROM panel_accounts WHERE id = ?').bind(s.account.id).first<{ id: number; name: string; role: Role; disabled_at: string | null }>();
   if (!a || a.disabled_at || a.role !== s.account.role) return null;
+  if (a.role === 'admin') {
+    // An admin's session ends when its password changes (the epoch moves on).
+    const login = await loginOf(env, Number(a.id));
+    if (!login || Number(login.epoch) !== s.account.epoch) return null;
+  }
   return { owner: s.owner, me: { id: Number(a.id), name: a.name, role: a.role } };
 }
 
@@ -124,11 +157,8 @@ async function signedIn(env: Env, request: Request): Promise<Session> {
   return s;
 }
 
-async function ownerOnly(env: Env, request: Request): Promise<Session> {
-  const s = await signedIn(env, request);
-  if (s.me.role !== 'owner') throw new HttpError(403, 'unauthorized', 'Only the owner can do this.');
-  return s;
-}
+/** The owner and admins (Activity, Updates, Submissions review, Coverage, Health). */
+export const isStaff = (me: Me) => me.role === 'owner' || me.role === 'admin';
 
 async function passkeyCount(env: Env, accountId: number): Promise<number> {
   const r = await env.CATALOG_DB.prepare('SELECT count(*) AS n FROM panel_passkeys WHERE account_id = ?').bind(accountId).first<{ n: number }>();
@@ -192,24 +222,65 @@ async function inviteRow(env: Env, token: unknown): Promise<{ token_hash: string
     .first<{ token_hash: string; role: string; name: string | null }>();
 }
 
-/** A new one-time invite. The link is returned once; only its hash is stored. */
-export async function createInvite(env: Env, me: Me, name: string): Promise<{ token: string; expiresAt: string }> {
+/**
+ * A new one-time invite. The link is returned once; only its hash is stored. An uploader's link lasts
+ * 72 hours; an admin's lasts 7 days and its account is named "Vineyard Admin" unless another name is given.
+ */
+export async function createInvite(env: Env, me: Me, name: string, role: 'uploader' | 'admin' = 'uploader'): Promise<{ token: string; expiresAt: string }> {
   const token = randomToken(24);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + INVITE_HOURS * 3600_000).toISOString();
-  await env.CATALOG_DB.prepare("INSERT INTO panel_invites (token_hash, role, name, created_by, created_at, expires_at) VALUES (?, 'uploader', ?, ?, ?, ?)")
-    .bind(await sha256(token), name || null, me.id, now.toISOString(), expiresAt)
+  const hours = role === 'admin' ? ADMIN_INVITE_DAYS * 24 : INVITE_HOURS;
+  const expiresAt = new Date(now.getTime() + hours * 3600_000).toISOString();
+  await env.CATALOG_DB.prepare('INSERT INTO panel_invites (token_hash, role, name, created_by, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(await sha256(token), role, (role === 'admin' ? name || ADMIN_DEFAULT_NAME : name) || null, me.id, now.toISOString(), expiresAt)
     .run();
   return { token, expiresAt };
+}
+
+/** Takes an invite (once). False when it was already used, revoked or expired. */
+async function takeInvite(env: Env, tokenHash: string, now: string): Promise<boolean> {
+  return Boolean(await env.CATALOG_DB.prepare('UPDATE panel_invites SET used_at = ? WHERE token_hash = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ? RETURNING token_hash').bind(now, tokenHash, now).first());
+}
+
+/**
+ * Uses up an admin invite (once): creates the admin account with the sign-in name and password the
+ * invitee chose. A passkey can be added right after, or later from Security.
+ */
+export async function acceptAdminInvite(env: Env, token: unknown, login: unknown, password: unknown): Promise<{ id: number; name: string; role: 'admin'; epoch: number }> {
+  const gone = () => new HttpError(410, 'unauthorized', 'This invite link is not valid. It may have been used or expired.');
+  const row = await inviteRow(env, token);
+  if (!row || row.role !== 'admin') throw gone();
+  const name = loginName(login);
+  if (!name) throw badRequest('Use an email address, or a user name of 3 or more letters or digits.');
+  if (!validAdminPassword(password)) throw badRequest(`Use a password of at least ${ADMIN_PASSWORD_MIN} characters.`);
+  const owner = await getOwner(env);
+  const taken = (owner && sameString(owner.email, name)) || (await env.CATALOG_DB.prepare('SELECT 1 FROM panel_logins WHERE login = ?').bind(name).first());
+  if (taken) throw badRequest('That sign-in name is taken. Choose another.');
+  const now = new Date().toISOString();
+  if (!(await takeInvite(env, row.token_hash, now))) throw gone();
+  const display = row.name || ADMIN_DEFAULT_NAME;
+  const salt = randomToken(16);
+  const hash = await hashPassword(password, salt);
+  const created = await env.CATALOG_DB.prepare("INSERT INTO panel_accounts (name, role, created_at) VALUES (?, 'admin', ?) RETURNING id").bind(display, now).first<{ id: number }>();
+  const id = Number(created!.id);
+  try {
+    await env.CATALOG_DB.batch([
+      env.CATALOG_DB.prepare('INSERT INTO panel_logins (account_id, login, pass_hash, salt, iterations, epoch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)').bind(id, name, hash, salt, PBKDF2_ITERATIONS, now, now),
+      env.CATALOG_DB.prepare('UPDATE panel_invites SET used_by = ? WHERE token_hash = ?').bind(id, row.token_hash),
+    ]);
+  } catch {
+    await env.CATALOG_DB.batch([env.CATALOG_DB.prepare('DELETE FROM panel_accounts WHERE id = ?').bind(id), env.CATALOG_DB.prepare('UPDATE panel_invites SET used_at = NULL WHERE token_hash = ?').bind(row.token_hash)]);
+    throw badRequest('That sign-in name is taken. Choose another.');
+  }
+  return { id, name: display, role: 'admin', epoch: 0 };
 }
 
 /** Uses up an invite (once): creates the account and its first passkey, or leaves the invite unused if the passkey fails. */
 export async function acceptInvite(env: Env, token: unknown, name: string, credential: RegisterInput, origin: string, rpId: string): Promise<{ id: number; name: string; role: 'uploader' }> {
   const row = await inviteRow(env, token);
-  if (!row) throw new HttpError(410, 'unauthorized', 'This invite link is not valid. It may have been used or expired.');
+  if (!row || row.role !== 'uploader') throw new HttpError(410, 'unauthorized', 'This invite link is not valid. It may have been used or expired.');
   const now = new Date().toISOString();
-  const taken = await env.CATALOG_DB.prepare('UPDATE panel_invites SET used_at = ? WHERE token_hash = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ? RETURNING token_hash').bind(now, row.token_hash, now).first();
-  if (!taken) throw new HttpError(410, 'unauthorized', 'This invite link is not valid. It may have been used or expired.');
+  if (!(await takeInvite(env, row.token_hash, now))) throw new HttpError(410, 'unauthorized', 'This invite link is not valid. It may have been used or expired.');
   const created = await env.CATALOG_DB.prepare("INSERT INTO panel_accounts (name, role, created_at) VALUES (?, 'uploader', ?) RETURNING id").bind(name, now).first<{ id: number }>();
   const id = Number(created!.id);
   try {
@@ -247,6 +318,7 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
       signedIn: Boolean(s),
       account: s ? s.me : null,
       email: s?.me.role === 'owner' ? owner!.email : null,
+      login: s?.me.role === 'admin' ? ((await loginOf(env, s.me.id))?.login ?? null) : null,
       hasPasskeys: Number(pk?.n ?? 0) > 0,
       passwordAllowed: owner ? await passwordAllowed(env) : true,
     });
@@ -295,10 +367,20 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
       // Always derive a hash so a wrong email and a wrong password take the same time.
       const hash = await hashPassword(password, owner?.salt ?? randomToken(16), owner?.iterations ?? PBKDF2_ITERATIONS);
       const ok = Boolean(owner) && sameString(email, owner!.email) && sameString(hash, owner!.pass_hash);
-      await recordAttempt(env, ip, ok);
-      if (!ok) throw new HttpError(401, 'unauthorized', 'That email and password do not match.');
-      await syncOwnerAccount(env);
-      const s = await issueSession(owner!);
+      if (ok) {
+        // The owner, exactly as before admin accounts existed.
+        await recordAttempt(env, ip, true);
+        await syncOwnerAccount(env);
+        const s = await issueSession(owner!);
+        return reply({ ok: true }, { headers: { 'set-cookie': sessionCookie(PANEL_PREFIX, s.value, s.maxAge) } });
+      }
+      // An admin's sign-in name and password. A hash is always derived, so an unknown name takes the same time.
+      const login = owner && email ? await db.prepare('SELECT l.*, a.role, a.disabled_at FROM panel_logins l JOIN panel_accounts a ON a.id = l.account_id WHERE l.login = ?').bind(email).first<Login & { role: Role; disabled_at: string | null }>() : null;
+      const adminHash = await hashPassword(password, login?.salt ?? randomToken(16), login?.iterations ?? PBKDF2_ITERATIONS);
+      const adminOk = Boolean(login) && login!.role === 'admin' && !login!.disabled_at && sameString(adminHash, login!.pass_hash);
+      await recordAttempt(env, ip, adminOk);
+      if (!adminOk) throw new HttpError(401, 'unauthorized', 'That sign-in name and password do not match.');
+      const s = await issueSession(owner!, { id: Number(login!.account_id), role: 'admin', epoch: Number(login!.epoch) });
       return reply({ ok: true }, { headers: { 'set-cookie': sessionCookie(PANEL_PREFIX, s.value, s.maxAge) } });
     }
 
@@ -307,13 +389,18 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     if (route === '/passkey/login') {
       if (await lockedOut(env, ip)) throw new HttpError(429, 'rate_limited', 'Too many attempts. Try again in 15 minutes.', 900);
       const owner = await getOwner(env);
-      let account: { id: number; role: 'owner' | 'uploader' };
+      let account: { id: number; role: Role; epoch?: number };
       try {
         if (!owner) throw new Error('No account yet.');
         const { accountId } = await verifyPasskey(env, b as unknown as LoginInput, origin, rpId);
-        const a = await db.prepare('SELECT id, role, disabled_at FROM panel_accounts WHERE id = ?').bind(accountId).first<{ id: number; role: 'owner' | 'uploader'; disabled_at: string | null }>();
+        const a = await db.prepare('SELECT id, role, disabled_at FROM panel_accounts WHERE id = ?').bind(accountId).first<{ id: number; role: Role; disabled_at: string | null }>();
         if (!a || a.disabled_at) throw new Error('This account is turned off.');
         account = { id: Number(a.id), role: a.role };
+        if (a.role === 'admin') {
+          const login = await loginOf(env, Number(a.id));
+          if (!login) throw new Error('This account is turned off.');
+          account.epoch = Number(login.epoch);
+        }
       } catch (e) {
         await recordAttempt(env, ip, false);
         throw new HttpError(401, 'unauthorized', e instanceof Error ? e.message : 'Passkey sign-in failed.');
@@ -329,13 +416,13 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
         await recordAttempt(env, ip, false);
         throw new HttpError(410, 'unauthorized', 'This invite link is not valid. It may have been used or expired.');
       }
-      return reply({ ok: true, name: row.name ?? '' });
+      return reply({ ok: true, name: row.name ?? '', role: row.role === 'admin' ? 'admin' : 'uploader' });
     }
 
     if (route === '/invite/options') {
       if (await lockedOut(env, ip)) throw new HttpError(429, 'rate_limited', 'Too many attempts. Try again in 15 minutes.', 900);
       const row = await inviteRow(env, b.token);
-      if (!row) {
+      if (!row || row.role !== 'uploader') {
         await recordAttempt(env, ip, false);
         throw new HttpError(410, 'unauthorized', 'This invite link is not valid. It may have been used or expired.');
       }
@@ -346,6 +433,24 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
       if (await lockedOut(env, ip)) throw new HttpError(429, 'rate_limited', 'Too many attempts. Try again in 15 minutes.', 900);
       const owner = await getOwner(env);
       if (!owner) throw new HttpError(409, 'bad_request', 'The panel is not set up yet.');
+      const pending = await inviteRow(env, b.token);
+      if (!pending) {
+        await recordAttempt(env, ip, false);
+        throw new HttpError(410, 'unauthorized', 'This invite link is not valid. It may have been used or expired.');
+      }
+      if (pending.role === 'admin') {
+        // An admin chooses a sign-in name and a password; a passkey is optional.
+        let admin: { id: number; role: 'admin'; epoch: number };
+        try {
+          admin = await acceptAdminInvite(env, b.token, b.login, b.password);
+        } catch (e) {
+          await recordAttempt(env, ip, false);
+          throw e;
+        }
+        await recordAttempt(env, ip, true);
+        const s = await issueSession(owner, admin);
+        return reply({ ok: true, role: 'admin' }, { headers: { 'set-cookie': sessionCookie(PANEL_PREFIX, s.value, s.maxAge) } });
+      }
       const name = displayName(b.name);
       if (!name) throw badRequest('Enter your name.');
       let account: { id: number; role: 'uploader' };
@@ -367,10 +472,13 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     const owner = () => {
       if (s.me.role !== 'owner') throw new HttpError(403, 'unauthorized', 'Only the owner can do this.');
     };
+    const staff = () => {
+      if (!isStaff(s.me)) throw new HttpError(403, 'unauthorized', 'Only the owner or an admin can do this.');
+    };
 
     if (route === '/passkey/register/options') {
       const ids = await db.prepare('SELECT id FROM panel_passkeys WHERE account_id = ?').bind(s.me.id).all<{ id: string }>();
-      const label = s.me.role === 'owner' ? s.owner.email : s.me.name;
+      const label = s.me.role === 'owner' ? s.owner.email : s.me.role === 'admin' ? ((await loginOf(env, s.me.id))?.login ?? s.me.name) : s.me.name;
       const userId = await userIdFor(s.me.role === 'owner' ? `vtp-owner:${s.owner.email}` : `vtp-account:${s.me.id}`);
       return reply({ challenge: await newChallenge(env, 'register'), rpId, userId, email: label, exclude: (ids.results ?? []).map((r) => r.id) });
     }
@@ -385,14 +493,32 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     }
 
     if (route === '/passkey/delete') {
-      // Uploaders sign in only with passkeys, so they always keep one. The owner also has a password.
-      const keepOne = s.me.role !== 'owner';
+      // Uploaders sign in only with passkeys, so they always keep one. The owner and admins also have a password.
+      const keepOne = s.me.role === 'uploader';
       if (keepOne && (await passkeyCount(env, s.me.id)) <= 1) throw badRequest('Keep at least one passkey. Add another before removing this one.');
       const r = keepOne
         ? await db.prepare('DELETE FROM panel_passkeys WHERE id = ? AND account_id = ? AND (SELECT count(*) FROM panel_passkeys WHERE account_id = ?) > 1').bind(String(b.id ?? ''), s.me.id, s.me.id).run()
         : await db.prepare('DELETE FROM panel_passkeys WHERE id = ? AND account_id = ?').bind(String(b.id ?? ''), s.me.id).run();
       if (!Number(r.meta?.changes ?? 0)) throw notFound('That passkey was not found.');
       return reply({ ok: true });
+    }
+
+    if (route === '/password' && s.me.role === 'admin') {
+      // An admin's own password: same rules as when joining. Its other sessions end.
+      const login = await loginOf(env, s.me.id);
+      if (!login) throw new HttpError(401, 'unauthorized', 'Please sign in.');
+      if (await lockedOut(env, ip)) throw new HttpError(429, 'rate_limited', 'Too many attempts. Try again in 15 minutes.', 900);
+      const current = typeof b.current === 'string' ? b.current : '';
+      if (!sameString(await hashPassword(current, login.salt, login.iterations), login.pass_hash)) {
+        await recordAttempt(env, ip, false);
+        throw new HttpError(403, 'unauthorized', 'The current password is not right.');
+      }
+      if (!validAdminPassword(b.next)) throw badRequest(`Use a password of at least ${ADMIN_PASSWORD_MIN} characters.`);
+      const salt = randomToken(16);
+      const epoch = Number(login.epoch) + 1;
+      await db.prepare('UPDATE panel_logins SET pass_hash = ?, salt = ?, iterations = ?, epoch = ?, updated_at = ? WHERE account_id = ?').bind(await hashPassword(b.next, salt), salt, PBKDF2_ITERATIONS, epoch, new Date().toISOString(), s.me.id).run();
+      const fresh = await issueSession(s.owner, { id: s.me.id, role: 'admin', epoch });
+      return reply({ ok: true }, { headers: { 'set-cookie': sessionCookie(PANEL_PREFIX, fresh.value, fresh.maxAge) } });
     }
 
     if (route === '/password') {
@@ -411,11 +537,18 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     if (route === '/uploads/edit') return reply(await staffEdit(env, b, s.me));
     if (route === '/uploads/delete') return reply(await staffDelete(env, b, s.me));
 
+    // The owner and admins: resident submissions review and the coverage check.
+    staff();
+    if (route === '/submissions/approve') return reply(await approveSubmission(env, b.id));
+    if (route === '/submissions/reject') return reply(await rejectSubmission(env, b.id));
+    if (route === '/coverage/refresh') return reply(await refreshCoverage(env));
+
     // Owner only from here.
     owner();
     if (route === '/invites/create') {
-      const inv = await createInvite(env, s.me, displayName(b.name));
-      return reply({ ok: true, path: `${PANEL_PREFIX}/invite/${inv.token}`, expiresAt: inv.expiresAt });
+      const role = b.role === 'admin' ? 'admin' : 'uploader';
+      const inv = await createInvite(env, s.me, displayName(b.name), role);
+      return reply({ ok: true, role, path: `${PANEL_PREFIX}/invite/${inv.token}`, expiresAt: inv.expiresAt });
     }
     if (route === '/invites/revoke') {
       await db.prepare('UPDATE panel_invites SET revoked_at = ? WHERE token_hash = ? AND used_at IS NULL').bind(new Date().toISOString(), String(b.id ?? '')).run();
@@ -424,16 +557,13 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     if (route === '/accounts/disable' || route === '/accounts/enable') {
       const id = Number(b.id);
       if (!Number.isInteger(id) || id === 1) throw badRequest('The owner account cannot be turned off.');
-      await db.prepare(`UPDATE panel_accounts SET disabled_at = ${route === '/accounts/disable' ? '?' : 'NULL'} WHERE id = ? AND role = 'uploader'`).bind(...(route === '/accounts/disable' ? [new Date().toISOString(), id] : [id])).run();
+      await db.prepare(`UPDATE panel_accounts SET disabled_at = ${route === '/accounts/disable' ? '?' : 'NULL'} WHERE id = ? AND role IN ('uploader', 'admin')`).bind(...(route === '/accounts/disable' ? [new Date().toISOString(), id] : [id])).run();
       return reply({ ok: true });
     }
-    if (route === '/submissions/approve') return reply(await approveSubmission(env, b.id));
-    if (route === '/submissions/reject') return reply(await rejectSubmission(env, b.id));
     if (route === '/submissions/remove') return reply(await removeSubmission(env, b.id));
     if (route === '/submissions/hide') return reply(await hideSubmission(env, b.id));
     if (route === '/submissions/restore') return reply(await restoreSubmission(env, b.id));
     if (route === '/submissions/switch') return reply(await setSubmissionsOpen(env, b.open === true));
-    if (route === '/coverage/refresh') return reply(await refreshCoverage(env));
     throw notFound('Unknown API route.');
   }
 
@@ -450,31 +580,34 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
   if (route === '/lookup/meetings') return reply(await lookupMeetings(env, p.get('q') ?? ''));
   if (route === '/lookup/projects') return reply(await lookupProjects(env));
 
-  // Owner only: activity logs, accounts, submissions and settings.
-  await ownerOnly(env, request);
+  // The owner and admins: activity logs, submissions review, coverage and health.
+  if (!isStaff(s.me)) throw new HttpError(403, 'unauthorized', 'Only the owner or an admin can do this.');
   const limit = limitOf(url);
   const before = beforeOf(url);
   const like = (v: string | null) => (v ? `%${v.slice(0, 100).replace(/[%_\\]/g, (m) => `\\${m}`)}%` : null);
 
   if (route === '/summary') return reply(await summary(env));
-  if (route === '/audit') return reply(await auditLog(env));
   if (route === '/submissions') return reply(await listSubmissions(env));
   if (route === '/submissions/log') return reply(await submissionLog(env));
-  // The file of a submission, pending ones included: shown to the owner only.
+  // The file of a submission, pending ones included: shown to signed-in reviewers only.
   if (route === '/submissions/file') return submissionFile(env, p.get('id'));
   if (route === '/coverage') return reply(await coverage(env));
   if (route === '/health') return reply({ ...(await jobHealth(env)), aiFallbacks: await fallbackCounts(env).catch(() => null) });
 
+  // Owner only: people, invites and the upload log.
+  if (s.me.role !== 'owner' && (route === '/audit' || route === '/accounts' || route === '/invites')) throw new HttpError(403, 'unauthorized', 'Only the owner can do this.');
+  if (route === '/audit') return reply(await auditLog(env));
+
   if (route === '/accounts') {
     const r = await db
-      .prepare('SELECT a.id, a.name, a.role, a.created_at, a.disabled_at, (SELECT count(*) FROM panel_passkeys k WHERE k.account_id = a.id) AS passkeys, (SELECT count(*) FROM uploads u WHERE u.account_id = a.id) AS uploads FROM panel_accounts a ORDER BY a.id')
+      .prepare('SELECT a.id, a.name, a.role, a.created_at, a.disabled_at, (SELECT login FROM panel_logins l WHERE l.account_id = a.id) AS login, (SELECT count(*) FROM panel_passkeys k WHERE k.account_id = a.id) AS passkeys, (SELECT count(*) FROM uploads u WHERE u.account_id = a.id) AS uploads FROM panel_accounts a ORDER BY a.id')
       .all();
     return reply({ items: r.results ?? [] });
   }
 
   if (route === '/invites') {
     const r = await db
-      .prepare("SELECT token_hash AS id, name, created_at, expires_at, used_at, revoked_at, (SELECT name FROM panel_accounts WHERE id = used_by) AS used_by_name FROM panel_invites WHERE created_at >= ? ORDER BY created_at DESC LIMIT 50")
+      .prepare("SELECT token_hash AS id, role, name, created_at, expires_at, used_at, revoked_at, (SELECT name FROM panel_accounts WHERE id = used_by) AS used_by_name FROM panel_invites WHERE created_at >= ? ORDER BY created_at DESC LIMIT 50")
       .bind(new Date(Date.now() - 30 * 86_400_000).toISOString())
       .all();
     return reply({ items: r.results ?? [], now: new Date().toISOString() });
