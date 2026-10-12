@@ -1,15 +1,18 @@
 /**
- * Under the map (/map#projects): every funded capital project, one card each (name, what it is,
- * the FY 2027 amount, its stage, and Details for the votes and records), then the city's current
- * construction table as one card per row. One edge-cached call: GET /api/pages/construction (the
- * city's Capital Improvement Plan map layer and its Construction Projects page as last stored).
- * A project with an update from Vineyard City staff (GET /api/updates, read fresh) shows the newest one
- * on its card.
+ * Construction and projects, shown only while the map's projects layer is on (/construction opens it):
+ * a side panel next to the map from 1024 px, a bottom sheet over the map on smaller screens (a peek with
+ * the title and counts, dragged or tapped open to most of the screen). Two tabs: every funded capital
+ * project, one card each (name, what it is, the FY 2027 amount, its stage, and Details for the votes and
+ * records), then the city's current construction table as one card per row. Tapping a card frames the
+ * project on the map; a project tapped on the map scrolls to its card. One edge-cached call:
+ * GET /api/pages/construction (the city's Capital Improvement Plan map layer and its Construction
+ * Projects page as last stored). A project with an update from Vineyard City staff (GET /api/updates,
+ * read fresh) shows the newest one on its card.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { Link } from 'react-router-dom';
 import type { FeatureCollection, Geometry } from 'geojson';
-import { ArrowUpRight, ChevronDown, MapPin } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp, MapPin, X } from 'lucide-react';
 import { useJson } from './api';
 import { DocLink } from './DocLink';
 import type { StaffUpdate } from './RecordsHome';
@@ -34,12 +37,22 @@ interface PageData {
 /** The FY 2026-2027 Capital Projects Reference Guide, as archived. */
 const REFERENCE_GUIDE = 'doc_4a2030ca2de99f44';
 
-function ProjectCard({ p, onShow, update }: { p: Plan; onShow: (gis: string) => void; update?: StaffUpdate }) {
+/** Height of the sheet's handle and title row: what shows over the map when the sheet is folded (also in console.css). */
+const PEEK = 76;
+
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+function ProjectCard({ p, onShow, update, active }: { p: Plan; onShow: (gis: string) => void; update?: StaffUpdate; active: boolean }) {
   const [open, setOpen] = useState(false);
+  // A tap anywhere on the card (not on its buttons, links or details) frames the project on the map.
+  const tap = (e: MouseEvent<HTMLLIElement>) => {
+    if (!p.bounds || (e.target as HTMLElement).closest('a, button, .vc-pd')) return;
+    onShow(p.gis);
+  };
   return (
-    <li className="vc-mp-card" data-open={open || undefined}>
+    <li className="vc-mp-card" data-gis={p.gis} data-open={open || undefined} data-active={active || undefined} data-tap={Boolean(p.bounds) || undefined} onClick={tap}>
       <div className="vc-mp-top">
-        <h3 className="vc-mp-name">{p.name}</h3>
+        <h4 className="vc-mp-name">{p.name}</h4>
         {p.budget != null && <span className="vc-mp-amt">{money(p.budget)}</span>}
       </div>
       <p className="vc-mp-what">{p.about ?? p.category}</p>
@@ -52,7 +65,7 @@ function ProjectCard({ p, onShow, update }: { p: Plan; onShow: (gis: string) => 
         <span className="vc-schip">{p.stage}</span>
         <span className="vc-mp-acts">
           {p.bounds && (
-            <button type="button" className="vc-ghost" data-icon-only="true" onClick={() => onShow(p.gis)} aria-label={`Show ${p.name} on the map`} title="Show on the map">
+            <button type="button" className="vc-mp-pin" onClick={() => onShow(p.gis)} aria-label={`Show ${p.name} on the map`} aria-pressed={active} title="Show on the map">
               <MapPin size={17} strokeWidth={1.8} />
             </button>
           )}
@@ -84,7 +97,7 @@ function CityWork({ s }: { s: ConstructionSnapshot }) {
   return (
     <section className="vc-mp-sec" aria-labelledby="vc-work-h">
       <div className="vc-mp-head">
-        <h2 id="vc-work-h">Construction now</h2>
+        <h3 id="vc-work-h" className="vc-mp-h">Construction now</h3>
         <a className="vc-mp-link" href={s.sourceUrl || CITY_PAGE} target="_blank" rel="noopener noreferrer">
           City page <ArrowUpRight size={14} strokeWidth={2} />
         </a>
@@ -93,7 +106,7 @@ function CityWork({ s }: { s: ConstructionSnapshot }) {
       <ul className="vc-mp-list">
         {g.rows.map((r, i) => (
           <li key={i} className="vc-mp-card">
-            <h3 className="vc-mp-name">{normalizeDatesInText(r[title] || '')}</h3>
+            <h4 className="vc-mp-name">{normalizeDatesInText(r[title] || '')}</h4>
             {where && r[where] && <p className="vc-mp-where">{r[where]}</p>}
             {what && r[what] && <p className="vc-mp-what" data-full="true">{normalizeDatesInText(r[what])}</p>}
             {rest.map((h) => (r[h] ? <p key={h} className="vc-mp-what" data-full="true">{`${h}: ${normalizeDatesInText(r[h])}`}</p> : null))}
@@ -120,13 +133,31 @@ function CityWork({ s }: { s: ConstructionSnapshot }) {
   );
 }
 
-export function MapProjects({ onShow }: { onShow: (gis: string) => void }) {
+type Tab = 'funded' | 'now';
+
+interface Props {
+  /** Frame a project on the map (and mark its card). */
+  onShow: (gis: string) => void;
+  /** Close: turns the projects layer off. */
+  onClose: () => void;
+  /** The project framed or tapped on the map, by its GIS name. */
+  active: string | null;
+  /** True from 1024 px: a side panel; otherwise a bottom sheet over the map. */
+  wide: boolean;
+  /** The layer was just turned off: slide away. */
+  leaving: boolean;
+  /** Open the sheet tall at first (arriving from /construction). */
+  startExpanded: boolean;
+}
+
+export function MapProjects({ onShow, onClose, active, wide, leaving, startExpanded }: Props) {
   const load = useJson<PageData>('/api/pages/construction');
   const own = useJson<FC>(load.status === 'error' || (load.status === 'done' && !load.data.projects) ? '/api/map/layers/projects?page=0&v=5' : null);
   const fc = load.status === 'done' && load.data.projects ? load.data.projects : own.status === 'done' ? own.data : null;
   const plans = useMemo(() => (fc ? plansFrom(fc) : []), [fc]);
   const total = useMemo(() => plans.reduce((s, p) => s + (p.budget ?? 0), 0), [plans]);
   const snapshot = load.status === 'done' ? load.data.construction : null;
+  const workRows = snapshot?.available && snapshot.glance?.rows.length ? snapshot.glance.rows.length : 0;
   // The newest staff update for each project on the map (the list comes newest first).
   const upd = useJson<{ items: StaffUpdate[] }>('/api/updates?limit=100');
   const latest = useMemo(() => {
@@ -134,62 +165,215 @@ export function MapProjects({ onShow }: { onShow: (gis: string) => void }) {
     for (const u of upd.status === 'done' ? upd.data.items : []) if (u.projectGis && !m.has(u.projectGis)) m.set(u.projectGis, u);
     return m;
   }, [upd]);
-  const { hash } = useLocation();
   const ready = plans.length > 0;
-
-  // /construction and /map#projects open here, once the list has its height.
-  useEffect(() => {
-    if (hash === '#projects' && ready) document.getElementById('projects')?.scrollIntoView({ block: 'start' });
-  }, [hash, ready]);
-
   const failed = load.status === 'error' && own.status === 'error';
+
+  const [tab, setTab] = useState<Tab>('funded');
+  const [expanded, setExpanded] = useState(startExpanded);
+  const sheet = !wide;
+  const folded = sheet && !expanded;
+  const rootRef = useRef<HTMLElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // A project tapped on the map (or framed from its card): its tab, and its card scrolled into view.
+  const [prevActive, setPrevActive] = useState(active);
+  if (prevActive !== active) {
+    setPrevActive(active);
+    if (active && tab !== 'funded') setTab('funded');
+  }
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!active || !body || !ready) return;
+    const card = [...body.querySelectorAll<HTMLElement>('.vc-mp-card[data-gis]')].find((el) => el.dataset.gis === active);
+    if (!card) return;
+    // Positions inside the scroller, kept clear of the sticky tabs at its top.
+    const tabs = body.querySelector<HTMLElement>('.vc-mp-tabs')?.offsetHeight ?? 0;
+    const top = card.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
+    const visible = top - tabs >= body.scrollTop && top + card.offsetHeight <= body.scrollTop + body.clientHeight;
+    if (!visible) body.scrollTo({ top: Math.max(0, top - tabs - 12), behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }, [active, ready, tab]);
+
+  // Escape: closes the side panel; folds the sheet when it is open.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || document.fullscreenElement || document.querySelector('.vtp-fs')) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('input, textarea, select, [role="dialog"]')) return;
+      if (wide) onClose();
+      else if (expanded) setExpanded(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [wide, expanded, onClose]);
+
+  // Dragging the sheet by its handle and title row: it follows the finger, then settles open or folded.
+  const drag = useRef<{ id: number; y0: number; t0: number; base: number; max: number; y: number; moved: boolean } | null>(null);
+  const dragged = useRef(false);
+  const onDown = (e: PointerEvent<HTMLDivElement>) => {
+    dragged.current = false;
+    const el = rootRef.current;
+    if (!sheet || !el || (e.target as HTMLElement).closest('button, a')) return;
+    const safe = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+    const max = Math.max(0, el.offsetHeight - PEEK - safe);
+    const base = expanded ? 0 : max;
+    drag.current = { id: e.pointerId, y0: e.clientY, t0: performance.now(), base, max, y: base, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    const el = rootRef.current;
+    if (!d || d.id !== e.pointerId || !el) return;
+    const dy = e.clientY - d.y0;
+    if (!d.moved && Math.abs(dy) < 6) return;
+    d.moved = true;
+    d.y = Math.min(d.max, Math.max(0, d.base + dy));
+    el.style.transition = 'none';
+    el.style.transform = `translateY(${d.y}px)`;
+  };
+  const onUp = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    const el = rootRef.current;
+    if (!d || d.id !== e.pointerId) return;
+    drag.current = null;
+    if (el) {
+      el.style.transition = '';
+      el.style.transform = '';
+    }
+    // A plain tap is left to the click that follows (toggled there, so the click cannot land on what the sheet uncovers).
+    if (!d.moved) return;
+    dragged.current = true;
+    const v = (e.clientY - d.y0) / Math.max(1, performance.now() - d.t0);
+    setExpanded(v < -0.35 ? true : v > 0.35 ? false : d.y < d.max / 2);
+  };
+
+  const onBarClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (!sheet || dragged.current || (e.target as HTMLElement).closest('button, a')) return;
+    setExpanded((x) => !x);
+  };
+  // A new tab starts at its top.
+  const pick = (t: Tab) => {
+    setTab(t);
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  };
+
+  // A card tapped in the open sheet: fold it so the framed project shows on the map.
+  const show = (gis: string) => {
+    if (sheet) setExpanded(false);
+    onShow(gis);
+  };
+
+  const onTabKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+    e.preventDefault();
+    const next: Tab = tab === 'funded' ? 'now' : 'funded';
+    pick(next);
+    e.currentTarget.querySelector<HTMLElement>(`[data-tab="${next}"]`)?.focus();
+  };
+
   if (failed) return null;
+  const framed = active ? plans.find((p) => p.gis === active) : undefined;
+  const summary = ready ? [`${plans.length} funded`, workRows ? `${workRows} in construction` : null].filter(Boolean).join(' · ') : ' ';
 
   return (
-    <div className="vc-mp" id="projects">
-      <section className="vc-mp-sec" aria-labelledby="vc-proj-h">
-        <div className="vc-mp-head">
-          <h2 id="vc-proj-h">Funded projects</h2>
-          <Link to="/budget?view=projects" className="vc-mp-link">
-            Budget lines
-          </Link>
-        </div>
-        {!ready ? (
-          <div className="vc-skeleton" aria-hidden="true">
-            <span style={{ width: '60%' }} />
-            <span style={{ width: '92%' }} />
-            <span style={{ width: '84%' }} />
+    <aside
+      ref={rootRef}
+      id="projects"
+      className="vc-mp"
+      data-kind={wide ? 'side' : 'sheet'}
+      data-expanded={sheet ? expanded : undefined}
+      data-leaving={leaving || undefined}
+      data-no-ptr=""
+      aria-labelledby="vc-mp-title"
+    >
+      <div className="vc-mp-bar" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onClick={onBarClick}>
+        {sheet && <span className="vc-mp-grip" aria-hidden="true" />}
+        <div className="vc-mp-bar-row">
+          <div className="vc-mp-bar-text">
+            <h2 id="vc-mp-title" className="vc-mp-title">
+              Construction and projects
+            </h2>
+            {/* Folded over the map with a project framed: its name, so the highlighted shape is named. */}
+            {folded && framed ? (
+              <p className="vc-mp-sum" data-framed="true">
+                <MapPin size={13} strokeWidth={2} aria-hidden="true" /> {framed.name}
+              </p>
+            ) : (
+              <p className="vc-mp-sum">{summary}</p>
+            )}
           </div>
-        ) : (
-          <>
-            <p className="vc-mp-count">
-              {plans.length} projects · {millions(total)} in the FY 2027 budget
-            </p>
-            <ul className="vc-mp-list">
-              {plans.map((p) => (
-                <ProjectCard key={p.key} p={p} onShow={onShow} update={latest.get(p.gis)} />
-              ))}
-            </ul>
-            <h3 className="vc-mp-sub">Also funded, not on the map</h3>
-            <ul className="vc-mp-also">
-              {ALSO_FUNDED.map((a) => (
-                <li key={a.name}>
-                  <span className="vc-mp-also-name">{a.name}</span>
-                  <span className="vc-mp-what" data-full="true">
-                    {a.about}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className="vc-mp-src">
-              <DocLink id={REFERENCE_GUIDE} className="vc-mp-link">
-                Capital Projects Reference Guide
-              </DocLink>
-            </p>
-          </>
+          {sheet && (
+            <button type="button" className="vc-mp-icon" onClick={() => setExpanded((x) => !x)} aria-expanded={expanded} aria-controls="vc-mp-body" aria-label={expanded ? 'Show the map' : 'Show the list'}>
+              {expanded ? <ChevronDown size={20} strokeWidth={2} /> : <ChevronUp size={20} strokeWidth={2} />}
+            </button>
+          )}
+          <button type="button" className="vc-mp-icon" onClick={onClose} aria-label="Close construction and projects" title="Close">
+            <X size={19} strokeWidth={2} />
+          </button>
+        </div>
+      </div>
+
+      <div className="vc-mp-body" id="vc-mp-body" ref={bodyRef} inert={folded || leaving}>
+        {workRows > 0 && (
+          <div className="vc-mp-tabs" role="tablist" aria-label="Lists" onKeyDown={onTabKey}>
+            <button type="button" role="tab" id="vc-mp-tab-funded" data-tab="funded" aria-selected={tab === 'funded'} aria-controls="vc-mp-pane" tabIndex={tab === 'funded' ? 0 : -1} onClick={() => pick('funded')}>
+              Funded <span className="vc-mp-n">{plans.length || ''}</span>
+            </button>
+            <button type="button" role="tab" id="vc-mp-tab-now" data-tab="now" aria-selected={tab === 'now'} aria-controls="vc-mp-pane" tabIndex={tab === 'now' ? 0 : -1} onClick={() => pick('now')}>
+              Construction now <span className="vc-mp-n">{workRows}</span>
+            </button>
+          </div>
         )}
-      </section>
-      {snapshot && <CityWork s={snapshot} />}
-    </div>
+        <div className="vc-mp-pane" id="vc-mp-pane" role={workRows > 0 ? 'tabpanel' : undefined} aria-labelledby={workRows > 0 ? `vc-mp-tab-${tab}` : undefined}>
+          {tab === 'now' && snapshot ? (
+            <CityWork s={snapshot} />
+          ) : (
+            <section className="vc-mp-sec" aria-labelledby="vc-proj-h">
+              <div className="vc-mp-head">
+                <h3 id="vc-proj-h" className="vc-mp-h">
+                  Funded projects
+                </h3>
+                <Link to="/budget?view=projects" className="vc-mp-link">
+                  Budget lines
+                </Link>
+              </div>
+              {!ready ? (
+                <div className="vc-skeleton" aria-hidden="true">
+                  <span style={{ width: '60%' }} />
+                  <span style={{ width: '92%' }} />
+                  <span style={{ width: '84%' }} />
+                </div>
+              ) : (
+                <>
+                  <p className="vc-mp-count">
+                    {plans.length} projects · {millions(total)} in the FY 2027 budget
+                  </p>
+                  <ul className="vc-mp-list">
+                    {plans.map((p) => (
+                      <ProjectCard key={p.key} p={p} onShow={show} update={latest.get(p.gis)} active={active === p.gis} />
+                    ))}
+                  </ul>
+                  <h4 className="vc-mp-sub">Also funded, not on the map</h4>
+                  <ul className="vc-mp-also">
+                    {ALSO_FUNDED.map((a) => (
+                      <li key={a.name}>
+                        <span className="vc-mp-also-name">{a.name}</span>
+                        <span className="vc-mp-what" data-full="true">
+                          {a.about}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="vc-mp-src">
+                    <DocLink id={REFERENCE_GUIDE} className="vc-mp-link">
+                      Capital Projects Reference Guide
+                    </DocLink>
+                  </p>
+                </>
+              )}
+            </section>
+          )}
+        </div>
+      </div>
+    </aside>
   );
 }

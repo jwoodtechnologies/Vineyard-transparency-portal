@@ -3,8 +3,9 @@
  * subdivisions, roads, parks, schools, businesses) served through the portal's API, drawn with
  * MapLibre on free OpenFreeMap streets and Utah County aerial imagery. Click anything for details;
  * search any road or project. The basemap draws first; city layers are fetched in parallel and added
- * as they arrive, never holding the map back. Under the map: every funded project and the city's
- * construction table (MapProjects; /construction opens there).
+ * as they arrive, never holding the map back. While the projects layer is on, every funded project and
+ * the city's construction table show beside the map (a bottom sheet on phones; MapProjects).
+ * /construction opens the map with that layer on.
  */
 import './styles';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -23,6 +24,7 @@ import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
 import { ProjectDetail } from './ProjectDetail';
 import { MapProjects } from './MapProjects';
+import { useWide } from './useWide';
 import { BASE_BG, blankStyle, byZoom, CASING, firstLabelLayer, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
 import { hasTile, loadedTileCount, loadTile, mergedParcels, tilesFor } from './parcelTiles';
 import { FullscreenToggle } from './mapFullscreen';
@@ -541,6 +543,10 @@ export default function MapPage() {
   });
   const [data, setData] = useState<Record<string, FC>>({});
   const [picked, setPicked] = useState<Picked | null>(null);
+  // A project framed from its card in the projects list (no details card opens on the map for it).
+  const [listActive, setListActive] = useState<string | null>(null);
+  const quietFocus = useRef(false);
+  const layersBtn = useRef<HTMLButtonElement>(null);
   const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820);
   // The legend starts folded on phones so it never sits on top of the zoom buttons.
   const [legendOpen, setLegendOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 640);
@@ -604,11 +610,14 @@ export default function MapPage() {
     const want = norm(value);
     let matches = fc.features.filter((f) => norm(nameOf(layer, f.properties ?? {})) === want);
     if (!matches.length && want.length >= 4) matches = fc.features.filter((f) => ` ${norm(nameOf(layer, f.properties ?? {}))} `.includes(` ${want} `));
+    const quiet = quietFocus.current;
+    quietFocus.current = false;
     if (!matches.length) return;
     const b = boundsOf(matches);
-    if (b) map.fitBounds(b, { padding: fitPadding(), maxZoom: 16, duration: 800 });
-    setPicked({ layer, label: labelsRef.current.get(layer) ?? '', name: nameOf(layer, matches[0].properties ?? {}), props: matches[0].properties ?? {} });
+    if (b) map.fitBounds(b, { padding: fitPadding(map, !quiet), maxZoom: 16, duration: reducedMotion() ? 0 : 800 });
     highlight(map, matches.length === 1 ? matches[0] : { type: 'FeatureCollection', features: matches });
+    if (quiet) return;
+    setPicked({ layer, label: labelsRef.current.get(layer) ?? '', name: nameOf(layer, matches[0].properties ?? {}), props: matches[0].properties ?? {} });
   }, []);
   const applyRef = useRef(applyFocus);
   useEffect(() => {
@@ -1042,7 +1051,7 @@ export default function MapPage() {
       if (!map) return;
       setOn((cur) => new Set([...cur, r.layer]));
       const b = boundsOf(r.features);
-      if (b) map.fitBounds(b, { padding: fitPadding(), maxZoom: 16, duration: 800 });
+      if (b) map.fitBounds(b, { padding: fitPadding(map, true), maxZoom: 16, duration: 800 });
       setPicked({ layer: r.layer, label: catalog?.find((l) => l.key === r.layer)?.label ?? '', name: r.name, props: (r.features[0].properties ?? {}) as Record<string, unknown> });
       highlight(map, r.features.length === 1 ? r.features[0] : { type: 'FeatureCollection', features: r.features });
       setQ('');
@@ -1086,17 +1095,61 @@ export default function MapPage() {
 
   const ask = picked ? `/?q=${encodeURIComponent(askFor(picked))}` : '/';
 
-  // A project tapped in the list under the map: the projects layer on, the map back in view, the project framed.
+  // A project tapped in the projects list: framed and highlighted on the map, its card marked.
   const showProject = useCallback((gis: string) => {
     focusRef.current = `project:${gis}`;
+    quietFocus.current = true;
+    setPicked(null);
+    setListActive(gis);
     setOn((cur) => (cur.has('projects') ? cur : new Set([...cur, 'projects'])));
-    wrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     setTimeout(() => applyRef.current(), 0);
   }, []);
+
+  // The projects list shows only while the projects layer is on: beside the map from 1024 px, a sheet
+  // over it below that. When the layer goes off it slides away first.
+  const wide = useWide(1024);
+  const projectsOn = on.has('projects');
+  const [prevProjectsOn, setPrevProjectsOn] = useState(projectsOn);
+  const [projectsLeaving, setProjectsLeaving] = useState(false);
+  if (prevProjectsOn !== projectsOn) {
+    setPrevProjectsOn(projectsOn);
+    setProjectsLeaving(!projectsOn);
+  }
+  useEffect(() => {
+    if (!projectsLeaving) return;
+    const t = setTimeout(() => setProjectsLeaving(false), reducedMotion() ? 0 : 240);
+    return () => clearTimeout(t);
+  }, [projectsLeaving]);
+  const projectsShown = projectsOn || projectsLeaving;
+  // From /construction (or /map#projects) the sheet opens tall: the list is what was asked for.
+  const [openTall] = useState(() => typeof window !== 'undefined' && window.location.hash === '#projects');
+  const closeProjects = useCallback(() => {
+    setOn((cur) => {
+      const next = new Set(cur);
+      next.delete('projects');
+      return next;
+    });
+    setListActive(null);
+    layersBtn.current?.focus();
+    // An address that named the layer (/construction, a shared link) would bring the list back on reload.
+    setParams(
+      (cur) => {
+        const keep = (cur.get('layers') ?? '').split(',').filter((k) => k && k !== 'projects');
+        if (keep.length === (cur.get('layers') ?? '').split(',').filter(Boolean).length) return cur;
+        const next = new URLSearchParams(cur);
+        if (keep.length) next.set('layers', keep.join(','));
+        else next.delete('layers');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setParams]);
+  const activeProject = picked ? (picked.layer === 'projects' && typeof picked.props.Project_Name === 'string' ? picked.props.Project_Name : null) : listActive;
 
   return (
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
+      <div className="vc-map-shell" data-projects={projectsShown ? (wide ? 'side' : 'sheet') : undefined}>
       <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked)}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
         {!painted && (
@@ -1129,7 +1182,7 @@ export default function MapPage() {
               </ul>
             )}
           </div>
-          <button type="button" className="vc-map-fab" onClick={() => setPanel((p) => !p)} aria-expanded={panel} aria-label="Map layers">
+          <button type="button" ref={layersBtn} className="vc-map-fab" onClick={() => setPanel((p) => !p)} aria-expanded={panel} aria-label="Map layers">
             <Layers size={17} strokeWidth={1.9} />
             <span className="vc-nav-text">Layers</span>
             <ChevronDown size={14} className="vc-map-chev" data-open={panel} />
@@ -1251,7 +1304,7 @@ export default function MapPage() {
               <span className="vc-map-kind">
                 <span className="vc-map-swatch" style={{ background: lookOf(picked.layer, dark)?.color }} /> {picked.label}
               </span>
-              <button type="button" className="vc-ghost" data-icon-only="true" onClick={() => (setPicked(null), clearHighlight(mapRef.current))} aria-label="Close details">
+              <button type="button" className="vc-ghost" data-icon-only="true" onClick={() => (setPicked(null), setListActive(null), clearHighlight(mapRef.current))} aria-label="Close details">
                 <X size={17} />
               </button>
             </div>
@@ -1325,7 +1378,8 @@ export default function MapPage() {
           </div>
         )}
       </div>
-      <MapProjects onShow={showProject} />
+      {projectsShown && <MapProjects onShow={showProject} onClose={closeProjects} active={activeProject} wide={wide} leaving={projectsLeaving} startExpanded={openTall} />}
+      </div>
     </div>
   );
 }
@@ -1341,10 +1395,22 @@ function mapPoint(params: URLSearchParams): { lat: number; lng: number; zoom: nu
   return { lat, lng, zoom: Number.isFinite(z) && z > 0 ? Math.max(10, Math.min(19, z)) : 17, label: params.get('label')?.slice(0, 120) || null };
 }
 
-/** Keep a focused feature clear of the layers panel (left) and the details card (right/bottom). */
-function fitPadding() {
-  if (typeof window === 'undefined' || window.innerWidth <= 820) return { top: 90, bottom: 320, left: 40, right: 40 };
-  return { top: 110, bottom: 80, left: 320, right: 420 };
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * Keep a focused feature clear of the layers panel (left), the details card (right, or bottom on phones)
+ * when one opens, and the folded projects sheet (bottom, below 1024 px). Scaled down on a narrow map.
+ */
+function fitPadding(map: maplibregl.Map, card: boolean) {
+  const box = map.getContainer();
+  const w = box.clientWidth || window.innerWidth;
+  const h = box.clientHeight || window.innerHeight;
+  const sheet = window.innerWidth < 1024 && Boolean(box.closest('.vc-map-shell[data-projects="sheet"]'));
+  const p = window.innerWidth <= 820 ? { top: 90, bottom: card ? 320 : sheet ? 120 : 60, left: 40, right: 40 } : { top: 110, bottom: sheet ? 130 : 80, left: 320, right: card ? 420 : 60 };
+  // Leave at least a third of the map for the feature itself.
+  const sx = Math.min(1, (w * 0.66) / (p.left + p.right));
+  const sy = Math.min(1, (h * 0.66) / (p.top + p.bottom));
+  return { top: p.top * sy, bottom: p.bottom * sy, left: p.left * sx, right: p.right * sx };
 }
 
 function highlight(map: maplibregl.Map, f: Feature | FeatureCollection) {

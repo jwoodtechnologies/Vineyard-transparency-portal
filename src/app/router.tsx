@@ -129,7 +129,7 @@ export const router = createBrowserRouter([
   { path: '/news', element: <Navigate to="/meetings" replace /> },
   { path: '/budget', element: quiet(<BudgetPage />) },
   { path: '/map', element: quiet(<MapPage />) },
-  // Construction is a map layer: the funded projects and the city's construction table are listed under the map.
+  // Construction is a map layer: with it on, the funded projects and the city's construction table are listed beside the map.
   { path: '/construction', element: <Navigate to="/map?layers=projects#projects" replace /> },
   { path: '/records', element: quiet(<RecordsPage />) },
   { path: '/records/:index', element: quiet(<RecordsIndexPage />) },

@@ -116,6 +116,15 @@ or scrolls inside its own frame with the first column pinned; the page itself ne
 **Input** `.vc-input` (and `select`, `textarea` in forms): 40 px tall, radius 12 px, 1 px `--vc-line-2`
 border, `--vc-surface` fill, 14 px text (16 px on phones so iOS does not zoom).
 
+**Map projects panel** `.vc-mp` (`MapProjects.tsx`): shown only while the map's projects layer is on
+(`/construction` opens the map with it on). From 1024 px a column beside the map (360 to 420 px, the map
+narrows, nothing covers its controls); below that a bottom sheet over the map: a 76 px peek (handle, title,
+counts, or the name of the framed project) above the safe area, dragged or tapped up to 85% of the map. The
+map's buttons, legend, layers panel and details card sit above the peek. The close button (and Escape beside
+the map) turns the layer off; in full screen the map has the whole screen and the sheet is hidden. Two tabs,
+Funded and Construction now. Tapping a card frames its project on the map and marks the card with the accent
+ring; a project tapped on the map scrolls to its card.
+
 **Focus**: every interactive element shows `outline: 2px solid var(--vc-accent); outline-offset: 2px` on
 `:focus-visible`. No component removes it without drawing its own ring of the same color.
 

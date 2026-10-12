@@ -1,5 +1,5 @@
 /**
- * Funded project data for the list under the map (MapProjects). Two sources:
+ * Funded project data for the projects list beside the map (MapProjects). Two sources:
  *  1. The city's own construction notices and email updates (vineyardutah.gov, Public Works,
  *     Construction Projects), written here as dated entries, newest first. Every line below is taken
  *     from a notice the city posted; nothing is inferred.
