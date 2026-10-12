@@ -35,6 +35,27 @@ export async function staff<T>(path: string, init: { method?: 'GET' | 'POST'; bo
   return data as T;
 }
 
+/** A form upload (a file with its details). The browser sets the multipart boundary itself. */
+export async function staffUpload<T>(path: string, form: FormData): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/staff${path}`, { method: 'POST', headers: { accept: 'application/json', 'x-vtp-staff': '1' }, credentials: 'same-origin', cache: 'no-store', body: form });
+  } catch {
+    throw new StaffError('The upload did not finish. Check your connection and try again.', 0);
+  }
+  let data: unknown = null;
+  try {
+    data = await res.json();
+  } catch {
+    /* an empty or non-JSON body */
+  }
+  if (!res.ok) {
+    const message = (data as { error?: { message?: string } } | null)?.error?.message;
+    throw new StaffError(message ?? 'The file could not be added. Try again.', res.status);
+  }
+  return data as T;
+}
+
 export type Role = 'owner' | 'admin' | 'editor';
 
 export interface Me {
