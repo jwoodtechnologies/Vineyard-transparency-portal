@@ -7,6 +7,9 @@ import type { StaffUser } from './core';
 import { records } from './records';
 import { votes } from './votes';
 import { people } from './people';
+import { notices } from './notices';
+import { events } from './events';
+import { updates } from './updates';
 
 export interface StaffCall {
   env: Env;
@@ -22,7 +25,7 @@ export interface StaffCall {
 
 type Module = (call: StaffCall) => Promise<Response | null>;
 
-const MODULES: Module[] = [records, votes, people];
+const MODULES: Module[] = [records, votes, people, notices, events, updates];
 
 export async function handleStaffModules(call: StaffCall): Promise<Response | null> {
   for (const m of MODULES) {
