@@ -33,6 +33,22 @@ Anyone with the records area adds agendas, minutes, reports and other documents 
 
 Staff can change the details of anything added (including items added from the owner panel) and remove it. A change or an add can be undone from Activity; a removal cannot, because the stored file is deleted. The server side is `worker/staff/records.ts`, which reuses the storage, indexing and size rules of `worker/contrib/staff.ts`. Uploads reach it as a form, which the router passes to the module unread (`worker/staff/routes.ts`).
 
+## Votes
+
+Anyone with the votes area opens `/staff/votes`, picks a meeting (or searches by the wording of a motion), and sees every motion read from that meeting's minutes. A motion can be corrected (its agenda item, wording, who moved and seconded, Carried or Failed, and how each member voted), a motion the minutes missed can be added, and one that should not be listed can be removed. The form checks the result against the votes before saving: a motion cannot be Carried with more No than Yes, or Failed with more Yes than No.
+
+The public Votes page, each member's totals, the boards pages and the chat answers all read the same two tables (`motions`, `motion_votes`), so a correction shows everywhere at once. The server side is `worker/staff/votes.ts`.
+
+A motion staff touch is marked `manual`. The minutes reader (`worker/api/votes.ts`) skips a manual motion when it reads the minutes again, and a removed motion is remembered in `vote_tombstones` by a fingerprint of its original wording (`worker/lib/voteFix.ts`), so neither a correction nor a removal is undone by the next read. A vote added before the minutes were available gives way to the minutes once they are read. Every change can be undone from Activity.
+
+## People and boards
+
+Anyone with the people area opens `/staff/directory`. It lists the Mayor and Council, city staff and board members. Staff can add a person, change a title, department, term, email, phone or board seats, and take someone off the list when they leave (and put them back). A taken-off person is hidden from the People and Boards pages, and their past votes and records stay. A council member's name is fixed, because it is how their votes are found in the minutes. Only one person can be Mayor at a time. Photos still come from the city website.
+
+The city website is still read every day. A person staff added or changed is marked `manual` in the `people` table, and that read (`upsertPeople` in `worker/api/people.ts`) leaves them exactly as staff set them: it does not overwrite them, hide them, or bring back someone staff took off. Board members are placed by the board names in their `department` list, matched to the portal's boards by `boardIdFor` in `worker/api/boards.ts`. A term that ends with a past year hides a board member unless the minutes show them still serving. Every change can be undone from Activity. The sitting council is cached for ten minutes on each server, so a change to who sits on it can take up to ten minutes to reach vote totals everywhere; the People and Boards pages follow at once. The server side is `worker/staff/people.ts`.
+
+The login accounts screen is `/staff/people`, labeled Accounts, and is for owners and admins only.
+
 ## Adding an area
 
 Each content area plugs in through `worker/staff/modules.ts` (API routes, which check `requireArea`) and `src/console/staff/sections.ts` (the screen). Writes go through `auditStatement` in the same batch as the change, and call `published(env)` afterward.
