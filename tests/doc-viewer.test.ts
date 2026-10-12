@@ -116,3 +116,12 @@ describe('nightly document check', () => {
     expect(plan(evaluate({ health: null, chatRun: null, docRun: run(6, 'success'), ingestRuns: null, repo: 'o/r', base: 'https://vineyardportal.org' }), open, Date.now(), false)).toEqual([expect.objectContaining({ type: 'close', number: 3 })]);
   });
 });
+
+describe('streamed answer sentences', () => {
+  it('shows only finished sentences, without citation markers or NO_RECORD', async () => {
+    const { draftSentences } = await import('../src/lib/draftSentences');
+    expect(draftSentences('The RDA is the Redevelopment Agency [1]. It funds ro')).toEqual([['The RDA is the Redevelopment Agency.']]);
+    expect(draftSentences('NO_RECORD')).toEqual([]);
+    expect(draftSentences('Yes, it is open. It runs all summer.\n\nIn general, parks close at dusk.')).toEqual([['Yes, it is open.', 'It runs all summer.'], ['In general, parks close at dusk.']]);
+  });
+});

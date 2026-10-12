@@ -13,6 +13,7 @@ import { ChevronDown, ChevronRight, History, Plus, RotateCcw } from 'lucide-reac
 import type { Citation, ConversationTurn, SearchFilters, SearchResult, SearchSort } from '@/types/models';
 import { SearchService } from '@/services';
 import { askStream } from './askStream';
+import { draftSentences } from '@/lib/draftSentences';
 import { Composer } from './Composer';
 import { AnswerBody, AsOf, ClarifyChoices, FollowUps, MatchingRecords, Sources } from './Answer';
 import { Records } from './Records';
@@ -224,20 +225,28 @@ export default function ConsolePage() {
         started.current.add(t.id);
         const ctrl = new AbortController();
         controllers.current.set(t.id, ctrl);
-        // The answer is shown whole when it arrives; streamed text only switches the indicator to writing.
-        let writing = false;
+        // Streamed text is kept, batched to one render per frame; each finished sentence flows up as it arrives.
+        let pending = '';
+        let frame = 0;
+        const flush = () => {
+          frame = 0;
+          const add = pending;
+          pending = '';
+          if (add) patch(t.id, (cur) => ({ draft: cur.draft + add, phase: 'writing' }));
+        };
         askStream({ question: t.question, conversation: history(turns.slice(0, i)) }, ctrl.signal, {
           onStatus: (phase) => phase === 'writing' && patch(t.id, { phase: 'writing' }),
-          onDelta: () => {
-            if (writing) return;
-            writing = true;
-            patch(t.id, { phase: 'writing' });
+          onDelta: (text) => {
+            pending += text;
+            if (!frame) frame = requestAnimationFrame(flush);
           },
         }).then(
           (res) => {
             const answer = res as ConsoleAnswer;
+            if (frame) cancelAnimationFrame(frame);
             patch(t.id, (cur) => ({
               draft: '',
+              streamed: draftSentences(cur.draft + pending).length > 0,
               status: 'done',
               answer,
               recordsStatus: answer.mode === 'conversation' ? 'idle' : cur.recordsStatus,
@@ -414,8 +423,21 @@ export default function ConsolePage() {
             {cardsFor(t, people).map((p) => (
               <PersonCard key={p.slug} person={p} />
             ))}
-            {/* The answer shows once it is complete and flows up into place; until then, the working indicator. */}
-            {t.status === 'loading' && <Thinking writing={t.phase === 'writing' || Boolean(t.draft)} />}
+            {/* While the answer is written, each finished sentence flows up into place; until the first, the working indicator. */}
+            {t.status === 'loading' && !draftSentences(t.draft).length && <Thinking writing={t.phase === 'writing' || Boolean(t.draft)} />}
+            {t.status === 'loading' && draftSentences(t.draft).length > 0 && (
+              <div className="vc-answer" data-mode="conversation" aria-live="polite">
+                {draftSentences(t.draft).map((para, k) => (
+                  <p key={k} className="vc-seg">
+                    {para.map((x, j) => (
+                      <span key={j} className="vc-seg vc-seg-inline">
+                        {x}{' '}
+                      </span>
+                    ))}
+                  </p>
+                ))}
+              </div>
+            )}
             {t.status === 'error' && (
               <>
                 <div className="vc-notice vc-notice-row">
@@ -432,7 +454,7 @@ export default function ConsolePage() {
             {t.status === 'done' && t.answer && (
               <>
                 {t.answer.notice && t.answer.mode !== 'conversation' && isSearchOnly(t.answer) && <p className="vc-notice">{t.answer.notice}</p>}
-                {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} />}
+                {!isSearchOnly(t.answer) && <AnswerBody answer={t.answer} onCite={cite(t)} instant={t.streamed} />}
                 <ClarifyChoices answer={t.answer} onAsk={ask} disabled={Boolean(busyTurn)} />
                 <AsOf answer={t.answer} />
                 {t.answer.votes && t.answer.votes.items.length > 0 && (
