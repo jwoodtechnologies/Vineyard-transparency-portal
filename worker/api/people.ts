@@ -36,8 +36,10 @@ export async function ensurePeopleTable(env: Env): Promise<void> {
     `CREATE TABLE IF NOT EXISTS people (
        slug TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, role TEXT NOT NULL, title TEXT, department TEXT,
        term TEXT, email TEXT, phone TEXT, photo_url TEXT, source_url TEXT NOT NULL,
-       current INTEGER NOT NULL DEFAULT 1, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL)`,
+       current INTEGER NOT NULL DEFAULT 1, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, manual INTEGER NOT NULL DEFAULT 0)`,
   ).run();
+  // Tables made before staff could edit people have no manual column; adding it twice is harmless.
+  await env.CATALOG_DB.prepare('ALTER TABLE people ADD COLUMN manual INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
   ready = true;
 }
 
@@ -54,7 +56,8 @@ export async function upsertPeople(env: Env, people: PersonInput[], asOf: string
   if (!clean.length) throw new HttpError(400, 'bad_request', 'No people.');
   const kinds = [...new Set(clean.map((p) => p.kind))];
   const stmts = [
-    db.prepare(`UPDATE people SET current = 0 WHERE kind IN (SELECT value FROM json_each(?)) AND slug NOT IN (SELECT value FROM json_each(?))`).bind(JSON.stringify(kinds), JSON.stringify(clean.map((p) => p.slug))),
+    // A person staff added or changed is left as staff set it: the city website's list never overwrites or hides them.
+    db.prepare(`UPDATE people SET current = 0 WHERE manual = 0 AND kind IN (SELECT value FROM json_each(?)) AND slug NOT IN (SELECT value FROM json_each(?))`).bind(JSON.stringify(kinds), JSON.stringify(clean.map((p) => p.slug))),
     ...clean.map((p) =>
       db
         .prepare(
@@ -62,7 +65,8 @@ export async function upsertPeople(env: Env, people: PersonInput[], asOf: string
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
            ON CONFLICT(slug) DO UPDATE SET name = excluded.name, kind = excluded.kind, role = excluded.role, title = excluded.title, department = excluded.department,
              term = excluded.term, email = excluded.email, phone = excluded.phone, photo_url = coalesce(excluded.photo_url, people.photo_url),
-             source_url = excluded.source_url, current = 1, last_seen = excluded.last_seen`,
+             source_url = excluded.source_url, current = 1, last_seen = excluded.last_seen
+           WHERE people.manual = 0`,
         )
         .bind(p.slug, p.name.slice(0, 120), p.kind, p.role.slice(0, 120), str(p.title), str(p.department), str(p.term), str(p.email), str(p.phone), str(p.photoUrl), p.sourceUrl, asOf, asOf),
     ),

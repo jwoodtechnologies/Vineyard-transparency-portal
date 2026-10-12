@@ -10,6 +10,7 @@ import { motionPages, parseMinutes, rosterFrom, type ParsedMotion } from '../lib
 import { titleDate } from '../lib/adoptionDate';
 import { json } from '../lib/http';
 import { motionMatches, placeWords, termTries } from '../ai/voteMatch';
+import { motionFingerprint } from '../lib/voteFix';
 
 /** Bump to re-read every set of minutes after a parser change. */
 export const VOTES_PARSER = 20;
@@ -35,6 +36,11 @@ export async function ensureVotesTables(env: Env): Promise<void> {
   );
   // Consent items each consent motion approved (added after the table first shipped).
   await env.CATALOG_DB.prepare('ALTER TABLE motions ADD COLUMN items TEXT').run().catch(() => undefined);
+  // Staff corrections: a motion staff added or changed keeps its values when the minutes are read again (fp is what it said when first read).
+  await env.CATALOG_DB.prepare('ALTER TABLE motions ADD COLUMN manual INTEGER NOT NULL DEFAULT 0').run().catch(() => undefined);
+  await env.CATALOG_DB.prepare('ALTER TABLE motions ADD COLUMN fp TEXT').run().catch(() => undefined);
+  // Motions staff removed: the minutes still print them, so they are remembered and not read back in.
+  await env.CATALOG_DB.prepare('CREATE TABLE IF NOT EXISTS vote_tombstones (fp TEXT PRIMARY KEY, body_id TEXT, meeting_date TEXT, removed_at TEXT NOT NULL)').run();
   ready = true;
 }
 
@@ -87,6 +93,26 @@ export async function processVotes(env: Env, budgetMs = 20_000, max = 400): Prom
   return out;
 }
 
+/** The motions staff added, changed or removed at this meeting, by id and by wording (see worker/lib/voteFix.ts). */
+async function staffKept(db: D1Database, docId: string, body: string, date: string | null): Promise<{ ids: Set<string>; fps: Set<string> }> {
+  const ids = new Set<string>();
+  const fps = new Set<string>();
+  const rows = await db
+    // Votes entered before any minutes existed (no file behind them) do not hold the minutes back: they are replaced by them.
+    .prepare("SELECT id, fp FROM motions WHERE manual = 1 AND document_id != '' AND (document_id = ? OR (body_id = ? AND meeting_date = ?))")
+    .bind(docId, body, date ?? '')
+    .all<{ id: string; fp: string | null }>();
+  for (const r of rows.results ?? []) {
+    ids.add(r.id);
+    if (r.fp) fps.add(r.fp);
+  }
+  if (date) {
+    const tombs = await db.prepare('SELECT fp FROM vote_tombstones WHERE body_id = ? AND meeting_date = ?').bind(body, date).all<{ fp: string }>();
+    for (const t of tombs.results ?? []) fps.add(t.fp);
+  }
+  return { ids, fps };
+}
+
 async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ motions: number; votes: number; superseded: boolean }> {
   const db = env.CATALOG_DB;
   const chunks = await repo.documentChunks(Number(d.search_shard), d.id);
@@ -98,8 +124,8 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   // Hearing notices and announcements are sometimes filed as minutes: no attendance list, no "minutes" in the name.
   if (!/minute/i.test(d.title ?? '') && parsed.present.length < 3) {
     await db.batch([
-      db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ?)').bind(d.id),
-      db.prepare('DELETE FROM motions WHERE document_id = ?').bind(d.id),
+      db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ? AND manual = 0)').bind(d.id),
+      db.prepare('DELETE FROM motions WHERE document_id = ? AND manual = 0').bind(d.id),
       db.prepare('DELETE FROM meeting_attendance WHERE document_id = ?').bind(d.id),
       db.prepare('DELETE FROM meeting_roster WHERE document_id = ?').bind(d.id),
       db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, parser, parsed_at, motions) VALUES (?, ?, ?, 0)').bind(d.id, VOTES_PARSER, now),
@@ -120,7 +146,10 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   // Members by full name where the minutes print it ("Jacob Holdaway", not "Holdaway"), so people
   // who share a last name across the years stay separate.
   const full = (n: string | null) => (n ? (parsed.fullNames[n] ?? n) : n);
-  const motions = parsed.motions.map((m) => ({ ...m, mover: full(m.mover), seconder: full(m.seconder), votes: m.votes.map((v) => ({ ...v, member: full(v.member) as string })) }));
+  const read = parsed.motions.map((m) => ({ ...m, mover: full(m.mover), seconder: full(m.seconder), votes: m.votes.map((v) => ({ ...v, member: full(v.member) as string })) }));
+  // Staff corrections stay: a motion staff changed or removed is not read back in as the minutes print it.
+  const kept = await staffKept(db, d.id, body, date);
+  const motions = read.filter((m) => !kept.ids.has(`${d.id}:${m.seq}`) && !kept.fps.has(motionFingerprint(body, date, m.text)));
 
   // One copy per meeting.
   const other = await db
@@ -131,8 +160,8 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   // The fuller copy wins (a draft with every motion beats an approved file that lost its text); approved breaks ties.
   if (other && (!motions.length || other.motions > motions.length || (other.motions === motions.length && other.rank >= rank))) {
     await db.batch([
-      db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ?)').bind(d.id),
-      db.prepare('DELETE FROM motions WHERE document_id = ?').bind(d.id),
+      db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ? AND manual = 0)').bind(d.id),
+      db.prepare('DELETE FROM motions WHERE document_id = ? AND manual = 0').bind(d.id),
       db.prepare('DELETE FROM meeting_attendance WHERE document_id = ?').bind(d.id),
       db.prepare('DELETE FROM meeting_roster WHERE document_id = ?').bind(d.id),
       db.prepare('INSERT OR REPLACE INTO vote_docs (document_id, meeting_key, body_id, meeting_date, rank, motions, parser, parsed_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)').bind(d.id, key, body, date, rank, VOTES_PARSER, now),
@@ -141,16 +170,21 @@ async function readOne(env: Env, repo: SearchRepository, d: DocRow): Promise<{ m
   }
   const stmts: D1PreparedStatement[] = [];
   const clear = (docId: string) => {
-    stmts.push(db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ?)').bind(docId));
-    stmts.push(db.prepare('DELETE FROM motions WHERE document_id = ?').bind(docId));
+    stmts.push(db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE document_id = ? AND manual = 0)').bind(docId));
+    stmts.push(db.prepare('DELETE FROM motions WHERE document_id = ? AND manual = 0').bind(docId));
     stmts.push(db.prepare('DELETE FROM meeting_attendance WHERE document_id = ?').bind(docId));
     stmts.push(db.prepare('DELETE FROM meeting_roster WHERE document_id = ?').bind(docId));
   };
   clear(d.id);
   // One file per meeting: anything another file left under this body and date goes (it is re-read on its own turn).
   if (date && motions.length) {
-    stmts.push(db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE body_id = ? AND meeting_date = ? AND document_id != ?)').bind(body, date, d.id));
-    stmts.push(db.prepare('DELETE FROM motions WHERE body_id = ? AND meeting_date = ? AND document_id != ?').bind(body, date, d.id));
+    stmts.push(db.prepare('DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE body_id = ? AND meeting_date = ? AND document_id != ? AND manual = 0)').bind(body, date, d.id));
+    stmts.push(db.prepare('DELETE FROM motions WHERE body_id = ? AND meeting_date = ? AND document_id != ? AND manual = 0').bind(body, date, d.id));
+  }
+  // Votes staff entered before any minutes existed (no minutes file behind them) give way to the minutes once they are read.
+  if (date && read.length) {
+    stmts.push(db.prepare("DELETE FROM motion_votes WHERE motion_id IN (SELECT id FROM motions WHERE body_id = ? AND meeting_date = ? AND manual = 1 AND document_id = '')").bind(body, date));
+    stmts.push(db.prepare("DELETE FROM motions WHERE body_id = ? AND meeting_date = ? AND manual = 1 AND document_id = ''").bind(body, date));
   }
   if (other) {
     clear(other.document_id);
@@ -238,6 +272,10 @@ export const SCOPE_FROM = '2026-01-01';
 export const SCOPE_BODIES = ['city-council', 'redevelopment-agency'];
 export const PC = 'planning-commission';
 let councilCache: { at: number; names: string[] } | null = null;
+/** Forgets the cached council so a change staff made to who sits on it shows at once (other servers catch up within ten minutes). */
+export function resetCouncilCache(): void {
+  councilCache = null;
+}
 export async function currentCouncil(env: Env): Promise<string[]> {
   if (!councilCache || Date.now() - councilCache.at > 10 * 60_000) {
     const r = await env.CATALOG_DB.prepare("SELECT name FROM people WHERE current = 1 AND kind = 'elected'").all<{ name: string }>().catch(() => ({ results: [] as Array<{ name: string }> }));

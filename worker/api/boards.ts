@@ -29,6 +29,8 @@ const ALIAS: Record<string, string> = {
 const SKIP = new Set(['general', 'public-notices']);
 const STAFF_COMMITTEES = new Set(['development-review-committee', 'technical-advisory-committee', 'administrative-law-judge-hearing-officer', 'board-of-appeals-building-department']);
 
+/** The board id a listed board name belongs to (a renamed body maps to the portal's body; any other name becomes its own board). */
+export const boardIdFor = (name: string): string => ALIAS[name.toLowerCase()] ?? slug(name);
 const slug = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export async function listBoards(env: Env): Promise<Response> {
