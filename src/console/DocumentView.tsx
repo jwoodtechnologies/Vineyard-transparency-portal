@@ -2,7 +2,7 @@
 import './styles';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, CalendarDays, Flag, Layers, MessageSquare, Share2 } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, Flag, Layers, MessageSquare, Paperclip, Share2 } from 'lucide-react';
 import { DocumentService } from '@/services';
 import { isDataError } from '@/data/adapters/errors';
 import { ErrorNote } from './ErrorNote';
@@ -10,8 +10,7 @@ import { RecordViewer } from './RecordViewer';
 import { BackButton, Frame } from './Chrome';
 import { formatDate, sourceLabel } from './format';
 import { meetingHref } from './meetings';
-import { MeetingDocsSheet } from './MeetingDocs';
-import { useMeetingDocs } from './meetingDocs';
+import { PaperTrail } from './PaperTrail';
 import { DocLink } from './DocLink';
 import { labelsOf } from './recordLabels';
 import { STATUS_LABEL } from '@/lib/recordTitle';
@@ -58,6 +57,11 @@ function ReportButton({ documentId }: { documentId: string }) {
   );
 }
 
+/** Scrolls to a section of the paper trail below the viewer. */
+function jumpTo(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function shareRecord(title: string): Promise<'shared' | 'copied' | 'failed'> {
   const url = window.location.href;
   try {
@@ -89,9 +93,10 @@ export default function DocumentView() {
   const [attempt, setAttempt] = useState(0);
   const load = useLoad(`doc:${documentId}:${attempt}`, () => DocumentService.get(documentId));
   const doc = load.status === 'done' ? load.data : null;
-  const [showMeeting, setShowMeeting] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
-  const siblings = useMeetingDocs(doc?.meeting?.id ?? null);
+  // The paper trail: the meeting, the files on the same agenda item, the meeting's other records.
+  const trailLoad = useLoad(doc ? `trail:${doc.id}` : null, () => DocumentService.trail(doc!.id));
+  const trail = trailLoad.status === 'done' ? trailLoad.data : null;
   const [page, setPage] = useState<{ for: string; page: number }>({ for: documentId, page: urlPage });
   const current = page.for === documentId ? page.page : urlPage;
   const notFound = load.status === 'error' && isDataError(load.error) && load.error.kind === 'not_found';
@@ -157,6 +162,8 @@ export default function DocumentView() {
   // The file as filed: its original name (the title above is shortened for reading).
   const filedAs = doc.fileName && doc.fileName !== lb.title ? doc.fileName : doc.title !== lb.title ? doc.title : null;
   const label = sourceLabel(doc.sourceId);
+  // The record's own meeting, else the meeting its copy was filed with (a municipal code ordinance).
+  const meeting = doc.meeting ?? trail?.meeting ?? null;
   const resident = doc.sourceId === 'resident-submitted';
 
   return (
@@ -193,15 +200,20 @@ export default function DocumentView() {
           This page: {`${window.location.origin}${window.location.pathname}`}
         </p>
         <div className="vc-mtg-actions vc-doc-actions">
-          {doc.meeting && (
-            <Link to={meetingHref(doc.meeting)} className="vc-secondary">
-              <CalendarDays size={15} strokeWidth={1.8} /> {doc.meeting.title}, {formatDate(doc.meeting.date)}
+          {meeting && (
+            <Link to={meetingHref(meeting)} className="vc-secondary">
+              <CalendarDays size={15} strokeWidth={1.8} /> {meeting.title}
+              {meeting.date ? `, ${formatDate(meeting.date)}` : ''}
             </Link>
           )}
-          {doc.meeting && (siblings.status === 'loading' || siblings.docs.length > 1) && (
-            // Shown (disabled) while the meeting's records load, so the buttons and the reader below do not move.
-            <button type="button" className="vc-secondary vc-meeting-docs-btn" onClick={() => setShowMeeting(true)} disabled={siblings.status === 'loading'}>
-              <Layers size={15} strokeWidth={1.8} /> Everything from this meeting <span className="vc-count">{siblings.status === 'loading' ? '\u00a0\u00a0' : siblings.docs.length}</span>
+          {trail && trail.attachments.length > 0 && (
+            <button type="button" className="vc-secondary vc-meeting-docs-btn" onClick={() => jumpTo('attachments')}>
+              <Paperclip size={15} strokeWidth={1.8} /> Attachments <span className="vc-count">{trail.attachments.length}</span>
+            </button>
+          )}
+          {trail && trail.meeting_docs.length > 0 && (
+            <button type="button" className="vc-secondary vc-meeting-docs-btn" onClick={() => jumpTo('from-meeting')}>
+              <Layers size={15} strokeWidth={1.8} /> From this meeting <span className="vc-count">{trail.meeting_docs.length}</span>
             </button>
           )}
           <button
@@ -228,7 +240,7 @@ export default function DocumentView() {
         </div>
       </header>
       <RecordViewer key={doc.id} doc={doc} page={current} onPage={onPage} highlight={highlight} />
-      {showMeeting && doc.meeting && <MeetingDocsSheet meeting={{ id: doc.meeting.id, title: doc.meeting.title, date: doc.meeting.date }} currentId={doc.id} onClose={() => setShowMeeting(false)} />}
+      <PaperTrail trail={trail} />
     </Frame>
   );
 }

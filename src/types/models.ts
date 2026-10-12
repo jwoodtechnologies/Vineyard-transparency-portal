@@ -314,6 +314,26 @@ export type DocumentSummary = Pick<
 > & { description: string | null } & RecordLabels;
 
 /**
+ * GET /api/documents/:id/trail: the paper trail of one record. The meeting it came from (its own, or for a
+ * municipal code copy the meeting where the same measure was on the agenda), the other files on the same
+ * agenda item, every other record of that meeting in agenda order, and the whole meeting's order as ids
+ * (the viewer's previous and next).
+ */
+export interface DocumentTrail {
+  meeting: { id: string; title: string; date: string | null } | null;
+  /** The agenda item, when known: its number ("5.1") and name. */
+  item: { number: string | null; title: string | null } | null;
+  /** How the meeting was found: the record's own meeting, a copy filed with a meeting, or the meeting's date. */
+  via: 'meeting' | 'copy' | 'date' | null;
+  /** The record filed with the meeting standing for this one (a municipal code copy's twin), else null. */
+  twinId: string | null;
+  attachments: DocumentSummary[];
+  meeting_docs: DocumentSummary[];
+  /** Every record of the meeting in agenda order, this one (or its twin) included. */
+  sequence: string[];
+}
+
+/**
  * How a record reads in lists (src/lib/recordTitle.ts): a short title, the agenda item it came with,
  * Draft or Adopted, and, for an adopted ordinance or resolution, the meeting that adopted it.
  */

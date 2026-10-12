@@ -431,3 +431,73 @@
     padding: 2px var(--vc-sp-4);
   }
 }
+
+/* The paper trail under a record (src/console/PaperTrail.tsx): the meeting page, the files on the same agenda
+   item, the meeting's other records, then the record's details folded away. */
+.vc .vc-trail {
+  max-width: 48rem;
+  margin: var(--vc-sp-5) 0 var(--vc-sp-6);
+}
+.vc .vc-trail-meeting {
+  margin: 0 0 var(--vc-sp-4);
+}
+.vc .vc-trail-meeting .vc-secondary {
+  height: auto;
+  min-height: var(--vc-h-icon);
+  padding: 0.4rem 0.9rem;
+  text-align: left;
+  white-space: normal;
+}
+.vc .vc-trail-h {
+  display: flex;
+  align-items: center;
+  gap: var(--vc-sp-2);
+  margin: var(--vc-sp-5) 0 var(--vc-sp-1);
+  font-size: var(--vc-fs-lg);
+  font-weight: 650;
+  scroll-margin-top: calc(var(--vc-topbar-h, 64px) + var(--vc-sp-3));
+}
+.vc .vc-trail-sub {
+  margin: 0 0 var(--vc-sp-2);
+  color: var(--vc-muted);
+  font-size: var(--vc-fs-sm);
+}
+.vc .vc-doc-details {
+  max-width: 48rem;
+  margin: var(--vc-sp-4) 0 var(--vc-sp-6);
+  border: 1px solid var(--vc-line);
+  border-radius: var(--vc-radius-lg);
+  background: var(--vc-surface);
+}
+.vc .vc-doc-details > summary {
+  padding: var(--vc-sp-3) var(--vc-sp-4);
+  font-size: var(--vc-fs-ui);
+  font-weight: 600;
+  cursor: pointer;
+}
+.vc .vc-doc-details dl {
+  display: grid;
+  gap: var(--vc-sp-2);
+  margin: 0;
+  padding: 0 var(--vc-sp-4) var(--vc-sp-4);
+}
+.vc .vc-doc-details dl > div {
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) 1fr;
+  gap: var(--vc-sp-3);
+}
+.vc .vc-doc-details dt {
+  color: var(--vc-muted);
+  font-size: var(--vc-fs-sm);
+}
+.vc .vc-doc-details dd {
+  margin: 0;
+  font-size: var(--vc-fs-sm);
+  overflow-wrap: anywhere;
+}
+@media print {
+  .vc .vc-trail,
+  .vc .vc-doc-details {
+    display: none;
+  }
+}

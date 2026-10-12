@@ -1,6 +1,8 @@
 /** GET /api/budget : the adopted fiscal 2027 budget, plus any newer budget document the city has posted since. */
 import type { Env } from '../env';
-import { budgetPayload, BUDGET_AMENDED } from '../lib/budgetData';
+import { budgetPayload, BUDGET_ADOPTION_ORDINANCE_DOC, BUDGET_AMENDED, BUDGET_DOCS } from '../lib/budgetData';
+import { computeTrail } from './trail';
+import type { DocumentSummary } from '../../src/types/models';
 import { CACHE, json } from '../lib/http';
 import { toDocumentSummary } from '../lib/mappers';
 
@@ -20,7 +22,33 @@ export async function getBudget(env: Env): Promise<Response> {
   } catch {
     // The numbers below are fixed; only the "newer document" notice depends on the database.
   }
-  return json({ ...budgetPayload(), newer }, { cache: CACHE.list });
+  return json({ ...budgetPayload(), newer, adoptionBudgetDoc: await adoptionBudgetDoc(env) }, { cache: CACHE.list });
+}
+
+/** The budget book among files on the same agenda item (budget type first, then "budget" in the name, most pages). */
+export function pickBudgetBook(files: DocumentSummary[]): DocumentSummary | null {
+  const score = (d: DocumentSummary) => (d.documentType === 'budget' ? 2 : /\bbudget\b/i.test(d.title) && !/\b(slides?|presentation|ordinance|resolution|notice|hearing)\b/i.test(d.title) && d.documentType !== 'presentation' ? 1 : 0);
+  const books = files.filter((d) => score(d) > 0 && !/\b(slides?|presentation)\b/i.test(d.title));
+  books.sort((a, b) => score(b) - score(a) || Number(b.pageCount ?? 0) - Number(a.pageCount ?? 0));
+  return books[0] ?? null;
+}
+
+/**
+ * The budget document filed with the ordinance that adopted the budget: the budget book attached to the same
+ * agenda item, found from the records (GET /api/documents/:id/trail). The known book is the fallback.
+ */
+async function adoptionBudgetDoc(env: Env): Promise<{ id: string; title: string }> {
+  try {
+    const row = await env.CATALOG_DB.prepare('SELECT * FROM documents WHERE id = ?').bind(BUDGET_ADOPTION_ORDINANCE_DOC).first<Row>();
+    if (row) {
+      const trail = await computeTrail(env, row);
+      const book = pickBudgetBook(trail.attachments);
+      if (book) return { id: book.id, title: book.displayTitle ?? book.title };
+    }
+  } catch {
+    // The known book below.
+  }
+  return { id: BUDGET_DOCS.book, title: 'FY 27 Final Budget' };
 }
 
 /**

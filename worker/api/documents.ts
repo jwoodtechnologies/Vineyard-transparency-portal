@@ -95,7 +95,7 @@ export async function listDocuments(env: Env, url: URL, filters: SearchFilters):
  * into another answers with that record (its own id, so the reader's address is corrected), and one taken out
  * of the archive says why.
  */
-async function getDocumentRow(env: Env, idOrSlug: string): Promise<Row> {
+export async function getDocumentRow(env: Env, idOrSlug: string): Promise<Row> {
   const row = await env.CATALOG_DB.prepare('SELECT * FROM documents WHERE id = ? OR slug = ? LIMIT 1').bind(idOrSlug, idOrSlug).first<Row>();
   if (row) return row;
   const moved = await resolveMoved(env, idOrSlug);

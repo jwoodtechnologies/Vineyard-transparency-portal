@@ -13,6 +13,7 @@ The full request/response contract is [API_CONTRACT.md](API_CONTRACT.md); types 
 | `GET /api/documents/:id/file[?version=n]` | Archived bytes from R2: correct `Content-Type`, `Content-Disposition` (sanitized filename), `ETag: "<sha256>"`, `Accept-Ranges`, `206` ranges, `304`. Not archived: `302` to the original government URL. HTML is never served inline. |
 | `GET /api/documents/:id/text` | Page texts, OCR flag per page. |
 | `GET /api/documents/:id/related` | Relationships from source structure plus documents published for the same meeting. |
+| `GET /api/documents/:id/trail` | The paper trail: `{meeting:{id,title,date}, item:{number,title}, via, twinId, attachments:[...], meeting_docs:[...], sequence:[ids]}`. Attachments are the other files on the same agenda item; meeting_docs every other record of the meeting, in agenda order; sequence the whole meeting in agenda order (the viewer's previous and next). A municipal code ordinance or resolution is matched to the meeting copy of the same number (worker/api/trail.ts). Edge-cached. |
 | `GET /api/search` | See [SEARCH.md](SEARCH.md). |
 | `POST /api/ask` | See [AI_RAG.md](AI_RAG.md). |
 | `GET /api/meetings[/:id]` | CivicClerk meetings with agenda/packet/minutes document ids and media links. |

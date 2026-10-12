@@ -5,6 +5,7 @@ import type {
   BrowseFacets,
   Category,
   CodeNode,
+  DocumentTrail,
   DocumentDetail,
   DocumentPageText,
   DocumentSummary,
@@ -63,6 +64,8 @@ export interface DataAdapter {
   getDocument(id: string, opts?: RequestOptions): Promise<DocumentDetail>;
   getDocumentText(id: string, opts?: RequestOptions): Promise<DocumentPageText[]>;
   getRelatedDocuments(id: string, opts?: RequestOptions): Promise<RelatedDocument[]>;
+  /** The paper trail: meeting, files on the same agenda item, the meeting in agenda order (GET /api/documents/:id/trail). */
+  getDocumentTrail(id: string, opts?: RequestOptions): Promise<DocumentTrail>;
   /** URL that streams the archived file (GET /api/documents/:id/file). */
   getDocumentFileUrl(id: string, archiveUrl: string | null): string | null;
   getDocumentsByIds(ids: string[], opts?: RequestOptions): Promise<DocumentSummary[]>;

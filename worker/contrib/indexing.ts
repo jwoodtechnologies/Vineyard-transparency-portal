@@ -232,7 +232,7 @@ export async function purgeCached(documentId: string): Promise<void> {
   try {
     const cache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default;
     if (!cache) return;
-    for (const p of ['', '/text', '/related']) await cache.delete(new Request(`https://vineyardportal.org/api/documents/${documentId}${p}`));
+    for (const p of ['', '/text', '/related', '/trail']) await cache.delete(new Request(`https://vineyardportal.org/api/documents/${documentId}${p}`));
   } catch {
     /* nothing cached here */
   }

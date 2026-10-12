@@ -10,6 +10,7 @@ import type {
   BrowseFacets,
   Category,
   CodeNode,
+  DocumentTrail,
   DocumentDetail,
   DocumentPageText,
   DocumentSummary,
@@ -160,6 +161,10 @@ export class ProductionApiAdapter implements DataAdapter {
 
   getRelatedDocuments(id: string, opts?: RequestOptions): Promise<RelatedDocument[]> {
     return this.request(`/documents/${encodeURIComponent(id)}/related`, {}, opts);
+  }
+
+  getDocumentTrail(id: string, opts?: RequestOptions): Promise<DocumentTrail> {
+    return this.request(`/documents/${encodeURIComponent(id)}/trail`, {}, opts);
   }
 
   getDocumentFileUrl(id: string, archiveUrl: string | null): string | null {
