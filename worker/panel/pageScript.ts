@@ -282,7 +282,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
     var who = h.by ? ' by ' + h.by : '';
     var when = fFull.format(new Date(h.at)) + ', ' + fTime.format(new Date(h.at));
     var p = el('p'); p.appendChild(el('b', null, (h.action === 'add' ? 'Published' : h.action === 'edit' ? 'Edited' : 'Removed') + who + ', ' + when + '.'));
-    if (h.before) p.appendChild(document.createTextNode(' Before: ' + [h.before.title, h.before.date, h.before.topic].filter(Boolean).join(', ') + '. ' + (h.before.text || '')));
+    if (h.before) p.appendChild(document.createTextNode(' Before: ' + [h.before.title, shortDay(h.before.date), h.before.topic].filter(Boolean).join(', ') + '. ' + (h.before.text || '')));
     return p;
   }
   function updEditor(main, u){
