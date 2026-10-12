@@ -4,6 +4,7 @@
  */
 import type { Env } from '../env';
 import type { StaffUser } from './core';
+import { records } from './records';
 
 export interface StaffCall {
   env: Env;
@@ -19,7 +20,7 @@ export interface StaffCall {
 
 type Module = (call: StaffCall) => Promise<Response | null>;
 
-const MODULES: Module[] = [];
+const MODULES: Module[] = [records];
 
 export async function handleStaffModules(call: StaffCall): Promise<Response | null> {
   for (const m of MODULES) {

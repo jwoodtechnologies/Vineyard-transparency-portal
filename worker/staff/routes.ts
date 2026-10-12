@@ -161,6 +161,14 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
 
   if (method === 'POST') {
     checkPost(request, url);
+    // A file upload arrives as a form, not JSON: the person must be signed in, and the area module reads the form itself.
+    if (/^multipart\/form-data/i.test(request.headers.get('content-type') ?? '')) {
+      const me = await requireUser(env, request);
+      limit(`up:${me.id}`, 40);
+      const handled = await handleStaffModules({ env, request, url, ctx, me, route, body: null });
+      if (handled) return handled;
+      throw notFound('Unknown API route.');
+    }
     const b = await readJson<Record<string, unknown>>(request, 32 * 1024);
 
     if (route === '/login') {
