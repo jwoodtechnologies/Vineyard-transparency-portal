@@ -378,7 +378,7 @@ describe('owner filter diagnostics (scripts/owner-filter)', () => {
     expect(inPolygons([12, 2], city)).toBe(false);
     expect(bboxOf(city)).toEqual([0, 0, 10, 10]);
     const u = new URL(countyPageUrl(1));
-    expect(u.searchParams.get('outFields')).toBe('PARCEL_NO,OWNER_NAME,SUB_NAME');
+    expect(u.searchParams.get('outFields')).toBe('PARCEL_NO,OWNER_NAME,SUB_NAME,SITE_FULL_ADDRESS,ACREAGE');
     expect(u.searchParams.get('resultOffset')).toBe('2000');
   });
 });
