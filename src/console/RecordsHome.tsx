@@ -2,7 +2,8 @@
  * The records home: one tile per topic (src/lib/recordTopics.ts) with how many records it holds and
  * the newest one's date, from one edge-cached call (GET /api/records/topics). A topic with no
  * records has no tile. Each tile opens the filtered list; "Browse all records" keeps the full list
- * and search one tap away.
+ * and search one tap away. Updates from Vineyard City staff are a small row of their own above the
+ * tiles (the three newest, GET /api/updates, read fresh), not a tile.
  */
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -25,6 +26,44 @@ interface TopicCount {
   newestYear: number | null;
 }
 
+/** One staff update as GET /api/updates lists it. */
+export interface StaffUpdate {
+  id: string;
+  title: string;
+  date: string | null;
+  text: string | null;
+  topic: string | null;
+  projectKey: string | null;
+  projectGis: string | null;
+}
+
+/** The three newest updates, one line each, with a link to all of them. */
+function UpdatesRow() {
+  const load = useJson<{ items: StaffUpdate[] }>('/api/updates?limit=3');
+  const items = load.status === 'done' ? load.data.items : [];
+  if (!items.length) return null;
+  return (
+    <section className="vc-upd" aria-labelledby="vc-upd-h">
+      <div className="vc-upd-head">
+        <h2 id="vc-upd-h">Updates</h2>
+        <Link to="/records?topic=updates" className="vc-rec-index-link">
+          All updates <ChevronRight size={14} />
+        </Link>
+      </div>
+      <ul className="vc-upd-list">
+        {items.map((u) => (
+          <li key={u.id}>
+            <Link to={`/documents/${encodeURIComponent(u.id)}`} className="vc-upd-item">
+              <span className="vc-upd-title">{u.title}</span>
+              <span className="vc-upd-date">{formatDate(u.date)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 const INDEX_LABEL: Record<string, string> = { ordinances: 'Ordinances by number', resolutions: 'Resolutions by number', 'rda-resolutions': 'RDA resolutions by number' };
 
 export function RecordsHome() {
@@ -34,7 +73,8 @@ export function RecordsHome() {
   useEffect(() => {
     setHead('Records');
   }, []);
-  const topics = load.status === 'done' ? load.data.topics : [];
+  // Updates have their own row above the tiles.
+  const topics = load.status === 'done' ? load.data.topics.filter((t) => t.id !== 'updates') : [];
   const indexes = topics.filter((t) => t.index);
 
   return (
@@ -54,6 +94,8 @@ export function RecordsHome() {
         <Search size={16} strokeWidth={1.9} />
         <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search all records" aria-label="Search all records" enterKeyHint="search" />
       </form>
+
+      <UpdatesRow />
 
       {load.status === 'loading' && (
         // Card-shaped placeholders in the same grid, so the links below do not move when the topics arrive.

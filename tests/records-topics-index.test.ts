@@ -8,10 +8,10 @@ const doc = (title: string, documentType: string, sourceId = 'vineyard-civiccler
 const inTopics = (d: ReturnType<typeof doc>) => RECORD_TOPICS.filter((t) => matchesTopic(t, d)).map((t) => t.id);
 
 describe('record topics', () => {
-  it('has the fourteen topics of the records home, each with a unique id', () => {
+  it('has the fifteen topics of the records home, each with a unique id', () => {
     expect(RECORD_TOPICS.map((t) => t.label)).toEqual([
       'Agendas and minutes', 'Ordinances', 'Resolutions', 'Budgets and audits', 'Contracts and agreements', 'Development and land use', 'RDA',
-      'Plans and studies', 'Water quality reports', 'Elections', 'Fee schedule', 'Public notices', 'Sheriff updates', 'Resident submissions',
+      'Plans and studies', 'Water quality reports', 'Elections', 'Fee schedule', 'Public notices', 'Sheriff updates', 'Updates', 'Resident submissions',
     ]);
     expect(new Set(RECORD_TOPICS.map((t) => t.id)).size).toBe(RECORD_TOPICS.length);
     for (const t of RECORD_TOPICS) for (const s of [t.label, t.hint, t.notice ?? '']) expect(s).not.toMatch(/[–—]/);
@@ -31,6 +31,7 @@ describe('record topics', () => {
     [doc('City Council Meeting (public notice, 2026-10-13)', 'public_notice', 'utah-pmn-vineyard'), ['notices']],
     [doc('Deputies arrest suspect in Vineyard', 'public_notice', 'ucso-press-releases', null), ['sheriff']],
     [doc('Photo of the 400 South election sign', 'resident_submission', 'resident-submitted', null), ['resident']],
+    [doc('400 North signal finished', 'staff_update', 'portal-staff', null), ['updates']],
   ])('%o', (d, want) => {
     expect(inTopics(d)).toEqual(want);
   });

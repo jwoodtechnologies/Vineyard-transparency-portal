@@ -29,6 +29,7 @@ import { archiveRoom } from '../contrib/indexing';
 import { plainLine } from '../lib/contrib';
 import { auditLog, listUploads, lookupMeetings, lookupProjects, staffDelete, staffEdit, staffFile, staffForm, type Me } from '../contrib/staff';
 import { approveSubmission, hideSubmission, listSubmissions, rejectSubmission, removeSubmission, restoreSubmission, setSubmissionsOpen, submissionFile, submissionLog } from '../contrib/resident';
+import { createUpdate, deleteUpdate, editUpdate, listUpdates } from '../contrib/updates';
 import { coverage, refreshCoverage } from '../lib/coverage';
 import { jobHealth } from '../sync/jobHealth';
 import { fallbackCounts } from '../ai/fallbackLog';
@@ -537,6 +538,11 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     if (route === '/uploads/edit') return reply(await staffEdit(env, b, s.me));
     if (route === '/uploads/delete') return reply(await staffDelete(env, b, s.me));
 
+    // Updates (the owner and admins; checked in each).
+    if (route === '/updates/create') return reply(await createUpdate(env, b, s.me), { status: 201 });
+    if (route === '/updates/edit') return reply(await editUpdate(env, b, s.me));
+    if (route === '/updates/delete') return reply(await deleteUpdate(env, b, s.me));
+
     // The owner and admins: resident submissions review and the coverage check.
     staff();
     if (route === '/submissions/approve') return reply(await approveSubmission(env, b.id));
@@ -587,6 +593,7 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
   const like = (v: string | null) => (v ? `%${v.slice(0, 100).replace(/[%_\\]/g, (m) => `\\${m}`)}%` : null);
 
   if (route === '/summary') return reply(await summary(env));
+  if (route === '/updates') return reply(await listUpdates(env));
   if (route === '/submissions') return reply(await listSubmissions(env));
   if (route === '/submissions/log') return reply(await submissionLog(env));
   // The file of a submission, pending ones included: shown to signed-in reviewers only.

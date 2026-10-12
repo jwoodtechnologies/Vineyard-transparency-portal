@@ -130,6 +130,9 @@ html.dark .seg button[aria-pressed=true]{background:rgba(255,255,255,.1)}
 .notice{padding:14px 16px;border-radius:14px;background:var(--soft);font-size:14px;line-height:1.5;margin:0 0 18px}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .edit{margin-top:12px;padding-top:4px;border-top:1px solid var(--line)}
+.hist{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--bg2);font-size:13px;line-height:1.5}
+.hist p{margin:0 0 8px;white-space:pre-wrap;word-break:break-word}.hist p:last-child{margin-bottom:0}
+.hist b{font-weight:600}
 a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
 @media (max-width:720px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.bar input[type=search]{width:100%}.item{grid-template-columns:1fr auto;gap:6px 12px}.when{grid-column:1/-1;display:flex;gap:8px}.when b{display:inline}.grid2{grid-template-columns:1fr}.who{display:none}}
 </style>
@@ -237,6 +240,24 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
         <label for="liDesc">Description (optional)</label><textarea id="liDesc" maxlength="5000"></textarea>
         <p class="err" id="liErr"></p><button class="btn primary" type="submit">Add link</button>
       </form>
+    </div>
+
+    <div id="v-updates" class="view hidden">
+      <div class="head"><h1>Updates</h1></div>
+      <form id="upForm" class="card pad">
+        <label for="upTitle">Title (optional)</label><input id="upTitle" type="text" maxlength="200">
+        <label for="upText">Text</label><textarea id="upText" maxlength="20000" required placeholder="We finished the 400 North signal. The road is open again."></textarea>
+        <div class="grid2">
+          <div><label for="upDate">Date</label><input id="upDate" type="date" required></div>
+          <div><label for="upTopic">Project or topic (optional)</label><select id="upTopic"><option value="">None</option></select></div>
+        </div>
+        <p class="hint">Shows at once in search, chat answers and Records, and on a project's card under the map. Labelled "Update from Vineyard City staff".</p>
+        <p class="err" id="upErr"></p>
+        <button class="btn primary" type="submit">Publish</button>
+      </form>
+      <h2 class="sub">Published</h2>
+      <div class="card"><ul class="feed" id="updList"></ul><div class="empty hidden" id="updEmpty">No updates yet.</div></div>
+      <div class="hidden" id="updGoneWrap"><h2 class="sub">Removed</h2><div class="card"><ul class="feed" id="updGone"></ul></div></div>
     </div>
 
     <div id="v-uploads" class="view hidden">

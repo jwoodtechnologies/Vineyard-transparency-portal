@@ -38,7 +38,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
 
   // ------------------------------------------------------------ navigation
   // Who sees each tab: 'all' accounts, 'staff' (the owner and admins) or the 'owner' alone.
-  var VIEWS = [['activity','Activity','staff'],['add','Add','all'],['uploads','Uploads','all'],['subs','Submissions','staff'],['people','People','owner'],['coverage','Coverage','staff'],['health','Health','staff']];
+  var VIEWS = [['activity','Activity','staff'],['add','Add','all'],['updates','Updates','staff'],['uploads','Uploads','all'],['subs','Submissions','staff'],['people','People','owner'],['coverage','Coverage','staff'],['health','Health','staff']];
   function isOwner(){ return !!me && me.role === 'owner'; }
   function isStaff(){ return !!me && (me.role === 'owner' || me.role === 'admin'); }
   function mayView(v){ return v[2] === 'all' || (v[2] === 'staff' ? isStaff() : isOwner()); }
@@ -53,6 +53,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
     Array.prototype.forEach.call(document.querySelectorAll('.view'), function(x){ x.classList.toggle('hidden', x.id !== 'v-' + v); });
     if (v === 'activity') { loadSummary(); setTab(state.tab); }
     if (v === 'add') { loadProjects(); }
+    if (v === 'updates') loadUpdates();
     if (v === 'uploads') loadUploads();
     if (v === 'subs') loadSubs();
     if (v === 'people') loadPeople();
@@ -265,6 +266,77 @@ export const PANEL_SCRIPT = String.raw`(function(){
   $('addKind').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; var k = b.dataset.k;
     Array.prototype.forEach.call($('addKind').children, function(x){ x.setAttribute('aria-pressed', String(x === b)); });
     ['files','project','note','link'].forEach(function(x){ $('k-' + x).classList.toggle('hidden', x !== k); }); });
+
+  // ------------------------------------------------------------ updates (owner and admins)
+  // Plain text that goes straight into the records: searchable, used by chat, shown on Records and on a project's card.
+  var upd = { projects: [], topics: [], today: '' };
+  function topicSelect(sel, value){
+    sel.textContent = ''; var none = el('option', null, 'None'); none.value = ''; sel.appendChild(none);
+    var g1 = el('optgroup'); g1.label = 'Funded projects'; upd.projects.forEach(function(p){ var o = el('option', null, p.name); o.value = 'project:' + p.key; g1.appendChild(o); });
+    var g2 = el('optgroup'); g2.label = 'Topics'; upd.topics.forEach(function(t){ var o = el('option', null, t.label); o.value = 'topic:' + t.id; g2.appendChild(o); });
+    if (upd.projects.length) sel.appendChild(g1); if (upd.topics.length) sel.appendChild(g2);
+    sel.value = value || '';
+  }
+  function shortDay(iso){ return iso ? fFull.format(new Date(iso + 'T12:00:00Z')) : ''; }
+  function histText(h){
+    var who = h.by ? ' by ' + h.by : '';
+    var when = fFull.format(new Date(h.at)) + ', ' + fTime.format(new Date(h.at));
+    var p = el('p'); p.appendChild(el('b', null, (h.action === 'add' ? 'Published' : h.action === 'edit' ? 'Edited' : 'Removed') + who + ', ' + when + '.'));
+    if (h.before) p.appendChild(document.createTextNode(' Before: ' + [h.before.title, h.before.date, h.before.topic].filter(Boolean).join(', ') + '. ' + (h.before.text || '')));
+    return p;
+  }
+  function updEditor(main, u){
+    if (main.querySelector('.edit')) return;
+    var box = el('form', 'edit');
+    var title = field(box, 'Title', input('text', u.title, 200));
+    var text = field(box, 'Text', el('textarea')); text.value = u.body || ''; text.maxLength = 20000; text.required = true;
+    var g = el('div', 'grid2'); var a = el('div'); var b = el('div'); g.appendChild(a); g.appendChild(b); box.appendChild(g);
+    var date = field(a, 'Date', input('date', u.doc_date || '', 10));
+    var topic = field(b, 'Project or topic', el('select')); topicSelect(topic, u.topic);
+    var err = el('p', 'err'); box.appendChild(err);
+    var acts = el('div', 'rowacts'); var save = el('button', 'btn sm primary', 'Save'); save.type = 'submit'; acts.appendChild(save); acts.appendChild(btn('Cancel', 'ghost', function(){ box.remove(); })); box.appendChild(acts);
+    box.addEventListener('submit', function(e){ e.preventDefault(); save.disabled = true;
+      post('/updates/edit', { id: u.id, title: title.value, text: text.value, date: date.value, topic: topic.value }).then(loadUpdates, function(x){ save.disabled = false; err.textContent = x.message; if (x.status === 401) boot(); });
+    });
+    main.appendChild(box);
+  }
+  function updRow(u){
+    var li = el('li', 'item'); li.appendChild(whenEl(u.created_at));
+    var main = el('div', 'main'); main.appendChild(el('div', 'q', u.title));
+    if (u.body) main.appendChild(el('div', 'hint pre', u.body.length > 400 ? u.body.slice(0, 400) + '...' : u.body));
+    var meta = el('div', 'meta');
+    var edits = u.history.filter(function(h){ return h.action === 'edit'; }).length;
+    [shortDay(u.doc_date), u.topic_label, u.account_name ? 'By ' + u.account_name : null, edits ? (edits === 1 ? 'Edited once' : 'Edited ' + edits + ' times') : null].forEach(function(t){ if (t) meta.appendChild(el('span', null, t)); });
+    main.appendChild(meta);
+    var acts = el('div', 'rowacts');
+    if (u.document_id) { var v = el('a', 'open', 'View'); v.href = '/documents/' + encodeURIComponent(u.document_id); v.target = '_blank'; v.rel = 'noopener'; acts.appendChild(v); }
+    acts.appendChild(btn('Edit', '', function(){ updEditor(main, u); }));
+    if (u.history.length) acts.appendChild(btn('History', 'ghost', function(){ var h = main.querySelector('.hist'); if (h) { h.remove(); return; } h = el('div', 'hist'); u.history.forEach(function(x){ h.appendChild(histText(x)); }); main.insertBefore(h, acts.nextSibling); }));
+    acts.appendChild(btn('Remove', 'danger', function(){ if (confirm('Remove this update? It is taken off the portal. The log keeps its text.')) post('/updates/delete', { id: u.id }).then(loadUpdates, function(x){ alert(x.message); }); }));
+    main.appendChild(acts);
+    li.appendChild(main); li.appendChild(el('span', 'pill up', 'Live'));
+    return li;
+  }
+  function loadUpdates(){
+    return api('/updates').then(function(j){
+      upd.projects = j.projects || []; upd.topics = j.topics || []; upd.today = j.today || '';
+      var keep = $('upTopic').value; topicSelect($('upTopic'), keep);
+      if (!$('upDate').value) $('upDate').value = upd.today;
+      var ul = $('updList'); ul.textContent = ''; var items = j.items || [];
+      items.forEach(function(u){ ul.appendChild(updRow(u)); });
+      $('updEmpty').classList.toggle('hidden', items.length > 0);
+      var gone = j.removed || []; var gl = $('updGone'); gl.textContent = '';
+      gone.forEach(function(h){ var li = el('li', 'item'); li.appendChild(whenEl(h.at)); var m = el('div', 'main'); m.appendChild(el('div', 'q', h.title)); var d = el('div', 'hist'); d.appendChild(histText(h)); m.appendChild(d); li.appendChild(m); li.appendChild(el('span', 'pill soft', 'Removed')); gl.appendChild(li); });
+      $('updGoneWrap').classList.toggle('hidden', !gone.length);
+    }).catch(authFail);
+  }
+  $('upForm').addEventListener('submit', function(e){
+    e.preventDefault(); var er = $('upErr'); er.textContent = ''; er.classList.remove('ok'); var b = $('upForm').querySelector('button[type=submit]'); b.disabled = true;
+    post('/updates/create', { title: $('upTitle').value, text: $('upText').value, date: $('upDate').value, topic: $('upTopic').value }).then(function(){
+      b.disabled = false; er.textContent = 'Published. Residents can see it now.'; er.classList.add('ok');
+      $('upTitle').value = ''; $('upText').value = ''; $('upTopic').value = ''; $('upDate').value = upd.today; loadUpdates();
+    }, function(x){ b.disabled = false; er.textContent = x.message; if (x.status === 401) boot(); });
+  });
 
   // ------------------------------------------------------------ uploads
   var KIND = { file: 'File', project: 'Project', note: 'Note', link: 'Link' };

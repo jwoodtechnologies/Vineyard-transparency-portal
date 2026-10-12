@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { testEnv } from './helpers/d1';
 import { accept, addOwnerPasskey, cookieOf, invite, panel, register, setupOwner, signIn, type Device, type TestEnv } from './helpers/panel';
 import { ensureContribTables } from '../worker/contrib/schema';
+import { PANEL_PAGE } from '../worker/panel/page';
+import { PANEL_SCRIPT } from '../worker/panel/pageScript';
 
 // Admin accounts: invited by the owner, sign in with their own name and password (or a passkey).
 
@@ -186,5 +188,15 @@ describe('admin accounts', () => {
     ]);
     env.CATALOG_DB.db.prepare("INSERT INTO panel_accounts (name, role, created_at) VALUES ('Vineyard Admin', 'admin', '2026-10-12')").run();
     expect((env.CATALOG_DB.db.prepare("SELECT id FROM panel_accounts WHERE role = 'admin'").get() as { id: number }).id).toBe(3);
+  });
+});
+
+describe('panel page', () => {
+  it('its script parses, and it has the admin join form, the invite choice, bulk upload and Updates', () => {
+    expect(() => new Function(PANEL_SCRIPT)).not.toThrow();
+    for (const id of ['adminJoin', 'invRole', 'bulkShared', 'retryFailed', 'bulkBar', 'v-updates', 'upForm', 'upTopic']) expect(PANEL_PAGE).toContain(`id="${id}"`);
+    // No long dashes in anything the panel shows.
+    expect(PANEL_PAGE.replace(PANEL_SCRIPT, '')).not.toMatch(/[\u2013\u2014]/);
+    expect(PANEL_SCRIPT).not.toMatch(/[\u2013\u2014]/);
   });
 });

@@ -9,7 +9,7 @@ import { intVar } from '../env';
 import { Budget, putChunks } from '../admin/routes';
 import { categoriesForType, normalizeType } from '../lib/taxonomy';
 import { nowIso } from '../lib/util';
-import { RESIDENT_LABEL, RESIDENT_SOURCE_ID, STAFF_SOURCE_ID, type FileKind } from '../lib/contrib';
+import { RESIDENT_LABEL, RESIDENT_SOURCE_ID, STAFF_SOURCE_ID, updateLabel, type FileKind } from '../lib/contrib';
 import { SearchRepository } from '../search/SearchRepository';
 import { chunkPages } from '../sync/chunk';
 import { extractPdf, looksScanned, type Page } from '../sync/extract';
@@ -20,7 +20,7 @@ import { DEFAULT_HARD_STOP_BYTES } from '../lib/archivePolicy';
 /** PDFs up to this size are read in the request; bigger ones are queued for the cron. */
 export const SYNC_PDF_BYTES = 4 * 1024 * 1024;
 
-export type ContribKind = 'file' | 'project' | 'note' | 'link';
+export type ContribKind = 'file' | 'project' | 'note' | 'link' | 'update';
 export type Origin = 'staff' | 'resident';
 
 export interface Contribution {
@@ -44,6 +44,8 @@ export interface Contribution {
   fileKey: string | null;
   /** A staff text or CSV file's content (kept with the upload, since text files have no stored copy). */
   fileText: string | null;
+  /** An update's funded project or topic, as a line ("Project: 1200 North Bridge", "Topic: Parks and trails"). */
+  topicLine?: string | null;
 }
 
 const sourceOf = (c: Contribution) => (c.origin === 'staff' ? STAFF_SOURCE_ID : RESIDENT_SOURCE_ID);
@@ -61,6 +63,9 @@ export function headerText(c: Contribution): string {
     if (c.url) lines.push(`Web address: ${c.url}`);
   } else if (c.kind === 'file') {
     lines.push(c.title);
+  } else if (c.kind === 'update') {
+    lines.push(c.title, updateLabel(c.docDate));
+    if (c.topicLine) lines.push(c.topicLine);
   }
   if (c.projectName) lines.push(`Project: ${c.projectName}`);
   if (c.body) lines.push('', c.body);
@@ -269,6 +274,7 @@ export function contributionFrom(origin: Origin, r: ItemRow, projectName: string
     sha256: s(r.sha256),
     fileKey: s(r.file_key),
     fileText: s(r.file_text),
+    topicLine: s(r.topic_label),
   };
 }
 

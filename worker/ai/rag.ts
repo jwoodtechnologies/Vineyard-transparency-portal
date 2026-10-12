@@ -1613,7 +1613,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
         excerpt: excerptFor(h, loose.words),
         archiveUrl: x.archive_status === 'archived' && x.archive_key ? `/api/documents/${h.documentId}/file` : null,
         originalUrl: x.original_url == null ? null : String(x.original_url),
-        sourceLabel: citationLabel(h.sourceId),
+        sourceLabel: citationLabel(h.sourceId, h.documentType, h.documentDate),
       };
     });
 

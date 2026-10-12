@@ -51,6 +51,7 @@ export type DocumentType =
   | 'resident_submission'
   | 'tax_rate'
   | 'election_result'
+  | 'staff_update'
   | 'other';
 
 export type CategoryId =

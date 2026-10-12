@@ -126,7 +126,7 @@ function RecordList({ rows, q, grouped, oldest = false, hideType, hideBody = fal
                     )}
                     <span>{meta}</span>
                   </span>
-                  {sourceLabel(d.sourceId) && <span className="vc-source-label">{sourceLabel(d.sourceId)}</span>}
+                  {sourceLabel(d.sourceId, d.documentType, d.date) && <span className="vc-source-label">{sourceLabel(d.sourceId, d.documentType, d.date)}</span>}
                   {d.snippet && <span className="vc-rec-snippet">{d.snippet}</span>}
                 </DocLink>
               </li>
