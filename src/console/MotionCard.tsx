@@ -72,9 +72,11 @@ export function MotionCard({ m, member, recorded = false }: { m: MotionRow; memb
       )}
       <div className="vc-vt-foot">
         {m.tieBreak && <span className="vc-vt-meta">Mayor broke the tie</span>}
-        <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
-          <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
-        </DocLink>
+        {m.documentId && (
+          <DocLink id={m.documentId} page={m.page} className="vc-vt-min">
+            <FileText size={12} /> Minutes{m.page ? ` p. ${m.page}` : ''}
+          </DocLink>
+        )}
       </div>
     </li>
   );
