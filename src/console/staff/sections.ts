@@ -22,6 +22,9 @@ export interface Section {
 export const SECTIONS: Section[] = [
   { path: 'records', label: 'Records', blurb: 'Add agendas, minutes, reports and other documents.', area: 'records', tile: true, Component: lazy(() => import('./Records')) },
   { path: 'votes', label: 'Votes', blurb: 'Correct how a vote was recorded, add one the minutes missed, or take one down.', area: 'votes', tile: true, Component: lazy(() => import('./Votes')) },
+  { path: 'notices', label: 'Notices', blurb: 'Post a closure or alert at the top of every page.', area: 'notices', tile: true, Component: lazy(() => import('./Notices')) },
+  { path: 'events', label: 'Events', blurb: 'Add a community event, special meeting or closure day to the calendar.', area: 'notices', tile: true, Component: lazy(() => import('./Events')) },
+  { path: 'updates', label: 'Updates', blurb: 'Post a note about a finished project or a change to a service.', area: 'notices', tile: true, Component: lazy(() => import('./Updates')) },
   { path: 'directory', label: 'People', blurb: 'Keep the Mayor and Council, city staff and board members up to date.', area: 'people', tile: true, Component: lazy(() => import('./Directory')) },
   { path: 'people', label: 'Accounts', blurb: 'Add staff, choose what each person can edit, turn accounts off.', managers: true, tile: true, Component: lazy(() => import('./People')) },
   { path: 'activity', label: 'Activity', blurb: 'See every change and undo a mistake.', tile: true, Component: lazy(() => import('./Activity')) },

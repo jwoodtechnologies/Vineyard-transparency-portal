@@ -272,6 +272,7 @@
 .vs input[type='password'],
 .vs input[type='search'],
 .vs input[type='date'],
+.vs input[type='time'],
 .vs input[type='url'],
 .vs input:not([type]),
 .vs select,
@@ -789,4 +790,35 @@
 }
 .vs-areas .vs-roll-add {
   margin: 0.4rem 0 0.2rem;
+}
+
+/* ---- notices */
+.vs-pair {
+  display: grid;
+  gap: 0 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+.vs-pair-tight {
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+}
+.vs-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.7rem;
+  margin: 0 0 0.9rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--vc-line-2);
+  border-radius: 12px;
+  background: var(--vc-accent-soft);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.vs-preview[data-tone='alert'] {
+  border-color: rgba(176, 122, 31, 0.35);
+  background: rgba(176, 122, 31, 0.1);
+}
+.vs-preview strong {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
