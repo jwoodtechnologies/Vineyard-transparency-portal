@@ -71,7 +71,7 @@ function FundList({ b }: { b: Budget }) {
           ))}
         </tbody>
       </table>
-      <p className="vc-bud-fine">The budget is presented fund by fund. Each figure is that fund&apos;s budgeted revenue including prior-year fund balance. FY 27 budget book, page 3.</p>
+      <p className="vc-bud-fine">Budgeted revenue with prior-year fund balance. FY 27 budget book, page 3.</p>
     </Numbers>
   );
 }
@@ -334,7 +334,7 @@ function ProjectsTab({ b }: { b: Budget }) {
         />
       </div>
       <p className="vc-bud-fine">
-        From the council&apos;s budget slides. <Link to="/map">See them on the map.</Link>
+        From the council&apos;s budget slides. <Link to="/map?layers=projects#projects">On the map</Link>
       </p>
     </>
   );
@@ -361,7 +361,7 @@ export default function BudgetPage() {
     <Frame wide>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Budget</h1>
-        {tab !== 'past' && <p className="vc-page-sub">Fiscal year 2026-2027 (FY27) · July 1, 2026 to June 30, 2027</p>}
+        {tab !== 'past' && <p className="vc-page-sub">FY 2027 · July 1, 2026 to June 30, 2027</p>}
         {tab !== 'past' && b?.adoptionOrdinance && (
           <p className="vc-page-sub">
             Adopted {longDay(b.adopted)} by{' '}
@@ -401,14 +401,15 @@ export default function BudgetPage() {
                 <i data-k="spend" style={{ flexGrow: b.general.amended.total }} />
                 <i data-k="left" style={{ flexGrow: Math.max(b.general.amended.surplus, b.general.revenueTotal * 0.015) }} />
               </div>
-              <p className="vc-bud-cap">General Fund only, as amended {longDay(b.amended)} by {b.amendmentOrdinance}. Revenue minus spending is the surplus.</p>
+              <p className="vc-bud-cap">
+                General Fund, as amended {longDay(b.amended)}
+                {b.amendmentOrdinance ? ` by ${b.amendmentOrdinance}` : ''}.
+              </p>
               <div className="vc-bud-hero vc-bud-cuts">
                 <div data-k="cut">
                   <span>Cut by the amendment</span>
                   <b>{short(b.general.cutByAmendment)}</b>
-                  <em>
-                    {b.amendmentOrdinance}, {longDay(b.amended)}
-                  </em>
+                  <em>{[b.amendmentOrdinance, longDay(b.amended)].filter(Boolean).join(', ')}</em>
                 </div>
                 <div data-k="cut">
                   <span>Cut since tentative</span>

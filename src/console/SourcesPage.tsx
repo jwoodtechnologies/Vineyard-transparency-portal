@@ -80,7 +80,6 @@ export default function SourcesPage() {
       <header className="vc-page-head">
         <h1 className="vc-page-title">Sources</h1>
       </header>
-      <p className="vc-source-intro">Public systems this portal reads on a schedule. Each record links back to where it was published.</p>
       {load.status === 'loading' && (
         <div className="vc-skeleton" aria-hidden="true">
           <span style={{ width: '90%' }} />

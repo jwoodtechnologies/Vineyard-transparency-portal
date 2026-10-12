@@ -383,7 +383,7 @@ function VoteSheet({ rows, member, seats, mayor, showBody }: { rows: SheetRow[];
           })}
         </table>
       </div>
-      <p className="vc-sh-note">Tallies count every member who voted at the time, including members no longer on the {mayor ? 'council' : 'commission'}.</p>
+      <p className="vc-sh-note">Tallies include members no longer on the {mayor ? 'council' : 'commission'}.</p>
     </div>
   );
 }

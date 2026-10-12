@@ -102,7 +102,7 @@ export default function AddPage() {
     <Frame>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Submit a public record</h1>
-        <p className="vc-add-lede">Send a document, a project, a note or a link about Vineyard. Each submission is reviewed first. If approved, it appears on the portal with the label "{RESIDENT_LABEL}" If not, it is deleted.</p>
+        <p className="vc-add-lede">A document, project, note or link about Vineyard. Reviewed first; if approved it shows with the label "{RESIDENT_LABEL}" If not, it is deleted.</p>
       </header>
 
       {open === null ? (
