@@ -119,6 +119,10 @@ html.dark .seg button[aria-pressed=true]{background:rgba(255,255,255,.1)}
 .filename{font-size:13px;font-weight:600;word-break:break-all}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 .status{font-size:13px;margin-top:10px;color:var(--muted)}
+.shared{margin-top:14px}.shared .label{margin-bottom:0}
+.file .filehead + label{margin-top:8px}.file label{margin-top:8px}
+.progress{height:6px;border-radius:999px;background:var(--bg2);overflow:hidden;margin:16px 0 0}.progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+#bulkCount{margin-top:10px}
 .status.ok{color:var(--good)}.status.bad{color:var(--bad)}
 .rowacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .linkbox{display:flex;gap:8px;align-items:center;margin-top:12px}
@@ -202,10 +206,13 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
       <p class="notice hidden" id="pkNudge"></p>
 
       <div id="k-files">
-        <label class="drop" id="drop" for="fileInput"><b>Drop files here</b><span>or tap to choose. PDF, PNG, JPG, TXT or CSV, up to 25 MB each.</span></label>
+        <label class="drop" id="drop" for="fileInput"><b>Drop files here</b><span>One or many. Or tap to choose. PDF, PNG, JPG, TXT or CSV, up to 25 MB each.</span></label>
         <input id="fileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.txt,.csv,application/pdf,image/png,image/jpeg,text/plain,text/csv" class="hidden">
+        <div class="card pad shared hidden" id="bulkShared"><p class="label">For every file</p></div>
+        <div class="progress hidden" id="bulkBar"><span id="bulkFill"></span></div>
+        <p class="hint" id="bulkCount"></p>
         <ul class="files" id="fileList"></ul>
-        <div class="rowacts hidden" id="fileActs"><button class="btn primary" id="addAll" type="button">Add all</button><button class="btn ghost" id="clearFiles" type="button">Clear</button></div>
+        <div class="rowacts hidden" id="fileActs"><button class="btn primary" id="addAll" type="button">Add files</button><button class="btn hidden" id="retryFailed" type="button">Retry failed</button><button class="btn ghost" id="clearFiles" type="button">Clear</button></div>
       </div>
 
       <form id="k-project" class="card pad hidden">

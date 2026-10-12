@@ -164,47 +164,95 @@ export const PANEL_SCRIPT = String.raw`(function(){
     return sel;
   }
 
-  // ------------------------------------------------------------ add: files
+  // ------------------------------------------------------------ add: files (one or many)
+  // Shared details (type, date, text, meeting, project) apply to every file; each file has its own title.
+  // Files go up one at a time, each with its own status; failed ones can be retried.
+  var MAX_FILE = 25 * 1024 * 1024, MAX_TEXT = 1024 * 1024;
   var queue = [];
+  var shared = null;
   function titleFrom(name){ return name.replace(/\.[A-Za-z0-9]{1,8}$/, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) || 'Untitled'; }
+  function sharedFields(){
+    if (shared) return shared;
+    var box = $('bulkShared'); shared = {};
+    var g = el('div', 'grid2'); var a = el('div'); var b = el('div'); g.appendChild(a); g.appendChild(b); box.appendChild(g);
+    shared.type = field(a, 'Type', select(TYPES, 'other'));
+    shared.date = field(b, 'Date', input('date', '', 10));
+    shared.body = field(box, 'Body or source text (optional)', el('textarea')); shared.body.maxLength = 20000; shared.body.rows = 2;
+    shared.meeting = meetingPicker(box, null);
+    var ps = el('select'); ps.setAttribute('data-projects', '1'); fillProjects(ps); shared.project = field(box, 'Project (optional)', ps);
+    return shared;
+  }
+  function fileProblem(f){
+    var ext = (f.name.match(/\.([A-Za-z0-9]{1,8})$/) || [])[1]; ext = ext ? ext.toLowerCase() : '';
+    if (['pdf','png','jpg','jpeg','txt','csv'].indexOf(ext) < 0) return 'Only PDF, PNG, JPG, TXT or CSV files.';
+    if (f.size <= 0) return 'That file is empty.';
+    if (f.size > MAX_FILE) return 'Too big. Files can be up to 25 MB.';
+    if ((ext === 'txt' || ext === 'csv') && f.size > MAX_TEXT) return 'Text and CSV files can be up to 1 MB.';
+    return null;
+  }
+  function setStatus(e, kind, text){ e.state = kind; e.status.className = 'status' + (kind === 'done' ? ' ok' : kind === 'failed' || kind === 'skipped' ? ' bad' : ''); e.status.textContent = text; }
   function addFiles(list){
+    sharedFields(); $('bulkShared').classList.remove('hidden');
     Array.prototype.forEach.call(list, function(f){
       var li = el('li', 'card file'); var head = el('div', 'filehead'); head.appendChild(el('span', 'filename', f.name + ' (' + bytes(f.size) + ')'));
-      var entry = { file: f, li: li, done: false };
-      head.appendChild(btn('Remove', 'ghost', function(){ queue = queue.filter(function(x){ return x !== entry; }); li.remove(); refreshActs(); }));
+      var entry = { file: f, li: li, state: 'waiting' };
+      entry.remove = btn('Remove', 'ghost', function(){ queue = queue.filter(function(x){ return x !== entry; }); li.remove(); refreshActs(); });
+      head.appendChild(entry.remove);
       li.appendChild(head);
       entry.title = field(li, 'Title', input('text', titleFrom(f.name), 300));
-      var g = el('div', 'grid2'); var a = el('div'); var b = el('div'); g.appendChild(a); g.appendChild(b); li.appendChild(g);
-      entry.type = field(a, 'Type', select(TYPES, 'other'));
-      entry.date = field(b, 'Date', input('date', '', 10));
-      entry.body = field(li, 'Body or source text (optional)', el('textarea')); entry.body.maxLength = 20000;
-      entry.meeting = meetingPicker(li, null);
-      var ps = el('select'); ps.setAttribute('data-projects', '1'); fillProjects(ps); entry.project = field(li, 'Project (optional)', ps);
       entry.status = el('p', 'status'); li.appendChild(entry.status);
+      var problem = fileProblem(f);
+      if (problem) setStatus(entry, 'skipped', problem); else setStatus(entry, 'waiting', 'Ready');
       queue.push(entry); $('fileList').appendChild(li);
     });
     refreshActs();
   }
-  function refreshActs(){ $('fileActs').classList.toggle('hidden', !queue.some(function(e){ return !e.done; })); }
+  function counts(){ var c = { waiting: 0, adding: 0, done: 0, failed: 0, skipped: 0 }; queue.forEach(function(e){ c[e.state]++; }); return c; }
+  function refreshActs(){
+    var c = counts(); var busy = c.adding > 0 || adding;
+    $('fileActs').classList.toggle('hidden', !queue.length);
+    $('bulkShared').classList.toggle('hidden', !queue.length);
+    $('addAll').classList.toggle('hidden', !c.waiting); $('addAll').disabled = busy;
+    $('addAll').textContent = c.waiting === 1 ? 'Add 1 file' : 'Add ' + c.waiting + ' files';
+    $('retryFailed').classList.toggle('hidden', !c.failed || busy); $('retryFailed').textContent = c.failed === 1 ? 'Retry 1 failed' : 'Retry ' + c.failed + ' failed';
+    $('clearFiles').disabled = busy;
+    var total = queue.length, finished = c.done + c.failed + c.skipped;
+    var parts = [total === 1 ? '1 file' : total + ' files'];
+    if (c.done) parts.push(c.done + ' added'); if (c.failed) parts.push(c.failed + ' failed'); if (c.skipped) parts.push(c.skipped + ' skipped');
+    $('bulkCount').textContent = total ? parts.join(', ') + '.' : '';
+    $('bulkBar').classList.toggle('hidden', !total || (!busy && !finished));
+    $('bulkFill').style.width = (total ? Math.round(100 * finished / total) : 0) + '%';
+  }
+  var adding = false;
+  function run(todo){
+    if (!todo.length) return;
+    adding = true; var s = sharedFields(); refreshActs();
+    var stop = null;
+    var next = function(i){
+      if (i >= todo.length) { adding = false; refreshActs(); if (counts().done && !counts().waiting && !counts().failed) loadProjects(); return; }
+      var e = todo[i];
+      if (stop) { setStatus(e, 'failed', stop); return next(i + 1); }
+      setStatus(e, 'adding', 'Adding...'); refreshActs();
+      var fd = new FormData(); fd.append('file', e.file); fd.append('title', e.title.value); fd.append('type', s.type.value); fd.append('date', s.date.value); fd.append('body', s.body.value); fd.append('meetingId', s.meeting.value); fd.append('projectId', s.project.value);
+      api('/uploads/file', { method: 'POST', form: fd }).then(function(j){
+        setStatus(e, 'done', j.status === 'queued' ? 'Added. Title searchable now, full text within 5 minutes.' : j.status === 'no_text' ? 'Added. No text layer, so it is found by title and details.' : 'Added and searchable.');
+        e.title.disabled = true; e.remove.classList.add('hidden');
+      }, function(x){
+        setStatus(e, 'failed', x.message);
+        if (x.status === 401) { stop = 'Not added. Sign in again, then retry.'; boot(); }
+        if (x.status === 507) stop = 'Not added. The archive is full.';
+      }).then(function(){ next(i + 1); });
+    };
+    next(0);
+  }
   var drop = $('drop');
   ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
   ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
   drop.addEventListener('drop', function(e){ if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
   $('fileInput').addEventListener('change', function(){ addFiles(this.files); this.value = ''; });
   $('clearFiles').addEventListener('click', function(){ queue = []; $('fileList').textContent = ''; refreshActs(); });
-  $('addAll').addEventListener('click', function(){
-    var todo = queue.filter(function(e){ return !e.done; }); var b = $('addAll'); b.disabled = true;
-    var next = function(i){
-      if (i >= todo.length) { b.disabled = false; refreshActs(); return; }
-      var e = todo[i]; e.status.className = 'status'; e.status.textContent = 'Adding...';
-      var fd = new FormData(); fd.append('file', e.file); fd.append('title', e.title.value); fd.append('type', e.type.value); fd.append('date', e.date.value); fd.append('body', e.body.value); fd.append('meetingId', e.meeting.value); fd.append('projectId', e.project.value);
-      api('/uploads/file', { method: 'POST', form: fd }).then(function(j){
-        e.done = true; e.status.className = 'status ok'; e.status.textContent = j.status === 'queued' ? 'Added. Its title is searchable now; the full text within 5 minutes.' : j.status === 'no_text' ? 'Added. No text layer found, so it is found by title and details.' : 'Added and searchable.';
-        Array.prototype.forEach.call(e.li.querySelectorAll('input,select,textarea'), function(x){ x.disabled = true; });
-      }, function(x){ e.status.className = 'status bad'; e.status.textContent = x.message; if (x.status === 401) boot(); }).then(function(){ next(i + 1); });
-    };
-    next(0);
-  });
+  $('addAll').addEventListener('click', function(){ run(queue.filter(function(e){ return e.state === 'waiting'; })); });
+  $('retryFailed').addEventListener('click', function(){ var todo = queue.filter(function(e){ return e.state === 'failed'; }); todo.forEach(function(e){ setStatus(e, 'waiting', 'Ready'); }); run(todo); });
 
   // ------------------------------------------------------------ add: forms
   function formSubmit(id, err, fn){
