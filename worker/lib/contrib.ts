@@ -108,6 +108,9 @@ export function plainLine(v: unknown, max: number): string {
   return plainText(v, max * 2).replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
+/** Text with any HTML tags taken out, for notices and events that people type as plain words. */
+export const stripTags = (s: string): string => s.replace(/<[^>]*>/g, '').trim();
+
 /** An http(s) web address, or null. */
 export function webUrl(v: unknown): string | null {
   if (typeof v !== 'string' || v.length > 1000) return null;

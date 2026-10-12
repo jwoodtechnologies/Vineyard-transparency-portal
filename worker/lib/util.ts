@@ -29,7 +29,12 @@ export function clampInt(value: string | null, fallback: number, min: number, ma
   return Math.min(max, Math.max(min, Math.floor(n)));
 }
 
-export const isIsoDate = (s: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+/** A real calendar day written YYYY-MM-DD (February 30 is not one). */
+export const isIsoDate = (s: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const t = Date.parse(`${s}T00:00:00Z`);
+  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === s;
+};
 
 /** Identifiers accepted in path segments. Anything else is rejected before it reaches SQL. */
 export const isSafeId = (s: string): boolean => /^[A-Za-z0-9_.:-]{1,128}$/.test(s);
