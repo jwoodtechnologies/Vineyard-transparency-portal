@@ -1,19 +1,22 @@
 /**
- * Filling the R2 archive with the files it does not hold yet, inside the free storage.
+ * Filling the R2 archive with the files it does not hold yet, up to the stop (60 GB, approved by the owner on
+ * 2026-10-12; never past ARCHIVE_STORAGE_CEILING_BYTES).
  *
  * GET  /api/admin/archive/remaining   counts and bytes of every file not stored yet (known sizes, and an estimate
  *                                     from the average known size of the same type where a size is unknown), what
  *                                     fits under the stop, and the monthly cost of storing all of it beyond the free
  *                                     10 GB-month. Reads only.
  * POST /api/admin/archive/fill        puts files not stored yet back on the crawl queue, priority records first and
- *                                     only what fits under the stop, so the next sync downloads and stores them.
- *                                     {"limit": 300, "dryRun": false}. Never deletes anything.
+ *                                     newest first, only what fits under the stop, so the next sync downloads and
+ *                                     stores them. Files over 25 MiB (up to 500 MB) are included: the ingest uploads
+ *                                     them in parts. {"limit": 300, "dryRun": false}. Never deletes anything.
  *
- * The stop itself is enforced on every upload (storeArchive in ./routes.ts); this only decides what to fetch again.
+ * The stop itself is enforced on every upload (storeArchive and the multipart routes in ./routes.ts); this only
+ * decides what to fetch again.
  */
 import type { Env } from '../env';
 import { intVar } from '../env';
-import { archiveLimitFor, archiveRank, DEFAULT_HARD_STOP_BYTES, DEFAULT_PRIORITY_RESERVE_BYTES, isPriorityArchive } from '../lib/archivePolicy';
+import { archiveLimitFor, archiveLimits, archiveOrder, isPriorityArchive, MULTIPART_PART_BYTES } from '../lib/archivePolicy';
 import { nowIso } from '../lib/util';
 import type { Budget } from './routes';
 
@@ -36,12 +39,7 @@ const NOT_STORED_SQL = `SELECT d.id, d.title, d.document_type, d.file_size, d.sh
        AND d.mime_type NOT LIKE 'text/%' AND d.mime_type NOT LIKE 'video/%' AND d.mime_type NOT LIKE 'audio/%'`;
 
 function limits(env: Env) {
-  return {
-    hardStop: intVar(env.ARCHIVE_STORAGE_HARD_STOP_BYTES, DEFAULT_HARD_STOP_BYTES),
-    reserve: intVar(env.ARCHIVE_PRIORITY_RESERVE_BYTES, DEFAULT_PRIORITY_RESERVE_BYTES),
-    maxObject: intVar(env.ARCHIVE_MAX_OBJECT_BYTES, 25 * 1024 * 1024),
-    otherBuckets: intVar(env.R2_OTHER_BUCKETS_BYTES, DEFAULT_OTHER_BUCKETS_BYTES),
-  };
+  return { ...archiveLimits(env), otherBuckets: intVar(env.R2_OTHER_BUCKETS_BYTES, DEFAULT_OTHER_BUCKETS_BYTES) };
 }
 
 /** Average known file size by type (and overall), from every file record with a size. */
@@ -102,7 +100,7 @@ function add(t: Tally, size: number | null, estimate: number) {
 
 /** The numbers for GET /archive/remaining (counts and bytes only, no titles). */
 export async function archiveRemaining(env: Env): Promise<Record<string, unknown>> {
-  const { hardStop, reserve, maxObject, otherBuckets } = limits(env);
+  const { hardStop, ceiling, reserve, maxObject, maxLargeObject, otherBuckets } = limits(env);
   const [stats, rowsRes, avg] = await Promise.all([
     env.CATALOG_DB.prepare('SELECT stored_bytes, stored_objects FROM archive_stats WHERE id = 1').first<{ stored_bytes: number; stored_objects: number }>(),
     env.CATALOG_DB.prepare(NOT_STORED_SQL).all<Row>(),
@@ -119,15 +117,22 @@ export async function archiveRemaining(env: Env): Promise<Record<string, unknown
   const other = emptyTally();
   const fits = emptyTally();
   const pastStop = emptyTally();
+  const inParts = emptyTally();
   // In archive order (priority records first, newest first), as the fill takes them.
-  const ordered = [...files].sort((a, b) => archiveRank(a.document_type, a.title) - archiveRank(b.document_type, b.title) || String(b.document_date ?? '').localeCompare(String(a.document_date ?? '')));
+  const ordered = [...files].sort(archiveOrder);
   let projected = stored;
+  let partWrites = 0;
   for (const f of ordered) {
     const size = f.file_size == null ? null : Number(f.file_size);
     const est = estimateFor(f.document_type);
-    if (size != null && size > maxObject) {
+    if (size != null && size > maxLargeObject) {
       add(tooLarge, size, est);
       continue;
+    }
+    if (size != null && size > maxObject) {
+      add(inParts, size, est);
+      // Create, one write per part, complete (the one upload of a small file is counted below).
+      partWrites += Math.ceil(size / MULTIPART_PART_BYTES) + 1;
     }
     add((byType[f.document_type] ??= emptyTally()), size, est);
     add(storable, size, est);
@@ -139,13 +144,13 @@ export async function archiveRemaining(env: Env): Promise<Record<string, unknown
     } else add(pastStop, size, est);
   }
   for (const t of Object.values(byType)) t.estimatedBytes = Math.round(t.estimatedBytes);
-  for (const t of [storable, tooLarge, priority, other, fits, pastStop]) t.estimatedBytes = Math.round(t.estimatedBytes);
+  for (const t of [storable, tooLarge, priority, other, fits, pastStop, inParts]) t.estimatedBytes = Math.round(t.estimatedBytes);
 
   const allStorable = stored + storable.totalBytes;
   const allWithLarge = allStorable + tooLarge.totalBytes;
   return {
     note: 'Bytes are decimal (1 GB = 1,000,000,000 bytes). estimatedBytes = files of unknown size times the average known size of files of the same type. Records that share one file are counted once.',
-    stop: { hardStopBytes: hardStop, priorityReserveBytes: reserve, otherFilesStopBytes: Math.max(0, hardStop - reserve), maxObjectBytes: maxObject },
+    stop: { hardStopBytes: hardStop, ceilingBytes: ceiling, priorityReserveBytes: reserve, otherFilesStopBytes: Math.max(0, hardStop - reserve), maxObjectBytes: maxObject, maxLargeObjectBytes: maxLargeObject },
     stored: { bytes: stored, objects: Number(stats?.stored_objects ?? 0), gb: gb(stored) },
     remaining: { ...storable, gb: gb(storable.totalBytes) },
     remainingPriority: { ...priority, gb: gb(priority.totalBytes) },
@@ -153,6 +158,9 @@ export async function archiveRemaining(env: Env): Promise<Record<string, unknown
     remainingByType: byType,
     fitsUnderStop: { ...fits, gb: gb(fits.totalBytes) },
     pastStop: { ...pastStop, gb: gb(pastStop.totalBytes) },
+    // Over the single-request size, stored in parts (counted in remaining above).
+    uploadedInParts: { ...inParts, gb: gb(inParts.totalBytes) },
+    // Over the largest stored file (500 MB): linked only.
     overMaxObjectSize: { ...tooLarge, gb: gb(tooLarge.totalBytes) },
     averageKnownBytesByType: Object.fromEntries([...avg.byType.entries()].map(([k, v]) => [k, Math.round(v)])),
     cost: {
@@ -165,10 +173,12 @@ export async function archiveRemaining(env: Env): Promise<Record<string, unknown
       // With the account's other buckets, which share the same free 10 GB.
       accountAllBytes: allStorable + otherBuckets,
       accountMonthlyUsd: dollars(allStorable + otherBuckets),
-      // Also storing the files over the object size limit (now linked only).
+      // Also storing the files over the largest stored size (linked only).
       accountWithLargeFilesBytes: allWithLarge + otherBuckets,
       accountWithLargeFilesMonthlyUsd: dollars(allWithLarge + otherBuckets),
-      classAWritesNeeded: storable.files,
+      // The worst case: this bucket filled to the stop (never above the ceiling).
+      atStopMonthlyUsd: dollars(hardStop),
+      classAWritesNeeded: storable.files + partWrites,
       classAWritesFreePerMonth: R2_FREE_CLASS_A,
     },
   };
@@ -179,7 +189,7 @@ export async function archiveRemaining(env: Env): Promise<Record<string, unknown
  * what is already waiting in the queue). Their conditional-request marks are cleared so the file is downloaded again.
  */
 export async function fillArchiveQueue(env: Env, body: Record<string, unknown>, budget: Budget): Promise<Record<string, unknown>> {
-  const { hardStop, reserve, maxObject } = limits(env);
+  const { hardStop, reserve, maxObject, maxLargeObject } = limits(env);
   const limit = Math.min(1000, Math.max(1, Number(body.limit ?? 300) || 300));
   const dryRun = body.dryRun === true;
   const [stats, rowsRes, avg] = await Promise.all([
@@ -187,15 +197,16 @@ export async function fillArchiveQueue(env: Env, body: Record<string, unknown>, 
     env.CATALOG_DB.prepare(NOT_STORED_SQL).all<Row>(),
     averageSizes(env),
   ]);
-  const files = distinctFiles(rowsRes.results ?? []).filter((f) => f.file_size == null || Number(f.file_size) <= maxObject);
+  // Every file up to the largest stored size: those over the single-request size go up in parts.
+  const files = distinctFiles(rowsRes.results ?? []).filter((f) => f.file_size == null || Number(f.file_size) <= maxLargeObject);
   const sizeOf = (f: Row) => (f.file_size && Number(f.file_size) > 0 ? Number(f.file_size) : (avg.byType.get(f.document_type) ?? avg.overall));
   // Files already waiting in the queue will be stored when the sync reaches them: count them first.
   let projected = Number(stats?.stored_bytes ?? 0);
   for (const f of files) if (f.queue_status === 'pending') projected += sizeOf(f);
   const candidates = files
     .filter((f) => f.canonical_key && (f.queue_status === 'done' || f.queue_status === 'unchanged'))
-    .sort((a, b) => archiveRank(a.document_type, a.title) - archiveRank(b.document_type, b.title) || String(b.document_date ?? '').localeCompare(String(a.document_date ?? '')));
-  const picked: Array<{ key: string; rank: number; bytes: number }> = [];
+    .sort(archiveOrder);
+  const picked: Array<{ key: string; bytes: number }> = [];
   let pastStop = 0;
   for (const f of candidates) {
     if (picked.length >= limit) break;
@@ -205,22 +216,47 @@ export async function fillArchiveQueue(env: Env, body: Record<string, unknown>, 
       continue;
     }
     projected += bytes;
-    picked.push({ key: String(f.canonical_key), rank: archiveRank(f.document_type, f.title), bytes });
+    picked.push({ key: String(f.canonical_key), bytes });
   }
-  const summary = { dryRun, queued: picked.length, queuedBytes: Math.round(picked.reduce((n, p) => n + p.bytes, 0)), skippedPastStop: pastStop, projectedBytes: Math.round(projected), hardStopBytes: hardStop };
-  if (dryRun || !picked.length) return summary;
+  const inParts = picked.filter((p) => p.bytes > maxObject);
+  const summary = {
+    dryRun,
+    queued: picked.length,
+    queuedBytes: Math.round(picked.reduce((n, p) => n + p.bytes, 0)),
+    queuedInParts: inParts.length,
+    queuedInPartsBytes: Math.round(inParts.reduce((n, p) => n + p.bytes, 0)),
+    skippedPastStop: pastStop,
+    projectedBytes: Math.round(projected),
+    hardStopBytes: hardStop,
+  };
+  // Files already waiting that the Worker once handed to GitHub (over 25 MiB): a city-hosted one is never read by
+  // GitHub (the city refuses its runners), so the Worker gets it back and streams it to R2 itself.
+  const waiting = files.filter((f) => f.canonical_key && f.queue_status === 'pending').map((f) => String(f.canonical_key));
+  if (dryRun || (!picked.length && !waiting.length)) return summary;
 
-  await budget.check(picked.length * 3);
+  await budget.check(picked.length * 3 + waiting.length);
   const db = env.CATALOG_DB;
   let rows = 0;
+  for (let i = 0; i < waiting.length; i += 500) {
+    const r = await db
+      .prepare(
+        `UPDATE crawl_queue SET metadata_json = json_remove(metadata_json, '$.workerSkip')
+         WHERE url_key IN (SELECT value FROM json_each(?)) AND status = 'pending' AND json_extract(metadata_json, '$.workerSkip') = 1`,
+      )
+      .bind(JSON.stringify(waiting.slice(i, i + 500)))
+      .run();
+    rows += Number(r.meta?.rows_written ?? 0);
+  }
   for (let i = 0; i < picked.length; i += 100) {
     const part = picked.slice(i, i + 100);
-    const payload = JSON.stringify(part.map((p) => ({ k: p.key, p: 500 + p.rank })));
+    // After new records (lower numbers), in archive order: priority rank, then newest first.
+    const payload = JSON.stringify(part.map((p, j) => ({ k: p.key, p: 500 + i + j })));
     const r = await db.batch([
-      // After new records (lower numbers), in archive order.
+      // workerSkip is cleared so the Worker's own sync can stream a large city-hosted file straight to R2.
       db
         .prepare(
           `UPDATE crawl_queue SET status = 'pending', attempts = 0, next_attempt_at = NULL, etag = NULL, last_modified = NULL, run_id = 'archive-fill', updated_at = ?,
+             metadata_json = CASE WHEN metadata_json IS NULL THEN NULL ELSE json_remove(metadata_json, '$.workerSkip') END,
              priority = (SELECT json_extract(value, '$.p') FROM json_each(?) WHERE json_extract(value, '$.k') = crawl_queue.url_key)
            WHERE url_key IN (SELECT json_extract(value, '$.k') FROM json_each(?)) AND status IN ('done', 'unchanged')`,
         )

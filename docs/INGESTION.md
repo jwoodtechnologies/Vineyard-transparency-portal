@@ -6,7 +6,8 @@ DISCOVER RECORDS   python -m ingest crawl              adapters → D1 crawl_que
 CHECK CATALOG      (server)                            known URL? known hash? ETag/Last-Modified?
 DOWNLOAD           python -m ingest ingest             polite client, conditional GET, streaming SHA-256
 HASH / DEDUPE      (server)                            same bytes elsewhere → extra provenance row only
-ARCHIVE            PUT /api/admin/archive/<sha256>     R2, content-addressed, hard stop enforced
+ARCHIVE            PUT /api/admin/archive/<sha256>     R2, content-addressed, hard stop enforced (up to 25 MiB)
+                   /api/admin/archive/multipart/...    larger files in 20 MiB parts (up to 500 MB)
 EXTRACT            pdftotext / python-docx / openpyxl  page boundaries kept; scans flagged for OCR
 PARSE METADATA     ingest/classify.py                  unknown stays NULL
 CHUNK              ingest/chunk.py                     never crosses a page
@@ -73,9 +74,13 @@ resets them).
 
 ## What gets archived
 
-PDF, DOC/DOCX, XLS/XLSX, CSV, TXT, PPT/PPTX up to 25 MB (`ARCHIVE_MAX_OBJECT_BYTES`). Larger files are
-still downloaded, hashed and text-indexed, but stored as `remote_only_large_file`. Video and audio are
-never downloaded; meetings keep links to their video pages.
+PDF, DOC/DOCX, XLS/XLSX, CSV, TXT, PPT/PPTX up to 500 MB (`ARCHIVE_MAX_LARGE_OBJECT_BYTES`). Files up to
+25 MiB (`ARCHIVE_MAX_OBJECT_BYTES`) go up in one request; larger ones in 20 MiB parts through
+`/api/admin/archive/multipart/<sha256>/create`, `/part`, `/complete` (R2 multipart; the Worker checks the stored
+object's size and SHA-256). A large city-hosted file the GitHub runners cannot reach is streamed from the city
+straight into R2 by the Worker's own sync, checked against the record's SHA-256. Text is not extracted from files
+over 150 MB (`VTP_MAX_EXTRACT_BYTES`). Files over 500 MB are not downloaded in full and stay
+`remote_only_large_file` (logged). Video and audio are never downloaded; meetings keep links to their video pages.
 
 ## OCR
 

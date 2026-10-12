@@ -75,8 +75,18 @@ export class D1Shim {
 
 export class R2Shim {
   readonly objects = new Map<string, { bytes: Uint8Array; contentType: string | null }>();
-  async put(key: string, value: ArrayBuffer | Uint8Array, opts?: { httpMetadata?: { contentType?: string } }) {
-    const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+  /** Multipart uploads in progress: uploadId -> key and parts. */
+  readonly uploads = new Map<string, { key: string; contentType: string | null; parts: Map<number, Uint8Array> }>();
+  /** Every get, with the range asked for (to check that files are served by range, not whole). */
+  readonly gets: Array<{ key: string; range?: unknown }> = [];
+  /** Check put's sha256 like R2 does (off by default: most tests use made-up hashes). */
+  verifySha = false;
+  async put(key: string, value: ArrayBuffer | Uint8Array | ReadableStream, opts?: { httpMetadata?: { contentType?: string }; sha256?: string }) {
+    const bytes = value instanceof ReadableStream ? new Uint8Array(await new Response(value).arrayBuffer()) : value instanceof Uint8Array ? value : new Uint8Array(value);
+    if (opts?.sha256 && this.verifySha) {
+      const d = Buffer.from(await crypto.subtle.digest('SHA-256', bytes)).toString('hex');
+      if (d !== opts.sha256) throw new Error('put: The SHA-256 checksum you specified did not match what we received.');
+    }
     this.objects.set(key, { bytes: new Uint8Array(bytes), contentType: opts?.httpMetadata?.contentType ?? null });
     return { key, size: bytes.byteLength, etag: 'e' };
   }
@@ -84,13 +94,59 @@ export class R2Shim {
     const o = this.objects.get(key);
     return o ? { key, size: o.bytes.byteLength, etag: 'e', httpMetadata: { contentType: o.contentType } } : null;
   }
-  async get(key: string) {
+  async get(key: string, opts?: { range?: { offset?: number; length?: number; suffix?: number } }) {
+    this.gets.push({ key, range: opts?.range });
     const o = this.objects.get(key);
     if (!o) return null;
-    return { key, size: o.bytes.byteLength, etag: 'e', httpMetadata: { contentType: o.contentType }, arrayBuffer: async () => o.bytes.buffer.slice(o.bytes.byteOffset, o.bytes.byteOffset + o.bytes.byteLength), body: new Blob([o.bytes]).stream() };
+    const size = o.bytes.byteLength;
+    const r = opts?.range;
+    const offset = r ? (r.suffix != null ? size - r.suffix : (r.offset ?? 0)) : 0;
+    const length = r ? (r.suffix != null ? r.suffix : (r.length ?? size - offset)) : size;
+    const part = o.bytes.subarray(offset, offset + length);
+    return { key, size, etag: 'e', httpMetadata: { contentType: o.contentType }, ...(r ? { range: r } : {}), arrayBuffer: async () => part.slice().buffer, body: new Blob([part]).stream() };
   }
   async delete(key: string) {
     this.objects.delete(key);
+  }
+  async createMultipartUpload(key: string, opts?: { httpMetadata?: { contentType?: string } }) {
+    const uploadId = `up${this.uploads.size + 1}${'x'.repeat(8)}`;
+    this.uploads.set(uploadId, { key, contentType: opts?.httpMetadata?.contentType ?? null, parts: new Map() });
+    return this.resumeMultipartUpload(key, uploadId);
+  }
+  resumeMultipartUpload(key: string, uploadId: string) {
+    const find = () => {
+      const u = this.uploads.get(uploadId);
+      if (!u || u.key !== key) throw new Error('NoSuchUpload');
+      return u;
+    };
+    return {
+      key,
+      uploadId,
+      uploadPart: async (partNumber: number, value: ArrayBuffer | Uint8Array) => {
+        find().parts.set(partNumber, new Uint8Array(value instanceof Uint8Array ? value : new Uint8Array(value)));
+        return { partNumber, etag: `etag${partNumber}` };
+      },
+      complete: async (parts: Array<{ partNumber: number; etag: string }>) => {
+        const u = find();
+        const chunks = parts.map((p) => {
+          const b = u.parts.get(p.partNumber);
+          if (!b || p.etag !== `etag${p.partNumber}`) throw new Error('InvalidPart');
+          return b;
+        });
+        const bytes = new Uint8Array(chunks.reduce((n, c) => n + c.byteLength, 0));
+        let at = 0;
+        for (const c of chunks) {
+          bytes.set(c, at);
+          at += c.byteLength;
+        }
+        this.objects.set(key, { bytes, contentType: u.contentType });
+        this.uploads.delete(uploadId);
+        return { key, size: bytes.byteLength, etag: 'e' };
+      },
+      abort: async () => {
+        this.uploads.delete(uploadId);
+      },
+    };
   }
 }
 

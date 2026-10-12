@@ -32,21 +32,47 @@ describe('archive fill and remaining size', () => {
     add('m3', 'Minutes 3', 'minutes', null);
     add('p1', 'Packet', 'agenda_packet', 4000, 'link_only');
     add('big', 'Big packet', 'agenda_packet', 50_000_000, 'remote_only_large_file');
+    add('huge', 'Huge packet', 'agenda_packet', 600_000_000, 'remote_only_large_file');
     add('gis', 'A road', 'other', 10, 'not_archived', 'done', 'text/plain');
     add('dup', 'Minutes copy', 'minutes', 2000, 'not_archived', 'done', 'application/pdf', 'sha_m1');
     const r = (await archiveRemaining(env)) as Record<string, Record<string, number> & { minutes?: Record<string, number> }>;
-    // m1 + m3 (estimated at the minutes average of 2000, 4000 and 2000) + p1; the copy of m1 counts once; text records never.
-    expect(r.remaining.files).toBe(3);
+    // m1 + m3 (estimated at the minutes average of 2000, 4000 and 2000) + p1 + the 50 MB packet (stored in parts);
+    // the copy of m1 counts once; text records never; the 600 MB packet is over the 500 MB limit.
+    expect(r.remaining.files).toBe(4);
     expect(r.remaining.unknownSizeFiles).toBe(1);
     expect(r.remaining.estimatedBytes).toBe(2667);
-    expect(r.remaining.totalBytes).toBe(2000 + 2667 + 4000);
+    expect(r.remaining.totalBytes).toBe(2000 + 2667 + 4000 + 50_000_000);
     expect(r.remainingPriority.files).toBe(2);
+    expect(r.uploadedInParts.files).toBe(1);
     expect(r.overMaxObjectSize.files).toBe(1);
-    // Stop 10,000 with 1,000 stored: both minutes fit (to 10,000), the packet only up to 9,000: 1000+2000+2667+4000 > 9000.
+    // Stop 10,000 with 1,000 stored: both minutes fit (to 10,000), the packets only up to 9,000: 1000+2000+2667+4000 > 9000.
     expect(r.fitsUnderStop.files).toBe(2);
-    expect(r.pastStop.files).toBe(1);
-    expect((r.cost as unknown as Record<string, number>).thisBucketAllBytes).toBe(1000 + 8667);
-    expect((r.cost as unknown as Record<string, number>).thisBucketMonthlyUsd).toBe(0);
+    expect(r.pastStop.files).toBe(2);
+    const cost = r.cost as unknown as Record<string, number>;
+    expect(cost.thisBucketAllBytes).toBe(1000 + 8667 + 50_000_000);
+    expect(cost.thisBucketMonthlyUsd).toBe(0);
+    // Four uploads, plus create, three 20 MiB parts and complete for the 50 MB file (less the one already counted).
+    expect(cost.classAWritesNeeded).toBe(4 + 3 + 1);
+  });
+
+  it('queues files over 25 MiB too (they go up in parts), newest first within a rank, and gives the Worker back skipped ones', async () => {
+    const { env, db, add } = seed({ hardStop: '60000000000', reserve: '500000000' });
+    add('old', 'Packet 2019', 'agenda_packet', 80_000_000, 'remote_only_large_file');
+    add('new', 'Packet 2026', 'agenda_packet', 90_000_000, 'remote_only_large_file');
+    add('huge', 'Huge packet', 'agenda_packet', 600_000_000, 'remote_only_large_file');
+    add('m1', 'Minutes', 'minutes', 2000);
+    add('wait', 'City packet', 'agenda_packet', 70_000_000, 'not_archived', 'pending');
+    db.prepare(`UPDATE documents SET document_date = '2019-01-08' WHERE id = 'old'`).run();
+    db.prepare(`UPDATE crawl_queue SET metadata_json = '{"kind":"x","workerSkip":1}' WHERE url_key IN ('k_new', 'k_wait')`).run();
+    const out = await fillArchiveQueue(env, { limit: 10 }, new Budget(env));
+    expect(out.queued).toBe(3);
+    expect(out.queuedInParts).toBe(2);
+    const rows = db.prepare(`SELECT url_key, metadata_json FROM crawl_queue WHERE run_id = 'archive-fill' ORDER BY priority`).all() as Array<{ url_key: string; metadata_json: string | null }>;
+    // Minutes first, then the packets newest first; the 600 MB one is never queued.
+    expect(rows.map((r) => r.url_key)).toEqual(['k_m1', 'k_new', 'k_old']);
+    expect(JSON.parse(String(rows[1].metadata_json))).toEqual({ kind: 'x' });
+    const waiting = db.prepare(`SELECT metadata_json FROM crawl_queue WHERE url_key = 'k_wait'`).get() as { metadata_json: string };
+    expect(JSON.parse(waiting.metadata_json).workerSkip).toBeUndefined();
   });
 
   it('queues priority records first, only what fits, and clears the not-modified marks', async () => {

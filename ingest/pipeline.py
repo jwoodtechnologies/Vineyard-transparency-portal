@@ -24,8 +24,12 @@ from .sources import RETIRED_SOURCES, SOURCES
 from .storage import LocalFilesystemStorage, StorageProvider, WorkerArchiveStorage
 from .urls import DOCUMENT_EXTENSIONS, MEDIA_EXTENSIONS, extension, filename
 
-MAX_ARCHIVE_BYTES = int(os.environ.get("ARCHIVE_MAX_OBJECT_BYTES", str(25 * 1024 * 1024)))
-MAX_DOWNLOAD_BYTES = int(os.environ.get("VTP_MAX_DOWNLOAD_BYTES", str(300 * 1024 * 1024)))
+# The largest file stored on the portal (the Worker's ARCHIVE_MAX_LARGE_OBJECT_BYTES). Files over 25 MiB go up in
+# parts (ingest/storage.py); larger than this, the record links to the original and the run log says so.
+MAX_ARCHIVE_BYTES = int(os.environ.get("ARCHIVE_MAX_LARGE_OBJECT_BYTES", "500000000"))
+MAX_DOWNLOAD_BYTES = int(os.environ.get("VTP_MAX_DOWNLOAD_BYTES", str(MAX_ARCHIVE_BYTES)))
+# Text is not extracted from files larger than this (the file itself is still stored and served).
+MAX_EXTRACT_BYTES = int(os.environ.get("VTP_MAX_EXTRACT_BYTES", str(150 * 1024 * 1024)))
 CHUNK_BATCH = 250
 CHUNK_BATCH_CHARS = 350_000
 
@@ -223,6 +227,8 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
 
     dl = client.download(url, etag=item.get("known_etag"), last_modified=item.get("known_last_modified"), max_bytes=MAX_DOWNLOAD_BYTES)
     counts.fetched += 1
+    if dl.truncated:
+        log(f"  over {MAX_DOWNLOAD_BYTES / 1e6:.0f} MB, not downloaded in full (linked only): {url[:100]}")
     if dl.not_modified:
         counts.unchanged += 1
         api.post("/queue/status", {"updates": [{"urlKey": key, "status": "unchanged", "countAttempt": False, "runId": run_id}]})
@@ -252,8 +258,14 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
             # Hash the readable text, not the raw HTML, so menus or widgets changing do not re-index a page.
             dl.sha256 = hashlib.sha256(text_all.encode()).hexdigest()
             mime, ext = "text/html", "html"
+        elif dl.path and dl.size > MAX_EXTRACT_BYTES:
+            # A very large file (usually a scanned packet): stored and served, its text not read.
+            log(f"  text skipped for {url[:100]} ({dl.size / 1e6:.0f} MB, over {MAX_EXTRACT_BYTES / 1e6:.0f} MB)")
+            extraction = Extraction(status="unsupported", detail=f"Over {MAX_EXTRACT_BYTES} bytes: text not extracted")
         else:
-            extraction = extract(dl.path, ext, mime, ocr=ocr) if dl.path else None
+            # A record put back on the queue only to store its file already has its text: no OCR pass for it here.
+            refill = item.get("run_id") == "archive-fill" and bool(item.get("known_document_id"))
+            extraction = extract(dl.path, ext, mime, ocr=ocr and not refill) if dl.path else None
             if extraction and meta.get("prefaceText"):
                 # The code site's written summary of this record, kept with the record itself.
                 first = extraction.pages[0].number if extraction.pages else 1
@@ -312,6 +324,7 @@ def process(api: PortalApi, client: PoliteClient, storage: StorageProvider | Non
 
         if res.get("needsArchive") and storage and dl.path and dl.sha256 and page_kind not in ("web_page", "press_release"):
             if dl.size > MAX_ARCHIVE_BYTES:
+                log(f"  not stored: {url[:100]} is {dl.size / 1e6:.0f} MB, over the {MAX_ARCHIVE_BYTES / 1e6:.0f} MB limit (linked only)")
                 api.post(f"/documents/{doc_id}", {"archiveStatus": "remote_only_large_file"})
             else:
                 a = storage.store(dl.sha256, dl.path, dl.size, mime, ext or "bin")

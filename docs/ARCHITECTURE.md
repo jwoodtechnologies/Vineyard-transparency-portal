@@ -145,7 +145,7 @@ Browser ─► vineyardportal.org ─► Cloudflare Worker "vineyard-transparenc
                                    └─ /api/* (worker/index.ts)
                                         ├─ D1 vtp-catalog      metadata, provenance, versions, meetings, crawl state, quotas
                                         ├─ D1 vtp-search-N     FTS5 chunks (sharded, SearchRepository)
-                                        ├─ R2 vtp-public-records  archived originals (content-addressed, hard stop)
+                                        ├─ R2 vtp-public-records  archived originals (content-addressed, 60 GB stop under a 60 GB ceiling)
                                         └─ Workers AI          grounded answers, optional (search-only fallback)
 GitHub Actions / workstation ─► ingest/ (Python) ─► /api/admin/* (OIDC-authenticated writes)
 ```

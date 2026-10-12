@@ -12,7 +12,8 @@ follow.
 | Malicious content inside archived documents (XSS, phishing links, prompt injection) | Text-only rendering, URL allow-listing, CSP, prompt-injection rules + citation validation |
 | Leaking secrets | No secrets in the frontend or in `VITE_*` variables; Worker holds none |
 | Crawler abuse / resource exhaustion | Size limits, content-type checks, rate limits, robots.txt, no execution |
-| Path traversal / file overwrite in the archive | Sanitized names, validated content-addressed keys, root checks, no overwrite |
+| Path traversal / file overwrite in the archive | Sanitized names, validated content-addressed keys, root checks, no overwrite; large files in parts only through the OIDC-authenticated admin routes, each stored object checked against its SHA-256 |
+| Runaway storage cost | R2 stop of 60 GB that can never pass the 60 GB ceiling (`ARCHIVE_STORAGE_CEILING_BYTES`, itself capped at 100 GB in code): at most about $0.75 a month (paid R2 storage approved by Jacob on 2026-10-12; Workers usage stays zero overage) |
 | Tracking users | No accounts, no cookies, local-only history, no question logging |
 | Abuse of paid AI | Per-client rate limits, quotas, circuit breaker → search-only |
 

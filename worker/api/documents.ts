@@ -347,7 +347,9 @@ export async function getDocumentFile(env: Env, request: Request, id: string, ur
   const range = parseRange(request.headers.get('range'), head.size);
   if (range === 'invalid') return new Response(null, { status: 416, headers: { ...baseHeaders, 'content-range': `bytes */${head.size}` } });
 
-  const obj = await storage.get(key, range ?? undefined);
+  // The body is R2's stream, passed straight through (a 500 MB file is never held in memory); a Range asks R2 for
+  // just those bytes. HEAD reads no body at all.
+  const obj = request.method === 'HEAD' ? { body: null, range: range ? { offset: range.offset, length: range.length ?? head.size - range.offset } : undefined } : await storage.get(key, range ?? undefined);
   if (!obj) throw notFound('The archived copy could not be found.');
 
   const mime = String(row.mime_type ?? 'application/octet-stream');
