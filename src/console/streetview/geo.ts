@@ -161,3 +161,13 @@ export function ringToLocal(ring: Pos[], ref: { lng: number; lat: number; alt: n
 
 /** Google's Street View at a point (no key): the secondary option. */
 export const googleStreetViewUrl = ([lng, lat]: Pos) => `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+/**
+ * Where the horizon is on screen, in pixels from the top (negative when it is above the view): the view's
+ * center is `pitch` degrees from straight down, and the screen is `fov` degrees tall.
+ */
+export function horizonY(height: number, pitch: number, fov: number): number {
+  const up = ((90 - pitch) * Math.PI) / 180;
+  if (up <= 0) return height / 2;
+  return height / 2 - (height / 2) * (Math.tan(up) / Math.tan(((fov / 2) * Math.PI) / 180));
+}

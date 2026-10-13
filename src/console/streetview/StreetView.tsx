@@ -17,6 +17,8 @@ import { lineNear, mapillaryToken, photoNear, snapToLine } from './coverage';
 import { addBuildings, enter3d, leave3d, type Saved } from './threeD';
 import { enableOrbit, stepFrom, turn } from './orbit';
 import { Compass } from './Compass';
+import { Sky } from './Sky';
+import { createPortal } from 'react-dom';
 import type { District } from './zoningRenderer';
 
 const PhotoViewer = lazy(() => import('./PhotoViewer'));
@@ -387,6 +389,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
           {phase === '3d' && google}
         </div>
       </div>
+      {phase === '3d' && getMap() && createPortal(<Sky getMap={getMap} />, getMap()!.getContainer())}
       {phase === '3d' && (
         <div className="vc-sv-3d" role="group" aria-label="Look around">
           <Compass getMap={getMap} />

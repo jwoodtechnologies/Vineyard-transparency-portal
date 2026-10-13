@@ -5570,3 +5570,27 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 .vc-sv-credit { margin: 0; padding: 6px 12px calc(6px + env(safe-area-inset-bottom)); font-size: var(--vc-fs-xs); color: #c9c9cf; }
 .vc-sv-credit a { color: #fff; }
 .vc-sv-loading { margin: auto; color: #c9c9cf; font-size: var(--vc-fs-ui); }
+/* The 3D view's sky: light clouds above the horizon (Sky.tsx), moved by transforms only. */
+.vc-sv-sky { position: absolute; left: 0; right: 0; top: 0; height: var(--sky-h, 0px); overflow: hidden; pointer-events: none; z-index: 1; -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%); mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%); }
+.vc-sv-sky-turn { position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + 1800px); transform: translate3d(var(--sky-x, 0px), 0, 0); will-change: transform; }
+.vc-sv-clouds {
+  position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + 900px); will-change: transform;
+  background-repeat: repeat-x; background-size: 900px 100%;
+  background-image:
+    radial-gradient(ellipse 150px 30px at 120px 30%, rgb(255 255 255 / 0.85), rgb(255 255 255 / 0) 70%),
+    radial-gradient(ellipse 90px 24px at 200px 25%, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0) 70%),
+    radial-gradient(ellipse 190px 36px at 470px 55%, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 70%),
+    radial-gradient(ellipse 110px 28px at 545px 49%, rgb(255 255 255 / 0.75), rgb(255 255 255 / 0) 70%),
+    radial-gradient(ellipse 170px 28px at 780px 18%, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0) 70%);
+  animation: vc-sv-drift 160s linear infinite;
+}
+.vc-sv-clouds-far {
+  opacity: 0.7;
+  background-image:
+    radial-gradient(ellipse 80px 14px at 60px 62%, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 70%),
+    radial-gradient(ellipse 120px 18px at 330px 70%, rgb(255 255 255 / 0.65), rgb(255 255 255 / 0) 70%),
+    radial-gradient(ellipse 70px 12px at 640px 66%, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 70%);
+  animation-duration: 260s;
+}
+@keyframes vc-sv-drift { to { transform: translate3d(-900px, 0, 0); } }
+@media (prefers-reduced-motion: reduce) { .vc-sv-clouds { animation: none; } }
