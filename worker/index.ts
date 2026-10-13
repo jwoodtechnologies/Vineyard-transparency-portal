@@ -21,6 +21,7 @@ import { spenderEnv } from './ai/meter';
 import { listEvents } from './api/events';
 import { getMapLayer, getParcelAt, getParcelLines, getParcelOutlines, listMapLayers } from './api/map';
 import { getElevation } from './lib/elevation';
+import { getStreetviewConfig } from './lib/streetview';
 import { getLatest } from './api/latest';
 import { getBudget, getBudgetArchive } from './api/budget';
 import { getDraftMinutes } from './api/draftMinutes';
@@ -167,6 +168,9 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       break;
     case 'votes':
       if (!b || ((b === 'members' || b === 'years' || b === 'attendance' || b === 'meetings') && !c)) return handleVotes(env, url, b);
+      break;
+    case 'streetview':
+      if (b === 'config' && parts.length === 2) return getStreetviewConfig(env);
       break;
     case 'map':
       if (b === 'layers' && !c) return listMapLayers(env);

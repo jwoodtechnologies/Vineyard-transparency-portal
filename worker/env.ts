@@ -21,6 +21,8 @@ export interface Env {
 
   /** Comma-separated shard numbers that are searched, e.g. "0" or "0,1". */
   SEARCH_SHARDS?: string;
+  /** Mapillary client token for the map's street photos (GET /api/streetview/config). Set in the Cloudflare dashboard, never in the repo. */
+  MAPILLARY_TOKEN?: string;
   /** Comma-separated shard numbers that receive newly indexed documents. */
   SEARCH_WRITE_SHARDS?: string;
   /** Pause indexing when a search shard database passes this size (bytes). */
