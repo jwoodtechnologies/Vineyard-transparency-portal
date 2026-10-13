@@ -17,6 +17,8 @@ const OUT = args.out ?? 'shots';
 mkdirSync(OUT, { recursive: true });
 const { chromium } = await import(args.pw ?? 'playwright');
 const log = { spots: {}, runs: [] };
+/** Never write the token anywhere: it is the site's, and this log is saved to the repository's diagnostics branch. */
+const redact = (t) => String(t).replace(/MLY(\||%7C)[^&\s"'<>]+/gi, '[token]').replace(/access_token=[^&\s"'<>]+/g, 'access_token=[token]');
 
 const token = (await (await fetch(`${BASE}/api/streetview/config`)).json()).token;
 log.tokenSet = Boolean(token);
@@ -55,8 +57,8 @@ for (const prof of PROFILES) {
       });
       const page = await ctx.newPage();
       const notes = [];
-      page.on('console', (m) => /Content Security Policy|Refused to/.test(m.text()) && notes.push(m.text().slice(0, 300)));
-      page.on('pageerror', (e) => notes.push('pageerror: ' + e.message));
+      page.on('console', (m) => /Content Security Policy|Refused to/.test(m.text()) && notes.push(redact(m.text()).slice(0, 300)));
+      page.on('pageerror', (e) => notes.push(redact('pageerror: ' + e.message)));
       const tag = `${prof.name}-${kind}${dark ? '-dark' : ''}`;
       try {
         await page.goto(`${BASE}/map?lat=${spot[1]}&lng=${spot[0]}&z=18`, { waitUntil: 'domcontentloaded' });
@@ -80,7 +82,7 @@ for (const prof of PROFILES) {
             await page.screenshot({ path: `${OUT}/${tag}-nozoning.png` });
             await page.click('.vc-svp button[aria-pressed]');
           }
-          log.runs.push({ tag, chips: await page.locator('.vc-svp-chip').allTextContents(), bar: (await page.textContent('.vc-svp'))?.replace(/\s+/g, ' ').slice(0, 300), notes });
+          log.runs.push({ tag, chips: await page.locator('.vc-svp-chip').allTextContents(), bar: redact((await page.textContent('.vc-svp'))?.replace(/\s+/g, ' ') ?? '').slice(0, 300), notes });
         } else {
           await page.waitForSelector('.vc-sv-note', { timeout: 20000 });
           await page.waitForTimeout(6000);
@@ -89,12 +91,13 @@ for (const prof of PROFILES) {
         }
       } catch (e) {
         await page.screenshot({ path: `${OUT}/${tag}-failed.png` }).catch(() => undefined);
-        log.runs.push({ tag, error: String(e).slice(0, 500), notes });
+        log.runs.push({ tag, error: redact(e).slice(0, 500), notes });
       }
       await ctx.close();
     }
   }
 }
 await browser.close();
-writeFileSync(`${OUT}/sv-shots.json`, JSON.stringify(log, null, 2));
-console.log(JSON.stringify(log, null, 2));
+const text = redact(JSON.stringify(log, null, 2));
+writeFileSync(`${OUT}/sv-shots.json`, text);
+console.log(text);
