@@ -1,0 +1,76 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "1002607022800361",
+      "pano": true,
+      "pin": [
+        -111.74088731405833,
+        40.3116392823791
+      ],
+      "found": 50,
+      "pageSearch": {
+        "count": 119,
+        "withComputed": 119,
+        "pickInIt": true
+      }
+    },
+    "none": [
+      -111.7455,
+      40.3035
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone-photo",
+      "chips": [
+        "The Forge at 128,348"
+      ],
+      "bar": "Street viewZoningGoogleHashFerret2026The ForgeStreet photos from Mapillary contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.",
+      "notes": [
+        "photo shown after 3210 ms"
+      ]
+    },
+    {
+      "tag": "phone-photo-dark",
+      "chips": [
+        "The Forge at 128,348"
+      ],
+      "bar": "Street viewZoningGoogleHashFerret2026The ForgeStreet photos from Mapillary contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.",
+      "notes": [
+        "photo shown after 2514 ms"
+      ]
+    },
+    {
+      "tag": "phone-3d",
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle",
+      "notes": []
+    },
+    {
+      "tag": "desktop-photo",
+      "chips": [
+        "The Forge at 1014,417"
+      ],
+      "bar": "Street viewZoningGoogleimage by HashFerretJul 12, 2026The ForgeStreet photos from Mapillary contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.",
+      "notes": [
+        "photo shown after 2122 ms"
+      ]
+    },
+    {
+      "tag": "desktop-photo-dark",
+      "chips": [
+        "The Forge at 1014,417"
+      ],
+      "bar": "Street viewZoningGoogleimage by HashFerretJul 12, 2026The ForgeStreet photos from Mapillary contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.",
+      "notes": [
+        "photo shown after 2074 ms"
+      ]
+    },
+    {
+      "tag": "desktop-3d",
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle",
+      "notes": []
+    }
+  ],
+  "tokenSet": true
+}
