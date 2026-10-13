@@ -1,6 +1,13 @@
 # Private activity panel
 
-The panel shows page visits, questions asked, and thumbs up or down on answers.
+The panel is the owner's own console. It shows page visits, questions asked, and thumbs up or down on
+answers, and holds the owner's own tools.
+
+New staff accounts are made in the staff portal at `vineyardportal.org/staff`, under Accounts (see
+`docs/STAFF.md`). The panel no longer makes invites: its People tab says where to go, and
+`POST /api/invites/create` answers 410 with that sentence. Panel accounts and links made before then
+keep working, and the owner can still turn them off and on and revoke open links. The owner's email
+and password sign-in is unchanged; `/staff/setup` and last-resort recovery rely on it.
 
 - Address: an unguessable path under `/api/k/` (see `PANEL_PREFIX` in `worker/panel/routes.ts`). It is
   not linked anywhere, is not part of the public site's JavaScript, and is served with
@@ -19,14 +26,13 @@ The panel shows page visits, questions asked, and thumbs up or down on answers.
 | Role | Made by | Signs in with | Can use |
 | --- | --- | --- | --- |
 | Owner (account 1) | setup code | email and password, passkeys optional | everything |
-| Admin | owner invite, link valid 7 days | own sign-in name (email or user name) and password, or a passkey | Activity, Add, Updates, Uploads (all, edit and delete any), Submissions (approve, reject), Coverage, Health |
-| Uploader | owner invite, link valid 72 hours | passkey only | Add, Uploads (edit and delete its own) |
+| Admin | owner invite (no new ones; see above), link valid 7 days | own sign-in name (email or user name) and password, or a passkey | Activity, Add, Updates, Uploads (all, edit and delete any), Submissions (approve, reject), Coverage, Health |
+| Uploader | owner invite (no new ones; see above), link valid 72 hours | passkey only | Add, Uploads (edit and delete its own) |
 
-- Only the owner sees People: invites (Admin or Uploader), turning accounts off and on, the upload
-  log. Only the owner pauses submissions and hides, restores or removes approved ones.
-- Invite an admin: People, Invite, Admin (selected first), Name defaults to "Vineyard Admin",
-  Invite admin, Copy. The link is shown once; only its hash is stored.
-- Joining as an admin: the link opens "Welcome": a sign-in name (an email address, or a user name of
+- Only the owner sees People: existing accounts (turning them off and on), invites made earlier
+  (revoke an open one), the upload log. Only the owner pauses submissions and hides, restores or
+  removes approved ones.
+- Joining as an admin with a link made earlier: the link opens "Welcome": a sign-in name (an email address, or a user name of
   3 to 60 letters, digits, dots, dashes or underscores; not the owner's email; unique) and a password
   of 12 or more characters (PBKDF2 like the owner's, in `panel_logins`). Then the Security sheet opens
   with "Add a passkey". Admins can add or remove passkeys and change their password in Security;

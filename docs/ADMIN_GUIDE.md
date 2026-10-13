@@ -1,78 +1,101 @@
-# Vineyard Admin: quick guide
+# Staff portal: quick guide
 
-This is a short how-to for the city's admin account on the Vineyard Transparency Portal.
+This is a short how-to for city staff, such as the city admin and the social media specialist, who
+keep the Vineyard Transparency Portal current. Everything is done in one place:
+**vineyardportal.org/staff**. Save it as a bookmark. You only see the parts your account includes.
 
-## 1. Set up your account
+## 1. Get your account
 
-1. Jacob sends you a private link. It works once and lasts 7 days.
-2. Open it. You see **Welcome**.
-3. Pick a **sign-in name**. Your work email is easiest. A simple user name works too.
-4. Pick a **password** of 12 or more characters. A short sentence is a good choice.
-5. Tap **Create account**. You are signed in.
+1. An owner or administrator adds you under **Accounts** with your name, email, department and what
+   you may change. The social media specialist starting point, for example, allows notices, events
+   and updates only.
+2. They send you a one-time link. It works once and lasts 7 days. Nothing is emailed by the portal
+   itself, so the link comes from them directly.
+3. Open the link. Choose **Create a passkey** (your fingerprint, face or device PIN, nothing to
+   remember) or a password of at least 12 characters. A short sentence is a good password.
+4. You are shown 8 **recovery codes**. Copy, download or print them and keep them somewhere safe,
+   such as a password manager. Tick the box to say you saved them, then continue.
 
-## 2. Add a passkey (optional, recommended)
+If the link says it will not work, it was used or it expired. Ask for a new one.
 
-A passkey lets you sign in with Face ID, Touch ID or Windows Hello instead of typing your password.
+## 2. Sign in
 
-1. Right after you join, the **Security** panel opens. Tap **Add a passkey** and follow your device.
-2. Not now? Tap **Close**. You can add one any time: tap **Security** at the top.
+Open vineyardportal.org/staff, then tap **Sign in with a passkey**, or type your email and password
+and tap **Sign in**. A session lasts 12 hours. If it ends while you are typing, a box asks you to sign
+in again and what you typed stays on the page.
 
-Your password keeps working either way. To change it, open **Security** and use **Change password**.
+## 3. Lost your passkey or forgot your password
 
-## 3. Sign in next time
+1. On the sign-in page, tap **Lost your passkey or forgot your password?**
+2. Enter your email and one unused recovery code. Each code works once.
+3. Set up a new passkey or password. You get a fresh set of codes; save them again.
 
-Open the same panel address (save it as a bookmark). Then either:
+Under **Your account** (the menu with your initials) you can add a passkey, change your password, or
+make a new set of recovery codes. No codes left? Ask an owner or administrator for **Reset sign-in**,
+which gives you a new link.
 
-- tap **Sign in with a passkey**, or
-- type your sign-in name and password and tap **Sign in**.
+## 4. Records: add one file
 
-## 4. Upload one file
+1. Open **Records**. **File** is selected.
+2. Tap the box to choose a file, or drop it on the box. PDF, picture, text or CSV, up to 25 MB.
+   Text and CSV files can be up to 1 MB.
+3. Check the **Title** and the **Type of record**. The type is guessed from the file name.
+4. Add the **Date of the record** and, for agendas and minutes, the **Meeting**. A short
+   description is optional.
+5. Tap **Add file**. It is searchable and on the portal right away. Minutes are read for votes, and
+   the Votes page follows within about ten minutes.
 
-1. Tap **Add**, then **Files**.
-2. Drop the file on the box, or tap the box to choose it.
-3. Fill in **For every file**: the type (agenda, minutes, contract and so on) and the date.
-4. Check the title. Change it if the file name is not clear.
-5. Tap **Add 1 file**. When it says **Added**, residents can find it.
+**Note** and **Link** add a short written note or a web address the same way.
 
-Files can be PDF, PNG, JPG, TXT or CSV, up to 25 MB each. Big PDFs show up by title right away and
-by their full text within about 5 minutes.
+## 5. Records: add many files at once
 
-## 5. Upload many files at once
+1. Open **Records**, then choose or drop several files at once (up to 30).
+2. Fill in the shared details once: type (or **Guess from each file name**), date, meeting and
+   description. They apply to every file.
+3. Each file gets a title from its file name. Fix any that read oddly, or tap **Leave this one out**.
+4. Tap **Add files**. Each file shows **Ready**, **Adding**, **Added**, or why it did not go in. One
+   line sums up how the batch went.
+5. If any did not go in, fix the cause and tap **Retry failed**.
 
-1. Tap **Add**, then **Files**.
-2. Drop all the files at once, or choose several.
-3. Fill in **For every file** once. It applies to all of them.
-4. Each file gets its own title from its file name. Fix any that read oddly.
-5. Tap **Add files**. Each file shows its own status as it goes.
-6. If any say why they failed, fix the cause and tap **Retry failed**.
+A file already on the portal is not added twice. Anything you add can be changed or removed from the
+list under **Added by staff**.
 
-A file that is already on the portal is not added twice.
+## 6. Updates
 
-## 6. Post an update
+Use an update for news in plain words, such as "We finished the 400 North signal. The road is open."
 
-Use this for news in plain words, such as "We finished the 400 North signal. The road is open."
+1. Open **Updates** and tap **Post an update**.
+2. Write the update. A headline is optional; without one, the first line is used.
+3. The date is today. Change it if the news is from another day.
+4. Optional: under **About**, pick the funded project or topic. A project shows the update on its card
+   under the map.
+5. Tap **Post update**. It is searchable, listed on the Records page and used by the assistant at once.
 
-1. Tap **Updates**.
-2. Write the **Text**. A **Title** is optional.
-3. The **Date** is today. Change it if the news is from another day.
-4. Optional: pick the **Project or topic** it is about.
-5. Tap **Publish**.
+## 7. Notices and events
 
-Made a mistake? Find it under **Published** and tap **Edit** or **Remove**. Earlier wording is kept
-in **History**.
+- **Notices** show at the top of every public page, such as an office closure. Tap **Post a notice**,
+  write up to 280 characters, choose **Alert** or **Information**, and add first and last days if it
+  should come down on its own. A notice can also go on the map, such as a road closure. **Hide** takes
+  it down and keeps it on file.
+- **Events** add a community event, special meeting or closure day to the public calendar. Tap
+  **Add an event**, give it a title, day or days, and an optional place, details and link.
 
-## 7. What residents see
+## 8. Submissions
 
-- Your update gets its own page, marked **Update posted on the portal** with its date.
-- It shows up in search and on the **Records** page under **Updates**.
-- If you picked a project, it appears on that project's card under the map as its latest update.
-- The chat assistant uses it right away and links to it when it answers. When your update is newer
-  than an older record, the assistant goes with your update.
-- Files you upload appear in search and in the records list, marked **Added by portal staff**.
+Residents can send records from the public Submit a record page. Nothing they send is public until
+someone approves it. This screen is for accounts that include resident submissions.
 
-## 8. Other tabs
+- **Waiting**: **Approve** puts the item on the portal, labelled "Resident submitted. Not a city
+  record." **Reject** deletes it and its file. **Open the file** shows an attached file first.
+- **Approved**: **Hide** takes an item off the portal and keeps it; **Put back** shows it again.
+  **Remove for good** deletes it and its file. An item reported by two residents is hidden on its own.
+- **Pause submissions** stops new ones; the public page says submissions are paused.
 
-- **Submissions**: records sent in by residents. **Approve** adds one to the portal with a "Resident
-  submitted" label. **Reject** deletes it.
-- **Activity**, **Coverage** and **Health** show how the portal is used and what it is missing.
-- Only Jacob can invite people or turn accounts off. If you get locked out, ask him.
+## 9. Mistakes and Activity
+
+Every change is listed under **Activity** with who made it. Most changes can be put back with
+**Undo**: adds, edits, hiding and putting back, and pausing. Removing a file, rejecting a submission
+or removing one for good deletes the file, so those cannot be undone.
+
+Owners and administrators also see **Accounts**, **Insights** (visits, questions and ratings),
+**Coverage** (what the archive is missing) and **Health** (whether the city's sources are being read).
