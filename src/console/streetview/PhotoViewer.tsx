@@ -80,6 +80,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     rendererRef.current = renderer;
     let first = true;
     let frame = 0;
+    let settle = 0;
     let gone = false;
     const placeChips = () => {
       const near = districts
@@ -87,24 +88,23 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
         .filter((x) => distance(x.at, cam.current) < 250 && distance(x.at, cam.current) > 4)
         .sort((a, b) => distance(a.at, cam.current) - distance(b.at, cam.current))
         .slice(0, 5);
-      const inFrame = (p: number[] | null) => Boolean(p) && p![0] >= 0 && p![1] >= 0 && p![0] <= el.clientWidth && p![1] <= el.clientHeight;
-      viewer
-        .project({ lng: pin[0], lat: pin[1] })
-        .catch(() => null)
-        .then((p) => !gone && setPinAt(inFrame(p) ? [p![0], p![1]] : null));
-      Promise.all(near.map((x) => viewer.project({ lng: x.at[0], lat: x.at[1] }).catch(() => null))).then((px) => {
-        if (gone) return;
-        const seen = new Set<string>();
-        const out: Chip[] = [];
-        px.forEach((p, i) => {
-          const z = near[i].d.zone;
-          // Off the photo (a flat photo shows only what is in front of it): no chip.
-          if (!p || seen.has(z) || p[0] < 0 || p[1] < 0 || p[0] > el.clientWidth || p[1] > el.clientHeight) return;
-          seen.add(z);
-          out.push({ zone: z, color: near[i].d.color, x: p[0], y: p[1] });
-        });
-        setChips(out);
-      });
+      const w = el.clientWidth,
+        h = el.clientHeight;
+      const at = (p: Pos) => {
+        const px = renderer.projectGround(p, w, h);
+        return px && px[0] >= 0 && px[1] >= 0 && px[0] <= w && px[1] <= h ? px : null;
+      };
+      setPinAt(at(pin));
+      const seen = new Set<string>();
+      const out: Chip[] = [];
+      for (const x of near) {
+        const px = at(x.at);
+        // Off the photo (a flat photo shows only what is in front of it): no chip.
+        if (!px || seen.has(x.d.zone)) continue;
+        seen.add(x.d.zone);
+        out.push({ zone: x.d.zone, color: x.d.color, x: px[0], y: px[1] });
+      }
+      setChips(out);
     };
     const report = () => {
       cancelAnimationFrame(frame);
@@ -115,6 +115,10 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
             cam.current = [pos.lng, pos.lat];
             cbs.current.onCamera({ pos: [pos.lng, pos.lat], bearing: pov.bearing, fov });
             placeChips();
+            // Once more after the next drawn frame and after the view settles: the overlay reads the drawn view.
+            requestAnimationFrame(() => !gone && placeChips());
+            clearTimeout(settle);
+            settle = window.setTimeout(() => !gone && placeChips(), 350);
           },
           () => undefined,
         );
@@ -145,6 +149,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     return () => {
       gone = true;
       clearTimeout(watchdog);
+      clearTimeout(settle);
       cancelAnimationFrame(frame);
       ro.disconnect();
       viewer.remove();

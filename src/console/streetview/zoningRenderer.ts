@@ -74,6 +74,7 @@ export class ZoningRenderer implements ICustomRenderer {
   private reference: LngLatAlt | null = null;
   private camera: { pos: Pos; alt: number } | null = null;
   private viewer: IViewer | null = null;
+  private matrices: { view: number[]; proj: number[] } | null = null;
 
   constructor(
     private districts: District[],
@@ -175,7 +176,23 @@ export class ZoningRenderer implements ICustomRenderer {
     this.viewer?.triggerRerender();
   }
 
+  /**
+   * A ground point (at the pin's or a district's spot) in canvas pixels, or null when it is behind the camera
+   * or the view is not drawn yet. Uses the last frame's matrices and the same ground height as the fills
+   * (the viewer's own project() puts a point with no altitude at sea level, far below the street).
+   */
+  projectGround(at: Pos, width: number, height: number): [number, number] | null {
+    const m = this.matrices;
+    if (!m || !this.reference || !this.camera) return null;
+    const [x, y, z] = geodeticToEnu(at[0], at[1], this.camera.alt - CAMERA_HEIGHT_M, this.reference.lng, this.reference.lat, this.reference.alt);
+    const mul = (a: number[], v: number[]) => [0, 1, 2, 3].map((r) => a[r] * v[0] + a[4 + r] * v[1] + a[8 + r] * v[2] + a[12 + r] * v[3]);
+    const c = mul(m.proj, mul(m.view, [x, y, z, 1]));
+    if (c[3] <= 0) return null;
+    return [((c[0] / c[3] + 1) / 2) * width, ((1 - c[1] / c[3]) / 2) * height];
+  }
+
   render(gl: GL, viewMatrix: number[], projectionMatrix: number[]): void {
+    this.matrices = { view: viewMatrix, proj: projectionMatrix };
     const p = this.program;
     if (!p || (!this.meshes.length && !this.parcelMesh)) return;
     gl.useProgram(p.prog);
