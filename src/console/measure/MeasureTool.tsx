@@ -308,9 +308,6 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
       wrap?.style.setProperty('--vc-measure-w', `${right}px`);
       // Too little map left above the sheet for the zoom and full screen buttons: they step aside (pinch still zooms).
       if (wrap) wrap.dataset.measureTall = String(!w && box.height - bottom < 400);
-      // The attribution starts folded to its (i) button so it does not sit over the drawing.
-      if (first) wrap?.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
-      first = false;
       try {
         map.setPadding({ top: 70, bottom, left: 0, right });
       } catch {
@@ -337,7 +334,6 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
         { padding: 24, maxZoom: map.getZoom(), duration: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 250 },
       );
     };
-    let first = true;
     let lastBottom = -1;
     let lastRight = -1;
     apply();

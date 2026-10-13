@@ -28,6 +28,7 @@ import { useWide } from './useWide';
 import { BASE_BG, blankStyle, byZoom, CASING, firstLabelLayer, GLYPHS, satelliteStyle, streetsBg, streetsStyle, watchSatellite, whenBasePainted } from './mapBase';
 import { hasTile, loadedTileCount, loadTile, mergedParcels, tilesFor } from './parcelTiles';
 import { FullscreenToggle } from './mapFullscreen';
+import { FoldedAttribution } from './mapAttribution';
 import { FULL_ZOOM, levelFor, LINES_MIN_ZOOM, loadLines, MID_ZOOM, tapLooksUpParcel, tilesMinZoom, type LineFC, type LineLevel } from './parcelLines';
 import { formatDate } from '@/lib/dates';
 import { ProjectViewpoint, viewpointFor, type Pos } from './streetView';
@@ -747,7 +748,7 @@ export default function MapPage() {
           marker.getElement().setAttribute('title', point.label);
         }
       }
-      m.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Data: <a href="https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb" target="_blank" rel="noopener">Vineyard City Public GIS</a>' }), 'bottom-right');
+      m.addControl(new FoldedAttribution({ customAttribution: 'Data: <a href="https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb" target="_blank" rel="noopener">Vineyard City Public GIS</a>' }), 'bottom-right');
       m.addControl(new maplibregl.NavigationControl({ showCompass: base === 'terrain', visualizePitch: true }), 'bottom-right');
       // Full screen sits above the zoom buttons (bottom corners stack upward) and takes the panel and card with it.
       m.addControl(new FullscreenToggle(() => wrapRef.current), 'bottom-right');

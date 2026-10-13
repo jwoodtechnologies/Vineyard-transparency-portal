@@ -5,6 +5,7 @@
 import { useEffect, useRef } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { satelliteStyle } from '../mapBase';
+import { FoldedAttribution } from '../mapAttribution';
 import { addCoverage, lineNear, photoNear } from './coverage';
 import type { Photo, Pos } from './geo';
 import { addSvLayers, drawSv, type Camera } from './mapDraw';
@@ -40,7 +41,7 @@ export function MiniMap({ token, camera, large, onPick }: Props) {
       const c = cam.current?.pos ?? [-111.745, 40.305];
       map = new maplibregl.Map({ container: el, style, center: c, zoom: 17, attributionControl: false, dragRotate: false, pitchWithRotate: false, maxZoom: 19, minZoom: 12 });
       map.touchZoomRotate.disableRotation();
-      map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+      map.addControl(new FoldedAttribution(), 'bottom-right');
       mapRef.current = map;
       map.on('load', () => {
         if (!map) return;
