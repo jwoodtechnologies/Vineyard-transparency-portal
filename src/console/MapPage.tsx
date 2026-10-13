@@ -1403,7 +1403,6 @@ export default function MapPage() {
                 <input type="checkbox" className="vc-switch" checked={photosLayer} onChange={togglePhotosLayer} />
               </label>
             </div>
-            <p className="vc-panel-note">From the city&apos;s public GIS. Parcel lines from Utah County GIS. Owner names are shown only for companies, churches, HOAs and government, never for individuals; on a home, only a government or HOA owner.</p>
           </aside>
         )}
 
@@ -1524,11 +1523,11 @@ export default function MapPage() {
                 {picked.props.__loading
                   ? 'Loading parcel details.'
                   : picked.props.__src === 'county+city'
-                    ? `Current Utah County GIS records. ${[picked.props.PROP_TYPE_DESCR != null && 'Property type', picked.props.GLA_WEIGHTED_YRBLT != null && 'year built'].filter(Boolean).join(' and ').replace(/^y/, 'Y')} ${picked.props.PROP_TYPE_DESCR != null && picked.props.GLA_WEIGHTED_YRBLT != null ? 'are' : 'is'} from 2025 city parcel data.`
+                    ? 'Source: Utah County GIS and 2025 city parcel data.'
                     : picked.props.__src === 'county'
-                      ? 'Current Utah County GIS records.'
+                      ? 'Source: Utah County GIS.'
                       : picked.props.__src === 'city'
-                        ? 'From 2025 city parcel data (a copy of Utah County records).'
+                        ? 'Source: 2025 city parcel data.'
                         : 'Parcel details could not be loaded right now. Try again shortly.'}
               </p>
             )}

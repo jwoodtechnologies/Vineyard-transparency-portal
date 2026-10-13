@@ -381,10 +381,10 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
             : phase === 'search'
               ? 'Looking for a street photo near this spot.'
               : why3d === 'off'
-                ? 'Street photos are not available right now. This is a 3D view of the map.'
+                ? 'Street photos are not available right now.'
                 : why3d === 'error'
-                  ? 'The street photo could not be loaded. This is a 3D view of the map.'
-                  : `No street photo within ${MAX_PHOTO_M} m of this spot yet. This is a 3D view of the map.`}
+                  ? 'The street photo could not be loaded.'
+                  : `No street photo within ${MAX_PHOTO_M} m of this spot yet.`}
         </p>
         {phase === '3d' && zoningToggle}
         {phase === '3d' && google}
