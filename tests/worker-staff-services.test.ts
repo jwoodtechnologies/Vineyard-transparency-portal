@@ -102,3 +102,26 @@ describe('phone numbers and quick links', () => {
     facts.resetCityFacts();
   });
 });
+
+describe('construction now', () => {
+  it('needs the map area, keeps plain text and names each change', async () => {
+    expect((await save('construction', { edits: {}, hidden: [], added: [] })).status).toBe(403);
+    const one = await save(
+      'construction',
+      { edits: { 'Center Street Crosswalk': { status: 'Paused for winter' } }, hidden: ['Chip Seal'], added: [{ name: '400 South waterline', status: 'Starts November 3' }] },
+      null,
+      mapper,
+    );
+    expect(one.status).toBe(200);
+    expect(one.body.value.edits).toEqual({ 'center street crosswalk': { status: 'Paused for winter' } });
+    expect(one.body.value.hidden).toEqual(['chip seal']);
+    expect(one.body.value.added[0]).toMatchObject({ name: '400 South waterline', status: 'Starts November 3', where: '' });
+    expect(one.body.value.added[0].id).toMatch(/^c_[0-9a-f]{10}$/);
+    expect((await save('construction', { edits: {}, hidden: [], added: [{ name: '<b>x</b>' }] }, one.body.updatedAt, mapper)).status).toBe(400);
+    const two = await save('construction', { ...one.body.value, added: [] }, one.body.updatedAt, mapper);
+    expect(two.status).toBe(200);
+    const items = (await h.call('GET', '/audit?limit=5', undefined, { cookie: mapper.cookie })).body.items as Array<{ summary: string }>;
+    expect(items[0].summary).toBe('Removed "400 South waterline" from Construction now');
+    expect(items[1].summary).toBe('Made 3 changes to Construction now');
+  });
+});
