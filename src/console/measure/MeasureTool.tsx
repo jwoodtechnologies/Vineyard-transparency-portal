@@ -76,23 +76,25 @@ async function copy(text: string): Promise<boolean> {
   }
 }
 
+/** The one line step hint at the top of the readout: what the next tap does. */
 function hint(mode: Mode, coarse: boolean, count: number, done: boolean): string {
-  if (done) return mode === 'parcel' ? 'Tap another parcel to measure it.' : 'Drag a point to adjust it. Tap a middle handle to add a point.';
+  const tap = coarse ? 'Tap' : 'Click';
   switch (mode) {
     case 'distance':
-      return coarse ? 'Move the map to put the crosshair on a spot, then tap Add point.' : count ? 'Click to add the next point. Press Enter to finish.' : 'Click the map to add points.';
+      if (done) return 'Done. Drag Start, End or any point to adjust.';
+      if (!count) return coarse ? 'Put the crosshair on the start, then tap Set start.' : 'Click the map to set the start.';
+      return coarse ? 'Tap Add point for the next point, or Set end to finish.' : 'Click to add the next point, or Finish to set the end.';
     case 'area':
-      return coarse ? 'Put the crosshair on each corner and tap Add point. Three or more points make an area.' : 'Click each corner. Three or more points make an area. Press Enter to finish.';
+      if (done) return 'Done. Drag a corner to adjust.';
+      if (!count) return coarse ? 'Put the crosshair on the first corner, then tap Set start.' : 'Click the map to set the first corner.';
+      if (count < 3) return `${tap} to add the next corner.`;
+      return coarse ? 'Add more corners, or tap Close to finish the area.' : 'Click to add a corner, or click Start to close the area.';
     case 'circle':
-      return coarse
-        ? count
-          ? 'Move the crosshair to the edge, then tap Set edge.'
-          : 'Put the crosshair on the center, then tap Set center.'
-        : count
-          ? 'Click the edge of the circle.'
-          : 'Click the center and drag out the radius, or click the center and then the edge.';
+      if (done) return 'Done. Drag Center or Radius to adjust.';
+      if (!count) return coarse ? 'Put the crosshair on the center, then tap Set center.' : 'Click the center, or press and drag out the radius.';
+      return coarse ? 'Move the crosshair to the edge, then tap Set radius.' : 'Click the edge to set the radius.';
     case 'parcel':
-      return coarse ? 'Put the crosshair inside a parcel, then tap Measure parcel.' : 'Click a parcel to measure it.';
+      return count ? `${tap} another parcel to measure it.` : coarse ? 'Put the crosshair inside a parcel, then tap Measure parcel.' : 'Click a parcel to measure it.';
   }
 }
 
@@ -240,8 +242,19 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
     const map = getMap();
     if (!map || !ready || !map.getSource('vtp-measure')) return;
     drawShape(map, state.mode, state.pts, state.closed, sum, units.system);
-    handles.current?.update(state.mode, state.pts, state.closed);
+    handles.current?.update(state.mode, state.pts, state.closed, state.done);
   }, [getMap, gen, ready, state, sum, units.system]);
+
+  // The measured parcel is outlined (its ring is the shape) and labeled with its address or number.
+  useEffect(() => {
+    const h = handles.current;
+    if (!h) return;
+    const ring = state.mode === 'parcel' && parcel?.ring ? parcel.ring : null;
+    if (!ring) return h.setTag(null, '');
+    const xs = ring.map((p) => p[0]),
+      ys = ring.map((p) => p[1]);
+    h.setTag([(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2], parcel?.address ?? (parcel?.number ? `Parcel ${parcel.number}` : 'Parcel'));
+  }, [gen, ready, state.mode, parcel]);
 
   // The dashed guide to the pointer or crosshair while drawing.
   const guideFrom = drawing && state.pts.length ? (state.mode === 'circle' ? state.pts[0] : state.pts[state.pts.length - 1]) : null;
@@ -486,7 +499,8 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
       if (parcel && parcelState !== 'loading') sub = [parcel.address, parcel.number ? `parcel ${parcel.number}` : null].filter((x): x is string => Boolean(x));
       break;
   }
-  const addLabel = state.mode === 'circle' ? (state.pts.length ? 'Set edge' : 'Set center') : state.mode === 'parcel' ? 'Measure parcel' : 'Add point';
+  const addLabel = state.mode === 'circle' ? (state.pts.length ? 'Set radius' : 'Set center') : state.mode === 'parcel' ? 'Measure parcel' : state.pts.length ? 'Add point' : 'Set start';
+  const finishLabel = state.mode === 'area' ? 'Close' : 'Set end';
   const canFinish = drawing && state.pts.length > (state.mode === 'area' ? 2 : 1) && state.mode !== 'circle';
   const hasShape = state.pts.length > 0 && (state.mode !== 'parcel' || Boolean(parcel));
 
@@ -527,7 +541,8 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
 
         <div className="vc-measure-read">
           <div className="vc-measure-nums">
-            {big ? <p className="vc-measure-big">{big}</p> : <p className="vc-measure-hint">{hint(state.mode, coarse, state.pts.length, state.done)}</p>}
+            <p className="vc-measure-step">{hint(state.mode, coarse, state.pts.length, state.done)}</p>
+            {big && <p className="vc-measure-big">{big}</p>}
             {sub.length > 0 && <p className="vc-measure-sub">{sub.join(' · ')}</p>}
             {state.mode === 'distance' && live1 && live1.d >= 0.3 && state.pts.length > 0 && drawing && (
               <p className="vc-measure-sub">
@@ -568,8 +583,9 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
             </button>
           )}
           {canFinish && (
-            <button type="button" className="vc-measure-icon" onClick={() => dispatch({ type: 'finish' })} aria-label="Finish" title="Finish (Enter)">
-              <Check size={18} strokeWidth={2.2} />
+            <button type="button" className={coarse ? 'vc-measure-end' : 'vc-measure-icon'} onClick={() => dispatch({ type: 'finish' })} aria-label={coarse ? finishLabel : 'Finish'} title="Finish (Enter)">
+              <Check size={18} strokeWidth={2.2} aria-hidden="true" />
+              {coarse && <span>{finishLabel}</span>}
             </button>
           )}
           <span className="vc-measure-gap" />

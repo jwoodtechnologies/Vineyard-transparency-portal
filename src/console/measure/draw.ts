@@ -107,7 +107,7 @@ export class Handles {
     const el = document.createElement('button');
     el.type = 'button';
     el.className = 'vc-mh';
-    el.innerHTML = '<span aria-hidden="true"></span>';
+    el.innerHTML = '<span aria-hidden="true"></span><b aria-hidden="true"></b>';
     const m = new maplibregl.Marker({ element: el, draggable: true });
     m.on('dragstart', () => this.ev.onDrag(Number(el.dataset.i), toPos(m.getLngLat()), 'start'));
     m.on('drag', () => this.ev.onDrag(Number(el.dataset.i), toPos(m.getLngLat()), 'move'));
@@ -138,7 +138,22 @@ export class Handles {
   }
 
   /** Puts a point on each vertex and an insert target on each segment (none while dragging is impossible). */
-  update(mode: Mode, pts: Pos[], closed: boolean): void {
+  /**
+   * Labels make the start and end plain: Distance shows a green Start, a red End and numbers between;
+   * Area labels its first corner Start, which asks to be tapped to close once there are three corners;
+   * Circle labels Center and Radius.
+   */
+  private label(mode: Mode, i: number, n: number, closed: boolean, done: boolean): { role: string; tag: string; aria: string } {
+    if (mode === 'circle') return i ? { role: 'radius', tag: 'Radius', aria: 'Radius point. Drag to change the radius.' } : { role: 'center', tag: 'Center', aria: 'Center point. Drag to move the circle.' };
+    if (i === 0) {
+      if (mode === 'area' && n >= 3 && !done) return { role: 'close', tag: 'Tap here to close', aria: 'Start corner. Tap to close the area, or drag to move it.' };
+      return { role: 'start', tag: 'Start', aria: `Start point. Drag to move.` };
+    }
+    if (mode === 'distance' && i === n - 1 && !closed) return { role: 'end', tag: 'End', aria: 'End point. Drag to move.' };
+    return { role: 'mid', tag: String(i + 1), aria: `Point ${i + 1} of ${n}. Drag to move.` };
+  }
+
+  update(mode: Mode, pts: Pos[], closed: boolean, done = false): void {
     const shown = mode === 'parcel' ? [] : pts;
     while (this.points.length > shown.length) this.points.pop()!.remove();
     while (this.points.length < shown.length) this.points.push(this.point(this.points.length).setLngLat(shown[this.points.length]).addTo(this.map));
@@ -146,8 +161,15 @@ export class Handles {
       const m = this.points[i];
       const el = m.getElement();
       el.dataset.i = String(i);
-      el.dataset.role = mode === 'circle' ? (i ? 'edge' : 'center') : i === 0 ? 'first' : '';
-      el.setAttribute('aria-label', mode === 'circle' ? (i ? 'Circle edge. Drag to change the radius.' : 'Circle center. Drag to move the circle.') : `Point ${i + 1} of ${shown.length}. Drag to move.`);
+      const l = this.label(mode, i, shown.length, closed, done);
+      el.dataset.role = l.role;
+      el.setAttribute('aria-label', l.aria);
+      const tag = el.querySelector('b');
+      if (tag && tag.textContent !== l.tag) tag.textContent = l.tag;
+      // Points between the start and the end carry their number in the dot.
+      const dot = el.querySelector('span');
+      const n = l.role === 'mid' ? l.tag : '';
+      if (dot && dot.textContent !== n) dot.textContent = n;
       const ll = m.getLngLat();
       if (ll.lng !== p[0] || ll.lat !== p[1]) m.setLngLat(p);
     });
@@ -169,7 +191,26 @@ export class Handles {
     this.fit();
   }
 
+  /** A label on the map for the measured parcel, or none. */
+  private tagMarker: maplibregl.Marker | null = null;
+  setTag(at: Pos | null, text: string): void {
+    if (!at) {
+      this.tagMarker?.remove();
+      this.tagMarker = null;
+      return;
+    }
+    if (!this.tagMarker) {
+      const el = document.createElement('div');
+      el.className = 'vc-mtag';
+      this.tagMarker = new maplibregl.Marker({ element: el }).setLngLat(at).addTo(this.map);
+    }
+    this.tagMarker.setLngLat(at);
+    this.tagMarker.getElement().textContent = text;
+  }
+
   clear(): void {
+    this.tagMarker?.remove();
+    this.tagMarker = null;
     this.map.off('zoomend', this.fit);
     for (const m of [...this.points, ...this.mids]) m.remove();
     this.points = [];
