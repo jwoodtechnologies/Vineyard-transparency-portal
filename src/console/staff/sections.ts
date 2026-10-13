@@ -94,6 +94,7 @@ export const SECTIONS: Section[] = [
     tile: true,
     Component: lazy(() => import('./Updates')),
   },
+  { path: 'boards', label: 'Board details', blurb: 'What each board does, when it meets, and where to apply.', area: 'people', tile: true, Component: lazy(() => import('./BoardsInfo')) },
   { path: 'directory', label: 'Directory', blurb: 'Keep the Mayor and Council, city staff and board members up to date.', area: 'people', tile: true, Component: lazy(() => import('./Directory')) },
   {
     path: 'submissions',
