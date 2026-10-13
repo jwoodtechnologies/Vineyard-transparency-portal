@@ -222,6 +222,48 @@ async function setCurrent(env: Env, me: StaffUser, b: Record<string, unknown>, c
   return { ok: true };
 }
 
+const PHOTO_MAX = 3 * 1024 * 1024;
+
+/** The kind of image the bytes really are (never what the browser claims), or null. */
+function imageType(b: Uint8Array): { mime: string; ext: string } | null {
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { mime: 'image/jpeg', ext: 'jpg' };
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return { mime: 'image/png', ext: 'png' };
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return { mime: 'image/webp', ext: 'webp' };
+  return null;
+}
+
+/** A photo staff upload for a person: stored in the portal's own storage, and kept even when the city website changes. */
+async function photo(env: Env, me: StaffUser, request: Request): Promise<Record<string, unknown>> {
+  if (!env.ARCHIVE) throw badRequest('Photo storage is not set up.');
+  const form = await request.formData().catch(() => null);
+  if (!form) throw badRequest('Choose a photo.');
+  const row = await personRow(env, form.get('slug'));
+  const file = form.get('file');
+  if (!file || typeof file === 'string') throw badRequest('Choose a photo.');
+  const bytes = new Uint8Array(await (file as File).arrayBuffer());
+  if (bytes.byteLength > PHOTO_MAX) throw badRequest('That photo is larger than 3 MB. Choose a smaller one.');
+  const type = imageType(bytes);
+  if (!type) throw badRequest('Choose a JPEG, PNG or WebP photo.');
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].slice(0, 8).map((x) => x.toString(16).padStart(2, '0')).join('');
+  const key = `media/people/${row.slug}-${hash}.${type.ext}`;
+  await env.ARCHIVE.put(key, bytes, { httpMetadata: { contentType: type.mime, cacheControl: 'public, max-age=31536000, immutable' } });
+  const before = { photo_url: row.photo_url, manual: row.manual };
+  await env.CATALOG_DB.batch([
+    env.CATALOG_DB.prepare('UPDATE people SET photo_url = ?, manual = 1 WHERE slug = ?').bind(`r2:${key}`, row.slug),
+    auditStatement(env, me, { area: 'people', action: 'edited', entity: 'person-photo', entityId: String(row.slug), summary: `Changed the photo of ${String(row.name)}`, before, after: { photo_url: `r2:${key}` } }),
+  ]);
+  await published(env);
+  return { ok: true, photo: `/api/people/${encodeURIComponent(String(row.slug))}/photo` };
+}
+
+registerUndo('person-photo', async (env, _user, entry) => {
+  await ensurePeopleTable(env);
+  const before = JSON.parse(String(entry.before_json)) as { photo_url: string | null; manual: number };
+  await env.CATALOG_DB.prepare('UPDATE people SET photo_url = ?, manual = ? WHERE slug = ?').bind(before.photo_url, before.manual ?? 0, String(entry.entity_id)).run();
+  await published(env);
+  return 'The earlier photo is back.';
+});
+
 export async function people(call: StaffCall): Promise<Response | null> {
   const { env, request, url, me, route, body } = call;
   if (!route.startsWith('/directory/')) return null;
@@ -232,6 +274,7 @@ export async function people(call: StaffCall): Promise<Response | null> {
     if (route === '/directory/options') return json(await options(env));
     return null;
   }
+  if (route === '/directory/photo') return json(await photo(env, me, request));
   const b = body ?? {};
   if (route === '/directory/add') return json(await add(env, me, b), { status: 201 });
   if (route === '/directory/edit') return json(await edit(env, me, b));
