@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { testEnv } from './helpers/d1';
 import { accept, addOwnerPasskey, cookieOf, invite, panel, register, setupOwner, signIn, type Device, type TestEnv } from './helpers/panel';
 import { ensureContribTables } from '../worker/contrib/schema';
+import { createInvite, STAFF_ACCOUNTS_MESSAGE } from '../worker/panel/routes';
 import { PANEL_PAGE } from '../worker/panel/page';
 import { PANEL_SCRIPT } from '../worker/panel/pageScript';
 
@@ -10,12 +11,10 @@ import { PANEL_SCRIPT } from '../worker/panel/pageScript';
 const OWNER = { email: 'owner@example.org', password: 'correct horse battery' };
 const ADMIN_PASSWORD = 'vineyard city hall 2026';
 
+/** An admin invite made before new accounts moved to the staff portal (the panel refuses new ones now). */
 async function adminInvite(env: TestEnv, owner: string, name?: string): Promise<string> {
-  const r = await panel(env, 'POST', '/api/invites/create', { body: { role: 'admin', name }, cookie: owner });
-  expect(r.status).toBe(200);
-  const j = (await r.json()) as { path: string; role: string };
-  expect(j.role).toBe('admin');
-  return j.path.split('/invite/')[1];
+  expect(owner).toBeTruthy();
+  return (await createInvite(env, { id: 1, name: 'Owner', role: 'owner' }, name ?? 'Vineyard Admin', 'admin')).token;
 }
 
 const join = (env: TestEnv, token: string, login: string, password = ADMIN_PASSWORD, ip = '10.0.5.1') => panel(env, 'POST', '/api/invite/accept', { body: { token, login, password }, ip });
@@ -191,10 +190,48 @@ describe('admin accounts', () => {
   });
 });
 
+describe('new accounts are made in the staff portal', () => {
+  it('refuses new invites from the panel with a sentence that points to /staff', async () => {
+    const env = testEnv();
+    const owner = await setupOwner(env);
+    for (const role of ['admin', 'uploader']) {
+      const r = await panel(env, 'POST', '/api/invites/create', { body: { role, name: 'New person' }, cookie: owner });
+      expect(r.status).toBe(410);
+      expect(((await r.json()) as { error: { message: string } }).error.message).toBe(STAFF_ACCOUNTS_MESSAGE);
+    }
+    expect(STAFF_ACCOUNTS_MESSAGE).toMatch(/vineyardportal\.org\/staff/);
+    expect(env.CATALOG_DB.db.prepare('SELECT count(*) AS n FROM panel_invites').get()).toEqual({ n: 0 });
+  });
+
+  it('keeps the owner email and password sign-in, existing accounts and their links working', async () => {
+    const env = testEnv();
+    const owner = await setupOwner(env);
+    // A link made before the change still lets its admin join and sign in.
+    const admin = await adminSession(env, owner);
+    expect((await state(env, admin)).account).toMatchObject({ role: 'admin' });
+    // The owner signs in with email and password exactly as before.
+    const r = await login(env, OWNER.email, OWNER.password, '10.0.9.8');
+    expect(r.status).toBe(200);
+    const s = await state(env, cookieOf(r));
+    expect(s).toMatchObject({ signedIn: true, email: OWNER.email, account: { role: 'owner' } });
+    // The owner still sees accounts and invites, and can turn an account off and revoke an open link.
+    expect((await panel(env, 'GET', '/api/accounts', { cookie: owner })).status).toBe(200);
+    expect((await panel(env, 'GET', '/api/invites', { cookie: owner })).status).toBe(200);
+    expect((await panel(env, 'POST', '/api/accounts/disable', { body: { id: 2 }, cookie: owner })).status).toBe(200);
+    const open = await createInvite(env, { id: 1, name: 'Owner', role: 'owner' }, 'Late', 'uploader');
+    const hash = (env.CATALOG_DB.db.prepare('SELECT token_hash FROM panel_invites WHERE used_at IS NULL').get() as { token_hash: string }).token_hash;
+    expect(open.token).toBeTruthy();
+    expect((await panel(env, 'POST', '/api/invites/revoke', { body: { id: hash }, cookie: owner })).status).toBe(200);
+  });
+});
+
 describe('panel page', () => {
   it('its script parses, and it has the admin join form, the invite choice, bulk upload and Updates', () => {
     expect(() => new Function(PANEL_SCRIPT)).not.toThrow();
-    for (const id of ['adminJoin', 'invRole', 'bulkShared', 'retryFailed', 'bulkBar', 'v-updates', 'upForm', 'upTopic']) expect(PANEL_PAGE).toContain(`id="${id}"`);
+    for (const id of ['adminJoin', 'staffNote', 'bulkShared', 'retryFailed', 'bulkBar', 'v-updates', 'upForm', 'upTopic']) expect(PANEL_PAGE).toContain(`id="${id}"`);
+    // The invite controls are gone; new staff accounts are made in the staff portal.
+    for (const id of ['invRole', 'invForm', 'invBtn', 'invLink']) expect(PANEL_PAGE).not.toContain(`id="${id}"`);
+    expect(PANEL_PAGE).toContain('href="/staff"');
     // No long dashes in anything the panel shows.
     expect(PANEL_PAGE.replace(PANEL_SCRIPT, '')).not.toMatch(/[\u2013\u2014]/);
     expect(PANEL_SCRIPT).not.toMatch(/[\u2013\u2014]/);

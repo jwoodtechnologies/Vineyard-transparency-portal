@@ -3,7 +3,8 @@
  * bundle). All data is rendered with textContent, never as HTML.
  *
  * Owner: activity, adding records, every upload, resident submissions (pending ones to approve or
- * reject, approved ones to hide or remove), people and invites, and the
+ * reject, approved ones to hide or remove), people (existing accounts and invites; new staff accounts
+ * are made in the staff portal at /staff), and the
  * coverage check (what the archive is missing, with a CSV download), and job health (each scheduled
  * check and source: last run, last success, last error, failures in a row).
  * Admin: the same, except people and invites, the submissions switch, and hiding or removing
@@ -280,10 +281,7 @@ a.open{color:var(--accent);font-size:12px;font-weight:600;text-decoration:none}
     <div id="v-people" class="view hidden">
       <div class="head"><h1>People</h1></div>
       <div class="card pad">
-        <div class="switch"><p class="label">Invite</p><div class="seg" id="invRole"><button type="button" data-r="admin" aria-pressed="true">Admin</button><button type="button" data-r="uploader" aria-pressed="false">Uploader</button></div></div>
-        <p class="hint" id="invHint"></p>
-        <form id="invForm"><label for="invName">Name</label><input id="invName" type="text" maxlength="60"><p class="err" id="invErr"></p><button class="btn primary" id="invBtn" type="submit">Invite admin</button></form>
-        <div class="linkbox hidden" id="invBox"><input id="invLink" type="text" readonly aria-label="Invite link"><button class="btn" id="invCopy" type="button">Copy</button></div>
+        <p class="hint" id="staffNote">New staff accounts are made in the staff portal at <a href="/staff">vineyardportal.org/staff</a>, under Accounts. This panel is your own console. Accounts already here keep working, and you can turn them off below.</p>
       </div>
       <h2 class="sub">Accounts</h2>
       <div class="card"><ul class="feed" id="accList"></ul></div>

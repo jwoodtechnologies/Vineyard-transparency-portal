@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { testEnv } from './helpers/d1';
 import { cookieOf, panel, setupOwner, uploaderSession, type TestEnv } from './helpers/panel';
+import { createInvite } from '../worker/panel/routes';
 import { publicUpdates, updateProjects } from '../worker/contrib/updates';
 import { handleSearch } from '../worker/api/search';
 import { handleAsk, RAG_SYSTEM_PROMPT } from '../worker/ai/rag';
@@ -13,8 +14,10 @@ import type { Env } from '../worker/env';
 const TEXT = 'The new pickleball courts at Grove Park opened on October 10, 2026. All eight courts are lit until 10 pm.';
 
 async function admin(env: TestEnv, owner: string): Promise<string> {
-  const inv = (await (await panel(env, 'POST', '/api/invites/create', { body: { role: 'admin' }, cookie: owner })).json()) as { path: string };
-  const r = await panel(env, 'POST', '/api/invite/accept', { body: { token: inv.path.split('/invite/')[1], login: 'cityadmin', password: 'vineyard city hall 2026' }, ip: '10.0.5.1' });
+  // An admin invited before new accounts moved to the staff portal.
+  expect(owner).toBeTruthy();
+  const inv = await createInvite(env, { id: 1, name: 'Owner', role: 'owner' }, 'Vineyard Admin', 'admin');
+  const r = await panel(env, 'POST', '/api/invite/accept', { body: { token: inv.token, login: 'cityadmin', password: 'vineyard city hall 2026' }, ip: '10.0.5.1' });
   expect(r.status).toBe(200);
   return cookieOf(r);
 }

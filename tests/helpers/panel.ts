@@ -2,7 +2,7 @@
 import { expect } from 'vitest';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { testEnv } from './d1';
-import { PANEL_PREFIX, handlePanel } from '../../worker/panel/routes';
+import { PANEL_PREFIX, createInvite, handlePanel } from '../../worker/panel/routes';
 import { newSetupCode } from '../../worker/panel/auth';
 import { HttpError } from '../../worker/lib/http';
 
@@ -107,11 +107,13 @@ export async function addOwnerPasskey(env: TestEnv, cookie: string): Promise<Dev
   return device;
 }
 
+/**
+ * An uploader invite as the panel made them before new accounts moved to the staff portal. The panel
+ * refuses new invites now; links and accounts made earlier keep working, and these tests cover them.
+ */
 export async function invite(env: TestEnv, ownerCookie: string, name = 'Sam'): Promise<string> {
-  const r = await panel(env, 'POST', '/api/invites/create', { body: { name }, cookie: ownerCookie });
-  expect(r.status).toBe(200);
-  const j = (await r.json()) as { path: string };
-  return j.path.split('/invite/')[1];
+  expect(ownerCookie).toBeTruthy();
+  return (await createInvite(env, { id: 1, name: 'Owner', role: 'owner' }, name, 'uploader')).token;
 }
 
 export async function accept(env: TestEnv, token: string, name = 'Sam', ip = '10.0.1.1'): Promise<{ res: Response; device?: Device }> {

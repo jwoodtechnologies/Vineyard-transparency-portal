@@ -485,20 +485,7 @@ export const PANEL_SCRIPT = String.raw`(function(){
       $('auditEmpty').classList.toggle('hidden', items.length > 0);
     }).catch(authFail);
   }
-  var invRole = 'admin';
-  function setInvRole(r){
-    invRole = r;
-    Array.prototype.forEach.call($('invRole').children, function(x){ x.setAttribute('aria-pressed', String(x.dataset.r === r)); });
-    $('invHint').textContent = r === 'admin' ? 'Admins add records, post updates and review submissions. They set their own password. The link works once and expires in 7 days. It is shown only now.' : 'Uploaders add records with a passkey. The link works once and expires in 72 hours. It is shown only now.';
-    $('invName').value = r === 'admin' ? 'Vineyard Admin' : ''; $('invName').placeholder = r === 'admin' ? 'Vineyard Admin' : 'Optional';
-    $('invBtn').textContent = r === 'admin' ? 'Invite admin' : 'Invite uploader';
-    $('invBox').classList.add('hidden'); $('invErr').textContent = '';
-  }
-  $('invRole').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) setInvRole(b.dataset.r); });
-  setInvRole('admin');
-  $('invForm').addEventListener('submit', function(e){ e.preventDefault(); $('invErr').textContent = '';
-    post('/invites/create', { name: $('invName').value, role: invRole }).then(function(j){ $('invLink').value = location.origin + j.path; $('invBox').classList.remove('hidden'); $('invCopy').textContent = 'Copy'; loadPeople(); }, function(x){ $('invErr').textContent = x.message; }); });
-  $('invCopy').addEventListener('click', function(){ var i = $('invLink'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(function(){ $('invCopy').textContent = 'Copied'; }, function(){ document.execCommand && document.execCommand('copy'); $('invCopy').textContent = 'Copied'; }); });
+  // New staff accounts are made in the staff portal (/staff); the panel only lists and turns off the ones it has.
 
   // ------------------------------------------------------------ coverage (owner)
   var cov = null, covAll = {};

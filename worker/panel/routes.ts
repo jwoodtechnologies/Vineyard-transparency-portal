@@ -13,7 +13,9 @@
  *
  * Who can do what: every account adds records (Add) and sees uploads. Admins also post Updates,
  * approve or reject resident submissions, and see Activity, Coverage and Health. Only the owner
- * invites people, turns accounts off and on, and changes the submissions switch.
+ * turns accounts off and on, revokes open invites, and changes the submissions switch. New invites
+ * are refused: new staff accounts are made in the staff portal (/staff). Accounts and links made
+ * before that keep working.
  *
  * Public:  POST /api/visit     (page view beacon)   POST /api/feedback  (thumbs up or down)
  * Private: GET  PANEL_PREFIX   (the page)           PANEL_PREFIX/api/*  (sign-in and data)
@@ -40,6 +42,7 @@ export const INVITE_HOURS = 72;
 export const ADMIN_INVITE_DAYS = 7;
 export const ADMIN_DEFAULT_NAME = 'Vineyard Admin';
 export const ADMIN_PASSWORD_MIN = 12;
+export const STAFF_ACCOUNTS_MESSAGE = 'New accounts are made in the staff portal. Go to vineyardportal.org/staff, open Accounts and add the person there.';
 
 const PRIVATE_HEADERS = { 'x-robots-tag': 'noindex, nofollow, noarchive', 'referrer-policy': 'no-referrer' };
 
@@ -579,11 +582,8 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
 
     // Owner only from here.
     owner();
-    if (route === '/invites/create') {
-      const role = b.role === 'admin' ? 'admin' : 'uploader';
-      const inv = await createInvite(env, s.me, displayName(b.name), role);
-      return reply({ ok: true, role, path: `${PANEL_PREFIX}/invite/${inv.token}`, expiresAt: inv.expiresAt });
-    }
+    // New staff accounts are made in the staff portal; links made before this still work until they expire.
+    if (route === '/invites/create') throw new HttpError(410, 'bad_request', STAFF_ACCOUNTS_MESSAGE);
     if (route === '/invites/revoke') {
       await db.prepare('UPDATE panel_invites SET revoked_at = ? WHERE token_hash = ? AND used_at IS NULL').bind(new Date().toISOString(), String(b.id ?? '')).run();
       return reply({ ok: true });
