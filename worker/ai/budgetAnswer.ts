@@ -7,7 +7,7 @@
  * year, a comparison, a project, salaries) returns null and goes to the records search.
  * Pure: no Worker types.
  */
-import { BUDGET_ADOPTED, BUDGET_AMENDED, BUDGET_DOCS, BUDGET_FISCAL_YEAR, DEPARTMENTS, FUNDS, GENERAL, REVENUE, type BudgetFund, type BudgetLine, type RevenueLine } from '../lib/budgetData';
+import { BUDGET_ADOPTED, BUDGET_AMENDED, BUDGET_AMENDMENT_NAME, BUDGET_DOCS, BUDGET_FISCAL_YEAR, budgetAmended, DEPARTMENTS, fiscalShort, FUNDS, GENERAL, REVENUE, type BudgetFund, type BudgetLine, type RevenueLine } from '../lib/budgetData';
 import { topicWords } from './followup';
 
 export type BudgetIntent =
@@ -28,9 +28,13 @@ export interface BudgetAnswer {
 }
 
 export const BUDGET_DOC_TITLES: Record<BudgetDocKey, { id: string; title: string; date: string }> = {
-  // Source: titles and dates as recorded in the header of worker/lib/budgetData.ts.
-  book: { id: BUDGET_DOCS.book, title: 'FY 27 Final Budget', date: BUDGET_ADOPTED },
-  amendment: { id: BUDGET_DOCS.amendment, title: 'FY 27 First Budget Amendment', date: BUDGET_AMENDED },
+  // Source: titles and dates as recorded in the header of worker/lib/budgetData.ts (or in the saved budget version), read when used.
+  get book() {
+    return { id: BUDGET_DOCS.book, title: `${fiscalShort()} Final Budget`, date: BUDGET_ADOPTED };
+  },
+  get amendment() {
+    return { id: BUDGET_DOCS.amendment, title: `${fiscalShort()} ${BUDGET_AMENDMENT_NAME}`, date: BUDGET_AMENDED };
+  },
 };
 
 const BUDGETISH = /\b(budget|budgets|budgeted|spend|spends|spending|spent|cost|costs|allocat\w*|funding|funded|appropriat\w*|revenues?|how much|fiscal|fy\s?'?\d{2}(?:\d{2})?|money|dollars)\b/i;
@@ -47,7 +51,15 @@ export function longDate(iso: string | null | undefined): string | null {
 }
 
 /** Revenue lines first (so "fire inspection fees" is not the Fire department), then funds, then departments. */
-const REVENUE_ALIASES: Array<[RegExp, string]> = [...REVENUE].sort((a, b) => b.name.length - a.name.length).map((r) => [new RegExp(`\\b${r.name.toLowerCase().replace(/ /g, '\\s+')}(e?s)?\\b`, 'i'), r.name]);
+let revenueAliasesFor: { from: RevenueLine[]; list: Array<[RegExp, string]> } | null = null;
+/** The revenue lines' names as patterns, rebuilt when a saved budget replaces the built-in one. */
+function revenueAliases(): Array<[RegExp, string]> {
+  if (revenueAliasesFor?.from !== REVENUE) {
+    const list = [...REVENUE].sort((a, b) => b.name.length - a.name.length).map((r): [RegExp, string] => [new RegExp(`\\b${r.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')}(e?s)?\\b`, 'i'), r.name]);
+    revenueAliasesFor = { from: REVENUE, list };
+  }
+  return revenueAliasesFor.list;
+}
 const FUND_ALIASES: Array<[RegExp, string]> = [
   [/\bgeneral\s+fund\b/i, 'general'],
   [/\b(storm\s?water|storm\s+drains?)(\s+fund)?\b/i, 'storm'],
@@ -145,8 +157,8 @@ export function budgetIntent(question: string): BudgetIntent | null {
     if (hit) rest = rest.replace(new RegExp(re.source, 'gi'), ' ');
     return hit;
   };
-  const revenue = REVENUE_ALIASES.filter(([re]) => take(re)).map(([, n]) => REVENUE.find((r) => r.name === n)!);
-  const funds = FUND_ALIASES.filter(([re]) => take(re)).map(([, k]) => FUNDS.find((f) => f.key === k)!);
+  const revenue = revenueAliases().filter(([re]) => take(re)).map(([, n]) => REVENUE.find((r) => r.name === n)).filter((r): r is RevenueLine => Boolean(r));
+  const funds = FUND_ALIASES.filter(([re]) => take(re)).map(([, k]) => FUNDS.find((f) => f.key === k)).filter((f): f is BudgetFund => Boolean(f));
   const names = DEPT_ALIASES.filter(([re]) => take(re)).flatMap(([, n]) => n);
   const departments = DEPARTMENTS.filter((d) => names.includes(d.name));
   const total = take(TOTAL);
@@ -162,10 +174,16 @@ export function budgetIntent(question: string): BudgetIntent | null {
 /** The answer, every figure and date taken from budgetData.ts. */
 export function budgetAnswer(intent: BudgetIntent): BudgetAnswer {
   const adopted = longDate(BUDGET_ADOPTED);
-  const amended = longDate(BUDGET_AMENDED);
+  // No amendment yet (its date is the adoption date, or none): the budget is as adopted.
+  const amended = budgetAmended() ? longDate(BUDGET_AMENDED) : null;
+  const isAmended = budgetAmended();
   const fy = `fiscal year ${BUDGET_FISCAL_YEAR} (July 1, ${BUDGET_FISCAL_YEAR - 1} to June 30, ${BUDGET_FISCAL_YEAR})`;
-  const book = adopted ? `the FY 27 Final Budget adopted ${adopted}` : 'the FY 27 Final Budget';
-  const amend = amended ? `the First Budget Amendment of ${amended}` : 'the First Budget Amendment';
+  const budgetName = `${fiscalShort()} Final Budget`;
+  const book = adopted ? `the ${budgetName} adopted ${adopted}` : `the ${budgetName}`;
+  const amendName = BUDGET_AMENDMENT_NAME;
+  const amend = amended ? `the ${amendName} of ${amended}` : `the ${amendName}`;
+  /** The documents a sentence cites: only those the budget has on record. */
+  const cite = (...keys: BudgetDocKey[]): BudgetDocKey[] => keys.filter((k) => BUDGET_DOC_TITLES[k].id);
   const s: BudgetAnswer['sentences'] = [];
   if (intent.kind === 'prior') {
     const py = BUDGET_FISCAL_YEAR - 1;
@@ -175,8 +193,8 @@ export function budgetAnswer(intent: BudgetIntent): BudgetAnswer {
       s.push({ text: `Fiscal year ${BUDGET_FISCAL_YEAR} began July 1, ${py}.`, docs: [] });
     }
     if (intent.departments.length) {
-      s.push({ text: `General Fund department budgets for ${pfy}, final amended, as printed in ${book}:`, docs: ['book'] });
-      for (const d of intent.departments) s.push({ text: `${d.name}: ${usd(d.prior)}.`, docs: ['book'] });
+      s.push({ text: `General Fund department budgets for ${pfy}, final amended, as printed in ${book}:`, docs: cite('book') });
+      for (const d of intent.departments) s.push({ text: `${d.name}: ${usd(d.prior)}.`, docs: cite('book') });
     }
     if (intent.other || !intent.departments.length)
       s.push({ text: `The portal's budget data has ${pfy} figures for General Fund departments only; its fund and revenue figures are for ${fy}.`, docs: [] });
@@ -184,37 +202,45 @@ export function budgetAnswer(intent: BudgetIntent): BudgetAnswer {
     return { intent: intent.kind, sentences: s };
   }
   if (intent.kind === 'adopted') {
-    s.push(adopted ? { text: `The City Council adopted the FY 27 Final Budget, for ${fy}, on ${adopted}.`, docs: ['book'] } : { text: 'The adoption date of the FY 27 Final Budget is not recorded in the portal’s budget data.', docs: [] });
-    if (amended) s.push({ text: `The First Budget Amendment to it is dated ${amended}.`, docs: ['amendment'] });
+    s.push(adopted ? { text: `The City Council adopted the ${budgetName}, for ${fy}, on ${adopted}.`, docs: cite('book') } : { text: `The adoption date of the ${budgetName} is not recorded in the portal’s budget data.`, docs: [] });
+    if (amended) s.push({ text: `The ${amendName} to it is dated ${amended}.`, docs: cite('amendment') });
   } else if (intent.kind === 'amended') {
-    s.push(amended ? { text: `The First Budget Amendment to the FY 27 budget, for ${fy}, is dated ${amended}.`, docs: ['amendment'] } : { text: 'The date of the budget amendment is not recorded in the portal’s budget data.', docs: [] });
+    if (amended) s.push({ text: `The ${amendName} to the ${fiscalShort()} budget, for ${fy}, is dated ${amended}.`, docs: cite('amendment') });
+    else if (adopted) s.push({ text: `The ${fiscalShort()} budget, for ${fy}, has not been amended since the City Council adopted it on ${adopted}.`, docs: cite('book') });
+    else s.push({ text: 'The date of the budget amendment is not recorded in the portal’s budget data.', docs: [] });
   } else if (intent.kind === 'total') {
     // Owner rule: never a total of all funds added together. The General Fund total, then each fund's
     // own total as page 3 of the budget book lists it, never summed.
-    s.push({ text: `The General Fund, the city's everyday operating budget, is ${usd(GENERAL.amended.total)} of spending for ${fy}, after ${amend}.`, docs: ['amendment'] });
-    s.push({ text: `The city budget is presented by fund, and ${book} lists each fund's revenue and sources on page 3:`, docs: ['book'] });
-    for (const f of FUNDS) s.push({ text: `${f.name}: ${usd(f.total)}.`, docs: ['book'] });
+    s.push(
+      isAmended
+        ? { text: `The General Fund, the city's everyday operating budget, is ${usd(GENERAL.amended.total)} of spending for ${fy}, after ${amend}.`, docs: cite('amendment') }
+        : { text: `The General Fund, the city's everyday operating budget, is ${usd(GENERAL.adopted.total)} of spending for ${fy}, as adopted.`, docs: cite('book') },
+    );
+    s.push({ text: `The city budget is presented by fund, and ${book} lists each fund's revenue and sources:`, docs: cite('book') });
+    for (const f of FUNDS) s.push({ text: `${f.name}: ${usd(f.total)}.`, docs: cite('book') });
   } else {
     if (intent.departments.length) {
       s.push({ text: `General Fund department budgets for ${fy}:`, docs: [] });
       for (const d of intent.departments) {
         s.push(
-          d.amended === d.adopted
-            ? { text: `${d.name}: ${usd(d.adopted)} in ${book}, unchanged by ${amend}.`, docs: ['book', 'amendment'] }
-            : { text: `${d.name}: ${usd(d.adopted)} in ${book}, and ${usd(d.amended)} after ${amend}.`, docs: ['book', 'amendment'] },
+          !isAmended
+            ? { text: `${d.name}: ${usd(d.adopted)} in ${book}.`, docs: cite('book') }
+            : d.amended === d.adopted
+              ? { text: `${d.name}: ${usd(d.adopted)} in ${book}, unchanged by ${amend}.`, docs: cite('book', 'amendment') }
+              : { text: `${d.name}: ${usd(d.adopted)} in ${book}, and ${usd(d.amended)} after ${amend}.`, docs: cite('book', 'amendment') },
         );
       }
     }
     for (const f of intent.funds) {
       if (f.key === 'general') {
-        s.push({ text: `The General Fund has ${usd(GENERAL.revenueTotal)} in revenue and sources in ${book}, for ${fy}.`, docs: ['book'] });
-        s.push({ text: `General Fund spending is ${usd(GENERAL.adopted.total)} as adopted.`, docs: ['book'] });
-        s.push({ text: `It is ${usd(GENERAL.amended.total)} after ${amend}.`, docs: ['amendment'] });
+        s.push({ text: `The General Fund has ${usd(GENERAL.revenueTotal)} in revenue and sources in ${book}, for ${fy}.`, docs: cite('book') });
+        s.push({ text: `General Fund spending is ${usd(GENERAL.adopted.total)} as adopted.`, docs: cite('book') });
+        if (isAmended) s.push({ text: `It is ${usd(GENERAL.amended.total)} after ${amend}.`, docs: cite('amendment') });
       } else {
-        s.push({ text: `${f.name} fund: ${usd(f.total)} in total revenue and sources, including fund balance used, in ${book}, for ${fy}.`, docs: ['book'] });
+        s.push({ text: `${f.name} fund: ${usd(f.total)} in total revenue and sources, including fund balance used, in ${book}, for ${fy}.`, docs: cite('book') });
       }
     }
-    for (const r of intent.revenue) s.push({ text: `${r.name}: ${usd(r.amount)} of General Fund revenue in ${book}, for ${fy}.`, docs: ['book'] });
+    for (const r of intent.revenue) s.push({ text: `${r.name}: ${usd(r.amount)} of General Fund revenue in ${book}, for ${fy}.`, docs: cite('book') });
   }
   s.push({ text: 'Every line is on the portal’s Budget page.', docs: [] });
   return { intent: intent.kind, sentences: s };
