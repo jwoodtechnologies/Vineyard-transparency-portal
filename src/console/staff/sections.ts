@@ -22,6 +22,7 @@ export interface Section {
 export const SECTIONS: Section[] = [
   { path: 'records', label: 'Records', blurb: 'Add agendas, minutes, reports and other documents.', area: 'records', tile: true, Component: lazy(() => import('./Records')) },
   { path: 'votes', label: 'Votes', blurb: 'Correct how a vote was recorded, add one the minutes missed, or take one down.', area: 'votes', tile: true, Component: lazy(() => import('./Votes')) },
+  { path: 'budget', label: 'Budget', blurb: 'Update the budget figures, totals and capital projects.', area: 'budget', tile: true, Component: lazy(() => import('./Budget')) },
   { path: 'notices', label: 'Notices', blurb: 'Post a closure or alert at the top of every page.', area: 'notices', tile: true, Component: lazy(() => import('./Notices')) },
   { path: 'events', label: 'Events', blurb: 'Add a community event, special meeting or closure day to the calendar.', area: 'notices', tile: true, Component: lazy(() => import('./Events')) },
   { path: 'updates', label: 'Updates', blurb: 'Post a note about a finished project or a change to a service.', area: 'notices', tile: true, Component: lazy(() => import('./Updates')) },

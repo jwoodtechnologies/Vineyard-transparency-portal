@@ -822,3 +822,280 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ---- notices on the map */
+.vs-mapbox {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--vc-line);
+  border-radius: 14px;
+  background: var(--vc-surface-2);
+}
+.vs-picker {
+  display: grid;
+  gap: 0.75rem;
+}
+.vs-picker-map {
+  position: relative;
+  height: clamp(18rem, 52vh, 28rem);
+  overflow: hidden;
+  border: 1px solid var(--vc-line-2);
+  border-radius: 12px;
+  background: var(--vc-bg);
+}
+.vs-picker-wait {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1rem;
+  color: var(--vc-ink-2);
+  font-size: 0.9rem;
+  text-align: center;
+}
+.vs-pin {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+}
+.vs-points {
+  display: grid;
+  gap: 0;
+  max-height: 12.5rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-size: 0.9rem;
+}
+.vs-points li {
+  display: grid;
+  grid-template-columns: 3.7rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+}
+.vs-points li span {
+  color: var(--vc-ink-2);
+}
+.vs-points li code {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.vs-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+@media (max-width: 480px) {
+  .vs-mapbox {
+    padding: 0.75rem;
+  }
+  .vs-inline {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- budget */
+.vs-steps {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  gap: 0.4rem;
+  margin: 0 -1rem;
+  padding: 0.5rem 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--vc-bg);
+  border-bottom: 1px solid var(--vc-line);
+}
+.vs-steps::-webkit-scrollbar {
+  display: none;
+}
+.vs-steps button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0.3rem 0.85rem 0.3rem 0.4rem;
+  border: 1px solid var(--vc-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--vc-ink-2);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 560;
+  cursor: pointer;
+}
+.vs-steps button span {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--vc-line);
+  font-size: 0.78rem;
+}
+.vs-steps button[aria-current='step'] {
+  border-color: var(--vc-accent);
+  background: var(--vc-accent-soft);
+  color: var(--vc-ink);
+}
+.vs-steps button[aria-current='step'] span {
+  background: var(--vc-accent);
+  color: #fff;
+}
+.vs-brow {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid var(--vc-line);
+  border-radius: 14px;
+  background: var(--vc-bg);
+  list-style: none;
+}
+.vs-bgrid {
+  display: grid;
+  gap: 0.6rem 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+}
+.vs-bf {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.vs-bf > span {
+  color: var(--vc-ink-2);
+  font-size: 0.8rem;
+  font-weight: 560;
+}
+.vs-bf small,
+.vs-sum {
+  color: var(--vc-muted, var(--vc-ink-2));
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.vs-bf-wide {
+  grid-column: 1 / -1;
+}
+.vs-sum {
+  margin: 0;
+  padding: 0 0.25rem;
+}
+.vs input.vs-money,
+.vs-bf input[type='text'],
+.vs-bf input:not([type]) {
+  width: 100%;
+  min-width: 0;
+}
+.vs-money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.vs-bf input[aria-invalid='true'] {
+  border-color: #a52222;
+}
+.vs-doc-now {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0 0 0.5rem;
+}
+.vs-doc-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--vc-ink-2);
+  font-size: 0.84rem;
+  font-weight: 560;
+}
+.vs-doc-title {
+  overflow-wrap: anywhere;
+  font-weight: 560;
+}
+.vs-pickbox {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--vc-line);
+  border-radius: 12px;
+  background: var(--vc-surface);
+}
+.vs-pick {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-pick button {
+  display: grid;
+  gap: 0.1rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--vc-line);
+  border-radius: 10px;
+  background: var(--vc-bg);
+  color: var(--vc-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.vs-pick button span {
+  color: var(--vc-ink-2);
+  font-size: 0.8rem;
+}
+.vs-feature-now {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.vs-tools {
+  display: grid;
+  gap: 0.5rem;
+}
+.vs-filebtn {
+  position: relative;
+  cursor: pointer;
+}
+.vs-preview-rows {
+  margin: 0.4rem 0;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+.vs-problems {
+  margin: 0.3rem 0 0.6rem;
+  padding-left: 1.1rem;
+}
+.vs-problems li {
+  margin: 0.25rem 0;
+}
+.vs-stepper {
+  justify-content: space-between;
+}
+.vs-budget .vs-card.vs-stack > h2,
+.vs-budget .vs-card.vs-stack > p {
+  margin: 0;
+}
+.vs-budget .vs-card.vs-stack > .vs-hint {
+  margin: -0.4rem 0 0;
+}
+.vs-budget .vs-card.vs-stack > .vs-actions {
+  margin: 0;
+}
