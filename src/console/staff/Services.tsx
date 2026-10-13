@@ -15,9 +15,8 @@ import {
   type ServiceRow,
   type ServicesContent,
 } from '@/lib/cityServices';
-import { StaffError, staff } from './api';
 import { Alert, Field } from './ui';
-import { useStaffData } from './useStaff';
+import { CONFLICT, usePiece } from './usePiece';
 import {
   addedFrom,
   checkContact,
@@ -36,53 +35,11 @@ import {
   type ServiceDraft,
 } from './servicesLib';
 
-interface Stored<T> {
-  value: T | null;
-  updatedAt: string | null;
-}
-
-const CONFLICT = 'Someone else saved a change a moment ago, so yours was not saved. The list now shows their version. Make your change again on top of it.';
-const WAIT = 'Wait for the last save to finish, then try again.';
 const KIND_LABEL: Record<AddedKind, string> = { page: 'A web page', form: 'A form or application', pay: 'A payment page', map: 'A map' };
 
 const refocus = (el: HTMLElement | null) => {
   if (el) requestAnimationFrame(() => el.focus());
 };
-
-/** One stored piece of site wording: the copy on screen, and a save that runs one at a time and spots someone else's save. */
-function usePiece<T>(key: string, onConflict: () => void) {
-  const stored = useStaffData<Stored<T>>(`/content/get?key=${key}`);
-  const [local, setLocal] = useState<Stored<T> | null>(null);
-  const current = local ?? stored.data;
-  const [saving, setSaving] = useState(false);
-  const lock = useRef(false);
-  async function commit(next: T | null): Promise<void> {
-    if (lock.current) throw new Error(WAIT);
-    lock.current = true;
-    setSaving(true);
-    try {
-      if (next === null) {
-        if (current?.value) await staff('/content/reset', { body: { key, base: current.updatedAt } });
-        setLocal({ value: null, updatedAt: null });
-      } else {
-        const r = await staff<{ value: T; updatedAt: string }>('/content/save', { body: { key, value: next, base: current?.updatedAt ?? null } });
-        setLocal({ value: r.value, updatedAt: r.updatedAt });
-      }
-    } catch (e) {
-      if (e instanceof StaffError && e.status === 409) {
-        setLocal(null);
-        stored.reload();
-        onConflict();
-        throw new Error(CONFLICT, { cause: e });
-      }
-      throw e;
-    } finally {
-      lock.current = false;
-      setSaving(false);
-    }
-  }
-  return { current, value: current?.value ?? null, error: stored.error, reload: stored.reload, saving, commit };
-}
 
 function ServiceForm({
   draft,
