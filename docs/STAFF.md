@@ -129,6 +129,10 @@ Anyone with the budget area opens `/staff/taxrate`, labeled Property tax rate. W
 
 On People and boards, each person has a Photo button. A JPEG, PNG or WebP photo up to 3 MB (checked by its bytes, not its name) is stored in the portal's own storage under `media/people/`, served from `/api/people/<slug>/photo`, and marks the person as set by staff, so the daily read of the city website keeps it. Undo in Activity puts the earlier photo back.
 
+## Board details
+
+Anyone with the people area opens `/staff/boards`. For each board and commission they can write what it does (up to 400 characters), when it meets, and the address of its application form. The details are stored in `site_content` under `boards` and added to each board in `GET /api/boards`; the public Boards page shows them at the top of the board's card, with an Apply to serve link. Members still come from People and boards, and meetings from the city's agenda portal.
+
 ## Staff assistant
 
 The staff home opens with "Tell us what changed" for anyone with the map, notices or records area. A person types what changed and can attach a file; `POST /api/staff/assist/plan` (`worker/staff/assist.ts`) asks the portal's Workers AI model to pick ONE action from a fixed list (add, change or hide a Construction now project, post a notice, add an event, post an update, add a text record, add the attached file to Records) and fill in its fields. The plan is checked in code: fields outside that action are dropped, dates and times in the wrong shape are left blank, a project to change must be one already listed, and an action the account may not do is refused with a sentence naming the area to ask for. Nothing is published by the plan. The screen (`src/console/staff/Assistant.tsx`) shows it as a card with every field editable, and Publish sends it to the same route the matching screen uses, so the same checks, permissions, activity log and undo apply. If the model is unavailable, an attached file still becomes a record card to fill in, and anything else points to the screens. Each plan is one metered model call inside the free daily allowance.
