@@ -55,6 +55,16 @@ export function Spinner({ label = 'Working' }: { label?: string }) {
   );
 }
 
+/** One number with a short label, for the Insights, Coverage and Health screens. */
+export function Stat({ n, label, warn }: { n: number | string; label: string; warn?: boolean }) {
+  return (
+    <li className="vs-stat" data-tone={warn ? 'warn' : undefined}>
+      <p className="vs-stat-n">{typeof n === 'number' ? n.toLocaleString() : n}</p>
+      <p className="vs-stat-l">{label}</p>
+    </li>
+  );
+}
+
 /** A password box with a Show/Hide button, so a long password can be checked instead of typed twice. */
 export function PasswordInput({
   id,

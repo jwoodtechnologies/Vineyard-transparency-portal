@@ -13,6 +13,7 @@ import { updates } from './updates';
 import { budget } from './budget';
 import { content } from './content';
 import { submissions } from './submissions';
+import { insights } from './insights';
 
 export interface StaffCall {
   env: Env;
@@ -28,7 +29,7 @@ export interface StaffCall {
 
 type Module = (call: StaffCall) => Promise<Response | null>;
 
-const MODULES: Module[] = [records, votes, people, notices, events, updates, budget, content, submissions];
+const MODULES: Module[] = [records, votes, people, notices, events, updates, budget, content, submissions, insights];
 
 export async function handleStaffModules(call: StaffCall): Promise<Response | null> {
   for (const m of MODULES) {

@@ -185,7 +185,8 @@ function beforeOf(url: URL): number {
   return Number.isInteger(n) && n > 0 ? n : Number.MAX_SAFE_INTEGER;
 }
 
-async function summary(env: Env): Promise<unknown> {
+/** Visits, people, questions and ratings by day, week, month and all time, the top questions, and storage and AI use. Also read by the staff portal's Insights. */
+export async function summary(env: Env): Promise<unknown> {
   const db = env.CATALOG_DB;
   const at = (hours: number) => new Date(Date.now() - hours * 3600_000).toISOString();
   const windows = { day: at(24), week: at(24 * 7), month: at(24 * 30), all: '0000' };
@@ -292,6 +293,33 @@ export async function acceptInvite(env: Env, token: unknown, name: string, crede
   }
   await env.CATALOG_DB.prepare('UPDATE panel_invites SET used_by = ? WHERE token_hash = ?').bind(id, row.token_hash).run();
   return { id, name, role: 'uploader' };
+}
+
+const likeOf = (v: string | null) => (v ? `%${v.slice(0, 100).replace(/[%_\\]/g, (m) => `\\${m}`)}%` : null);
+
+/** The latest questions with their ratings, newest first. Also read by the staff portal's Insights. */
+export async function recentQuestions(env: Env, opts: { before: number; limit: number; q?: string | null }): Promise<{ items: unknown[] }> {
+  const q = likeOf(opts.q ?? null);
+  const r = await env.CATALOG_DB.prepare(
+    `SELECT q.*, f.up, f.down FROM activity_questions q
+         LEFT JOIN (SELECT ask_id, sum(vote = 'up') AS up, sum(vote = 'down') AS down FROM activity_feedback GROUP BY ask_id) f ON f.ask_id = q.ask_id
+         WHERE q.id < ? AND (? IS NULL OR q.question LIKE ? ESCAPE '\\' OR q.ip LIKE ? ESCAPE '\\') ORDER BY q.id DESC LIMIT ?`,
+  )
+    .bind(opts.before, q, q, q, opts.limit)
+    .all();
+  return { items: r.results ?? [] };
+}
+
+/** The latest thumbs up and down, newest first. Also read by the staff portal's Insights. */
+export async function recentFeedback(env: Env, opts: { before: number; limit: number; vote?: string | null }): Promise<{ items: unknown[] }> {
+  const vote = opts.vote === 'up' || opts.vote === 'down' ? opts.vote : null;
+  const r = await env.CATALOG_DB.prepare('SELECT * FROM activity_feedback WHERE id < ? AND (? IS NULL OR vote = ?) ORDER BY id DESC LIMIT ?').bind(opts.before, vote, vote, opts.limit).all();
+  return { items: r.results ?? [] };
+}
+
+/** Scheduled jobs and sources, and today's chat fallbacks. Also read by the staff portal's Health. */
+export async function healthReport(env: Env): Promise<Record<string, unknown>> {
+  return { ...(await jobHealth(env)), aiFallbacks: await fallbackCounts(env).catch(() => null) };
 }
 
 const userIdFor = async (seed: string) => bytesToB64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed))).slice(0, 16));
@@ -590,7 +618,7 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
   if (!isStaff(s.me)) throw new HttpError(403, 'unauthorized', 'Only the owner or an admin can do this.');
   const limit = limitOf(url);
   const before = beforeOf(url);
-  const like = (v: string | null) => (v ? `%${v.slice(0, 100).replace(/[%_\\]/g, (m) => `\\${m}`)}%` : null);
+  const like = likeOf;
 
   if (route === '/summary') return reply(await summary(env));
   if (route === '/updates') return reply(await listUpdates(env));
@@ -599,7 +627,7 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
   // The file of a submission, pending ones included: shown to signed-in reviewers only.
   if (route === '/submissions/file') return submissionFile(env, p.get('id'));
   if (route === '/coverage') return reply(await coverage(env));
-  if (route === '/health') return reply({ ...(await jobHealth(env)), aiFallbacks: await fallbackCounts(env).catch(() => null) });
+  if (route === '/health') return reply(await healthReport(env));
 
   // Owner only: people, invites and the upload log.
   if (s.me.role !== 'owner' && (route === '/audit' || route === '/accounts' || route === '/invites')) throw new HttpError(403, 'unauthorized', 'Only the owner can do this.');
@@ -630,24 +658,9 @@ export async function handlePanel(env: Env, request: Request, url: URL): Promise
     return reply({ items: r.results ?? [] });
   }
 
-  if (route === '/questions') {
-    const q = like(p.get('q'));
-    const r = await db
-      .prepare(
-        `SELECT q.*, f.up, f.down FROM activity_questions q
-         LEFT JOIN (SELECT ask_id, sum(vote = 'up') AS up, sum(vote = 'down') AS down FROM activity_feedback GROUP BY ask_id) f ON f.ask_id = q.ask_id
-         WHERE q.id < ? AND (? IS NULL OR q.question LIKE ? ESCAPE '\\' OR q.ip LIKE ? ESCAPE '\\') ORDER BY q.id DESC LIMIT ?`,
-      )
-      .bind(before, q, q, q, limit)
-      .all();
-    return reply({ items: r.results ?? [] });
-  }
+  if (route === '/questions') return reply(await recentQuestions(env, { before, limit, q: p.get('q') }));
 
-  if (route === '/feedback') {
-    const vote = p.get('vote') === 'up' || p.get('vote') === 'down' ? p.get('vote') : null;
-    const r = await db.prepare('SELECT * FROM activity_feedback WHERE id < ? AND (? IS NULL OR vote = ?) ORDER BY id DESC LIMIT ?').bind(before, vote, vote, limit).all();
-    return reply({ items: r.results ?? [] });
-  }
+  if (route === '/feedback') return reply(await recentFeedback(env, { before, limit, vote: p.get('vote') }));
 
   throw notFound('Unknown API route.');
 }

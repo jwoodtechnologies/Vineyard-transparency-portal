@@ -1345,3 +1345,43 @@
 .vs-sub-body {
   white-space: pre-line;
 }
+
+/* ---- insights, coverage and health: number cards */
+.vs-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 720px) {
+  .vs-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.vs-stat {
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--vc-line);
+  border-radius: var(--vs-radius);
+  background: var(--vc-surface);
+}
+.vs-stat-n {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 640;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.vs-stat-l {
+  margin: 0.2rem 0 0;
+  color: var(--vc-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+.vs-stat[data-tone='warn'] .vs-stat-n {
+  color: #a4471c;
+}
+.dark .vs-stat[data-tone='warn'] .vs-stat-n {
+  color: #f2a27a;
+}
