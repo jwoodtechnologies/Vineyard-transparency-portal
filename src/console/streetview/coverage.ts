@@ -102,19 +102,19 @@ export function photoNear(map: maplibregl.Map, p: { x: number; y: number }, r = 
 }
 
 /** The blue line under a screen point (within `r` pixels): its sequence id and the nearest point on it. */
-export function lineNear(map: maplibregl.Map, p: { x: number; y: number }, r = 16): { sequence: string; at: Pos; meters: number } | null {
+export function lineNear(map: maplibregl.Map, p: { x: number; y: number }, r = 16): { sequence: string; image: string | null; at: Pos; meters: number } | null {
   if (!map.getLayer(LINE)) return null;
   const feats = map.queryRenderedFeatures(box(p, r), { layers: [LINE] });
   const c = map.unproject([p.x, p.y]);
   const here: Pos = [c.lng, c.lat];
-  let best: { sequence: string; at: Pos; meters: number } | null = null;
+  let best: { sequence: string; image: string | null; at: Pos; meters: number } | null = null;
   for (const f of feats) {
     const g = f.geometry;
     const lines = (g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : []) as Pos[][];
     for (const l of lines)
       for (let i = 1; i < l.length; i++) {
         const n = nearestOnSegment(here, l[i - 1], l[i]);
-        if (!best || n.d < best.meters) best = { sequence: String(f.properties?.id ?? ''), at: n.at, meters: n.d };
+        if (!best || n.d < best.meters) best = { sequence: String(f.properties?.id ?? ''), image: f.properties?.image_id != null ? String(f.properties.image_id) : null, at: n.at, meters: n.d };
       }
   }
   return best;
@@ -161,10 +161,12 @@ export function useCoverage(getMap: () => maplibregl.Map | null, gen: number, re
     const move = (e: maplibregl.MapMouseEvent) => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const line = lineNear(map, e.point, 8);
+        const line = lineNear(map, e.point, 12);
         setHighlight(map, line?.sequence ?? null);
         map.getCanvas().style.cursor = line ? 'pointer' : '';
-        const photo = line ? photoNear(map, e.point, 40) : null;
+        // The photo at that spot, or (zoomed out, where the tiles carry no spots) the line's own key photo.
+        const spot = line ? photoNear(map, e.point, 40) : null;
+        const photo = spot ?? (line?.image ? { id: line.image, pos: line.at, compass: null, pano: false, capturedAt: null } : null);
         if (!photo) {
           last = '';
           return hideTip();

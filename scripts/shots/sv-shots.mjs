@@ -150,7 +150,8 @@ for (const prof of PROFILES) {
     const { ctx, page, notes, cx, cy } = await open(prof, lineSpot, 18, false, { 'vtp:streetphotos': 'on' });
     run.notes = notes;
     await page.waitForTimeout(2500);
-    for (const [dx, dy] of [[0, 0], [2, 2], [-3, 1], [0, 0]]) {
+    for (const [dx, dy] of [[40, 0], [40, 6], [40, 12], [40, -6], [40, -12], [80, 8], [80, 0]]) {
+      if (await page.locator('.vc-mly-tip:not([hidden]) img').count()) break;
       await page.mouse.move(cx + dx, cy + dy);
       await page.waitForTimeout(900);
     }

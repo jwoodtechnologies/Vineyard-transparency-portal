@@ -192,16 +192,49 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     });
     viewer.on('mouseout', () => renderer.setCursor(null));
     viewer.on('mousedown', (e: ViewerMouseEvent) => (downAt = e.pixelPoint));
-    viewer.on('click', (e: ViewerMouseEvent) => {
-      const moved = downAt ? Math.hypot(e.pixelPoint[0] - downAt[0], e.pixelPoint[1] - downAt[1]) : 0;
-      downAt = null;
-      if (moved > 6) return; // a drag to look around
-      const target = renderer.unprojectGround(e.pixelPoint[0], e.pixelPoint[1], el.clientWidth, el.clientHeight);
+    const goTo = (x: number, y: number) => {
+      const target = renderer.unprojectGround(x, y, el.clientWidth, el.clientHeight);
       if (!target) return;
       renderer.setCursor(target);
       goToward(target);
+    };
+    viewer.on('click', (e: ViewerMouseEvent) => {
+      if (e.originalEvent instanceof PointerEvent && e.originalEvent.pointerType === 'touch') return; // taps below
+      const moved = downAt ? Math.hypot(e.pixelPoint[0] - downAt[0], e.pixelPoint[1] - downAt[1]) : 0;
+      downAt = null;
+      if (moved > 6) return; // a drag to look around
+      goTo(e.pixelPoint[0], e.pixelPoint[1]);
     });
     viewer.on('dblclick', () => void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined));
+    // Touch: the viewer reports no clicks for taps. A quick still tap goes to the spot; two taps step forward.
+    let touch: { x: number; y: number; t: number } | null = null;
+    let tapTimer = 0;
+    let lastTap = 0;
+    const tStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      const r = el.getBoundingClientRect();
+      touch = e.touches.length === 1 ? { x: t.clientX - r.left, y: t.clientY - r.top, t: Date.now() } : null;
+    };
+    const tEnd = (e: TouchEvent) => {
+      const t = e.changedTouches[0];
+      if (!touch || !t) return;
+      const r = el.getBoundingClientRect();
+      const x = t.clientX - r.left,
+        y = t.clientY - r.top;
+      const still = Math.hypot(x - touch.x, y - touch.y) < 10 && Date.now() - touch.t < 350;
+      touch = null;
+      if (!still) return;
+      clearTimeout(tapTimer);
+      if (Date.now() - lastTap < 320) {
+        lastTap = 0;
+        void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined);
+        return;
+      }
+      lastTap = Date.now();
+      tapTimer = window.setTimeout(() => goTo(x, y), 320);
+    };
+    el.addEventListener('touchstart', tStart, { passive: true });
+    el.addEventListener('touchend', tEnd, { passive: true });
     viewer.on('position', report);
     viewer.on('pov', report);
     viewer.on('fov', report);
@@ -220,6 +253,9 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       clearTimeout(settle);
       cancelAnimationFrame(frame);
       cancelAnimationFrame(cursorFrame);
+      clearTimeout(tapTimer);
+      el.removeEventListener('touchstart', tStart);
+      el.removeEventListener('touchend', tEnd);
       ro.disconnect();
       viewer.remove();
       viewerRef.current = null;
