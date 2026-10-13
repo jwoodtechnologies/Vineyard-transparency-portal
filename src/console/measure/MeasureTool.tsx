@@ -111,16 +111,16 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
   const [profile, setProfile] = useState<{ status: 'off' | 'loading' | 'error' | 'done'; data?: Profile | null }>({ status: 'off' });
   const panelRef = useRef<HTMLElement>(null);
   const handles = useRef<Handles | null>(null);
-  const live = useRef({ state, coarse });
+  const live = useRef<{ state: typeof state; coarse: boolean; ring: Pos[] | null }>({ state, coarse, ring: null });
   const snapRef = useRef(snapData);
-  useEffect(() => {
-    live.current = { state, coarse };
-    snapRef.current = snapData;
-  });
 
   const parcelForSum = state.mode === 'parcel' ? parcel : null;
   const sum = useMemo(() => summarize(state, parcelForSum), [state, parcelForSum]);
   const drawing = !state.done && state.mode !== 'parcel';
+  useEffect(() => {
+    live.current = { state, coarse, ring: sum.ring };
+    snapRef.current = snapData;
+  });
 
   const setUnits = useCallback((u: Units) => {
     setUnitsState(u);
@@ -293,12 +293,40 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
       const wrap = el.closest<HTMLElement>('.vc-map-wrap');
       wrap?.style.setProperty('--vc-measure-h', `${bottom}px`);
       wrap?.style.setProperty('--vc-measure-w', `${right}px`);
+      // Too little map left above the sheet for the zoom and full screen buttons: they step aside (pinch still zooms).
+      if (wrap) wrap.dataset.measureTall = String(!w && box.height - bottom < 400);
+      // The attribution starts folded to its (i) button so it does not sit over the drawing.
+      if (first) wrap?.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
+      first = false;
       try {
         map.setPadding({ top: 70, bottom, left: 0, right });
       } catch {
-        // Map removed.
+        return; // Map removed.
       }
+      // When the sheet grows over the shape, the shape moves into the part of the map left open (never zooming in).
+      if (bottom === lastBottom && right === lastRight) return;
+      lastBottom = bottom;
+      lastRight = right;
+      const pts = live.current.ring ?? live.current.state.pts;
+      if (!pts.length) return;
+      const hidden = pts.some((p) => {
+        const q = map.project(p);
+        return q.y < 70 || q.y > box.height - bottom || q.x < 0 || q.x > box.width - right;
+      });
+      if (!hidden) return;
+      const xs = pts.map((p) => p[0]),
+        ys = pts.map((p) => p[1]);
+      map.fitBounds(
+        [
+          [Math.min(...xs), Math.min(...ys)],
+          [Math.max(...xs), Math.max(...ys)],
+        ],
+        { padding: 24, maxZoom: map.getZoom(), duration: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 250 },
+      );
     };
+    let first = true;
+    let lastBottom = -1;
+    let lastRight = -1;
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(el);
@@ -309,6 +337,7 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
       const wrap = el.closest<HTMLElement>('.vc-map-wrap');
       wrap?.style.removeProperty('--vc-measure-h');
       wrap?.style.removeProperty('--vc-measure-w');
+      if (wrap) delete wrap.dataset.measureTall;
     };
   }, [getMap, gen, ready]);
 
@@ -461,9 +490,19 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
   const canFinish = drawing && state.pts.length > (state.mode === 'area' ? 2 : 1) && state.mode !== 'circle';
   const hasShape = state.pts.length > 0 && (state.mode !== 'parcel' || Boolean(parcel));
 
+  // Add point: inside the card on wider screens; on a phone it floats over the map just above the sheet,
+  // under the thumb and clear of the crosshair (outside the sheet, which scrolls).
+  const showAdd = (drawing || state.mode === 'parcel') && coarse;
+  const addButton = (
+    <button type="button" className="vc-measure-add" data-float={!wide || undefined} onClick={addAtCenter}>
+      <Plus size={17} strokeWidth={2.2} aria-hidden="true" /> {addLabel}
+    </button>
+  );
+
   return (
     <>
       {drawing && coarse && <div className="vc-mx" aria-hidden="true" />}
+      {showAdd && !wide && addButton}
       <section ref={panelRef} className="vc-measure" data-wide={wide || undefined} data-open={open || undefined} aria-label="Measure">
         <div className="vc-measure-head">
           <div className="vc-measure-modes" role="radiogroup" aria-label="What to measure">
@@ -509,11 +548,7 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
         </div>
 
         <div className="vc-measure-acts">
-          {(drawing || state.mode === 'parcel') && coarse && (
-            <button type="button" className="vc-measure-add" onClick={addAtCenter}>
-              <Plus size={17} strokeWidth={2.2} aria-hidden="true" /> {addLabel}
-            </button>
-          )}
+          {showAdd && wide && addButton}
           <button type="button" className="vc-measure-icon" onClick={() => dispatch({ type: 'undo' })} disabled={!state.past.length} aria-label="Undo" title="Undo (Backspace)">
             <Undo2 size={18} strokeWidth={1.9} />
           </button>
@@ -542,25 +577,25 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
             <button type="button" className="vc-measure-icon" onClick={() => setShare((v) => !v)} aria-expanded={share} disabled={!hasShape} aria-label="Share and save" title="Share and save">
               <Share2 size={18} strokeWidth={1.9} />
             </button>
-            {share && hasShape && (
-              <div className="vc-measure-menu" role="menu">
-                <button type="button" role="menuitem" onClick={() => (setShare(false), void doCopyLink())}>
-                  <LinkIcon size={16} aria-hidden="true" /> Copy link
-                </button>
-                <button type="button" role="menuitem" onClick={() => (setShare(false), void doCopyNumbers())}>
-                  <Copy size={16} aria-hidden="true" /> Copy the numbers
-                </button>
-                <button type="button" role="menuitem" onClick={() => (setShare(false), doExport())}>
-                  <Download size={16} aria-hidden="true" /> Export GeoJSON
-                </button>
-              </div>
-            )}
           </div>
           <button type="button" className="vc-measure-icon vc-measure-more" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? 'Fewer details' : 'More details'} title="Details">
             <ChevronDown size={18} strokeWidth={1.9} />
           </button>
         </div>
 
+        {share && hasShape && (
+          <div className="vc-measure-menu" role="menu">
+            <button type="button" role="menuitem" onClick={() => (setShare(false), void doCopyLink())}>
+              <LinkIcon size={16} aria-hidden="true" /> Copy link
+            </button>
+            <button type="button" role="menuitem" onClick={() => (setShare(false), void doCopyNumbers())}>
+              <Copy size={16} aria-hidden="true" /> Copy the numbers
+            </button>
+            <button type="button" role="menuitem" onClick={() => (setShare(false), doExport())}>
+              <Download size={16} aria-hidden="true" /> Export GeoJSON
+            </button>
+          </div>
+        )}
         {open && (
           <div className="vc-measure-details">
             {(state.mode === 'area' || state.mode === 'circle') && (

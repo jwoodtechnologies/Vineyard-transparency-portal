@@ -42,8 +42,8 @@ export function addLayers(map: maplibregl.Map): void {
       type: 'symbol',
       source: SRC,
       filter: ['==', ['geometry-type'], 'Point'],
-      layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, -1.5], 'text-allow-overlap': false, 'text-padding': 2 },
-      paint: { 'text-color': '#1a1a1a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
+      layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-offset': [0, -1.5], 'text-allow-overlap': false, 'text-padding': 2 },
+      paint: { 'text-color': '#111111', 'text-halo-color': '#ffffff', 'text-halo-width': 3, 'text-halo-blur': 0.5 },
     });
 }
 
