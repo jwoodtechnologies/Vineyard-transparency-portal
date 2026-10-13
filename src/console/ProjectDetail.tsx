@@ -12,7 +12,13 @@ import { dayLabel, ORDER, pagesLabel, projectDetailUrl, USD, voteOutcome, VOTE_W
 
 function VoteBlock({ v }: { v: ProjectVote }) {
   const nameOf = useMemberNames();
-  const titled = (m: string) => memberTitle(nameOf(m).name, nameOf(m).person?.role);
+  // The seat on the body that voted (Board Member on the RDA, Council Member on the City Council), as the
+  // Votes page writes it; the mayor keeps the mayor's title. A former member keeps the seat title too.
+  const seatTitle = /redevelopment/i.test(v.body ?? '') ? 'Board Member' : /planning/i.test(v.body ?? '') ? 'Commissioner' : 'Council Member';
+  const titled = (m: string) => {
+    const who = nameOf(m);
+    return memberTitle(who.name, /^\s*mayor\b(?!\s*pro)/i.test(who.person?.role ?? '') ? 'Mayor' : seatTitle);
+  };
   const roll = [...v.votes].sort((a, b) => (ORDER[a.vote] ?? 9) - (ORDER[b.vote] ?? 9) || titled(a.member).localeCompare(titled(b.member)));
   const meta = [v.body, dayLabel(v.date), v.number, voteOutcome(v)].filter(Boolean).join(' · ');
   return (
