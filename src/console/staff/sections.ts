@@ -34,6 +34,14 @@ export const SECTIONS: Section[] = [
     tile: true,
     Component: lazy(() => import('./Projects')),
   },
+  {
+    path: 'services',
+    label: 'Service links',
+    blurb: 'Fix, hide or add the service buttons and city phone numbers residents tap.',
+    area: 'site',
+    tile: true,
+    Component: lazy(() => import('./Services')),
+  },
   { path: 'budget', label: 'Budget', blurb: 'Update the budget figures, totals and capital projects.', area: 'budget', tile: true, Component: lazy(() => import('./Budget')) },
   {
     path: 'notices',
