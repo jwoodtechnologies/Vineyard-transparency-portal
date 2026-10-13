@@ -26,9 +26,12 @@ let photoSpot = null;
 if (token) {
   // Geneva Road and the north side of Vineyard, where the reviewer saw coverage.
   for (const bbox of ['-111.7420,40.2950,-111.7330,40.3150', '-111.7600,40.3150,-111.7300,40.3300', '-111.7700,40.2800,-111.7000,40.3300']) {
-    const r = await fetch(`https://graph.mapillary.com/images?access_token=${encodeURIComponent(token)}&fields=id,computed_geometry,computed_compass_angle,is_pano&bbox=${bbox}&limit=50`);
+    const r = await fetch(`https://graph.mapillary.com/images?access_token=${encodeURIComponent(token)}&fields=id,computed_geometry,geometry,computed_compass_angle,is_pano&bbox=${bbox}&limit=50`);
     const list = (await r.json()).data ?? [];
-    const pick = list.find((x) => x.is_pano) ?? list[0];
+    // A photo whose camera GPS and Mapillary's corrected position agree: it is on its blue line, and the
+    // page's area search (by GPS) finds it.
+    const agree = list.filter((x) => x.geometry && x.computed_geometry && Math.hypot((x.geometry.coordinates[0] - x.computed_geometry.coordinates[0]) * 85000, (x.geometry.coordinates[1] - x.computed_geometry.coordinates[1]) * 111000) < 4);
+    const pick = agree.find((x) => x.is_pano) ?? agree[0];
     if (pick) {
       const [lng, lat] = pick.computed_geometry.coordinates;
       // About 30 m ahead of the camera and a little toward the city (west), so the pin is in the photo.
