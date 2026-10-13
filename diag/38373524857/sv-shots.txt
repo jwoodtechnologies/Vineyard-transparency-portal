@@ -1,0 +1,63 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "1208950499539367",
+      "pano": false,
+      "pin": [
+        -111.73518906064794,
+        40.313326020123334
+      ],
+      "found": 50
+    },
+    "none": [
+      -111.7652,
+      40.2905
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone-photo",
+      "chips": [],
+      "bar": "Street viewZoningGoogleasellars2017Street photos from Mapillary contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.",
+      "notes": [
+        "photo shown after 3343 ms"
+      ]
+    },
+    {
+      "tag": "phone-photo-dark",
+      "chips": [],
+      "bar": "Street viewZoningGoogleasellars2017Street photos from Mapillary contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.",
+      "notes": [
+        "photo shown after 2908 ms"
+      ]
+    },
+    {
+      "tag": "phone-3d",
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle",
+      "notes": []
+    },
+    {
+      "tag": "desktop-photo",
+      "chips": [],
+      "bar": "Street viewZoningGoogleimage by asellarsAug 28, 2017Street photos from Mapillary contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.",
+      "notes": [
+        "photo shown after 1723 ms"
+      ]
+    },
+    {
+      "tag": "desktop-photo-dark",
+      "chips": [],
+      "bar": "Street viewZoningGoogleimage by asellarsAug 28, 2017Street photos from Mapillary contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.",
+      "notes": [
+        "photo shown after 1301 ms"
+      ]
+    },
+    {
+      "tag": "desktop-3d",
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle",
+      "notes": []
+    }
+  ],
+  "tokenSet": true
+}
