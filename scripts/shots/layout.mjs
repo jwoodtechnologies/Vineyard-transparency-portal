@@ -14,9 +14,9 @@ export const VIEWPORTS = [
   { name: '1440x900', ctx: { viewport: { width: 1440, height: 900 } } },
 ];
 
-/** A spot with no street photo close by (the 3D view) and one on Geneva Road's photo lines. */
+/** A spot with no street photo close by (the 3D view) and one on a road with photos (the one sv-shots uses). */
 const NO_PHOTO = [-111.7455, 40.3035];
-const PHOTO = [-111.7362, 40.2984];
+const PHOTO = [-111.73495, 40.31381];
 const AREA = 'a:kpvzkAfzactE~~CgxBk\\_tAocCrS';
 
 const at = ([lng, lat], z = 16, extra = '') => `/map?lat=${lat}&lng=${lng}&z=${z}${extra}`;

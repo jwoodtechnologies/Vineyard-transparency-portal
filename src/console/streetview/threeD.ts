@@ -82,6 +82,9 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   heights.set(map, recordedHeights(map, src));
 }
 
+/** How far from the view's center buildings are redrawn with recorded heights, in degrees of latitude. */
+const NEAR_DEG = 0.011;
+
 const heights = new WeakMap<maplibregl.Map, { stop: () => void }>();
 
 /**
@@ -96,7 +99,13 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void }
   let shown = '';
   const draw = () => {
     if (stopped || !map.getSource(H_SRC) || map.getZoom() < 14) return;
-    const feats = map.querySourceFeatures(src, { sourceLayer: 'building' }).filter((f) => f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon');
+    // Only the buildings within NEAR_DEG of the view (about 1.2 km), which is what street level shows close up.
+    const c = map.getCenter();
+    const feats = map.querySourceFeatures(src, { sourceLayer: 'building' }).filter((f) => {
+      const g = f.geometry;
+      const p = g.type === 'Polygon' ? g.coordinates[0]?.[0] : g.type === 'MultiPolygon' ? g.coordinates[0]?.[0]?.[0] : null;
+      return p != null && Math.abs(p[0] - c.lng) < NEAR_DEG * 1.3 && Math.abs(p[1] - c.lat) < NEAR_DEG;
+    });
     const key = `${feats.length}:${index.size}`;
     if (key === shown || !feats.length) return;
     shown = key;
@@ -122,12 +131,19 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void }
     }
     draw();
   };
-  map.on('idle', settle);
+  // In the browser's spare time, so turning the view never waits on it.
+  let pending = 0;
+  const later = () => {
+    if (pending) return;
+    const ric = (window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    pending = ric ? ric(() => ((pending = 0), settle()), { timeout: 1500 }) : window.setTimeout(() => ((pending = 0), settle()), 200);
+  };
+  map.on('idle', later);
   settle();
   return {
     stop: () => {
       stopped = true;
-      map.off('idle', settle);
+      map.off('idle', later);
     },
   };
 }

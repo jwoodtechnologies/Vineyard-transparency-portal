@@ -255,7 +255,7 @@ for (const prof of PROFILES) {
         await page.mouse.up();
       }
       run.look.afterDrag = await settled();
-      await page.click('button[aria-label="Turn right"]');
+      await page.click('button[aria-label="Turn right"]', { force: true });
       await page.waitForTimeout(400);
       run.look.afterTurnRight = await settled();
       if (!prof.ctx.hasTouch) {
@@ -264,17 +264,17 @@ for (const prof of PROFILES) {
         run.look.afterKeyA = await settled();
       }
       const note0 = await page.textContent('.vc-sv-note');
-      await page.click('button[aria-label="Forward"]');
+      await page.click('button[aria-label="Forward"]', { force: true });
       await page.waitForTimeout(1500);
       run.look.forwardKeeps3d = (await page.locator('.vc-sv-compass').count()) === 1;
       run.look.pinY = await pinY();
       await page.screenshot({ path: `${OUT}/${prof.name}-7-3d-turned.png` });
-      await page.click('.vc-sv-compass');
+      await page.click('.vc-sv-compass', { force: true });
       await page.waitForTimeout(400);
       run.look.afterCompassTap = await settled();
       // Face east toward the Wasatch and look up near eye level: terrain, sky and clouds.
       for (let i = 0; i < 3; i++) {
-        await page.click('button[aria-label="Turn right"]');
+        await page.click('button[aria-label="Turn right"]', { force: true });
         await page.waitForTimeout(350);
       }
       if (prof.ctx.hasTouch) {
