@@ -1,0 +1,63 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "1125028644652306",
+      "pano": false,
+      "pin": [
+        -111.73419795607,
+        40.296848525337005
+      ],
+      "found": 50
+    },
+    "none": [
+      -111.7652,
+      40.2905
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone-photo",
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp button[aria-pressed]')\n",
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval'\". Note that 'script-src-elem' was not explicitly set, so 'script-"
+      ]
+    },
+    {
+      "tag": "phone-photo-dark",
+      "error": "TimeoutError: page.textContent: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp')\n",
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval'\". Note that 'script-src-elem' was not explicitly set, so 'script-"
+      ]
+    },
+    {
+      "tag": "phone-3d",
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle",
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval'\". Note that 'script-src-elem' was not explicitly set, so 'script-"
+      ]
+    },
+    {
+      "tag": "desktop-photo",
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp button[aria-pressed]')\n",
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval'\". Note that 'script-src-elem' was not explicitly set, so 'script-"
+      ]
+    },
+    {
+      "tag": "desktop-photo-dark",
+      "error": "TimeoutError: page.textContent: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp')\n",
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval'\". Note that 'script-src-elem' was not explicitly set, so 'script-"
+      ]
+    },
+    {
+      "tag": "desktop-3d",
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle",
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval'\". Note that 'script-src-elem' was not explicitly set, so 'script-"
+      ]
+    }
+  ],
+  "tokenSet": true
+}
