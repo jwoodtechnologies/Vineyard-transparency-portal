@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Mail, Pencil, Phone, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
-import { staff } from './api';
+import { Camera, Mail, Pencil, Phone, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { staff, staffUpload } from './api';
 import { Alert } from './ui';
 import PersonForm from './PersonForm';
 import { EMPTY_PERSON, KIND_NOUN, draftOf, personLine, type DirOptions, type DirPerson, type PersonDraft, type PersonKind } from './directoryLib';
@@ -28,6 +28,22 @@ const payload = (d: PersonDraft) => ({
 function Row({ p, options, onChanged, onNotice, onError }: { p: DirPerson; options: DirOptions; onChanged: () => void; onNotice: (s: string) => void; onError: (s: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const picker = useRef<HTMLInputElement>(null);
+
+  async function upload(file: File) {
+    onError('');
+    if (file.size > 3 * 1024 * 1024) return onError('That photo is larger than 3 MB. Choose a smaller one.');
+    const form = new FormData();
+    form.append('slug', p.slug);
+    form.append('file', file);
+    try {
+      await staffUpload('/directory/photo', form);
+      onNotice(`The new photo of ${p.name} is on the portal. You can undo it from Activity.`);
+      onChanged();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not add that photo.');
+    }
+  }
 
   async function change(path: '/directory/remove' | '/directory/restore') {
     onError('');
@@ -78,6 +94,22 @@ function Row({ p, options, onChanged, onNotice, onError }: { p: DirPerson; optio
       <div className="vs-actions">
         <button type="button" className="vs-btn vs-btn-small vs-btn-quiet" onClick={() => setEditing(!editing)} aria-expanded={editing}>
           <Pencil size={14} aria-hidden="true" /> {editing ? 'Close' : 'Edit'}
+        </button>
+        <input
+          ref={picker}
+          className="vs-sr"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (f) void upload(f);
+          }}
+        />
+        <button type="button" className="vs-btn vs-btn-small vs-btn-quiet" aria-label={`Change the photo of ${p.name}`} onClick={() => picker.current?.click()}>
+          <Camera size={14} aria-hidden="true" /> Photo
         </button>
         {!p.current ? (
           <button type="button" className="vs-btn vs-btn-small vs-btn-quiet" onClick={() => change('/directory/restore')}>

@@ -58,6 +58,14 @@ export const SECTIONS: Section[] = [
     tile: true,
     Component: lazy(() => import('./Services')),
   },
+  {
+    path: 'taxrate',
+    label: 'Property tax rate',
+    blurb: 'Add the certified tax rate each year, with the record that prints it, so the chat quotes it.',
+    area: 'budget',
+    tile: true,
+    Component: lazy(() => import('./TaxRates')),
+  },
   { path: 'budget', label: 'Budget', blurb: 'Update the budget figures, totals and capital projects.', area: 'budget', tile: true, Component: lazy(() => import('./Budget')) },
   {
     path: 'notices',
