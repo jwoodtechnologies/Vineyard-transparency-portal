@@ -49,7 +49,7 @@ for (const prof of PROFILES) {
         await page.goto(url, { waitUntil: 'domcontentloaded' });
         await page.waitForSelector('.vc-measure', { timeout: 20000 });
         await page.waitForTimeout(5000);
-        await page.click('.vc-measure-more');
+        await page.click('.vc-measure-more, .vc-measure-grip');
         if (c.profile) {
           await page.click('.vc-measure-pill');
           await page.waitForSelector('.vc-measure-chart', { timeout: 45000 }).catch(() => errors.push('no elevation chart'));

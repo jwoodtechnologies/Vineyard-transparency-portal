@@ -5427,9 +5427,28 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 }
 .vc-measure-menu button:hover, .vc-measure-menu button:focus-visible { background: var(--vc-bg-2); }
 .vc-measure-details { display: grid; gap: 10px; padding-top: 4px; border-top: 1px solid var(--vc-line); }
-/* The phone sheet takes at most half the map; past that it scrolls on its own. */
-.vc-measure:not([data-wide='true']) { max-height: 50%; overflow-y: auto; overscroll-behavior: contain; }
-.vc-measure:not([data-wide='true']) .vc-measure-head { position: sticky; top: -8px; z-index: 1; margin: -8px -12px 0; padding: 8px 12px 4px; background: var(--vc-bg); }
+/* Phones: one sheet with a handle. It peeks with the total and the buttons; opened, it grows to at most
+   70% of the map and only the details scroll, so nothing above them is clipped. */
+.vc-measure:not([data-wide='true']) { display: flex; flex-direction: column; padding-top: 0; background: var(--vc-bg); backdrop-filter: none; }
+.vc-measure:not([data-wide='true'])[data-open='true'] { max-height: 70%; }
+.vc-measure:not([data-wide='true']) .vc-measure-details { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 2px; }
+.vc-measure:not([data-wide='true']) > :not(.vc-measure-details) { flex: none; }
+.vc-measure-grip { display: grid; place-items: center; height: 28px; min-height: 28px; margin: 0 -12px -4px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; }
+.vc-measure-grip span { width: 40px; height: 5px; border-radius: 999px; background: var(--vc-line-2, #c9c9cf); }
+.vc-measure-grip:focus-visible { outline: 3px solid var(--vc-accent); outline-offset: -3px; border-radius: 12px; }
+/* The parcel card on the map, at the tapped spot. */
+.vc-pcard { width: max-content; max-width: min(260px, 70vw); padding: 8px 10px 9px; border: 1px solid var(--vc-line); border-radius: 14px; background: var(--vc-surface); color: var(--vc-ink); box-shadow: var(--vc-shadow); font-size: var(--vc-fs-sm); }
+.vc-pcard::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px; transform: translateX(-50%) rotate(45deg); background: var(--vc-surface); border-right: 1px solid var(--vc-line); border-bottom: 1px solid var(--vc-line); }
+.vc-pcard-head { display: flex; align-items: flex-start; gap: 6px; }
+.vc-pcard-head b { flex: 1; min-width: 0; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+.vc-pcard-x { flex: none; width: 32px; height: 32px; margin: -6px -6px 0 0; border: 0; border-radius: 999px; background: transparent; color: var(--vc-muted); font-size: 20px; line-height: 1; cursor: pointer; }
+.vc-pcard-x:hover, .vc-pcard-x:focus-visible { background: var(--vc-bg-2); color: var(--vc-ink); }
+@media (pointer: coarse) { .vc-pcard-x { width: 44px; height: 44px; margin: -12px -10px -6px 0; } }
+.vc-pcard-big { margin: 2px 0 0; font-size: 1.1rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.vc-pcard dl { display: grid; gap: 2px; margin: 4px 0 0; }
+.vc-pcard dl > div { display: flex; justify-content: space-between; gap: 10px; }
+.vc-pcard dt { color: var(--vc-muted); }
+.vc-pcard dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .vc-measure-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--vc-fs-sm); color: var(--vc-muted); }
 .vc-measure-field select { min-height: 44px; padding: 0 10px; border: 1px solid var(--vc-line); border-radius: 10px; background: var(--vc-surface); color: var(--vc-ink); font: inherit; font-size: var(--vc-fs-ui); }
 .vc-measure-dl { display: grid; gap: 4px; margin: 0; font-size: var(--vc-fs-sm); }
@@ -5477,7 +5496,6 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 .vc-mh[data-role='close'] span { animation: vc-mh-pulse 1.3s ease-out infinite; }
 @keyframes vc-mh-pulse { 0% { box-shadow: 0 0 0 0 rgba(31, 157, 85, 0.6); } 100% { box-shadow: 0 0 0 14px rgba(31, 157, 85, 0); } }
 @media (prefers-reduced-motion: reduce) { .vc-mh[data-role='close'] span { animation: none; } }
-.vc-mtag { padding: 3px 9px; border-radius: 999px; background: rgba(12, 12, 14, 0.78); color: #fff; font-size: 12px; font-weight: 650; white-space: nowrap; pointer-events: none; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); }
 .vc-measure-step { margin: 0 0 2px; color: var(--vc-ink-2); font-size: var(--vc-fs-sm); line-height: 1.35; }
 .vc-measure-end { flex: none; min-height: 44px; display: inline-flex; align-items: center; gap: 5px; padding: 0 14px; border: 1px solid #e03131; border-radius: 999px; background: var(--vc-surface); color: #c92a2a; font: inherit; font-size: var(--vc-fs-sm); font-weight: 650; cursor: pointer; }
 .vc-mh:focus-visible span { outline: 3px solid var(--vc-accent); outline-offset: 2px; }

@@ -25,7 +25,8 @@ export function addLayers(map: maplibregl.Map): void {
   if (map.getSource(SRC)) return;
   map.addSource(SRC, { type: 'geojson', data: fc([]) });
   map.addSource(GUIDE, { type: 'geojson', data: fc([]) });
-  map.addLayer({ id: 'vtp-measure-fill', type: 'fill', source: SRC, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': COLOR, 'fill-opacity': 0.14 } });
+  // A selected parcel is filled more strongly, so the tap clearly picks it.
+  map.addLayer({ id: 'vtp-measure-fill', type: 'fill', source: SRC, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': COLOR, 'fill-opacity': ['case', ['==', ['get', 'sel'], true], 0.3, 0.14] } });
   map.addLayer({
     id: 'vtp-measure-casing',
     type: 'line',
@@ -55,7 +56,7 @@ export function removeLayers(map: maplibregl.Map): void {
 /** Draws the shape: the path or outline, the area, and a length label on each segment. */
 export function drawShape(map: maplibregl.Map, mode: Mode, pts: Pos[], closed: boolean, sum: Summary, system: System): void {
   const features: FC['features'] = [];
-  if (sum.ring) features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [sum.ring] }, properties: {} });
+  if (sum.ring) features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [sum.ring] }, properties: mode === 'parcel' ? { sel: true } : {} });
   else if (mode === 'distance' && pts.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: closed ? [...pts, pts[0]] : pts }, properties: {} });
   if (mode === 'circle' && pts.length === 2) {
     features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts }, properties: {} });
@@ -70,6 +71,13 @@ export function drawShape(map: maplibregl.Map, mode: Mode, pts: Pos[], closed: b
 export function drawGuide(map: maplibregl.Map, from: Pos | null, to: Pos | null): void {
   const src = map.getSource(GUIDE) as GeoJSONSource | undefined;
   src?.setData(fc(from && to ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [from, to] }, properties: {} }] : []));
+}
+
+export interface ParcelCard {
+  title: string;
+  /** Acres from the shape, or a loading line. */
+  big: string;
+  rows: Array<[string, string]>;
 }
 
 export interface HandleEvents {
@@ -193,19 +201,65 @@ export class Handles {
 
   /** A label on the map for the measured parcel, or none. */
   private tagMarker: maplibregl.Marker | null = null;
-  setTag(at: Pos | null, text: string): void {
-    if (!at) {
+  /**
+   * The parcel card: a small card on the map at the tapped spot, pointing at it. `card` null removes it.
+   * Built with text nodes only (the address comes from the county).
+   */
+  setCard(at: Pos | null, card: ParcelCard | null, onClose?: () => void): void {
+    if (!at || !card) {
       this.tagMarker?.remove();
       this.tagMarker = null;
       return;
     }
     if (!this.tagMarker) {
       const el = document.createElement('div');
-      el.className = 'vc-mtag';
-      this.tagMarker = new maplibregl.Marker({ element: el }).setLngLat(at).addTo(this.map);
+      el.className = 'vc-pcard';
+      this.tagMarker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -10] }).setLngLat(at).addTo(this.map);
     }
     this.tagMarker.setLngLat(at);
-    this.tagMarker.getElement().textContent = text;
+    const el = this.tagMarker.getElement();
+    el.replaceChildren();
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', card.title);
+    const head = document.createElement('div');
+    head.className = 'vc-pcard-head';
+    const title = document.createElement('b');
+    title.textContent = card.title;
+    head.append(title);
+    if (onClose) {
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'vc-pcard-x';
+      x.setAttribute('aria-label', 'Close the parcel card');
+      x.textContent = '\u00d7';
+      x.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onClose();
+      });
+      head.append(x);
+    }
+    el.append(head);
+    if (card.big) {
+      const big = document.createElement('p');
+      big.className = 'vc-pcard-big';
+      big.textContent = card.big;
+      el.append(big);
+    }
+    if (card.rows.length) {
+      const dl = document.createElement('dl');
+      for (const [k, v] of card.rows) {
+        const row = document.createElement('div');
+        const dt = document.createElement('dt');
+        dt.textContent = k;
+        const dd = document.createElement('dd');
+        dd.textContent = v;
+        row.append(dt, dd);
+        dl.append(row);
+      }
+      el.append(dl);
+    }
+    // Taps on the card stay on the card.
+    el.onclick = (e) => e.stopPropagation();
   }
 
   clear(): void {

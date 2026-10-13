@@ -94,7 +94,7 @@ function hint(mode: Mode, coarse: boolean, count: number, done: boolean): string
       if (!count) return coarse ? 'Put the crosshair on the center, then tap Set center.' : 'Click the center, or press and drag out the radius.';
       return coarse ? 'Move the crosshair to the edge, then tap Set radius.' : 'Click the edge to set the radius.';
     case 'parcel':
-      return count ? `${tap} another parcel to measure it.` : coarse ? 'Put the crosshair inside a parcel, then tap Measure parcel.' : 'Click a parcel to measure it.';
+      return count ? `${tap} another parcel to measure it.` : `${tap} a parcel to measure it.`;
   }
 }
 
@@ -112,6 +112,8 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
   const [said, setSaid] = useState('');
   const [profile, setProfile] = useState<{ status: 'off' | 'loading' | 'error' | 'done'; data?: Profile | null }>({ status: 'off' });
   const panelRef = useRef<HTMLElement>(null);
+  const gripY = useRef<number | null>(null);
+  const gripMoved = useRef(false);
   const handles = useRef<Handles | null>(null);
   const live = useRef<{ state: typeof state; coarse: boolean; ring: Pos[] | null }>({ state, coarse, ring: null });
   const snapRef = useRef(snapData);
@@ -245,16 +247,24 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
     handles.current?.update(state.mode, state.pts, state.closed, state.done);
   }, [getMap, gen, ready, state, sum, units.system]);
 
-  // The measured parcel is outlined (its ring is the shape) and labeled with its address or number.
+  // The tapped parcel is highlighted (its ring is the shape) and a small card opens right there: acres from
+  // the shape, the address, the parcel number and the county's recorded acreage.
+  const [cardShut, setCardShut] = useState(false);
+  const cardAt = state.mode === 'parcel' ? state.pts[0] : undefined;
   useEffect(() => {
     const h = handles.current;
     if (!h) return;
-    const ring = state.mode === 'parcel' && parcel?.ring ? parcel.ring : null;
-    if (!ring) return h.setTag(null, '');
-    const xs = ring.map((p) => p[0]),
-      ys = ring.map((p) => p[1]);
-    h.setTag([(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2], parcel?.address ?? (parcel?.number ? `Parcel ${parcel.number}` : 'Parcel'));
-  }, [gen, ready, state.mode, parcel]);
+    if (!cardAt || cardShut || parcelState === 'none') return h.setCard(null, null);
+    if (parcelState === 'loading' || !parcel) return h.setCard(cardAt, parcelState === 'error' ? { title: 'Parcel', big: 'Could not be loaded', rows: [] } : { title: 'Parcel', big: 'Loading', rows: [] });
+    const rows: Array<[string, string]> = [];
+    if (parcel.number) rows.push(['Parcel number', parcel.number]);
+    if (parcel.recordedAcres != null) rows.push(['County recorded', fmtArea(parcel.recordedAcres * 4046.8564224, 'acres')]);
+    h.setCard(cardAt, { title: parcel.address ?? (parcel.number ? `Parcel ${parcel.number}` : 'Parcel'), big: `${fmtArea(parcel.area, 'acres')} from the shape`, rows }, () => setCardShut(true));
+  }, [gen, ready, cardAt, cardShut, parcel, parcelState]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a new tap opens the card again
+    setCardShut(false);
+  }, [cardAt]);
 
   // The dashed guide to the pointer or crosshair while drawing.
   const guideFrom = drawing && state.pts.length ? (state.mode === 'circle' ? state.pts[0] : state.pts[state.pts.length - 1]) : null;
@@ -495,14 +505,14 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
       if (parcel && parcelState !== 'loading') sub = [parcel.address, parcel.number ? `parcel ${parcel.number}` : null].filter((x): x is string => Boolean(x));
       break;
   }
-  const addLabel = state.mode === 'circle' ? (state.pts.length ? 'Set radius' : 'Set center') : state.mode === 'parcel' ? 'Measure parcel' : state.pts.length ? 'Add point' : 'Set start';
+  const addLabel = state.mode === 'circle' ? (state.pts.length ? 'Set radius' : 'Set center') : state.pts.length ? 'Add point' : 'Set start';
   const finishLabel = state.mode === 'area' ? 'Close' : 'Set end';
   const canFinish = drawing && state.pts.length > (state.mode === 'area' ? 2 : 1) && state.mode !== 'circle';
   const hasShape = state.pts.length > 0 && (state.mode !== 'parcel' || Boolean(parcel));
 
   // Add point: inside the card on wider screens; on a phone it floats over the map just above the sheet,
   // under the thumb and clear of the crosshair (outside the sheet, which scrolls).
-  const showAdd = (drawing || state.mode === 'parcel') && coarse;
+  const showAdd = drawing && coarse;
   const addButton = (
     <button type="button" className="vc-measure-add" data-float={!wide || undefined} onClick={addAtCenter}>
       <Plus size={17} strokeWidth={2.2} aria-hidden="true" /> {addLabel}
@@ -514,6 +524,36 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
       {drawing && coarse && <div className="vc-mx" aria-hidden="true" />}
       {showAdd && !wide && addButton}
       <section ref={panelRef} className="vc-measure" data-wide={wide || undefined} data-open={open || undefined} aria-label="Measure">
+        {!wide && (
+          // Phones: one sheet. It peeks with the total; the handle (tap, or swipe up and down) shows the details.
+          <button
+            type="button"
+            className="vc-measure-grip"
+            aria-expanded={open}
+            aria-label={open ? 'Hide details' : 'Show details'}
+            onClick={() => {
+              if (gripMoved.current) gripMoved.current = false;
+              else setOpen((v) => !v);
+            }}
+            onPointerDown={(e) => {
+              gripY.current = e.clientY;
+              gripMoved.current = false;
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              if (gripY.current == null) return;
+              const dy = e.clientY - gripY.current;
+              if (Math.abs(dy) < 24) return;
+              gripMoved.current = true;
+              gripY.current = null;
+              setOpen(dy < 0);
+            }}
+            onPointerUp={() => (gripY.current = null)}
+            onPointerCancel={() => (gripY.current = null)}
+          >
+            <span aria-hidden="true" />
+          </button>
+        )}
         <div className="vc-measure-head">
           <div className="vc-measure-modes" role="radiogroup" aria-label="What to measure">
             {MODES.map(({ id, label, Icon }) => (
@@ -590,9 +630,11 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
               <Share2 size={18} strokeWidth={1.9} />
             </button>
           </div>
-          <button type="button" className="vc-measure-icon vc-measure-more" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? 'Fewer details' : 'More details'} title="Details">
-            <ChevronDown size={18} strokeWidth={1.9} />
-          </button>
+          {wide && (
+            <button type="button" className="vc-measure-icon vc-measure-more" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? 'Fewer details' : 'More details'} title="Details">
+              <ChevronDown size={18} strokeWidth={1.9} />
+            </button>
+          )}
         </div>
 
         {share && hasShape && (
@@ -686,10 +728,11 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
                 )}
               </div>
             )}
+            {!wide && <p className="vc-measure-note">{ACCURACY}</p>}
           </div>
         )}
 
-        <p className="vc-measure-note">{note || ACCURACY}</p>
+        {(wide || note) && <p className="vc-measure-note">{note || ACCURACY}</p>}
         <div className="vc-sr" role="status" aria-live="polite">
           {said}
         </div>
