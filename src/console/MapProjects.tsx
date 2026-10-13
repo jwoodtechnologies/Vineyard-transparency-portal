@@ -17,7 +17,7 @@ import { useJson } from './api';
 import { DocLink } from './DocLink';
 import type { StaffUpdate } from './RecordsHome';
 import { ProjectDetail } from './ProjectDetail';
-import { ALSO_FUNDED, CITY_PAGE, millions, money, plansFrom, type Plan, type PlanProps } from './construction';
+import { CITY_PAGE, alsoFunded, asProjectsContent, millions, money, plansFrom, type Plan, type PlanProps } from './construction';
 import { formatDate, normalizeDatesInText } from '@/lib/dates';
 
 type FC = FeatureCollection<Geometry, PlanProps>;
@@ -97,7 +97,9 @@ function CityWork({ s }: { s: ConstructionSnapshot }) {
   return (
     <section className="vc-mp-sec" aria-labelledby="vc-work-h">
       <div className="vc-mp-head">
-        <h3 id="vc-work-h" className="vc-mp-h">Construction now</h3>
+        <h3 id="vc-work-h" className="vc-mp-h">
+          Construction now
+        </h3>
         <a className="vc-mp-link" href={s.sourceUrl || CITY_PAGE} target="_blank" rel="noopener noreferrer">
           City page <ArrowUpRight size={14} strokeWidth={2} />
         </a>
@@ -108,7 +110,11 @@ function CityWork({ s }: { s: ConstructionSnapshot }) {
           <li key={i} className="vc-mp-card">
             <h4 className="vc-mp-name">{normalizeDatesInText(r[title] || '')}</h4>
             {where && r[where] && <p className="vc-mp-where">{r[where]}</p>}
-            {what && r[what] && <p className="vc-mp-what" data-full="true">{normalizeDatesInText(r[what])}</p>}
+            {what && r[what] && (
+              <p className="vc-mp-what" data-full="true">
+                {normalizeDatesInText(r[what])}
+              </p>
+            )}
             {rest.map((h) => (r[h] ? <p key={h} className="vc-mp-what" data-full="true">{`${h}: ${normalizeDatesInText(r[h])}`}</p> : null))}
             {(status && r[status]) || (done && r[done]) ? (
               <dl className="vc-mp-facts">
@@ -154,7 +160,17 @@ export function MapProjects({ onShow, onClose, active, wide, leaving, startExpan
   const load = useJson<PageData>('/api/pages/construction');
   const own = useJson<FC>(load.status === 'error' || (load.status === 'done' && !load.data.projects) ? '/api/map/layers/projects?page=0&v=5' : null);
   const fc = load.status === 'done' && load.data.projects ? load.data.projects : own.status === 'done' ? own.data : null;
-  const plans = useMemo(() => (fc ? plansFrom(fc) : []), [fc]);
+  // Wording staff saved in the staff portal; the built-in wording is used until it arrives and if it never does.
+  const site = useJson<{ content?: { projects?: unknown } }>('/api/content');
+  const edited = useMemo(() => (site.status === 'done' ? asProjectsContent(site.data?.content?.projects) : null), [site]);
+  // Wait briefly for it so the list does not change under the reader, but never hold the list back if it is slow.
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setWaited(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+  const plans = useMemo(() => (fc ? plansFrom(fc, edited) : []), [fc, edited]);
+  const also = useMemo(() => alsoFunded(edited), [edited]);
   const total = useMemo(() => plans.reduce((s, p) => s + (p.budget ?? 0), 0), [plans]);
   const snapshot = load.status === 'done' ? load.data.construction : null;
   const workRows = snapshot?.available && snapshot.glance?.rows.length ? snapshot.glance.rows.length : 0;
@@ -165,7 +181,7 @@ export function MapProjects({ onShow, onClose, active, wide, leaving, startExpan
     for (const u of upd.status === 'done' ? upd.data.items : []) if (u.projectGis && !m.has(u.projectGis)) m.set(u.projectGis, u);
     return m;
   }, [upd]);
-  const ready = plans.length > 0;
+  const ready = plans.length > 0 && (site.status !== 'loading' || waited);
   const failed = load.status === 'error' && own.status === 'error';
 
   const [tab, setTab] = useState<Tab>('funded');
@@ -302,7 +318,14 @@ export function MapProjects({ onShow, onClose, active, wide, leaving, startExpan
             )}
           </div>
           {sheet && (
-            <button type="button" className="vc-mp-icon" onClick={() => setExpanded((x) => !x)} aria-expanded={expanded} aria-controls="vc-mp-body" aria-label={expanded ? 'Show the map' : 'Show the list'}>
+            <button
+              type="button"
+              className="vc-mp-icon"
+              onClick={() => setExpanded((x) => !x)}
+              aria-expanded={expanded}
+              aria-controls="vc-mp-body"
+              aria-label={expanded ? 'Show the map' : 'Show the list'}
+            >
               {expanded ? <ChevronDown size={20} strokeWidth={2} /> : <ChevronUp size={20} strokeWidth={2} />}
             </button>
           )}
@@ -315,7 +338,16 @@ export function MapProjects({ onShow, onClose, active, wide, leaving, startExpan
       <div className="vc-mp-body" id="vc-mp-body" ref={bodyRef} inert={folded || leaving}>
         {workRows > 0 && (
           <div className="vc-mp-tabs" role="tablist" aria-label="Lists" onKeyDown={onTabKey}>
-            <button type="button" role="tab" id="vc-mp-tab-funded" data-tab="funded" aria-selected={tab === 'funded'} aria-controls="vc-mp-pane" tabIndex={tab === 'funded' ? 0 : -1} onClick={() => pick('funded')}>
+            <button
+              type="button"
+              role="tab"
+              id="vc-mp-tab-funded"
+              data-tab="funded"
+              aria-selected={tab === 'funded'}
+              aria-controls="vc-mp-pane"
+              tabIndex={tab === 'funded' ? 0 : -1}
+              onClick={() => pick('funded')}
+            >
               Funded <span className="vc-mp-n">{plans.length || ''}</span>
             </button>
             <button type="button" role="tab" id="vc-mp-tab-now" data-tab="now" aria-selected={tab === 'now'} aria-controls="vc-mp-pane" tabIndex={tab === 'now' ? 0 : -1} onClick={() => pick('now')}>
@@ -352,17 +384,23 @@ export function MapProjects({ onShow, onClose, active, wide, leaving, startExpan
                       <ProjectCard key={p.key} p={p} onShow={show} update={latest.get(p.gis)} active={active === p.gis} />
                     ))}
                   </ul>
-                  <h4 className="vc-mp-sub">Also funded, not on the map</h4>
-                  <ul className="vc-mp-also">
-                    {ALSO_FUNDED.map((a) => (
-                      <li key={a.name}>
-                        <span className="vc-mp-also-name">{a.name}</span>
-                        <span className="vc-mp-what" data-full="true">
-                          {a.about}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  {also.length > 0 && (
+                    <>
+                      <h4 className="vc-mp-sub">Also funded, not on the map</h4>
+                      <ul className="vc-mp-also">
+                        {also.map((a) => (
+                          <li key={a.id}>
+                            <span className="vc-mp-also-name">{a.name}</span>
+                            {a.about && (
+                              <span className="vc-mp-what" data-full="true">
+                                {a.about}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                   <p className="vc-mp-src">
                     <DocLink id={REFERENCE_GUIDE} className="vc-mp-link">
                       Capital Projects Reference Guide

@@ -8,6 +8,10 @@
  *     FY 2026-2027 Capital Projects Reference Guide.
  */
 import { formatDate } from '@/lib/dates';
+import { PROJECT_CATEGORIES, type ProjectCategory } from '@/lib/projectCategories';
+import { META, builtInMeta, type ProjectMeta } from '@/lib/projectMeta';
+
+export { META, builtInMeta };
 
 export type Stage = 'Planning' | 'Design' | 'Procurement' | 'Construction';
 export const STAGES: Stage[] = ['Planning', 'Design', 'Procurement', 'Construction'];
@@ -69,98 +73,49 @@ export const STAGE_COLOR: Record<Stage, { light: string; dark: string }> = {
   Construction: { light: '#6a1f46', dark: '#efc3da' },
 };
 
-export type Category = 'Roads and traffic' | 'Parks and trails' | 'Water and sewer' | 'Buildings and equipment' | 'Plans and studies';
-export const CATEGORIES: Category[] = ['Roads and traffic', 'Parks and trails', 'Water and sewer', 'Buildings and equipment', 'Plans and studies'];
+export type Category = ProjectCategory;
+export const CATEGORIES: Category[] = [...PROJECT_CATEGORIES];
 
-interface Meta {
-  name: string;
-  category: Category;
+/** What staff changed about a project on the plan map. Only the fields they changed are present. */
+export interface ProjectEdit {
+  name?: string;
+  category?: Category;
   about?: string;
 }
 
-/** Display name, group and plain description for each project on the city's plan map. */
-const META: Record<string, Meta> = {
-  '1200 North Bridge': {
-    name: '1200 North overpass bridge',
-    category: 'Roads and traffic',
-    about: 'Design is underway. Construction is expected in the next construction season, to improve regional connectivity and traffic flow. The city received $10 million from the State for this project.',
-  },
-  '1600 N Geneva Road Intersection Widening': {
-    name: '1600 North and Geneva Road intersection widening',
-    category: 'Roads and traffic',
-    about: 'More capacity and better traffic flow at 1600 North and Geneva Road. The project is reimbursed over seven years through the RDA.',
-  },
-  '300 West Striping & Design (Parking Implementation)': {
-    name: '300 West striping and parking',
-    category: 'Roads and traffic',
-    about: 'Restriping and parking layout changes along 300 West to improve traffic operations and parking.',
-  },
-  '400 North & Mill Road Traffic Signal': { name: 'Traffic signal at 400 North and Mill Road', category: 'Roads and traffic', about: 'A new traffic signal at 400 North and Mill Road, paid for by the Redevelopment Agency.' },
-  'Holdaway Fields 400 S Extension': {
-    name: 'Holdaway Fields 400 South extension',
-    category: 'Roads and traffic',
-    about: 'Transportation improvements on the 400 South corridor that connect into the Holdaway Fields development, for safety and mobility.',
-  },
-  'Install Street Lights – 170 South': {
-    name: 'Street lights on 170 South',
-    category: 'Roads and traffic',
-    about: 'New street lighting along 170 South to improve visibility, safety and the walking experience.',
-  },
-  'Traffic Signal – 600 N & Main': { name: 'Traffic signal at 600 North and Main', category: 'Roads and traffic', about: 'A new traffic signal at 600 North and Main Street.' },
-  'Vineyard Connector Overpass Bridge': { name: 'Vineyard Connector overpass bridge', category: 'Roads and traffic', about: 'The Vineyard Connector promenade overpass, built with UDOT.' },
-  'Holdaway Road Complete Street Design & Survey': {
-    name: 'Holdaway Road complete street design',
-    category: 'Roads and traffic',
-    about: 'Planning for bicycle connections and roadway improvements along the Holdaway corridor.',
-  },
-  'Rail Consolidation': { name: 'Rail consolidation', category: 'Roads and traffic', about: 'Removing and realigning a rail spur.' },
-  'Slide Hill at Grove Park': { name: 'Slide hill at Vineyard Grove Park', category: 'Parks and trails', about: 'A recreational slide hill, a new outdoor play feature for the park.' },
-  "Engineering for Field (Gammon Park / Robin's Property)": {
-    name: "Gammon Park and Robin's property design",
-    category: 'Parks and trails',
-    about: "Design of a new athletic field at Gammon Park, with four tennis courts and a dirt infield, and a master plan for Robin's property.",
-  },
-  'Skate Park & Pump Track': { name: 'Skate park and pump track', category: 'Parks and trails', about: 'A community skate park south of City Hall, paid for with RAP tax and a grant.' },
-  'Vineyard Beach Park': {
-    name: 'Vineyard Beach improvements',
-    category: 'Parks and trails',
-    about: 'Planning and design for better public access and recreation at Vineyard Beach. Partly paid for by the Utah County TRCC grant.',
-  },
-  'Utah Lake Shoreline Trail Amenities': {
-    name: 'Utah Lake shoreline trail amenities',
-    category: 'Parks and trails',
-    about: 'Design and construction of shoreline trail and bike station improvements.',
-  },
-  'Lift Station 2 Upgrade': { name: 'Lift Station 2 upgrade', category: 'Water and sewer', about: 'An upgrade to the sewer lift station on 1600 North, carried over from last year.' },
-  'Storage Building - Lift Station 2': { name: 'Storage building at Lift Station 2', category: 'Water and sewer' },
-  'Water Shares Purchase': {
-    name: 'Water share purchases',
-    category: 'Water and sewer',
-    about: 'Funds set aside to buy water shares when they become available and qualify to benefit the city.',
-  },
-  'Sewer System Improvements (Pipelining)': { name: 'Sewer pipe lining', category: 'Water and sewer', about: 'Sewer system improvements by pipe lining.' },
-  'Secondary Water Master Plan': { name: 'Secondary water master plan', category: 'Water and sewer', about: 'A master plan for using the city\'s irrigation water.' },
-  'Public Works Building Expansion & Improvements': {
-    name: 'Public Works building expansion',
-    category: 'Buildings and equipment',
-    about: 'An expanded Public Works facility to meet future needs and support a growing workforce.',
-  },
-  'Dumpster Enclosures Fencing': { name: 'Dumpster enclosures', category: 'Buildings and equipment', about: 'Dumpster enclosures for a cleaner look and better waste containment around the city.' },
-  'Large Shed – Roadway (1 shed)': { name: 'Large shed for streets equipment', category: 'Buildings and equipment' },
-  'Small Shed – Roadway (1 shed)': { name: 'Small shed for streets equipment', category: 'Buildings and equipment' },
-  'Concrete/Electrical for Sheds': { name: 'Concrete and electrical for the sheds', category: 'Buildings and equipment' },
-  'Public Safety Master Plan and Impact Fee Study': {
-    name: 'Public safety master plan and impact fee study',
-    category: 'Plans and studies',
-    about: 'A long-term plan for police, fire and emergency service needs, with Zions Bank calculating impact fees.',
-  },
-  'Economic Development Strategic Plan': { name: 'Economic development strategic plan', category: 'Plans and studies', about: 'A plan outlining the city\'s economic strategies.' },
-};
+export interface AlsoFunded {
+  id: string;
+  name: string;
+  about: string;
+}
 
-const clean = (s: string) => s.replace(/\s*[–—]\s*/g, ' ').replace(/\s&\s/g, ' and ').replace(/\s+/g, ' ').trim();
+/** Wording staff saved in the staff portal (served by /api/content). It replaces the built-in wording below, field by field. */
+export interface ProjectsContent {
+  /** By the project's name on the city's plan map. */
+  plans: Record<string, ProjectEdit>;
+  /** The "also funded" list; null means the built-in list. */
+  also: AlsoFunded[] | null;
+}
 
-export function metaFor(gisName: string): { name: string; category: Category; about?: string } {
-  return META[gisName] ?? { name: clean(gisName), category: 'Buildings and equipment' };
+/** What staff saved for a project, found by its exact name (never an inherited object member such as "constructor"). */
+export const editOf = (content: ProjectsContent | null | undefined, gisName: string): ProjectEdit | undefined =>
+  content && Object.prototype.hasOwnProperty.call(content.plans, gisName) ? content.plans[gisName] : undefined;
+
+/** Staff-saved wording as it arrives from /api/content, or null when it is missing or not the expected shape, so a bad answer can never break the page. */
+export function asProjectsContent(v: unknown): ProjectsContent | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as { plans?: unknown; also?: unknown };
+  const plans = o.plans && typeof o.plans === 'object' && !Array.isArray(o.plans) ? (o.plans as ProjectsContent['plans']) : {};
+  const also = Array.isArray(o.also)
+    ? (o.also as unknown[]).filter((a): a is AlsoFunded => !!a && typeof a === 'object' && typeof (a as AlsoFunded).name === 'string' && typeof (a as AlsoFunded).id === 'string')
+    : null;
+  return { plans, also: also ? also.map((a) => ({ id: a.id, name: a.name, about: typeof a.about === 'string' ? a.about : '' })) : null };
+}
+
+/** The wording shown for a project: what staff saved, field by field, over the built-in wording. */
+export function metaFor(gisName: string, edit?: ProjectEdit | null): ProjectMeta {
+  const base = builtInMeta(gisName);
+  return { name: edit?.name || base.name, category: edit?.category ?? base.category, about: edit?.about || base.about };
 }
 
 /** Funded this year and described in the council's reference guide, but not drawn on the city's plan map. */
@@ -175,6 +130,12 @@ export const ALSO_FUNDED: Array<{ name: string; about: string }> = [
   { name: 'Fish cleaning station at Penny Springs Park', about: 'A fish cleaning station for park visitors.' },
   { name: 'Concrete aprons around hydrants', about: 'Concrete aprons that improve access and reduce erosion around fire hydrants.' },
 ];
+
+/** The "also funded" list shown: the one staff saved, or the built-in one. */
+export function alsoFunded(content?: ProjectsContent | null): AlsoFunded[] {
+  // The ids look like the ones the server makes, so they survive the first save and a row keeps its place on screen.
+  return content?.also ?? ALSO_FUNDED.map((a, i) => ({ id: `a_0b17${i.toString(16).padStart(4, '0')}`, ...a }));
+}
 
 export interface PlanProps {
   Project_Name?: string;
@@ -244,11 +205,11 @@ export function boundsOfGeometry(g: object | null | undefined): [[number, number
   ];
 }
 
-export function plansFrom(fc: { features: Array<{ properties?: PlanProps | null; geometry?: object | null }> }): Plan[] {
+export function plansFrom(fc: { features: Array<{ properties?: PlanProps | null; geometry?: object | null }> }, content?: ProjectsContent | null): Plan[] {
   const list = fc.features.map((f, i): Plan => {
     const p = f.properties ?? {};
     const gis = String(p.Project_Name ?? '').trim();
-    const m = metaFor(gis);
+    const m = metaFor(gis, editOf(content, gis));
     const pct = /^\d+(\.\d+)?%$/.test(String(p.Phase_Status ?? '')) ? Number.parseFloat(String(p.Phase_Status)) : null;
     return {
       key: `${i}:${gis}`,
