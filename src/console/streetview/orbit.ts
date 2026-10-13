@@ -29,6 +29,9 @@ export function enableOrbit(map: maplibregl.Map): () => void {
   if (window.devicePixelRatio > 2) map.setPixelRatio(2);
 
   const el = map.getCanvasContainer();
+  // With drag pan off the map drops its touch-action rule, and the browser would take a finger drag as a scroll.
+  const touchAction = el.style.touchAction;
+  el.style.touchAction = 'none';
   const down = new Map<number, { x: number; y: number }>();
   let frame = 0;
   let pending: { bearing: number; pitch: number } | null = null;
@@ -69,6 +72,7 @@ export function enableOrbit(map: maplibregl.Map): () => void {
     el.removeEventListener('pointerup', end);
     el.removeEventListener('pointercancel', end);
     el.removeEventListener('pointerleave', end);
+    el.style.touchAction = touchAction;
     try {
       if (before.dragPan) map.dragPan.enable();
       if (before.keyboard) map.keyboard.enable();
