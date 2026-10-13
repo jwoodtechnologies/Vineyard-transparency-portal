@@ -37,6 +37,10 @@ if (token) {
       const bb = b + (Math.cos(b) >= 0 ? turn : -turn);
       photoSpot = [lng + (30 * Math.sin(bb)) / (111320 * Math.cos((lat * Math.PI) / 180)), lat + (30 * Math.cos(bb)) / 111320];
       log.spots.photo = { bbox, image: pick.id, pano: pick.is_pano, pin: photoSpot, found: list.length };
+      // The same search the page makes around the pin (about 60 m each way), to explain a 3D fallback.
+      const dy = 60 / 111320, dx = dy / Math.cos((photoSpot[1] * Math.PI) / 180);
+      const near = await fetch(`https://graph.mapillary.com/images?access_token=${encodeURIComponent(token)}&fields=id,computed_geometry,geometry&bbox=${[photoSpot[0] - dx, photoSpot[1] - dy, photoSpot[0] + dx, photoSpot[1] + dy].map((v) => v.toFixed(6)).join(',')}&limit=200`).then((r) => r.json()).catch((e) => ({ error: String(e) }));
+      log.spots.photo.pageSearch = near.data ? { count: near.data.length, withComputed: near.data.filter((x) => x.computed_geometry).length, pickInIt: near.data.some((x) => x.id === pick.id) } : { error: redact(JSON.stringify(near)).slice(0, 300) };
       break;
     }
   }
