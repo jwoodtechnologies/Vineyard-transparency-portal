@@ -79,6 +79,19 @@ Routes live in `src/app/router.tsx`; every screen is in `src/console/`.
 | `/search`, `/ask` | Redirect to `/` with the question |
 | `*` | Redirect to `/` |
 
+### Map tools
+
+* **Measure** (`src/console/measure/`): Distance, Area, Circle and Parcel from the ruler button. Geodesic math in
+  code (haversine and spherical polygon area on a sphere fitted to WGS84 at the shape). `?m=` links reopen a shape
+  exactly. Elevation profiles come from `GET /api/map/elevation` (USGS 3DEP, at most 50 points, Vineyard only).
+* **Street view** (`src/console/streetview/`): a long press, a right click or the Street view button and a tap
+  drops a pin. The nearest Mapillary photo within 60 m opens turned to face the pin (MapillaryJS, its own chunk,
+  loaded only then), with zoning districts and the parcel under the pin drawn on the ground and a camera cone on
+  the map. Without a photo, or without a token (`GET /api/streetview/config`, from the Worker variable
+  `MAPILLARY_TOKEN`), the map tilts to a 3D street level view with buildings and zoning. A build step
+  (`mapillaryNoEval` in `vite.config.ts`) removes MapillaryJS's one use of `new Function`, so the CSP needs no
+  `'unsafe-eval'`.
+
 All non-API paths fall back to `index.html` on Cloudflare (`not_found_handling:
 "single-page-application"`), so every URL above is a stable, shareable link.
 
