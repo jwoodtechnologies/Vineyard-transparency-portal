@@ -11,9 +11,10 @@ describe('menu', () => {
 
   it('keeps only the main record groups (no All records, Add or Sources rows)', () => {
     const labels = [...rows.matchAll(/label: '([^']+)'/g)].map((m) => m[1]);
-    expect(labels).toEqual(['Agendas and minutes', 'Voting records', 'Ordinances and resolutions', 'Budget and finance', 'Boards and commissions', 'Redevelopment Agency']);
-    // Latest is retired (its address opens the calendar) and construction is a map layer.
-    expect(chrome).not.toMatch(/'\/latest'|'\/construction'|Latest|HardHat/);
+    expect(labels).toEqual(['Agendas and minutes', 'Voting records', 'Ordinances and resolutions', 'Budget and finance', 'Construction projects', 'Boards and commissions', 'Redevelopment Agency']);
+    // Latest is retired (its address opens the calendar). Construction projects opens the map with that layer on.
+    expect(chrome).not.toMatch(/'\/latest'|Latest/);
+    expect(rows).toMatch(/to: '\/construction'/);
     expect(rows).not.toMatch(/'\/add'|'\/sources'|to: '\/records'/);
     expect(chrome).not.toMatch(/All records|Add to the record|Submit a public record/);
   });
