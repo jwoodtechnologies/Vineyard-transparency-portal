@@ -53,6 +53,10 @@ export function enter3d(map: maplibregl.Map, pin: Pos, dark: boolean): Saved {
   map.setMaxPitch(80);
   addBuildings(map, dark);
   fly3d(map, pin);
+  // The building tiles add their credit, which unfolds the attribution over the legend: keep it folded to its (i).
+  const fold = () => map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
+  fold();
+  map.once('idle', fold);
   return saved;
 }
 

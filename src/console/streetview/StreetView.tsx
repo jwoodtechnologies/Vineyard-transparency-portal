@@ -80,6 +80,8 @@ function districtsOf(fc: FC): District[] {
 }
 
 const ZONING_KEY = 'vtp-sv-zoning';
+/** The map page's zoning fill layer. */
+const ZONING_FILL = 'vtp-zoning-fill';
 const loadShowZoning = () => {
   try {
     return localStorage.getItem(ZONING_KEY) !== 'off';
@@ -245,8 +247,28 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
   // Zoning on the ground of the 3D view (the map's own zoning layer), while the toggle is on.
   useEffect(() => {
     if (phase !== '3d' || !showZoning) return;
-    return showMapZoning();
-  }, [phase, showZoning, showMapZoning]);
+    const undo = showMapZoning();
+    const map = getMap();
+    if (!map) return undo;
+    // On the ground under the raised buildings the usual light fill is hard to see: stronger while in 3D only.
+    let saved: maplibregl.DataDrivenPropertyValueSpecification<number> | undefined;
+    const boost = () => {
+      if (!map.getLayer(ZONING_FILL) || saved !== undefined) return;
+      saved = (map.getPaintProperty(ZONING_FILL, 'fill-opacity') ?? 0.22) as maplibregl.DataDrivenPropertyValueSpecification<number>;
+      map.setPaintProperty(ZONING_FILL, 'fill-opacity', 0.42);
+    };
+    boost();
+    map.on('styledata', boost);
+    return () => {
+      map.off('styledata', boost);
+      try {
+        if (saved !== undefined && map.getLayer(ZONING_FILL)) map.setPaintProperty(ZONING_FILL, 'fill-opacity', saved);
+      } catch {
+        // Map removed.
+      }
+      undo();
+    };
+  }, [getMap, phase, showZoning, showMapZoning]);
   useEffect(() => {
     const map = getMap();
     if (map && ready && phase === '3d') addBuildings(map, dark);

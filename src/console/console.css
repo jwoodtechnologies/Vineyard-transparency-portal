@@ -5490,6 +5490,15 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 .vc-svp[data-wide='true'] { position: absolute; inset: 0 0 0 auto; z-index: 8; width: 50%; border-left: 1px solid var(--vc-line); }
 .vc-svp-view { position: relative; flex: 1; min-height: 0; overflow: hidden; }
 /* More specific than MapillaryJS's own .mapillary-viewer { position: relative }, which would leave it no height. */
+/* MapillaryJS's playback speed expander reads as a stray bar beside the arrows; the arrows and play stay. */
+.vc-svp .mapillary-sequence-expander-button { display: none; }
+/* A ?lat=&lng= marker steps aside while the street view pin is out, so there is one orange pin. */
+.vc-map-wrap[data-sv] .vc-map-point { display: none; }
+/* Street view waits for the map: a soft pulse until it can take a tap. */
+.vc-map-fab:disabled { cursor: progress; opacity: 0.55; }
+.vc-map-fab[aria-busy='true'] svg { animation: vc-sv-wait 1.2s ease-in-out infinite; }
+@keyframes vc-sv-wait { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .vc-map-fab[aria-busy='true'] svg { animation: none; } }
 .vc-svp-view > .vc-svp-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .vc-svp-chips { position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
 .vc-svp-chip {

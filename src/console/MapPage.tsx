@@ -728,7 +728,7 @@ export default function MapPage() {
       stopWatch = whenBasePainted(m, () => setPainted(true));
       if (base === 'satellite') watchSatellite(m);
       if (point) {
-        const marker = new maplibregl.Marker({ color: '#f59f00' }).setLngLat([point.lng, point.lat]).addTo(m);
+        const marker = new maplibregl.Marker({ color: '#f59f00', className: 'vc-map-point' }).setLngLat([point.lng, point.lat]).addTo(m);
         if (point.label) {
           marker.getElement().setAttribute('aria-label', point.label);
           marker.getElement().setAttribute('title', point.label);
@@ -1299,7 +1299,7 @@ export default function MapPage() {
           <button type="button" className="vc-map-fab" data-icon-only="true" data-on={measuring || undefined} onClick={() => (measuring ? closeMeasure() : startMeasure())} aria-pressed={measuring} aria-label="Measure" title="Measure">
             <Ruler size={17} strokeWidth={1.9} />
           </button>
-          <button type="button" className="vc-map-fab" data-icon-only="true" data-on={Boolean(sv) || undefined} onClick={() => (sv ? closeStreetView() : startStreetView(null))} aria-pressed={Boolean(sv)} aria-label="Street view" title="Street view (or press and hold on the map)">
+          <button type="button" className="vc-map-fab" data-icon-only="true" data-on={Boolean(sv) || undefined} disabled={!ready && !sv} aria-busy={!ready || undefined} onClick={() => (sv ? closeStreetView() : startStreetView(null))} aria-pressed={Boolean(sv)} aria-label="Street view" title={ready ? 'Street view (or press and hold on the map)' : 'Street view: the map is loading'}>
             <PersonStanding size={18} strokeWidth={1.9} />
           </button>
         </div>

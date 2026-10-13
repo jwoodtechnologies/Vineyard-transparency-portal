@@ -138,7 +138,7 @@ export class ZoningRenderer implements ICustomRenderer {
     const fillData = new Float32Array(tri.length * 3);
     tri.forEach((v, i) => fillData.set(local.slice(v * 3, v * 3 + 3), i * 3));
     // The boundary as a ribbon on the ground (WebGL lines are one pixel wide): two triangles a segment.
-    const half = fill ? 0.18 : 0.15;
+    const half = fill ? 0.22 : 0.15;
     const rib: number[] = [];
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
@@ -212,7 +212,7 @@ export class ZoningRenderer implements ICustomRenderer {
     };
     if (this.visible)
       for (const m of this.meshes) {
-        draw(m.fill, gl.TRIANGLES, m.fillCount, m.color, 0.24);
+        draw(m.fill, gl.TRIANGLES, m.fillCount, m.color, 0.12);
         draw(m.line, gl.TRIANGLES, m.lineCount, m.color, 0.85);
       }
     if (this.parcelMesh) draw(this.parcelMesh.line, gl.TRIANGLES, this.parcelMesh.lineCount, [1, 1, 1], 0.95);
