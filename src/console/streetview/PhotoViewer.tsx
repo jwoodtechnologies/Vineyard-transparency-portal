@@ -40,15 +40,18 @@ const ringCentroid = (r: Pos[]): Pos => {
   return [x / r.length, y / r.length];
 };
 
-/** Where a district's chip goes: inside the district, a little way in from its edge nearest the camera. */
-function chipPoint(ring: Pos[], cam: Pos): Pos {
-  if (inRing(cam, ring)) return cam;
+/**
+ * Where a district's chip goes: at the pin when the pin is in it, else inside the district a little way in
+ * from its corner nearest the pin (the camera's own spot is under it, out of view).
+ */
+function chipPoint(ring: Pos[], pin: Pos): Pos {
+  if (inRing(pin, ring)) return pin;
   let best = ring[0];
-  for (const p of ring) if (distance(p, cam) < distance(best, cam)) best = p;
+  for (const p of ring) if (distance(p, pin) < distance(best, pin)) best = p;
   const c = ringCentroid(ring);
   for (const t of [0.15, 0.3, 0.5, 0.8]) {
     const q: Pos = [best[0] + (c[0] - best[0]) * t, best[1] + (c[1] - best[1]) * t];
-    if (inRing(q, ring) && distance(q, cam) > 6) return q;
+    if (inRing(q, ring)) return q;
   }
   return c;
 }
@@ -80,8 +83,8 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     let gone = false;
     const placeChips = () => {
       const near = districts
-        .flatMap((d) => d.rings.map((r) => ({ d, r, at: chipPoint(r, cam.current) })))
-        .filter((x) => distance(x.at, cam.current) < 250)
+        .flatMap((d) => d.rings.map((r) => ({ d, r, at: chipPoint(r, pin) })))
+        .filter((x) => distance(x.at, cam.current) < 250 && distance(x.at, cam.current) > 4)
         .sort((a, b) => distance(a.at, cam.current) - distance(b.at, cam.current))
         .slice(0, 5);
       Promise.all(near.map((x) => viewer.project({ lng: x.at[0], lat: x.at[1] }).catch(() => null))).then((px) => {

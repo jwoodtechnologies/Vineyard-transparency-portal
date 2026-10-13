@@ -31,7 +31,7 @@ if (token) {
     const pick = list.find((x) => x.is_pano) ?? list[0];
     if (pick) {
       const [lng, lat] = pick.computed_geometry.coordinates;
-      photoSpot = [lng, lat + 0.00012]; // about 13 m north of the photo
+      photoSpot = [lng - 0.0003, lat]; // about 25 m west of the photo, off Geneva Road into the city's zoned blocks
       log.spots.photo = { bbox, image: pick.id, pano: pick.is_pano, pin: photoSpot, found: list.length };
       break;
     }

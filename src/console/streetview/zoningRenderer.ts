@@ -195,7 +195,7 @@ export class ZoningRenderer implements ICustomRenderer {
     };
     if (this.visible)
       for (const m of this.meshes) {
-        draw(m.fill, gl.TRIANGLES, m.fillCount, m.color, 0.22);
+        draw(m.fill, gl.TRIANGLES, m.fillCount, m.color, 0.3);
         draw(m.line, gl.TRIANGLES, m.lineCount, m.color, 0.95);
       }
     if (this.parcelMesh) draw(this.parcelMesh.line, gl.TRIANGLES, this.parcelMesh.lineCount, [1, 1, 1], 0.95);
