@@ -4,11 +4,11 @@ import { MEETING_COPY_GROUPS_SQL } from '../worker/lib/meetingCopies';
 
 function db() {
   const d = new DatabaseSync(':memory:');
-  d.exec('CREATE TABLE documents (id TEXT PRIMARY KEY, title TEXT, document_type TEXT, document_date TEXT, government_body_id TEXT, source_id TEXT, first_seen_at TEXT, search_shard INTEGER)');
+  d.exec('CREATE TABLE documents (id TEXT PRIMARY KEY, title TEXT, document_type TEXT, document_date TEXT, government_body_id TEXT, source_id TEXT, first_seen_at TEXT, search_shard INTEGER, manual_json TEXT)');
   return d;
 }
 const add = (d: DatabaseSync, id: string, title: string, type: string, date: string, body: string, src = 'vineyard-civicclerk-meetings') =>
-  d.prepare('INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, 0)').run(id, title, type, date, body, src, '2026-09-30');
+  d.prepare('INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL)').run(id, title, type, date, body, src, '2026-09-30');
 const groups = (d: DatabaseSync) => d.prepare(MEETING_COPY_GROUPS_SQL).all() as Array<{ docs: string }>;
 
 describe('merging copies of one meeting record', () => {
