@@ -26,6 +26,14 @@ export interface Section {
 export const SECTIONS: Section[] = [
   { path: 'records', label: 'Records', blurb: 'Add agendas, minutes, reports and other documents.', area: 'records', tile: true, Component: lazy(() => import('./Records')) },
   { path: 'votes', label: 'Votes', blurb: 'Correct how a vote was recorded, add one the minutes missed, or take one down.', area: 'votes', tile: true, Component: lazy(() => import('./Votes')) },
+  {
+    path: 'projects',
+    label: 'Map projects',
+    blurb: 'Fix the name, group or description of any funded project on the map.',
+    area: 'map',
+    tile: true,
+    Component: lazy(() => import('./Projects')),
+  },
   { path: 'budget', label: 'Budget', blurb: 'Update the budget figures, totals and capital projects.', area: 'budget', tile: true, Component: lazy(() => import('./Budget')) },
   {
     path: 'notices',

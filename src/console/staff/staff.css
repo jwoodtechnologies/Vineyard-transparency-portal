@@ -616,6 +616,9 @@
 }
 .vs-seg button {
   flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.6rem;
+  line-height: 1.2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1308,4 +1311,27 @@
 .vs-card .vs-hint + input,
 .vs-card .vs-hint + .vs-linkbox {
   margin-top: 0.7rem;
+}
+
+/* ---- map projects */
+.vs [hidden] {
+  display: none !important;
+}
+/* A column that lets a banner stay in view while a long list scrolls beneath it. */
+.vs-stack-flow {
+  display: flex;
+  flex-direction: column;
+}
+.vs-ok-sticky {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 5;
+  /* The soft tint laid over the page colour, so the list scrolling underneath never shows through. */
+  background: linear-gradient(var(--vc-accent-soft), var(--vc-accent-soft)), var(--vc-bg);
+  box-shadow: var(--vc-shadow-sm);
+}
+.vs-seg-fit button {
+  flex: 1 1 auto;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.86rem;
 }

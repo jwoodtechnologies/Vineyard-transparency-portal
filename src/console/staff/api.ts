@@ -35,6 +35,7 @@ export async function staff<T>(path: string, init: { method?: 'GET' | 'POST'; bo
   if (!res.ok) {
     if (res.status === 401 && !AUTH_PATHS.test(path)) window.dispatchEvent(new Event(SESSION_ENDED));
     const message = (data as { error?: { message?: string } } | null)?.error?.message;
+    if (res.status === 413) throw new StaffError('That is more text than can be saved at once. Shorten some of the descriptions and try again.', 413);
     throw new StaffError(message ?? 'Something went wrong. Try again.', res.status);
   }
   return data as T;
