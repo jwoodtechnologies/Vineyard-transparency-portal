@@ -40,6 +40,7 @@ import { addFile, addForm, addStatus, reportSubmission } from './contrib/residen
 import { coverageSummary } from './api/coverage';
 import { publicUpdates } from './contrib/updates';
 import { publicNotices } from './api/notices';
+import { publicContent } from './api/content';
 import { handleFeed } from './api/feeds';
 import { isIndexKind, recordIndex, recordTopics } from './api/records';
 import { assetHeaders, buildId, cacheKey } from './lib/edgeCache';
@@ -127,6 +128,9 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     case 'notices':
       if (!b) return publicNotices(env);
       break;
+    case 'content':
+      if (!b) return publicContent(env);
+      break;
     case 'latest':
       if (!b) return getLatest(env);
       break;
@@ -210,7 +214,8 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
  * nothing from D1. Nothing personal is ever cached: there are no cookies, and POST /api/ask, admin, panel,
  * health (except the job list, /api/health/jobs) and file streams are excluded.
  */
-const EDGE_CACHEABLE = /^\/api\/(search|events|notices|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|construction|pages\/(votes|planning|construction)|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related|\/trail)?|documents|bodies|sources|categories|browse\/facets|records\/(?:topics|ordinances|resolutions|rda-resolutions)|suggestions|stats|coverage\/summary|health\/jobs)$/;
+const EDGE_CACHEABLE =
+  /^\/api\/(search|events|notices|content|latest|draft-minutes|budget(\/archive)?|people(\/[a-z0-9-]+)?|votes(\/members|\/years|\/attendance|\/meetings)?|boards|construction|pages\/(votes|planning|construction)|projects\/detail|map\/layers(\/[a-z]+)?|map\/parcels\/16\/\d+\/\d+\.json|map\/parcel|meetings|documents\/[^/]+(\/text|\/related|\/trail)?|documents|bodies|sources|categories|browse\/facets|records\/(?:topics|ordinances|resolutions|rda-resolutions)|suggestions|stats|coverage\/summary|health\/jobs)$/;
 /** Lists that depend on today's date (upcoming meetings, "today") are recomputed after five minutes; everything else after an hour, or as soon as the data version changes. */
 const TIME_BOUND = /^\/api\/(events|notices|latest|meetings|stats|health\/jobs)/;
 const STORE_SECONDS = 7 * 86400;
@@ -251,7 +256,10 @@ async function cached(request: Request, env: Env, url: URL, ctx: ExecutionContex
     copy.headers.set('x-data-version', version);
     copy.headers.set('x-build', build);
     const twin = copy.clone();
-    return Promise.all([cache.put(key, copy), cache.put(latestKey, twin)]).then(() => undefined, () => undefined);
+    return Promise.all([cache.put(key, copy), cache.put(latestKey, twin)]).then(
+      () => undefined,
+      () => undefined,
+    );
   };
   const hit = await cache.match(key).catch(() => undefined);
   const age = (r: Response) => Date.now() - Number(r.headers.get('x-stored-at') ?? 0);
