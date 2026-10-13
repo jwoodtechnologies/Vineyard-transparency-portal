@@ -5489,7 +5489,8 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 .vc-svp .vc-sv-bar { margin: calc(6px + env(safe-area-inset-top)) 8px 6px; }
 .vc-svp[data-wide='true'] { position: absolute; inset: 0 0 0 auto; z-index: 8; width: 50%; border-left: 1px solid var(--vc-line); }
 .vc-svp-view { position: relative; flex: 1; min-height: 0; overflow: hidden; }
-.vc-svp-canvas { position: absolute; inset: 0; }
+/* More specific than MapillaryJS's own .mapillary-viewer { position: relative }, which would leave it no height. */
+.vc-svp-view > .vc-svp-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .vc-svp-chips { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .vc-svp-chip {
   position: absolute; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px;
