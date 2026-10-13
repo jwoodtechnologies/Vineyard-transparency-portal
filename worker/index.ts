@@ -249,6 +249,11 @@ async function cached(request: Request, env: Env, url: URL, ctx: ExecutionContex
   const freshFor = (TIME_BOUND.test(path) ? 300 : 3600) * 1000;
   const store = (res: Response) => {
     const cc = res.headers.get('cache-control') ?? '';
+    // A record taken out of the archive (or never there): forget the copies, so the old page is not served stale for days.
+    if (res.status === 404 || res.status === 410) return Promise.all([cache.delete(key), cache.delete(latestKey)]).then(
+      () => undefined,
+      () => undefined,
+    );
     if (res.status !== 200 || !/max-age=\d*[1-9]/.test(cc) || /no-store|private/.test(cc)) return null;
     const copy = new Response(res.clone().body, res);
     copy.headers.set('cache-control', `public, max-age=${STORE_SECONDS}`);
