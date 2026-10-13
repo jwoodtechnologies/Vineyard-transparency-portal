@@ -41,7 +41,7 @@ if (token) {
     }
   }
 }
-const noPhotoSpot = [-111.7652, 40.2905]; // the lake shore west of the homes
+const noPhotoSpot = [-111.7455, 40.3035]; // a residential block with no street photos (the reviewer's 3D check)
 log.spots.none = noPhotoSpot;
 
 const browser = await chromium.launch();
