@@ -125,3 +125,27 @@ describe('construction now', () => {
     expect(items[1].summary).toBe('Made 3 changes to Construction now');
   });
 });
+
+describe('property tax rates', () => {
+  it('stores a checked rate, refuses a bad one, and the chat answer uses it', async () => {
+    const budget = await h.addPerson(owner.cookie, { name: 'Fin Ance', email: 'fin@vineyard.example', role: 'editor', areas: ['budget'] });
+    const good = { fiscalYear: 2027, rate: '.003650', adopted: '2026-06-23', docId: 'doc_0123456789abcdef', docTitle: '06/23/2026 CC Minutes', docKind: 'minutes', page: 7 };
+    expect((await save('taxRates', { rates: [good] }, null, site)).status).toBe(403);
+    for (const bad of [{ rate: '3.65%' }, { fiscalYear: 27 }, { docId: 'x' }, { page: 0 }, { adopted: 'June 23' }])
+      expect((await save('taxRates', { rates: [{ ...good, ...bad }] }, null, budget)).status).toBe(400);
+    const r = await save('taxRates', { rates: [good] }, null, budget);
+    expect(r.status).toBe(200);
+    expect(r.body.value.rates[0].rate).toBe('0.003650');
+    const facts = await import('../worker/lib/cityFacts');
+    facts.resetCityFacts();
+    await facts.refreshCityFacts(h.env as never);
+    const { taxRateSentences, taxRateIntent } = await import('../worker/ai/taxRateAnswer');
+    const text = taxRateSentences(taxRateIntent('what is the property tax rate')!, '2026-10-01', null)
+      .map((x) => x.text)
+      .join(' ');
+    expect(text).toContain('0.003650 for fiscal 2027');
+    const tax = await import('../worker/lib/taxRates');
+    tax.setStaffRates([]);
+    facts.resetCityFacts();
+  });
+});

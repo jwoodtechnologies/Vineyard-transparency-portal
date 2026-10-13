@@ -170,3 +170,29 @@ describe('meetings', () => {
     expect(items[0].summary).toBe('Changed the meeting "City Council Meeting (2026-10-14)": marked it canceled, moved it to 2026-10-21, changed the place, added a video link');
   });
 });
+
+describe('people photos', () => {
+  it('stores a real image, refuses anything else, serves it, and undo puts the old one back', async () => {
+    const people = await h.addPerson(owner.cookie, { name: 'Pat People', email: 'pat@vineyard.example', role: 'editor', areas: ['people'] });
+    const add = await h.call('POST', '/directory/add', { kind: 'staff', name: 'Sam Lee', role: 'Deputy Recorder' }, { cookie: people.cookie });
+    const slug = (add.body.slug ?? 'sam-lee') as string;
+    const form = (bytes: Uint8Array, name = 'p.png') => {
+      const f = new FormData();
+      f.append('slug', slug);
+      f.append('file', new File([bytes], name));
+      return f;
+    };
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+    expect((await h.call('POST', '/directory/photo', undefined, { cookie: people.cookie, form: form(new TextEncoder().encode('<svg onload=alert(1)>'), 'x.png') })).status).toBe(400);
+    const r = await h.call('POST', '/directory/photo', undefined, { cookie: people.cookie, form: form(png) });
+    expect(r.status).toBe(200);
+    const { getPersonPhoto } = await import('../worker/api/people');
+    const res = await getPersonPhoto(h.env as never, slug);
+    expect(res.headers.get('content-type')).toBe('image/png');
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(png);
+    const items = (await h.call('GET', '/audit?limit=3', undefined, { cookie: people.cookie })).body.items as Array<{ id: number; summary: string }>;
+    expect(items[0].summary).toBe('Changed the photo of Sam Lee');
+    expect((await h.call('POST', '/audit/undo', { id: items[0].id }, { cookie: people.cookie })).status).toBe(200);
+    await expect(getPersonPhoto(h.env as never, slug)).rejects.toThrow(/No photo/);
+  });
+});
