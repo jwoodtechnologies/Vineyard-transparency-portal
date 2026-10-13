@@ -62,11 +62,16 @@ export function reduce(s: State, a: Action): State {
         return { ...s, pts, done: pts.length === 2, past: remember(s) };
       }
       if (s.done || s.pts.length >= MAX_POINTS) return s;
+      // The same spot twice in a row (a double tap, Add point pressed twice) adds nothing.
+      const last = s.pts[s.pts.length - 1];
+      if (last && Math.abs(last[0] - a.at[0]) < 1e-7 && Math.abs(last[1] - a.at[1]) < 1e-7) return s;
       return { ...s, pts: [...s.pts, a.at], past: remember(s) };
     }
     case 'move': {
       if (!s.pts[a.index]) return s;
       const pts = s.pts.slice();
+      // Moving a circle's center carries the edge point with it, so the radius stays.
+      if (s.mode === 'circle' && a.index === 0 && pts[1]) pts[1] = [pts[1][0] + a.at[0] - pts[0][0], pts[1][1] + a.at[1] - pts[0][1]];
       pts[a.index] = a.at;
       return { ...s, pts, past: a.record === false ? s.past : remember(s) };
     }

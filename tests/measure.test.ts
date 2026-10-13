@@ -215,6 +215,7 @@ describe('editing', () => {
       [0, 0],
       [2, 0],
     ]);
+    expect(reduce(reduce(emptyState('area'), { type: 'add', at: [0, 0] }), { type: 'add', at: [0, 0] }).pts).toHaveLength(1);
     let d = reduce(reduce(emptyState('distance'), { type: 'add', at: [0, 0] }), { type: 'finish' });
     d = reduce(d, { type: 'add', at: [1, 1] });
     expect(d.pts).toHaveLength(1);
