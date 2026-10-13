@@ -5,7 +5,7 @@
  * camera is and which way it looks so the map's camera cone follows.
  */
 import { useEffect, useRef, useState } from 'react';
-import { MarkerComponent, SimpleMarker, Viewer, type Image as MlyImage } from 'mapillary-js';
+import { Viewer, type Image as MlyImage } from 'mapillary-js';
 import 'mapillary-js/dist/mapillary.css';
 import { distance } from '../measure/geo';
 import { centerOnPin, type Photo, type Pos } from './geo';
@@ -61,6 +61,8 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const viewerRef = useRef<Viewer | null>(null);
   const rendererRef = useRef<ZoningRenderer | null>(null);
   const [chips, setChips] = useState<Chip[]>([]);
+  // Where the pin is in the photo, in pixels, or null when it is out of frame.
+  const [pinAt, setPinAt] = useState<[number, number] | null>(null);
   const cbs = useRef({ onCamera, onError });
   const cam = useRef<Pos>(photo.pos);
   useEffect(() => {
@@ -71,13 +73,11 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const viewer = new Viewer({ accessToken: token, container: el, imageId: photo.id, component: { cover: false, marker: true, attribution: true, direction: true, sequence: true, keyboard: true, zoom: true } });
+    const viewer = new Viewer({ accessToken: token, container: el, imageId: photo.id, component: { cover: false, marker: false, attribution: true, direction: true, sequence: true, keyboard: true, zoom: true } });
     viewerRef.current = viewer;
     const renderer = new ZoningRenderer(districts, parcel);
     viewer.addCustomRenderer(renderer);
     rendererRef.current = renderer;
-    const markers = viewer.getComponent('marker') as MarkerComponent;
-    markers.add([new SimpleMarker('pin', { lng: pin[0], lat: pin[1] }, { ballColor: '#ff5a1f', color: '#ff5a1f', interactive: false })]);
     let first = true;
     let frame = 0;
     let gone = false;
@@ -87,6 +87,11 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
         .filter((x) => distance(x.at, cam.current) < 250 && distance(x.at, cam.current) > 4)
         .sort((a, b) => distance(a.at, cam.current) - distance(b.at, cam.current))
         .slice(0, 5);
+      const inFrame = (p: number[] | null) => Boolean(p) && p![0] >= 0 && p![1] >= 0 && p![0] <= el.clientWidth && p![1] <= el.clientHeight;
+      viewer
+        .project({ lng: pin[0], lat: pin[1] })
+        .catch(() => null)
+        .then((p) => !gone && setPinAt(inFrame(p) ? [p![0], p![1]] : null));
       Promise.all(near.map((x) => viewer.project({ lng: x.at[0], lat: x.at[1] }).catch(() => null))).then((px) => {
         if (gone) return;
         const seen = new Set<string>();
@@ -156,6 +161,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   return (
     <div className="vc-svp-view">
       <div ref={box} className="vc-svp-canvas" role="img" aria-label="Street photo facing the pin. Drag to look around; use the arrows to move along the street." />
+      {pinAt && <span className="vc-svp-pin" style={{ left: pinAt[0], top: pinAt[1] }} role="img" aria-label="The pin is here in the photo" />}
       {showZoning && (
         <div className="vc-svp-chips" aria-hidden="true">
           {chips.map((c) => (
