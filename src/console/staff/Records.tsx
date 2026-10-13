@@ -190,6 +190,11 @@ export default function Records() {
             setQ('');
             reload();
           }}
+          onBatch={() => {
+            setAdded(null);
+            setError('');
+            reload();
+          }}
         />
       ) : (
         !loadError && <p className="vs-empty">Loading</p>

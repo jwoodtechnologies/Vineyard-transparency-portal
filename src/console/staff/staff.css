@@ -1385,3 +1385,27 @@
 .dark .vs-stat[data-tone='warn'] .vs-stat-n {
   color: #f2a27a;
 }
+
+/* ---- records: several files at once */
+.vs-bulk-sum {
+  margin: 1rem 0 0.25rem;
+  font-weight: 600;
+}
+.vs-bulk-left {
+  margin: 0.25rem 0 0.5rem;
+  padding-left: 1.1rem;
+  color: var(--vc-muted);
+  font-size: 0.84rem;
+}
+.vs-bulk .vs-field {
+  margin-bottom: 0.35rem;
+}
+.vs-bulk-err {
+  margin: 0.3rem 0 0;
+  color: #a52222;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.dark .vs-bulk-err {
+  color: #ff9a9a;
+}
