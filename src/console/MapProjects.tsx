@@ -17,6 +17,7 @@ import { useJson } from './api';
 import { DocLink } from './DocLink';
 import type { StaffUpdate } from './RecordsHome';
 import { ProjectDetail } from './ProjectDetail';
+import { StreetViewLink } from './StreetViewLink';
 import { CITY_PAGE, alsoFunded, asProjectsContent, millions, money, plansFrom, type Plan, type PlanProps } from './construction';
 import { formatDate, normalizeDatesInText } from '@/lib/dates';
 
@@ -75,6 +76,7 @@ function ProjectCard({ p, onShow, update, active }: { p: Plan; onShow: (gis: str
         </span>
       </div>
       {open && <ProjectDetail project={{ gis: p.gis }} budget="source" />}
+      {open && <StreetViewLink project={p.gis} />}
     </li>
   );
 }

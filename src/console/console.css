@@ -3278,6 +3278,11 @@ html.vc-locked .vc-landing {
   gap: 0.5rem;
   margin-top: 1rem;
 }
+/* Open in Street View: on the map details card and each project card's details (StreetViewLink) */
+.vc-sv { display: grid; justify-items: start; gap: 4px; margin-top: 1rem; }
+.vc-sv-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 1px solid var(--vc-line-2); border-radius: 999px; color: var(--vc-ink); font-size: var(--vc-fs-ui); font-weight: 550; text-decoration: none; }
+.vc-sv-link:hover { border-color: var(--vc-muted); }
+.vc-sv-hint { color: var(--vc-muted); font-size: var(--vc-fs-sm); }
 /* small notice over the map until the basemap has drawn (also while switching to satellite) */
 .vc-map-loading {
   position: absolute;

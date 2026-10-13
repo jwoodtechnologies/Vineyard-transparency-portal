@@ -30,6 +30,8 @@ import { hasTile, loadedTileCount, loadTile, mergedParcels, tilesFor } from './p
 import { FullscreenToggle } from './mapFullscreen';
 import { FULL_ZOOM, levelFor, LINES_MIN_ZOOM, loadLines, MID_ZOOM, tapLooksUpParcel, tilesMinZoom, type LineFC, type LineLevel } from './parcelLines';
 import { formatDate } from '@/lib/dates';
+import { ProjectViewpoint, viewpointFor, type Pos } from './streetView';
+import { StreetViewLink } from './StreetViewLink';
 import { setHead } from '@/lib/head';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
@@ -346,6 +348,9 @@ interface Picked {
   label: string;
   name: string;
   props: Record<string, unknown>;
+  /** Its shape, and where it was tapped: where Open in Street View opens. */
+  shape?: Geometry | null;
+  tap?: Pos;
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
@@ -627,7 +632,7 @@ export default function MapPage() {
     if (b) map.fitBounds(b, { padding: fitPadding(map, !quiet), maxZoom: 16, duration: reducedMotion() ? 0 : 800 });
     highlight(map, matches.length === 1 ? matches[0] : { type: 'FeatureCollection', features: matches });
     if (quiet) return;
-    setPicked({ layer, label: labelsRef.current.get(layer) ?? '', name: nameOf(layer, matches[0].properties ?? {}), props: matches[0].properties ?? {} });
+    setPicked({ layer, label: labelsRef.current.get(layer) ?? '', name: nameOf(layer, matches[0].properties ?? {}), props: matches[0].properties ?? {}, shape: matches[0].geometry });
   }, []);
   const applyRef = useRef(applyFocus);
   useEffect(() => {
@@ -664,13 +669,14 @@ export default function MapPage() {
     const no = String(props.PARCEL_NO ?? '');
     // A tap on the city-wide lines has no parcel number yet: "Parcel" until the card arrives.
     const title = (p: Record<string, unknown>) => (p.PARCEL_NO || p.SITE_FULL_ADDRESS ? nameOf('parcels', p) : 'Parcel');
-    setPicked({ layer: 'parcels', label, name: title(props), props: { ...props, __loading: true } });
     const shape = no ? dataRef.current.parcels?.features.find((f) => String(f.properties?.PARCEL_NO ?? '') === no)?.geometry : null;
+    const tap: Pos = [ll.lng, ll.lat];
+    setPicked({ layer: 'parcels', label, name: title(props), props: { ...props, __loading: true }, shape, tap });
     if (shape) highlightParcel(m, shape, darkRef.current);
     else clearHighlight(m);
     const settle = (next: Record<string, unknown>, geometry?: Geometry | null) => {
       if (seq !== parcelSeq.current) return;
-      setPicked((p) => (p?.layer === 'parcels' ? { layer: 'parcels', label, name: title(next), props: next } : p));
+      setPicked((p) => (p?.layer === 'parcels' ? { layer: 'parcels', label, name: title(next), props: next, shape: geometry ?? shape, tap } : p));
       if (geometry && mapRef.current === m) highlightParcel(m, geometry, darkRef.current);
     };
     // Without county records, what the city's 2025 layer gave (fallback mode) or the number alone.
@@ -759,7 +765,10 @@ export default function MapPage() {
           pickParcelRef.current(m, e.lngLat, f.properties ?? {});
           return;
         }
-        setPicked({ layer: key, label: labelsRef.current.get(key) ?? '', name: nameOf(key, f.properties ?? {}), props: f.properties ?? {} });
+        // The whole shape from the layer's data (the drawn one is cut at tile edges).
+        const name = nameOf(key, f.properties ?? {});
+        const whole = dataRef.current[key]?.features.find((x) => x.geometry?.type === f.geometry.type && nameOf(key, x.properties ?? {}) === name)?.geometry;
+        setPicked({ layer: key, label: labelsRef.current.get(key) ?? '', name, props: f.properties ?? {}, shape: whole ?? f.geometry, tap: [e.lngLat.lng, e.lngLat.lat] });
         highlight(m, f);
       });
       m.on('zoomend', () => setZoom(m.getZoom()));
@@ -1075,7 +1084,7 @@ export default function MapPage() {
       setOn((cur) => new Set([...cur, r.layer]));
       const b = boundsOf(r.features);
       if (b) map.fitBounds(b, { padding: fitPadding(map, true), maxZoom: 16, duration: 800 });
-      setPicked({ layer: r.layer, label: catalog?.find((l) => l.key === r.layer)?.label ?? '', name: r.name, props: (r.features[0].properties ?? {}) as Record<string, unknown> });
+      setPicked({ layer: r.layer, label: catalog?.find((l) => l.key === r.layer)?.label ?? '', name: r.name, props: (r.features[0].properties ?? {}) as Record<string, unknown>, shape: r.features[0].geometry });
       highlight(map, r.features.length === 1 ? r.features[0] : { type: 'FeatureCollection', features: r.features });
       setQ('');
       const kind = Object.entries(FOCUS_LAYER).find(([, v]) => v === r.layer)?.[0];
@@ -1117,6 +1126,12 @@ export default function MapPage() {
   }, [catalog]);
 
   const ask = picked ? `/?q=${encodeURIComponent(askFor(picked))}` : '/';
+  // Open in Street View: a road or trail opens where it was tapped; anything else by its shape.
+  const streetAt = picked ? (picked.tap && picked.layer !== 'projects' && /LineString/.test(picked.shape?.type ?? '') ? picked.tap : (viewpointFor(picked.shape, data.roads) ?? picked.tap ?? null)) : null;
+  const projectViewpoint = useCallback((gis: string) => {
+    const f = data.projects?.features.find((x) => x.properties?.Project_Name === gis);
+    return f ? viewpointFor(f.geometry, data.roads) : null;
+  }, [data.projects, data.roads]);
 
   // A project tapped in the projects list: framed and highlighted on the map, its card marked.
   const showProject = useCallback((gis: string) => {
@@ -1395,6 +1410,7 @@ export default function MapPage() {
             {picked.layer === 'projects' && typeof picked.props.Project_Name === 'string' && (
               <ProjectDetail key={picked.props.Project_Name} project={{ gis: picked.props.Project_Name }} budget="source" />
             )}
+            <StreetViewLink at={streetAt} />
             {picked.layer !== 'alerts' && (
               <div className="vc-map-card-actions">
                 <Link to={ask} className="vc-primary">
@@ -1411,7 +1427,11 @@ export default function MapPage() {
           </div>
         )}
       </div>
-      {projectsShown && <MapProjects onShow={showProject} onClose={closeProjects} active={activeProject} wide={wide} leaving={projectsLeaving} startExpanded={openTall} />}
+      {projectsShown && (
+        <ProjectViewpoint.Provider value={projectViewpoint}>
+          <MapProjects onShow={showProject} onClose={closeProjects} active={activeProject} wide={wide} leaving={projectsLeaving} startExpanded={openTall} />
+        </ProjectViewpoint.Provider>
+      )}
       </div>
     </div>
   );
