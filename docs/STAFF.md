@@ -6,7 +6,7 @@ City staff sign in at `vineyardportal.org/staff` to keep the portal current. Not
 
 Everyone has their own named account. A department is only a label; what a person can change is set by role and areas.
 
-- **Owner**: every area, and who may sign in. At least one owner is always active.
+- **Owner**: every area, and who may sign in. There is exactly one: the master account made at setup from the owner-panel sign-in (citizenjwood@gmail.com). The owner role is never offered when adding or changing an account, and nobody else can change or turn off the owner account.
 - **Admin**: every area, and can add and manage editors.
 - **Editor**: only the areas they were given. Areas: records and meetings, votes, people and boards, map and projects, budget, events and notices (notices, events and updates), site pages and links, resident submissions.
 
@@ -114,6 +114,10 @@ Anyone with the resident submissions area opens `/staff/submissions`. It lists w
 ## Insights, Coverage and Health
 
 Owners and administrators also see three read-only screens. **Insights** (`/staff/insights`): people, page views, questions and the share rated helpful for today, 7 days, 30 days or all time, the most asked questions, the latest questions, the ones marked not helpful, and today's assistant use. **Coverage** (`/staff/coverage`): missing ordinance and resolution numbers, meetings missing an agenda, packet or minutes, and records with no date or no text, with Check now. **Health** (`/staff/health`): each scheduled job and city source, failures in a row and the last error, and why the assistant fell back to a simpler answer today. The server side is `worker/staff/insights.ts`, which calls the same functions as the owner panel (`summary`, `recentQuestions`, `recentFeedback` and `healthReport` in `worker/panel/routes.ts`, `coverage` and `refreshCoverage` in `worker/lib/coverage.ts`, `neuronUsage` in `worker/ai/meter.ts`). Visitor addresses are not sent to the staff portal. Editors get "Only owners and administrators can see this."
+
+## Staff assistant
+
+The staff home opens with "Tell us what changed" for anyone with the map, notices or records area. A person types what changed and can attach a file; `POST /api/staff/assist/plan` (`worker/staff/assist.ts`) asks the portal's Workers AI model to pick ONE action from a fixed list (add, change or hide a Construction now project, post a notice, add an event, post an update, add a text record, add the attached file to Records) and fill in its fields. The plan is checked in code: fields outside that action are dropped, dates and times in the wrong shape are left blank, a project to change must be one already listed, and an action the account may not do is refused with a sentence naming the area to ask for. Nothing is published by the plan. The screen (`src/console/staff/Assistant.tsx`) shows it as a card with every field editable, and Publish sends it to the same route the matching screen uses, so the same checks, permissions, activity log and undo apply. If the model is unavailable, an attached file still becomes a record card to fill in, and anything else points to the screens. Each plan is one metered model call inside the free daily allowance.
 
 ## Adding an area
 
