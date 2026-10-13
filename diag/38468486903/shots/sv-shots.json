@@ -1,0 +1,176 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "310114057374696",
+      "pano": false,
+      "pin": [
+        -111.7403590958896,
+        40.3116525670007
+      ],
+      "at": [
+        -111.74018843313,
+        40.311888556922
+      ],
+      "found": 50,
+      "pageSearch": {
+        "count": 100,
+        "withComputed": 100,
+        "pickInIt": true
+      }
+    },
+    "none": [
+      -111.7455,
+      40.3035
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone",
+      "notes": [],
+      "hint": "Tap a street",
+      "photoShownMs": 4751,
+      "date": "Photo dateJul 12, 2026Sep 26, 2017",
+      "dateOptions": [
+        "Jul 12, 2026",
+        "Sep 26, 2017"
+      ],
+      "chips": [],
+      "miniMap": 1,
+      "miniMapInfo": 0,
+      "zoningPressed": "false",
+      "edgeBlack": {
+        "left": 0,
+        "right": 0
+      },
+      "clickToGo": {
+        "before": "518207189179828",
+        "after": "504696267556502"
+      }
+    },
+    {
+      "tag": "phone-dark",
+      "notes": [],
+      "hint": "Tap a street",
+      "photoShownMs": 3112,
+      "date": "Photo dateJul 12, 2026Sep 26, 2017",
+      "dateOptions": [
+        "Jul 12, 2026",
+        "Sep 26, 2017"
+      ],
+      "chips": [],
+      "miniMap": 1,
+      "miniMapInfo": 0,
+      "zoningPressed": "false"
+    },
+    {
+      "tag": "phone-3d",
+      "notes": [],
+      "note": "ZoningGoogle",
+      "look": {
+        "start": 0,
+        "afterDrag": 53,
+        "afterTurnRight": 83,
+        "forwardKeeps3d": true,
+        "pinY": 403.375,
+        "afterCompassTap": 0,
+        "east": 0,
+        "sky": "183px",
+        "zoningPressed": "false",
+        "title": "",
+        "noteSame": true
+      }
+    },
+    {
+      "tag": "desktop",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 2294,
+      "date": "Photo dateJul 12, 2026Sep 26, 2017",
+      "dateOptions": [
+        "Jul 12, 2026",
+        "Sep 26, 2017"
+      ],
+      "chips": [],
+      "miniMap": 0,
+      "miniMapInfo": 0,
+      "zoningPressed": "false",
+      "edgeBlack": {
+        "left": 0,
+        "right": 0
+      },
+      "clickToGo": {
+        "before": "518207189179828",
+        "after": "1386161951784275"
+      }
+    },
+    {
+      "tag": "desktop-dark",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 1639,
+      "date": "Photo dateJul 12, 2026Sep 26, 2017",
+      "dateOptions": [
+        "Jul 12, 2026",
+        "Sep 26, 2017"
+      ],
+      "chips": [],
+      "miniMap": 0,
+      "miniMapInfo": 0,
+      "zoningPressed": "false"
+    },
+    {
+      "tag": "desktop-hover",
+      "notes": [],
+      "thumb": 1
+    },
+    {
+      "tag": "desktop-3d",
+      "notes": [],
+      "note": "ZoningGoogle",
+      "look": {
+        "start": 0,
+        "afterDrag": 53,
+        "afterTurnRight": 83,
+        "afterKeyA": 63,
+        "forwardKeeps3d": true,
+        "pinY": 425.43267822265625,
+        "afterCompassTap": 0,
+        "east": 90,
+        "sky": "307px",
+        "zoningPressed": "false",
+        "title": "",
+        "noteSame": true
+      }
+    },
+    {
+      "tag": "geneva-split-1270x580",
+      "notes": [
+        "Street photo could not be opened: no image after 12 seconds.",
+        "Street photo could not be opened: no image after 12 seconds.",
+        "photo slow",
+        "Street photo could not be opened: no image after 12 seconds."
+      ],
+      "overlaps": [],
+      "miniMaps": 0,
+      "ok": true
+    },
+    {
+      "tag": "geneva-phone-390x844",
+      "notes": [
+        "Street photo could not be opened: no image after 12 seconds.",
+        "Street photo could not be opened: no image after 12 seconds.",
+        "photo slow"
+      ],
+      "overlaps": [],
+      "miniMaps": 1,
+      "miniBox": {
+        "w": 108,
+        "h": 108
+      },
+      "miniDark": 0,
+      "ok": true
+    }
+  ],
+  "tokenSet": true
+}
