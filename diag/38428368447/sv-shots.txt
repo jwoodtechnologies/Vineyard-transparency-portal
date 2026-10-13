@@ -1,0 +1,116 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "1590036996052060",
+      "pano": true,
+      "pin": [
+        -111.74204457068448,
+        40.31153335704232
+      ],
+      "at": [
+        -111.74190991534,
+        40.311782522844
+      ],
+      "found": 25,
+      "pageSearch": {
+        "count": 120,
+        "withComputed": 120,
+        "pickInIt": true
+      }
+    },
+    "none": [
+      -111.7455,
+      40.3035
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone",
+      "notes": [],
+      "hint": "Tap a blue line to see the street",
+      "photoShownMs": 1922,
+      "date": "Photo dateJul 12, 2026Sep 26, 2017",
+      "dateOptions": [
+        "Jul 12, 2026",
+        "Sep 26, 2017"
+      ],
+      "chips": [
+        "PF"
+      ],
+      "miniMap": 1,
+      "clickToGo": {
+        "before": "1151126472058879",
+        "after": "1151126472058879"
+      }
+    },
+    {
+      "tag": "phone-dark",
+      "notes": [],
+      "hint": "Tap a blue line to see the street",
+      "photoShownMs": 1240,
+      "date": "Photo dateJul 12, 2026Sep 26, 2017",
+      "dateOptions": [
+        "Jul 12, 2026",
+        "Sep 26, 2017"
+      ],
+      "chips": [
+        "PF"
+      ],
+      "miniMap": 1
+    },
+    {
+      "tag": "phone-3d",
+      "notes": [],
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle"
+    },
+    {
+      "tag": "desktop",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 2099,
+      "date": "Photo dateJul 12, 2026Sep 26, 2017",
+      "dateOptions": [
+        "Jul 12, 2026",
+        "Sep 26, 2017"
+      ],
+      "chips": [
+        "PF",
+        "RC"
+      ],
+      "miniMap": 1,
+      "clickToGo": {
+        "before": "1151126472058879",
+        "after": "819074339043834"
+      },
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp-swap')\n    - locator resolved to <button type=\"button\" class=\"vc-svp-swap\" title=\"Photo large\" aria-label=\"Show the photo large\">…</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <select aria-label=\"Dates: photos taken here on other days\""
+    },
+    {
+      "tag": "desktop-dark",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 1439,
+      "date": "Photo dateJul 12, 2026Sep 26, 2017",
+      "dateOptions": [
+        "Jul 12, 2026",
+        "Sep 26, 2017"
+      ],
+      "chips": [
+        "PF",
+        "RC"
+      ],
+      "miniMap": 1
+    },
+    {
+      "tag": "desktop-hover",
+      "notes": [],
+      "thumb": 0
+    },
+    {
+      "tag": "desktop-3d",
+      "notes": [],
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle"
+    }
+  ],
+  "tokenSet": true
+}
