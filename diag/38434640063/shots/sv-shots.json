@@ -1,0 +1,121 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "1158953797913688",
+      "pano": false,
+      "pin": [
+        -111.73509940645732,
+        40.31293770775729
+      ],
+      "at": [
+        -111.73500128917,
+        40.313196607707
+      ],
+      "found": 49,
+      "pageSearch": {
+        "count": 124,
+        "withComputed": 124,
+        "pickInIt": true
+      }
+    },
+    "none": [
+      -111.7455,
+      40.3035
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone",
+      "notes": [],
+      "hint": "Tap a blue line to see the street",
+      "photoShownMs": 3403,
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [],
+      "miniMap": 1,
+      "clickToGo": {
+        "before": "1158953797913688",
+        "after": "179665794062327"
+      }
+    },
+    {
+      "tag": "phone-dark",
+      "notes": [],
+      "hint": "Tap a blue line to see the street",
+      "photoShownMs": 2374,
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [],
+      "miniMap": 1
+    },
+    {
+      "tag": "phone-3d",
+      "notes": [],
+      "note": "No street photo within 60 m of this spot yet.ZoningGoogle",
+      "look": {
+        "start": 0,
+        "afterDrag": 5,
+        "afterTurnRight": 35
+      },
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button[aria-label=\"Forward\"]')\n    - locator resolved to <button type=\"button\" title=\"Forward (W)\" class=\"vc-sv-3d-btn\" aria-label=\"Forward\">…</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <button type=\"button\" class=\"vtp-fs-btn\" title=\"Full sc"
+    },
+    {
+      "tag": "desktop",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 1602,
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [],
+      "miniMap": 1,
+      "clickToGo": {
+        "before": "1158953797913688",
+        "after": "179665794062327"
+      }
+    },
+    {
+      "tag": "desktop-dark",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 2778,
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [],
+      "miniMap": 1
+    },
+    {
+      "tag": "desktop-hover",
+      "notes": [],
+      "thumb": 0
+    },
+    {
+      "tag": "desktop-3d",
+      "notes": [],
+      "note": "No street photo within 60 m of this spot yet.ZoningGoogle",
+      "look": {
+        "start": 0,
+        "afterDrag": 53,
+        "afterTurnRight": 83,
+        "afterKeyA": 63,
+        "forwardKeeps3d": true,
+        "pinY": 431.234375,
+        "afterCompassTap": 0,
+        "noteSame": true
+      }
+    }
+  ],
+  "tokenSet": true
+}
