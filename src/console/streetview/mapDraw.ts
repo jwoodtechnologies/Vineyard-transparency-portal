@@ -53,12 +53,21 @@ export function drawSv(map: maplibregl.Map, cam: Camera | null, parcel: Pos[] | 
   src.setData({ type: 'FeatureCollection', features });
 }
 
-/** The pin: a marker the size of a finger tip, announced to screen readers. */
-export function pinMarker(map: maplibregl.Map, at: Pos): maplibregl.Marker {
+/**
+ * The street view pin: a yellow person in a white ring (unlike the orange search and place markers),
+ * dropped in with a short bounce and draggable to adjust (`onMoved` gets where it was let go).
+ */
+export function pinMarker(map: maplibregl.Map, at: Pos, onMoved: (to: Pos) => void): maplibregl.Marker {
   const el = document.createElement('div');
   el.className = 'vc-sv-pin';
   el.setAttribute('role', 'img');
-  el.setAttribute('aria-label', 'Street view pin');
-  el.innerHTML = '<span aria-hidden="true"></span>';
-  return new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(at).addTo(map);
+  el.setAttribute('aria-label', 'Street view pin. Drag to move it.');
+  el.innerHTML =
+    '<span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="5" r="2.8" fill="#fbbc04" stroke="#7a5b00" stroke-width="1"/><path d="M8 10c0-1 .8-1.8 1.8-1.8h4.4c1 0 1.8.8 1.8 1.8v5h-2V22h-4v-7H8z" fill="#fbbc04" stroke="#7a5b00" stroke-width="1"/></svg></span>';
+  const m = new maplibregl.Marker({ element: el, anchor: 'bottom', draggable: true }).setLngLat(at).addTo(map);
+  m.on('dragend', () => {
+    const ll = m.getLngLat();
+    onMoved([ll.lng, ll.lat]);
+  });
+  return m;
 }

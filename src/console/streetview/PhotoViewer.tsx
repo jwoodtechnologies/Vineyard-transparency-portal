@@ -135,7 +135,8 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       if (first) {
         first = false;
         const pano = /spherical|equirectangular/.test(img.cameraType);
-        viewer.setCenter(centerOnPin({ ...photo, pos: [ll.lng, ll.lat], pano, compass: img.computedCompassAngle ?? img.compassAngle ?? photo.compass }, pin));
+        // Opened on the pin itself (a photo picked on a blue line): it keeps facing along the street.
+        if (distance([ll.lng, ll.lat], pin) > 4) viewer.setCenter(centerOnPin({ ...photo, pos: [ll.lng, ll.lat], pano, compass: img.computedCompassAngle ?? img.compassAngle ?? photo.compass }, pin));
       }
       report();
     });

@@ -13,6 +13,7 @@ import { ExternalLink, Layers, X } from 'lucide-react';
 import { getJson } from '../api';
 import { googleStreetViewUrl, MAX_PHOTO_M, parsePhotos, photoSearchUrl, rankPhotos, type Photo, type Pos } from './geo';
 import { addSvLayers, drawSv, pinMarker, removeSvLayers, type Camera } from './mapDraw';
+import { lineNear, mapillaryToken, photoNear, snapToLine } from './coverage';
 import { addBuildings, enter3d, fly3d, leave3d, type Saved } from './threeD';
 import type { District } from './zoningRenderer';
 
@@ -40,8 +41,10 @@ interface Props {
   gen: number;
   ready: boolean;
   dark: boolean;
-  /** Where the pin starts (a long press), or null to ask for a tap. */
+  /** Where the pin starts (a long press or a drop), or null to ask for a tap. */
   start: Pos | null;
+  /** A photo picked on a blue line (a drop or tap on it): opened as is, facing along the street. */
+  startPhoto?: Photo | null;
   /** The zoning layer as the map draws it (each feature's color in __c). */
   loadZoning: () => Promise<FC>;
   /** Shows the zoning layer on the map; returns how to put it back. */
@@ -50,19 +53,6 @@ interface Props {
 }
 
 type Phase = 'pick' | 'search' | 'photo' | '3d';
-
-let tokenPromise: Promise<string | null> | null = null;
-/** The Mapillary token from GET /api/streetview/config (asked once a visit), or null. */
-function mapillaryToken(): Promise<string | null> {
-  tokenPromise ??= getJson<{ token: string | null }>('/api/streetview/config').then(
-    (r) => (typeof r.token === 'string' && r.token ? r.token : null),
-    () => {
-      tokenPromise = null;
-      return null;
-    },
-  );
-  return tokenPromise;
-}
 
 /** Zoning districts for the photo overlay: outer rings grouped by zone, in the map's colors. */
 function districtsOf(fc: FC): District[] {
@@ -91,12 +81,14 @@ const loadShowZoning = () => {
 };
 const wideQuery = () => typeof window !== 'undefined' && window.innerWidth > 820;
 
-export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMapZoning, onClose }: Props) {
+export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null, loadZoning, showMapZoning, onClose }: Props) {
   const [pin, setPin] = useState<Pos | null>(start);
   const [phase, setPhase] = useState<Phase>(start ? 'search' : 'pick');
   const [photo, setPhoto] = useState<Photo | null>(null);
   // The next nearest photos, tried in turn when one does not load (at most three in all).
   const [spare, setSpare] = useState<Photo[]>([]);
+  // A photo picked on a blue line, opened ahead of the search's own pick.
+  const direct = useRef<Photo | null>(startPhoto);
   const [token, setToken] = useState<string | null>(null);
   const [why3d, setWhy3d] = useState<'none' | 'off' | 'error'>('none');
   const [districts, setDistricts] = useState<District[]>([]);
@@ -142,7 +134,12 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
     const click = (e: maplibregl.MapMouseEvent) => {
       // On a phone the photo covers the map; on wider screens a tap beside it moves the pin.
       if (phaseRef.current === 'photo' && !wideQuery()) return;
-      setPin([e.lngLat.lng, e.lngLat.lat]);
+      // On or near a blue line: the photo there. Away from the lines: the spot itself, as before.
+      const near = photoNear(map, e.point, 28);
+      if (near) {
+        direct.current = near;
+        setPin(near.pos);
+      } else setPin(lineNear(map, e.point, 18)?.at ?? [e.lngLat.lng, e.lngLat.lat]);
       setPhase('search');
     };
     map.on('click', click);
@@ -164,7 +161,11 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
     const map = getMap();
     if (!map || !ready || !pin) return;
     pinRef.current?.remove();
-    pinRef.current = pinMarker(map, pin);
+    // The pin can be dragged to adjust; it snaps onto a blue line within about 25 m.
+    pinRef.current = pinMarker(map, pin, (to) => {
+      setPin(snapToLine(map, to));
+      setPhase('search');
+    });
   }, [getMap, gen, ready, pin]);
 
   useEffect(() => {
@@ -196,11 +197,14 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
       }
       try {
         const res = await fetch(photoSearchUrl(t, pin), { headers: { accept: 'application/json' } });
-        const ranked = res.ok ? rankPhotos(parsePhotos(await res.json()), pin) : [];
+        const searched = res.ok ? rankPhotos(parsePhotos(await res.json()), pin) : [];
+        const first = direct.current;
+        direct.current = null;
+        const ranked = first ? [first, ...searched.filter((p) => p.id !== first.id)] : searched;
         const found = ranked[0] ?? null;
         if (stale) return;
         setSpare(ranked.slice(1, 3));
-        if (!res.ok) setWhy3d('error');
+        if (!res.ok && !first) setWhy3d('error');
         else setWhy3d('none');
         setPhoto(found);
         setCamera(found ? { pos: found.pos, bearing: 0, fov: 0 } : null);
@@ -371,7 +375,9 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
         {close}
         <p className="vc-sv-title">
           {phase === 'pick'
-            ? 'Tap a spot on the map to see it from the street.'
+            ? wide
+              ? 'Click a blue line to see the street, or anywhere else for a 3D view.'
+              : 'Tap a blue line to see the street'
             : phase === 'search'
               ? 'Looking for a street photo near this spot.'
               : why3d === 'off'

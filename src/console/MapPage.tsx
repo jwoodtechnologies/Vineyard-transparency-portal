@@ -36,6 +36,9 @@ import { MeasureTool } from './measure/MeasureTool';
 import { decodeShape } from './measure/shape';
 import { StreetView } from './streetview/StreetView';
 import { useLongPress } from './streetview/longPress';
+import { COVERAGE_BLUE, lineNear, photoNear, useCoverage } from './streetview/coverage';
+import { usePersonDrag } from './streetview/pegman';
+import type { Photo } from './streetview/geo';
 import { setHead } from '@/lib/head';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
@@ -572,7 +575,17 @@ export default function MapPage() {
   const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820 && !measureInit);
   const [measuring, setMeasuring] = useState(() => Boolean(measureInit));
   // Street view (src/console/streetview): a pin from a long press or the Street view button.
-  const [sv, setSv] = useState<{ start: Pos | null; key: number } | null>(null);
+  const [sv, setSv] = useState<{ start: Pos | null; photo: Photo | null; key: number } | null>(null);
+  // The blue street photo lines: on while street view is open or the person is dragged, or always with the layer switch.
+  const [photosLayer, setPhotosLayer] = useState(() => {
+    try {
+      return localStorage.getItem('vtp:streetphotos') === 'on';
+    } catch {
+      return false;
+    }
+  });
+  const [svDragging, setSvDragging] = useState(false);
+  const svButton = useRef<HTMLButtonElement>(null);
   const measuringRef = useRef(measuring);
   useEffect(() => {
     measuringRef.current = measuring || Boolean(sv);
@@ -1219,14 +1232,32 @@ export default function MapPage() {
       { replace: true },
     );
   }, [setParams]);
-  const startStreetView = (start: Pos | null) => {
+  const startStreetView = (start: Pos | null, photo: Photo | null = null) => {
     if (measuring) closeMeasure();
     setPicked(null);
     setListActive(null);
     clearHighlight(mapRef.current);
     if (window.innerWidth <= 820) setPanel(false);
-    setSv({ start, key: Date.now() });
+    setSv({ start, photo, key: Date.now() });
   };
+  useCoverage(getMap, mapGen, ready, photosLayer || Boolean(sv) || svDragging);
+  // The person dropped on the map: the photo on the blue line there, else the spot (snapped onto a line close by).
+  const personDragged = usePersonDrag(svButton, getMap, ready, setSvDragging, ({ point, lngLat }) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const photo = photoNear(map, point, 30);
+    if (photo) startStreetView(photo.pos, photo);
+    else startStreetView(lineNear(map, point, 18)?.at ?? lngLat);
+  });
+  const togglePhotosLayer = () =>
+    setPhotosLayer((v) => {
+      try {
+        localStorage.setItem('vtp:streetphotos', v ? 'off' : 'on');
+      } catch {
+        /* private mode */
+      }
+      return !v;
+    });
   useLongPress(getMap, mapGen, ready, !measuring, (at) => startStreetView(at));
   const closeStreetView = useCallback(() => setSv(null), []);
   const loadZoning = useCallback(() => {
@@ -1299,7 +1330,15 @@ export default function MapPage() {
           <button type="button" className="vc-map-fab" data-icon-only="true" data-on={measuring || undefined} onClick={() => (measuring ? closeMeasure() : startMeasure())} aria-pressed={measuring} aria-label="Measure" title="Measure">
             <Ruler size={17} strokeWidth={1.9} />
           </button>
-          <button type="button" className="vc-map-fab" data-icon-only="true" data-on={Boolean(sv) || undefined} disabled={!ready && !sv} aria-busy={!ready || undefined} onClick={() => (sv ? closeStreetView() : startStreetView(null))} aria-pressed={Boolean(sv)} aria-label="Street view" title={ready ? 'Street view (or press and hold on the map)' : 'Street view: the map is loading'}>
+          <button
+            ref={svButton}
+            type="button"
+            className="vc-map-fab vc-pegman"
+            data-icon-only="true"
+            data-on={Boolean(sv) || undefined}
+            disabled={!ready && !sv}
+            aria-busy={!ready || undefined}
+            onClick={() => (personDragged() ? undefined : sv ? closeStreetView() : startStreetView(null))} aria-pressed={Boolean(sv)} aria-label="Street view" title={ready ? 'Street view (or press and hold on the map)' : 'Street view: the map is loading'}>
             <PersonStanding size={18} strokeWidth={1.9} />
           </button>
         </div>
@@ -1356,6 +1395,14 @@ export default function MapPage() {
                 })}
               </div>
             ))}
+            <div className="vc-map-group">
+              <p className="vc-panel-label">Street view</p>
+              <label className="vc-map-layer">
+                <span className="vc-map-swatch" data-kind="line" style={{ background: COVERAGE_BLUE }} />
+                <span className="vc-map-lname">Street photos</span>
+                <input type="checkbox" className="vc-switch" checked={photosLayer} onChange={togglePhotosLayer} />
+              </label>
+            </div>
             <p className="vc-panel-note">From the city&apos;s public GIS. Parcel lines from Utah County GIS. Owner names are shown only for companies, churches, HOAs and government, never for individuals; on a home, only a government or HOA owner.</p>
           </aside>
         )}
@@ -1412,7 +1459,7 @@ export default function MapPage() {
 
         {measuring && <MeasureTool getMap={getMap} gen={mapGen} ready={ready} initial={measureInit} snapData={measureSnap} onClose={closeMeasure} />}
 
-        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} loadZoning={loadZoning} showMapZoning={showMapZoning} onClose={closeStreetView} />}
+        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} startPhoto={sv.photo} loadZoning={loadZoning} showMapZoning={showMapZoning} onClose={closeStreetView} />}
 
         {picked && !measuring && !sv && (
           <aside className="vc-map-card" aria-label="Details">

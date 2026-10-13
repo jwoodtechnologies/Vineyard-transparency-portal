@@ -5482,8 +5482,21 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 
 /* Street view (src/console/streetview): the pin, the slim bar, and the photo viewer, full screen on phones
    and beside the map on wider screens. */
-.vc-sv-pin { width: 28px; height: 38px; pointer-events: none; }
-.vc-sv-pin span { display: block; width: 28px; height: 28px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #ff5a1f; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); box-sizing: border-box; }
+/* The street view pin: a yellow person in a white ring on a short stem, unlike the orange search and place
+   markers. It drops in with a small bounce and can be dragged. */
+.vc-sv-pin { width: 44px; height: 52px; display: grid; justify-items: center; align-content: end; cursor: grab; touch-action: none; }
+.vc-sv-pin span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 2.5px solid #1a73e8; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4); box-sizing: border-box; position: relative; animation: vc-sv-drop 0.45s cubic-bezier(0.3, 1.4, 0.6, 1) both; }
+.vc-sv-pin span::after { content: ''; position: absolute; left: 50%; top: 100%; width: 3px; height: 12px; margin-left: -1.5px; background: #1a73e8; border-radius: 0 0 2px 2px; }
+@keyframes vc-sv-drop { from { transform: translateY(-26px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .vc-sv-pin span { animation: none; } }
+/* The person button can be dragged onto the map; the person follows the pointer while dragging. */
+.vc-pegman { touch-action: none; }
+.vc-pegman-ghost { position: fixed; z-index: 2000; pointer-events: none; transform: translate(-50%, -85%); filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.45)); transition: transform 0.12s; }
+.vc-pegman-ghost.on-line { transform: translate(-50%, -85%) scale(1.2); }
+/* A photo thumbnail when the mouse rests on a blue line. */
+.vc-mly-tip { position: absolute; z-index: 9; transform: translate(-50%, calc(-100% - 14px)); padding: 4px; border-radius: 10px; background: var(--vc-surface); box-shadow: var(--vc-shadow); pointer-events: none; }
+.vc-mly-tip img { display: block; width: 160px; height: 100px; object-fit: cover; border-radius: 7px; background: #222; }
+.vc-mly-tip span { display: block; padding: 3px 2px 0; color: var(--vc-ink-2); font-size: 11px; font-weight: 600; }
 .vc-sv-note { position: absolute; z-index: 7; top: 4.4rem; left: 0.8rem; right: 0.8rem; max-width: 40rem; animation: vc-rise 0.3s var(--vc-ease) both; }
 /* Wider screens: at the bottom middle, clear of the layers panel. */
 @media (min-width: 821px) { .vc-sv-note { top: auto; bottom: 2.6rem; left: 0; right: 0; margin: 0 auto; width: min(40rem, calc(100% - 22rem)); } }
