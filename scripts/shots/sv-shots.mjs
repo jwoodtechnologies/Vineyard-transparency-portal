@@ -82,7 +82,7 @@ for (const prof of PROFILES) {
             await page.screenshot({ path: `${OUT}/${tag}-nozoning.png` });
             await page.click('.vc-svp button[aria-pressed]');
           }
-          log.runs.push({ tag, chips: await page.locator('.vc-svp-chip').allTextContents(), bar: redact((await page.textContent('.vc-svp'))?.replace(/\s+/g, ' ') ?? '').slice(0, 300), notes });
+          log.runs.push({ tag, chips: await page.locator('.vc-svp-chip').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return `${e.textContent} at ${Math.round(r.x)},${Math.round(r.y)}`; })), bar: redact((await page.textContent('.vc-svp'))?.replace(/\s+/g, ' ') ?? '').slice(0, 300), notes });
         } else {
           await page.waitForSelector('.vc-sv-note', { timeout: 20000 });
           await page.waitForTimeout(6000);
