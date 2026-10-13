@@ -73,7 +73,7 @@ export default function PlacePicker({ shape, points, color, onChange }: { shape:
             [PLACE_BOUNDS[2] + 0.05, PLACE_BOUNDS[3] + 0.05],
           ],
           minZoom: 10,
-          maxZoom: 19,
+          maxZoom: 21,
           attributionControl: { compact: true },
           dragRotate: false,
           touchPitch: false,
