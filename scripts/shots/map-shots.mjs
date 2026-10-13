@@ -2,7 +2,9 @@
 /**
  * Screenshots of the live map's tools for review, at phone width (390 px) and on a desktop window, with
  * the satellite base map. Each case opens a ?m= link (the Measure tool reopens the shape exactly), waits
- * for the imagery, opens the details and saves a PNG.
+ * for the imagery, opens the details and saves a PNG. Then the layout check (layout.mjs): every state of
+ * the map at 390x844, 660x572 and 1440x900, light and dark, saved as layout-*.png, with overlaps.json
+ * listing any two controls that overlap (the workflow fails the run when it is not empty).
  *
  *   node scripts/shots/map-shots.mjs --base https://vineyardportal.org --out shots --pw <playwright index.mjs>
  *
@@ -10,6 +12,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { encodeShape } from '../../src/console/measure/shape.ts';
+import { runLayout } from './layout.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : 'true']] : acc), []),
@@ -67,6 +70,13 @@ for (const prof of PROFILES) {
     await ctx.close();
   }
 }
+// The layout check: every state of /map at three sizes, light and dark, with no two controls overlapping.
+const layout = await runLayout({ browser, base: BASE, out: OUT });
 await browser.close();
 writeFileSync(`${OUT}/shots.json`, JSON.stringify(log, null, 2));
+writeFileSync(`${OUT}/layout.json`, JSON.stringify(layout.results, null, 2));
+// The workflow fails the run when this list is not empty (any overlap, or a state that could not be reached).
+writeFileSync(`${OUT}/overlaps.json`, JSON.stringify(layout.failures, null, 2));
 console.log(JSON.stringify(log, null, 2));
+console.log(`layout: ${layout.results.length} checked, ${layout.failures.length} with overlaps or errors`);
+for (const f of layout.failures) console.log(f.file, f.error ?? '', JSON.stringify((f.overlaps ?? []).map((o) => `${o.a} x ${o.b}`)));

@@ -73,6 +73,8 @@ export function drawGuide(map: maplibregl.Map, from: Pos | null, to: Pos | null)
   src?.setData(fc(from && to ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [from, to] }, properties: {} }] : []));
 }
 
+type CardSide = 'bottom' | 'top' | 'left' | 'right';
+
 export interface ParcelCard {
   title: string;
   /** Acres from the shape, or a loading line. */
@@ -209,15 +211,14 @@ export class Handles {
     if (!at || !card) {
       this.tagMarker?.remove();
       this.tagMarker = null;
+      this.cardAt = null;
+      this.map.off('moveend', this.cardMoved);
       return;
     }
-    if (!this.tagMarker) {
-      const el = document.createElement('div');
-      el.className = 'vc-pcard';
-      this.tagMarker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -10] }).setLngLat(at).addTo(this.map);
-    }
-    this.tagMarker.setLngLat(at);
-    const el = this.tagMarker.getElement();
+    if (!this.tagMarker) this.placeCard(at, 'bottom', document.createElement('div'));
+    this.tagMarker!.setLngLat(at);
+    this.cardAt = at;
+    const el = this.tagMarker!.getElement();
     el.replaceChildren();
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', card.title);
@@ -260,11 +261,70 @@ export class Handles {
     }
     // Taps on the card stay on the card.
     el.onclick = (e) => e.stopPropagation();
+    requestAnimationFrame(() => this.cardInView());
+  }
+
+  private cardAt: Pos | null = null;
+  /** Placed again whenever the map stops moving (the readout may refit the map after the card opens). */
+  private cardMoved = () => this.cardInView();
+
+  /** (Re)places the card marker on one side of the spot: above it (anchor bottom), below, right or left. */
+  private placeCard(at: Pos, anchor: CardSide, el: HTMLElement): void {
+    this.tagMarker?.remove();
+    el.className = 'vc-pcard';
+    el.dataset.side = anchor;
+    const offset: [number, number] = anchor === 'bottom' ? [0, -10] : anchor === 'top' ? [0, 10] : anchor === 'left' ? [12, 0] : [-12, 0];
+    this.tagMarker = new maplibregl.Marker({ element: el, anchor, offset }).setLngLat(at).addTo(this.map);
+    this.map.off('moveend', this.cardMoved);
+    this.map.on('moveend', this.cardMoved);
+  }
+
+  /**
+   * Keeps the card in the open part of the map (below the search row, above a sheet, beside a side card):
+   * above the spot when it fits there, else below, else to the right or left; when none fits, the map pans.
+   */
+  private cardInView(): void {
+    const el = this.tagMarker?.getElement();
+    const at = this.cardAt;
+    if (!el || !at) return;
+    const box = this.map.getContainer().getBoundingClientRect();
+    const sheet = document.querySelector('.vc-measure:not([data-wide])')?.getBoundingClientRect();
+    const side = document.querySelector('.vc-measure[data-wide]')?.getBoundingClientRect();
+    const open = {
+      top: (document.querySelector('.vc-map-top')?.getBoundingClientRect().bottom ?? box.top) + 8,
+      bottom: (sheet ? sheet.top : box.bottom) - 8,
+      left: box.left + 8,
+      right: (side ? side.left : box.right) - 8,
+    };
+    const { width: w, height: h } = el.getBoundingClientRect();
+    const q = this.map.project(at);
+    const x = box.left + q.x,
+      y = box.top + q.y;
+    const fitsX = (cx: number) => cx - w / 2 >= open.left && cx + w / 2 <= open.right;
+    const fitsY = (cy: number) => cy - h / 2 >= open.top && cy + h / 2 <= open.bottom;
+    const options: Array<[CardSide, boolean]> = [
+      ['bottom', y - 10 - h >= open.top && y <= open.bottom && fitsX(x)],
+      ['top', y + 10 + h <= open.bottom && y >= open.top && fitsX(x)],
+      ['left', x + 12 + w <= open.right && fitsY(y)],
+      ['right', x - 12 - w >= open.left && fitsY(y)],
+    ];
+    const pick = options.find(([, ok]) => ok)?.[0];
+    if (pick) {
+      if (pick !== el.dataset.side) this.placeCard(at, pick, el);
+      return;
+    }
+    // Nowhere fits as it stands: pan so the spot sits just under the card's room above it, or as near as there is.
+    const wantY = Math.min(open.bottom, open.top + h + 10);
+    const wantX = Math.min(Math.max(x, open.left + w / 2), open.right - w / 2);
+    if (el.dataset.side !== 'bottom') this.placeCard(at, 'bottom', el);
+    this.map.panBy([x - wantX, y - wantY], { duration: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
   }
 
   clear(): void {
     this.tagMarker?.remove();
     this.tagMarker = null;
+    this.cardAt = null;
+    this.map.off('moveend', this.cardMoved);
     this.map.off('zoomend', this.fit);
     for (const m of [...this.points, ...this.mids]) m.remove();
     this.points = [];

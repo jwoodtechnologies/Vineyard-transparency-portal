@@ -228,6 +228,17 @@ for (const prof of PROFILES) {
       // Looking around: a drag turns the view, the buttons turn and step, the compass faces north again.
       const facing = async () => Number(((await page.getAttribute('.vc-sv-compass', 'aria-label')) ?? '').match(/facing (-?\d+)/)?.[1] ?? NaN);
       const pinY = async () => (await page.locator('.vc-sv-pin').boundingBox().catch(() => null))?.y ?? null;
+      // The heading once the view stops turning (the runner draws without a GPU, so a turn can take seconds).
+      const settled = async () => {
+        let last = await facing();
+        for (let i = 0; i < 20; i++) {
+          await page.waitForTimeout(400);
+          const now = await facing();
+          if (now === last) return now;
+          last = now;
+        }
+        return last;
+      };
       run.look = { start: await facing() };
       if (prof.ctx.hasTouch) {
         const cdp = await ctx.newCDPSession(page);
@@ -243,15 +254,14 @@ for (const prof of PROFILES) {
         await page.mouse.move(cx - 90, cy - 30, { steps: 10 });
         await page.mouse.up();
       }
-      await page.waitForTimeout(400);
-      run.look.afterDrag = await facing();
+      run.look.afterDrag = await settled();
       await page.click('button[aria-label="Turn right"]');
-      await page.waitForTimeout(500);
-      run.look.afterTurnRight = await facing();
+      await page.waitForTimeout(400);
+      run.look.afterTurnRight = await settled();
       if (!prof.ctx.hasTouch) {
         await page.keyboard.press('a');
-        await page.waitForTimeout(500);
-        run.look.afterKeyA = await facing();
+        await page.waitForTimeout(400);
+        run.look.afterKeyA = await settled();
       }
       const note0 = await page.textContent('.vc-sv-note');
       await page.click('button[aria-label="Forward"]');
@@ -260,8 +270,8 @@ for (const prof of PROFILES) {
       run.look.pinY = await pinY();
       await page.screenshot({ path: `${OUT}/${prof.name}-7-3d-turned.png` });
       await page.click('.vc-sv-compass');
-      await page.waitForTimeout(600);
-      run.look.afterCompassTap = await facing();
+      await page.waitForTimeout(400);
+      run.look.afterCompassTap = await settled();
       // Face east toward the Wasatch and look up near eye level: terrain, sky and clouds.
       for (let i = 0; i < 3; i++) {
         await page.click('button[aria-label="Turn right"]');

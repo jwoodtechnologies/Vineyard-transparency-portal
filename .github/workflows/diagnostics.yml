@@ -159,3 +159,10 @@ jobs:
           if git fetch -q origin diagnostics; then git checkout -q -B diagnostics origin/diagnostics; else git checkout -q --orphan diagnostics && git rm -rq --cached . && git clean -fdq; fi
           mkdir -p diag && cp -r "$RUNNER_TEMP/diag/." diag/
           git add diag && git commit -qm "Diagnostics ${TASK} ${GITHUB_RUN_ID}" && git push -q origin diagnostics
+      # map-shots: the run fails when any two map controls overlap in any state (scripts/shots/layout.mjs).
+      - name: Map layout check
+        if: inputs.task == 'map-shots'
+        run: |
+          f="$RUNNER_TEMP/diag/${GITHUB_RUN_ID}/shots/overlaps.json"
+          [[ -f "$f" ]] || { echo "The layout check did not run."; exit 1; }
+          node -e 'const o = require(process.argv[1]); for (const f of o) console.log(f.file, f.error || "", (f.overlaps || []).map((x) => x.a + " x " + x.b).join("; ")); process.exit(o.length ? 1 : 0)' "$f"
