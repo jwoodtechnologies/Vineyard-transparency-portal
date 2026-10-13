@@ -4655,6 +4655,13 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
     background-repeat: no-repeat !important;
     background-position: center !important;
   }
+  /* Folded, the (i) looks as it does on a desktop: the round icon alone, its 44 px tap area unseen. */
+  .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
+    min-height: 44px;
+    padding: 0 44px 0 0;
+    background: transparent;
+    box-shadow: none;
+  }
   /* The open credit leaves room for the 44 px (i) button so its text never runs under it. */
   .vc-map .maplibregl-ctrl-bottom-right > .maplibregl-ctrl-attrib.maplibregl-compact-show,
   .maplibregl-ctrl-attrib.maplibregl-compact-show {
