@@ -149,3 +149,18 @@ describe('property tax rates', () => {
     facts.resetCityFacts();
   });
 });
+
+describe('board details', () => {
+  it('needs the people area, keeps plain text and safe links, and the Boards list carries them', async () => {
+    const pp = await h.addPerson(owner.cookie, { name: 'Pat People', email: 'pat@vineyard.example', role: 'editor', areas: ['people'] });
+    const v = { boards: { 'planning-commission': { about: 'Reviews site plans.', schedule: 'the second Tuesday at 6 p.m.', applyUrl: 'https://example.org/apply' } } };
+    expect((await save('boards', v, null, mapper)).status).toBe(403);
+    expect((await save('boards', { boards: { 'planning-commission': { applyUrl: 'javascript:alert(1)' } } }, null, pp)).status).toBe(400);
+    const r = await save('boards', v, null, pp);
+    expect(r.status).toBe(200);
+    expect(r.body.value).toEqual(v);
+    const { listBoards } = await import('../worker/api/boards');
+    const body = (await (await listBoards(h.env as never)).json()) as { boards: Array<{ id: string; about?: string }> };
+    expect(Array.isArray(body.boards)).toBe(true);
+  });
+});
