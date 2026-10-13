@@ -9,12 +9,14 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type * as maplibregl from 'maplibre-gl';
 import type { FeatureCollection, Geometry } from 'geojson';
-import { ExternalLink, Layers, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ExternalLink, Layers, RotateCcw, RotateCw, X } from 'lucide-react';
 import { getJson } from '../api';
 import { googleStreetViewUrl, MAX_PHOTO_M, parsePhotos, photoSearchUrl, rankPhotos, type Photo, type Pos } from './geo';
 import { addSvLayers, drawSv, pinMarker, removeSvLayers, type Camera } from './mapDraw';
 import { lineNear, mapillaryToken, photoNear, snapToLine } from './coverage';
-import { addBuildings, enter3d, fly3d, leave3d, type Saved } from './threeD';
+import { addBuildings, enter3d, leave3d, type Saved } from './threeD';
+import { enableOrbit, stepFrom, turn } from './orbit';
+import { Compass } from './Compass';
 import type { District } from './zoningRenderer';
 
 const PhotoViewer = lazy(() => import('./PhotoViewer'));
@@ -139,6 +141,10 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       if (near) {
         direct.current = near;
         setPin(near.pos);
+      } else if (phaseRef.current === '3d') {
+        // In the 3D view a tap on the ground moves the pin there and keeps looking the same way.
+        setPin([e.lngLat.lng, e.lngLat.lat]);
+        return;
       } else setPin(lineNear(map, e.point, 18)?.at ?? [e.lngLat.lng, e.lngLat.lat]);
       setPhase('search');
     };
@@ -175,8 +181,9 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   }, [getMap, gen, ready, camera, parcel, phase]);
 
   // A new pin: the parcel under it, then the nearest photo (or the 3D view).
+  // The parcel under the pin, outlined on the map and in the photo, wherever the pin goes.
   useEffect(() => {
-    if (!pin || phase !== 'search') return;
+    if (!pin) return;
     let stale = false;
     getJson<{ found: boolean; geometry: { type: string; coordinates: unknown } | null }>(`/api/map/parcel?lng=${pin[0].toFixed(6)}&lat=${pin[1].toFixed(6)}&v=2`).then(
       (r) => {
@@ -187,6 +194,14 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       },
       () => !stale && setParcel(null),
     );
+    return () => {
+      stale = true;
+    };
+  }, [pin]);
+
+  useEffect(() => {
+    if (!pin || phase !== 'search') return;
+    let stale = false;
     mapillaryToken().then(async (t) => {
       if (stale) return;
       setToken(t);
@@ -222,14 +237,15 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
 
   // The 3D street level view. The camera before it is kept until street view closes or a photo opens,
   // so moving the pin in 3D only flies to the new spot.
-  const saved = useRef<{ map: maplibregl.Map; at: Saved } | null>(null);
+  const saved = useRef<{ map: maplibregl.Map; at: Saved; orbitOff: () => void } | null>(null);
   useEffect(() => {
     const map = getMap();
     if (!map || !ready || !pin) return;
     if (phase === '3d') {
-      if (saved.current?.map === map) fly3d(map, pin);
-      else saved.current = { map, at: enter3d(map, pin, dark) };
+      if (saved.current?.map === map) map.easeTo({ center: pin, duration: 450 });
+      else saved.current = { map, at: enter3d(map, pin, dark), orbitOff: enableOrbit(map) };
     } else if (phase === 'photo' && saved.current) {
+      saved.current.orbitOff();
       leave3d(saved.current.map, saved.current.at);
       saved.current = null;
     }
@@ -240,6 +256,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     () => () => {
       if (!saved.current) return;
       try {
+        saved.current.orbitOff();
         leave3d(saved.current.map, saved.current.at);
       } catch {
         // Map removed.
@@ -310,11 +327,22 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   // Escape closes.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') return onClose();
+      // In the 3D view: arrows and W A S D turn and step, as the on screen buttons do.
+      const map = getMap();
+      const t = e.target as HTMLElement | null;
+      if (phaseRef.current !== '3d' || !map || e.metaKey || e.ctrlKey || e.altKey || (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
+      const k = e.key.toLowerCase();
+      if (k === 'a' || k === 'arrowleft') turn(map, -20);
+      else if (k === 'd' || k === 'arrowright') turn(map, 20);
+      else if (k === 'w' || k === 'arrowup') setPin(stepFrom(map, 12));
+      else if (k === 's' || k === 'arrowdown') setPin(stepFrom(map, -12));
+      else return;
+      e.preventDefault();
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [onClose]);
+  }, [onClose, getMap]);
 
   const onError = useCallback(() => {
     if (spare.length) {
@@ -370,25 +398,44 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     );
 
   return (
-    <div className="vc-sv-note" role="status">
-      <div className="vc-sv-bar">
-        {close}
-        <p className="vc-sv-title">
-          {phase === 'pick'
-            ? wide
-              ? 'Click a blue line to see the street, or anywhere else for a 3D view.'
-              : 'Tap a blue line to see the street'
-            : phase === 'search'
-              ? 'Looking for a street photo near this spot.'
-              : why3d === 'off'
-                ? 'Street photos are not available right now.'
-                : why3d === 'error'
-                  ? 'The street photo could not be loaded.'
-                  : `No street photo within ${MAX_PHOTO_M} m of this spot yet.`}
-        </p>
-        {phase === '3d' && zoningToggle}
-        {phase === '3d' && google}
+    <>
+      <div className="vc-sv-note" role="status">
+        <div className="vc-sv-bar">
+          {close}
+          <p className="vc-sv-title">
+            {phase === 'pick'
+              ? wide
+                ? 'Click a blue line to see the street, or anywhere else for a 3D view.'
+                : 'Tap a blue line to see the street'
+              : phase === 'search'
+                ? 'Looking for a street photo near this spot.'
+                : why3d === 'off'
+                  ? 'Street photos are not available right now.'
+                  : why3d === 'error'
+                    ? 'The street photo could not be loaded.'
+                    : `No street photo within ${MAX_PHOTO_M} m of this spot yet.`}
+          </p>
+          {phase === '3d' && zoningToggle}
+          {phase === '3d' && google}
+        </div>
       </div>
-    </div>
+      {phase === '3d' && (
+        <div className="vc-sv-3d" role="group" aria-label="Look around">
+          <Compass getMap={getMap} />
+          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && turn(getMap()!, -30)} aria-label="Turn left" title="Turn left (A)">
+            <RotateCcw size={18} strokeWidth={2} />
+          </button>
+          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && turn(getMap()!, 30)} aria-label="Turn right" title="Turn right (D)">
+            <RotateCw size={18} strokeWidth={2} />
+          </button>
+          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && setPin(stepFrom(getMap()!, 12))} aria-label="Forward" title="Forward (W)">
+            <ArrowUp size={18} strokeWidth={2} />
+          </button>
+          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && setPin(stepFrom(getMap()!, -12))} aria-label="Back" title="Back (S)">
+            <ArrowDown size={18} strokeWidth={2} />
+          </button>
+        </div>
+      )}
+    </>
   );
 }
