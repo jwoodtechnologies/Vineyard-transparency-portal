@@ -17,7 +17,7 @@ import { checkParcelLines, isParcelLineLevel, PARCEL_LINES_MAX_BYTES, parcelLine
 import { budgetForFeature, FY27_PROJECTS_WHERE } from '../lib/capitalPlan';
 import { BUDGET_FISCAL_YEAR } from '../lib/budgetData';
 import { ALERTS_KEY, alertsLayer, hasMapNotices } from './mapAlerts';
-import { BASE, byKey, cityParcelAtUrl, COUNTY_PAGE, countyOwnerAtUrl, countyParcelAtUrl, countyParcelTileUrl, MAP_LAYERS, PARCEL_TILE_PAGES, parcelCard, parcelPoint, parcelTileBody, type MapLayerDef } from '../lib/mapLayers';
+import { BASE, byKey, cityParcelAtUrl, COUNTY_PAGE, countyOwnerAtUrl, countyParcelAtUrl, countyParcelTileUrl, MAP_LAYERS, PARCEL_TILE_PAGES, parcelCard, parcelPoint, parcelTileBody, storiesTileBody, storiesTileUrl, type MapLayerDef } from '../lib/mapLayers';
 
 export { MAP_LAYERS, type MapLayerDef };
 
@@ -125,6 +125,26 @@ export async function getParcelOutlines(z: string, x: string, yJson: string): Pr
     if (!Array.isArray(next.features) || next.features.length < COUNTY_PAGE) break;
   }
   return json(parcelTileBody(pages), { cache: DAY, headers: { 'content-type': 'application/geo+json; charset=utf-8' } });
+}
+
+/**
+ * GET /api/map/stories/16/:x/:y.json → for the 3D street view's building heights: the parcels in one zoom
+ * 16 tile with the assessor's floors above grade (f) and property class (c) from UGRC's Utah County
+ * parcel records, nothing else. Other zoom levels and tiles away from Vineyard are refused. Cached for a day.
+ */
+export async function getStories(z: string, x: string, yJson: string): Promise<Response> {
+  const m = /^(\d{1,7})\.json$/.exec(yJson);
+  const ok = m && /^\d{1,2}$/.test(z) && /^\d{1,7}$/.test(x);
+  const first = ok ? storiesTileUrl(Number(z), Number(x), Number(m[1]), 0) : null;
+  if (!ok || !first) throw notFound('No stories tile here.');
+  const page0 = await arcgisJson(first);
+  if (!page0) throw new HttpError(502, 'backend_unavailable', 'The parcel records did not respond. Try again shortly.');
+  const pages: unknown[] = [page0];
+  if (page0.exceededTransferLimit || page0.properties?.exceededTransferLimit || (Array.isArray(page0.features) && page0.features.length >= COUNTY_PAGE)) {
+    const next = await arcgisJson(storiesTileUrl(Number(z), Number(x), Number(m[1]), 1) as string);
+    if (next) pages.push(next);
+  }
+  return json(storiesTileBody(pages), { cache: DAY, headers: { 'content-type': 'application/geo+json; charset=utf-8' } });
 }
 
 /**

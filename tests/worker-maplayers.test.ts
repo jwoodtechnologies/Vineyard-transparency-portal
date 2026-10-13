@@ -192,3 +192,30 @@ describe('map catalog: trails without bike lanes, no URA layer', () => {
     expect(['Shared Use Path', 'Bike Lane', 'Buffered Bike Lane', null].map(kept)).toEqual([true, false, false, true]);
   });
 });
+
+describe('stories tiles for 3D building heights', () => {
+  it('asks UGRC for floors and class only, in one zoom 16 tile near Vineyard', async () => {
+    const { storiesTileUrl, LIR_PARCELS } = await import('../worker/lib/mapLayers');
+    const u = new URL(storiesTileUrl(16, 12424, 24727) as string);
+    expect(u.href.startsWith(LIR_PARCELS)).toBe(true);
+    expect(u.searchParams.get('outFields')).toBe('FLOORS_CNT,PROP_CLASS');
+    expect(storiesTileUrl(15, 6212, 12363)).toBeNull();
+    expect(storiesTileUrl(16, 0, 0)).toBeNull();
+  });
+
+  it('keeps the shape, floors and class and drops everything else', async () => {
+    const { storiesTileBody } = await import('../worker/lib/mapLayers');
+    const g = { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] };
+    const body = storiesTileBody([
+      {
+        features: [
+          { type: 'Feature', geometry: g, properties: { FLOORS_CNT: 2, PROP_CLASS: 'Residential', OWNER_NAME: 'Someone', PARCEL_ID: '1' } },
+          { type: 'Feature', geometry: g, properties: { FLOORS_CNT: 0, PROP_CLASS: 'Commercial' } },
+          { type: 'Feature', geometry: g, properties: { FLOORS_CNT: null, PROP_CLASS: null } },
+        ],
+      },
+    ]);
+    expect(body.features.map((f) => f.properties)).toEqual([{ f: 2, c: 'Residential' }, { c: 'Commercial' }]);
+    expect(JSON.stringify(body)).not.toContain('Someone');
+  });
+});

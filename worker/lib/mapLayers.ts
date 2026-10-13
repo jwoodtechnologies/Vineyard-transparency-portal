@@ -218,6 +218,51 @@ export function countyParcelTileUrl(z: number, x: number, y: number, page = 0): 
   return `${COUNTY_PARCELS_MAPSERVER}/${COUNTY_PARCEL_LAYER}/query?${p.toString()}`;
 }
 
+/**
+ * UGRC's copy of Utah County's parcels (Land Information Records), which carries the assessor's count
+ * of floors above grade and a property class. Read for the 3D street view's building heights only.
+ */
+export const LIR_PARCELS = 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_Utah_LIR/FeatureServer/0';
+/** The only fields a stories tile may carry. */
+export const STORY_FIELDS = ['FLOORS_CNT', 'PROP_CLASS'] as const;
+
+/** UGRC query for the parcels in one zoom 16 tile with floors and class, or null outside the area. */
+export function storiesTileUrl(z: number, x: number, y: number, page = 0): string | null {
+  const env = parcelTileEnvelope(z, x, y);
+  if (!env || !Number.isInteger(page) || page < 0 || page >= PARCEL_TILE_PAGES) return null;
+  const p = new URLSearchParams({
+    geometry: env.map((v) => v.toFixed(7)).join(','),
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    where: '1=1',
+    outFields: STORY_FIELDS.join(','),
+    returnGeometry: 'true',
+    outSR: '4326',
+    geometryPrecision: '6',
+    maxAllowableOffset: '0.000005',
+    orderByFields: 'OBJECTID',
+    resultOffset: String(page * COUNTY_PAGE),
+    resultRecordCount: String(COUNTY_PAGE),
+    f: 'geojson',
+  });
+  return `${LIR_PARCELS}/query?${p.toString()}`;
+}
+
+/** Stories tile body: each parcel's shape with f (floors above grade, when recorded) and c (property class). */
+export function storiesTileBody(pages: unknown[]): { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; geometry: unknown; properties: { f?: number; c?: string } }> } {
+  const features: Array<{ type: 'Feature'; geometry: unknown; properties: { f?: number; c?: string } }> = [];
+  for (const page of pages)
+    for (const f of stripFeatures((page as { features?: unknown } | null)?.features, STORY_FIELDS)) {
+      if (!f.geometry) continue;
+      const floors = Number(f.properties.FLOORS_CNT);
+      const cls = typeof f.properties.PROP_CLASS === 'string' ? f.properties.PROP_CLASS.trim() : '';
+      if (!(floors > 0) && !cls) continue;
+      features.push({ type: 'Feature', geometry: f.geometry, properties: { ...(floors > 0 && floors < 60 ? { f: Math.round(floors) } : {}), ...(cls ? { c: cls } : {}) } });
+    }
+  return { type: 'FeatureCollection', features };
+}
+
 /** A point inside the parcel area (rounded to 6 decimals), or null. */
 export function parcelPoint(lng: number, lat: number): [number, number] | null {
   if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;

@@ -6,9 +6,14 @@
  */
 import type * as maplibregl from 'maplibre-gl';
 import type { Pos } from './geo';
-import { buildingHeight } from './heights';
+import type { MultiPolygon, Polygon } from 'geojson';
+import { getJson } from '../api';
+import { buildingHeight, StoryIndex, tilesAround, withHeights } from './heights';
 
 const LAYER = 'vtp-sv-buildings';
+/** The same buildings redrawn with the assessor's floors (heights.ts), over the plain ones once ready. */
+const H_SRC = 'vtp-sv-bld';
+const H_LAYER = 'vtp-sv-buildings-h';
 const OWN_SRC = 'vtp-sv-ofm';
 /** OpenFreeMap's vector tiles (already allowed by the CSP for the streets map). */
 const OFM = 'https://tiles.openfreemap.org/planet';
@@ -56,6 +61,7 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   // The streets map already has OpenFreeMap's source; satellite and plain maps get their own.
   const src = map.getSource('openmaptiles') ? 'openmaptiles' : OWN_SRC;
   if (src === OWN_SRC && !map.getSource(OWN_SRC)) map.addSource(OWN_SRC, { type: 'vector', url: OFM });
+  const color = dark ? '#6a6c75' : '#dcd8d0';
   map.addLayer({
     id: LAYER,
     type: 'fill-extrusion',
@@ -63,16 +69,74 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
     'source-layer': 'building',
     minzoom: 14,
     paint: {
-      'fill-extrusion-color': dark ? '#6a6c75' : '#dcd8d0',
+      'fill-extrusion-color': color,
       'fill-extrusion-height': buildingHeight(),
       'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
       'fill-extrusion-opacity': 0.92,
       'fill-extrusion-vertical-gradient': true,
     },
   });
+  if (!map.getSource(H_SRC)) map.addSource(H_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': color, 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true } });
+  heights.get(map)?.stop();
+  heights.set(map, recordedHeights(map, src));
+}
+
+const heights = new WeakMap<maplibregl.Map, { stop: () => void }>();
+
+/**
+ * Keeps the buildings at their recorded heights: when the view settles, loads the assessor's floors for
+ * the zoom 16 tiles around it (once each), reads OpenFreeMap's buildings in view, and redraws them with the
+ * chosen heights. The plain layer stays underneath, invisible, so its tiles keep loading.
+ */
+function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void } {
+  const index = new StoryIndex();
+  const asked = new Set<string>();
+  let stopped = false;
+  let shown = '';
+  const draw = () => {
+    if (stopped || !map.getSource(H_SRC) || map.getZoom() < 14) return;
+    const feats = map.querySourceFeatures(src, { sourceLayer: 'building' }).filter((f) => f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon');
+    const key = `${feats.length}:${index.size}`;
+    if (key === shown || !feats.length) return;
+    shown = key;
+    const fc = withHeights(feats.map((f) => ({ geometry: f.geometry as Polygon | MultiPolygon, properties: f.properties })), index);
+    (map.getSource(H_SRC) as maplibregl.GeoJSONSource).setData(fc);
+    if (map.getLayer(LAYER)) map.setPaintProperty(LAYER, 'fill-extrusion-opacity', 0);
+  };
+  const settle = () => {
+    if (stopped) return;
+    const c = map.getCenter();
+    for (const [x, y] of tilesAround([c.lng, c.lat])) {
+      const k = `${x}/${y}`;
+      if (asked.has(k)) continue;
+      asked.add(k);
+      getJson<GeoJSON.FeatureCollection>(`/api/map/stories/16/${x}/${y}.json`).then(
+        (fc) => {
+          if (stopped) return;
+          index.add(fc);
+          draw();
+        },
+        () => undefined, // Outside Vineyard or the records are down: OSM heights and the default stand.
+      );
+    }
+    draw();
+  };
+  map.on('idle', settle);
+  settle();
+  return {
+    stop: () => {
+      stopped = true;
+      map.off('idle', settle);
+    },
+  };
 }
 
 export function removeBuildings(map: maplibregl.Map): void {
+  heights.get(map)?.stop();
+  heights.delete(map);
+  if (map.getLayer(H_LAYER)) map.removeLayer(H_LAYER);
+  if (map.getSource(H_SRC)) map.removeSource(H_SRC);
   if (map.getLayer(LAYER)) map.removeLayer(LAYER);
   if (map.getSource(OWN_SRC)) map.removeSource(OWN_SRC);
   if (map.getTerrain()) map.setTerrain(null);

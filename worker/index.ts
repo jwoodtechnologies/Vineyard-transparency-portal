@@ -19,7 +19,7 @@ import { browseFacets, getMeeting, handleHealth, handleHealthJobs, handleStats, 
 import { handleAsk } from './ai/rag';
 import { spenderEnv } from './ai/meter';
 import { listEvents } from './api/events';
-import { getMapLayer, getParcelAt, getParcelLines, getParcelOutlines, listMapLayers } from './api/map';
+import { getMapLayer, getParcelAt, getParcelLines, getParcelOutlines, getStories, listMapLayers } from './api/map';
 import { getElevation } from './lib/elevation';
 import { getStreetviewConfig } from './lib/streetview';
 import { getLatest } from './api/latest';
@@ -176,6 +176,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       if (b === 'layers' && !c) return listMapLayers(env);
       if (b === 'layers' && c && /^[a-z]{2,20}$/.test(c) && parts.length === 3) return getMapLayer(env, c, url);
       if (b === 'parcels' && parts.length === 5) return getParcelOutlines(parts[2], parts[3], parts[4]);
+      if (b === 'stories' && parts.length === 5) return getStories(parts[2], parts[3], parts[4]);
       if (b === 'parcel' && parts.length === 2) return getParcelAt(url);
       if (b === 'parcel-lines' && parts.length === 2) return getParcelLines(env, request, url);
       if (b === 'elevation' && parts.length === 2) return getElevation(url);
