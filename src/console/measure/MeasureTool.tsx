@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import type * as maplibregl from 'maplibre-gl';
 import { Check, ChevronDown, CircleDot, Copy, Download, LandPlot, Link as LinkIcon, Mountain, Pentagon, Plus, Repeat, Ruler, Share2, Trash2, Undo2, X } from 'lucide-react';
 import { getJson } from '../api';
-import { bearing, distance, geometryArea, type Pos } from './geo';
+import { bearing, circleRing, distance, geometryArea, type Pos } from './geo';
 import { addLayers, drawGuide, drawShape, Handles, removeLayers, snap, snapMeters, type SnapData } from './draw';
 import { buildProfile, fetchElevations, samplePoints, type Profile } from './profile';
 import { emptyState, encodeShape, reduce, type Mode, type Shape } from './shape';
@@ -257,19 +257,24 @@ export function MeasureTool({ getMap, gen, ready, initial, snapData, onClose }: 
   useEffect(() => {
     const map = getMap();
     if (!map || !ready || fitted.current || !initial) return;
-    fitted.current = true;
-    const pts = initial.mode === 'circle' && initial.pts.length === 2 ? [initial.pts[0], [2 * initial.pts[0][0] - initial.pts[1][0], 2 * initial.pts[0][1] - initial.pts[1][1]] as Pos, initial.pts[1]] : initial.pts;
+    // The whole circle, not just its radius line, is brought into view.
+    const pts = initial.mode === 'circle' && initial.pts.length === 2 ? circleRing(initial.pts[0], distance(initial.pts[0], initial.pts[1]), 24) : initial.pts;
     const xs = pts.map((p) => p[0]),
       ys = pts.map((p) => p[1]);
-    if (pts.length === 1) map.jumpTo({ center: pts[0], zoom: Math.max(map.getZoom(), 17) });
-    else
-      map.fitBounds(
-        [
-          [Math.min(...xs), Math.min(...ys)],
-          [Math.max(...xs), Math.max(...ys)],
-        ],
-        { padding: 60, maxZoom: 19, duration: 0 },
-      );
+    // After the readout has set the map's padding (the effect below), so the shape lands in the open part of the map.
+    const t = setTimeout(() => {
+      fitted.current = true;
+      if (pts.length === 1) map.jumpTo({ center: pts[0], zoom: Math.max(map.getZoom(), 17) });
+      else
+        map.fitBounds(
+          [
+            [Math.min(...xs), Math.min(...ys)],
+            [Math.max(...xs), Math.max(...ys)],
+          ],
+          { padding: 40, maxZoom: 19, duration: 0 },
+        );
+    }, 60);
+    return () => clearTimeout(t);
   }, [getMap, ready, initial]);
 
   // Keep the shape clear of the readout: the map's padding follows the sheet (phones) or card (wider screens).

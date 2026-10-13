@@ -916,7 +916,7 @@ export default function MapPage() {
       const look = LOOK[key];
       const src = `vtp-${key}`;
       if (!fc || !info || !look) continue;
-      if (key === 'boundary' && !map.getSource(src) && !focusRef.current && !pointRef.current) {
+      if (key === 'boundary' && !map.getSource(src) && !focusRef.current && !pointRef.current && !measureInit) {
         const b = boundsOf(fc.features);
         const pad = typeof window !== 'undefined' && window.innerWidth > 820 ? { top: 90, bottom: 30, left: 300, right: 30 } : 20;
         // Terrain opens tilted toward the mountains, still framed on Vineyard.
@@ -1069,7 +1069,7 @@ export default function MapPage() {
         }
       }
     }
-  }, [ready, mapGen, catalog, data, on, dark, base, lines, linesOk, linesMinZoom]);
+  }, [ready, mapGen, catalog, data, on, dark, base, lines, linesOk, linesMinZoom, measureInit]);
 
   const results = useMemo(() => {
     const raw = q.trim().toLowerCase();
