@@ -4,15 +4,13 @@
  * point nearest its center that lies inside the area or along its edge (roads run beside lots, not
  * through them); with no road there, at its center. Google shows the nearest photo to the point given.
  */
-import { createContext } from "react";
-import type { Geometry } from "geojson";
+import { createContext } from 'react';
+import type { Geometry } from 'geojson';
 
 export type Pos = [number, number];
 
 /** Where Street View opens for a capital project, by its map layer name (set by the map page). */
-export const ProjectViewpoint = createContext<(gis: string) => Pos | null>(
-  () => null,
-);
+export const ProjectViewpoint = createContext<(gis: string) => Pos | null>(() => null);
 
 interface RoadFC {
   features: Array<{ geometry: Geometry | null }>;
@@ -28,8 +26,7 @@ export function streetViewUrl([lng, lat]: Pos): string {
 // Meters per degree near Vineyard's latitude, close enough for picking the nearest point.
 const M_LAT = 110_950;
 const M_LNG = M_LAT * Math.cos((40.3 * Math.PI) / 180);
-const dist = (a: Pos, b: Pos) =>
-  Math.hypot((a[0] - b[0]) * M_LNG, (a[1] - b[1]) * M_LAT);
+const dist = (a: Pos, b: Pos) => Math.hypot((a[0] - b[0]) * M_LNG, (a[1] - b[1]) * M_LAT);
 
 /** The point on segment a to b nearest p. */
 function onSegment(p: Pos, a: Pos, b: Pos): Pos {
@@ -37,30 +34,20 @@ function onSegment(p: Pos, a: Pos, b: Pos): Pos {
     dy = (b[1] - a[1]) * M_LAT;
   const len = dx * dx + dy * dy;
   if (!len) return a;
-  const t = Math.max(
-    0,
-    Math.min(
-      1,
-      ((p[0] - a[0]) * M_LNG * dx + (p[1] - a[1]) * M_LAT * dy) / len,
-    ),
-  );
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * M_LNG * dx + (p[1] - a[1]) * M_LAT * dy) / len));
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 
 function linesOf(g: Geometry | null | undefined): Pos[][] {
   if (!g) return [];
-  if (g.type === "LineString") return [g.coordinates as Pos[]];
-  if (g.type === "MultiLineString") return g.coordinates as Pos[][];
-  if (g.type === "GeometryCollection") return g.geometries.flatMap(linesOf);
+  if (g.type === 'LineString') return [g.coordinates as Pos[]];
+  if (g.type === 'MultiLineString') return g.coordinates as Pos[][];
+  if (g.type === 'GeometryCollection') return g.geometries.flatMap(linesOf);
   return [];
 }
 
 /** The point on any of the lines nearest p, with its distance in meters. */
-function nearestOn(
-  p: Pos,
-  lines: Pos[][],
-  keep: (q: Pos) => boolean = () => true,
-): { at: Pos; d: number } | null {
+function nearestOn(p: Pos, lines: Pos[][], keep: (q: Pos) => boolean = () => true): { at: Pos; d: number } | null {
   let best: { at: Pos; d: number } | null = null;
   for (const l of lines) {
     if (l.length === 1 && keep(l[0])) {
@@ -79,20 +66,14 @@ function nearestOn(
 function inRing(p: Pos, r: Pos[]): boolean {
   let inside = false;
   for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
-    if (
-      r[i][1] > p[1] !== r[j][1] > p[1] &&
-      p[0] <
-        ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]
-    )
-      inside = !inside;
+    if (r[i][1] > p[1] !== r[j][1] > p[1] && p[0] < ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) inside = !inside;
   }
   return inside;
 }
 
 function ringArea(r: Pos[]): number {
   let a = 0;
-  for (let i = 0, j = r.length - 1; i < r.length; j = i++)
-    a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]);
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]);
   return Math.abs(a / 2);
 }
 
@@ -117,36 +98,22 @@ function ringCentroid(r: Pos[]): Pos {
 
 /** The outer ring of an area's largest part. */
 function largestRing(g: Geometry): Pos[] | null {
-  const polys = (
-    g.type === "Polygon"
-      ? [g.coordinates]
-      : g.type === "MultiPolygon"
-        ? g.coordinates
-        : []
-  ) as Pos[][][];
+  const polys = (g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : []) as Pos[][][];
   let best: Pos[] | null = null;
-  for (const p of polys)
-    if (p[0]?.length && (!best || ringArea(p[0]) > ringArea(best))) best = p[0];
+  for (const p of polys) if (p[0]?.length && (!best || ringArea(p[0]) > ringArea(best))) best = p[0];
   return best;
 }
 
 /** Where Street View opens for a shape, or null when it has no coordinates. */
-export function viewpointFor(
-  g: Geometry | null | undefined,
-  roads?: RoadFC | null,
-): Pos | null {
+export function viewpointFor(g: Geometry | null | undefined, roads?: RoadFC | null): Pos | null {
   if (!g) return null;
-  if (g.type === "Point") return g.coordinates as Pos;
-  if (g.type === "MultiPoint")
-    return (g.coordinates[0] as Pos | undefined) ?? null;
+  if (g.type === 'Point') return g.coordinates as Pos;
+  if (g.type === 'MultiPoint') return (g.coordinates[0] as Pos | undefined) ?? null;
   const lines = linesOf(g);
   if (lines.length) {
     const pts = lines.flat();
     if (!pts.length) return null;
-    const mid: Pos = [
-      pts.reduce((s, p) => s + p[0], 0) / pts.length,
-      pts.reduce((s, p) => s + p[1], 0) / pts.length,
-    ];
+    const mid: Pos = [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
     return nearestOn(mid, lines)?.at ?? pts[0];
   }
   const ring = largestRing(g);
@@ -154,7 +121,6 @@ export function viewpointFor(
   const c = ringCentroid(ring);
   const roadLines = (roads?.features ?? []).flatMap((f) => linesOf(f.geometry));
   if (!roadLines.length) return c;
-  const near = (q: Pos) =>
-    inRing(q, ring) || (nearestOn(q, [ring])?.d ?? Infinity) <= EDGE_M;
+  const near = (q: Pos) => inRing(q, ring) || (nearestOn(q, [ring])?.d ?? Infinity) <= EDGE_M;
   return nearestOn(c, roadLines, near)?.at ?? c;
 }
