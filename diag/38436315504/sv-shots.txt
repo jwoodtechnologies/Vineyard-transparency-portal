@@ -1,0 +1,132 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "502274760915942",
+      "pano": false,
+      "pin": [
+        -111.73411861978268,
+        40.294874778563965
+      ],
+      "at": [
+        -111.73421551193,
+        40.295133941017
+      ],
+      "found": 25,
+      "pageSearch": {
+        "count": 120,
+        "withComputed": 120,
+        "pickInIt": true
+      }
+    },
+    "none": [
+      -111.7455,
+      40.3035
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone",
+      "notes": [],
+      "hint": "Tap a blue line to see the street",
+      "photoShownMs": 2464,
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [
+        "RMU"
+      ],
+      "miniMap": 1,
+      "clickToGo": {
+        "before": "1404997419855287",
+        "after": "736573417010143"
+      }
+    },
+    {
+      "tag": "phone-dark",
+      "notes": [],
+      "hint": "Tap a blue line to see the street",
+      "photoShownMs": 1766,
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [
+        "RMU"
+      ],
+      "miniMap": 1
+    },
+    {
+      "tag": "phone-3d",
+      "notes": [],
+      "note": "No street photo within 60 m of this spot yet.ZoningGoogle",
+      "look": {
+        "start": 0,
+        "afterDrag": 53,
+        "afterTurnRight": 83,
+        "forwardKeeps3d": true,
+        "pinY": 403.375,
+        "afterCompassTap": 0,
+        "noteSame": true
+      }
+    },
+    {
+      "tag": "desktop",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 1837,
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [
+        "RMU"
+      ],
+      "miniMap": 1,
+      "clickToGo": {
+        "before": "1404997419855287",
+        "after": "736573417010143"
+      }
+    },
+    {
+      "tag": "desktop-dark",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 1713,
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [
+        "RMU"
+      ],
+      "miniMap": 1
+    },
+    {
+      "tag": "desktop-hover",
+      "notes": [],
+      "thumb": 1
+    },
+    {
+      "tag": "desktop-3d",
+      "notes": [],
+      "note": "No street photo within 60 m of this spot yet.ZoningGoogle",
+      "look": {
+        "start": 0,
+        "afterDrag": 53,
+        "afterTurnRight": 83,
+        "afterKeyA": 63,
+        "forwardKeeps3d": true,
+        "pinY": 431.234375,
+        "afterCompassTap": 0,
+        "noteSame": true
+      }
+    }
+  ],
+  "tokenSet": true
+}
