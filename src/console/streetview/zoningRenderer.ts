@@ -6,7 +6,7 @@
  * own chunk.
  */
 import earcut from 'earcut';
-import { geodeticToEnu, RenderPass, type ICustomRenderer, type IViewer, type LngLatAlt } from 'mapillary-js';
+import { enuToGeodetic, geodeticToEnu, RenderPass, type ICustomRenderer, type IViewer, type LngLatAlt } from 'mapillary-js';
 import { distance } from '../measure/geo';
 import { ringToLocal, type Pos } from './geo';
 
@@ -191,10 +191,63 @@ export class ZoningRenderer implements ICustomRenderer {
     return [((c[0] / c[3] + 1) / 2) * width, ((1 - c[1] / c[3]) / 2) * height];
   }
 
+  /**
+   * The spot on the ground under a canvas pixel (the street the pointer is on), or null for the sky or a spot
+   * more than 60 m away. The inverse of projectGround.
+   */
+  unprojectGround(px: number, py: number, width: number, height: number): Pos | null {
+    const m = this.matrices;
+    if (!m || !this.reference || !this.camera) return null;
+    const inv = invert4(multiply4(m.proj, m.view));
+    if (!inv) return null;
+    const nx = (px / width) * 2 - 1,
+      ny = 1 - (py / height) * 2;
+    const at = (z: number) => {
+      const v = [0, 1, 2, 3].map((r) => inv[r] * nx + inv[4 + r] * ny + inv[8 + r] * z + inv[12 + r]);
+      return [v[0] / v[3], v[1] / v[3], v[2] / v[3]];
+    };
+    const near = at(-1),
+      far = at(1);
+    const gz = this.camera.alt - CAMERA_HEIGHT_M - this.reference.alt;
+    if (far[2] >= near[2]) return null; // looking up: no ground under the pointer
+    const t = (gz - near[2]) / (far[2] - near[2]);
+    if (t < 0) return null;
+    const x = near[0] + (far[0] - near[0]) * t,
+      y = near[1] + (far[1] - near[1]) * t;
+    const [lng, lat] = enuToGeodetic(x, y, gz, this.reference.lng, this.reference.lat, this.reference.alt);
+    const spot: Pos = [lng, lat];
+    return distance(spot, this.camera.pos) <= 60 ? spot : null;
+  }
+
+  /** The ground circle that shows where a click or tap would go, or none. */
+  private cursor: Pos | null = null;
+  private cursorMesh: Mesh | null = null;
+  setCursor(at: Pos | null): void {
+    const gl = this.gl;
+    this.cursor = at;
+    if (gl && this.cursorMesh) {
+      gl.deleteBuffer(this.cursorMesh.fill);
+      gl.deleteBuffer(this.cursorMesh.line);
+      this.cursorMesh = null;
+    }
+    if (gl && at && this.reference && this.camera) {
+      // A circle about 1.2 m across on the ground: 24 sides.
+      const ring: Pos[] = [];
+      const kx = 1 / (111320 * Math.cos((at[1] * Math.PI) / 180)),
+        ky = 1 / 110540;
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2;
+        ring.push([at[0] + Math.sin(a) * 1.2 * kx, at[1] + Math.cos(a) * 1.2 * ky]);
+      }
+      this.cursorMesh = this.mesh(gl, ring, '#ffffff', this.camera.alt - CAMERA_HEIGHT_M + 0.03, true);
+    }
+    this.viewer?.triggerRerender();
+  }
+
   render(gl: GL, viewMatrix: number[], projectionMatrix: number[]): void {
     this.matrices = { view: viewMatrix, proj: projectionMatrix };
     const p = this.program;
-    if (!p || (!this.meshes.length && !this.parcelMesh)) return;
+    if (!p || (!this.meshes.length && !this.parcelMesh && !this.cursorMesh)) return;
     gl.useProgram(p.prog);
     gl.uniformMatrix4fv(p.view, false, viewMatrix);
     gl.uniformMatrix4fv(p.proj, false, projectionMatrix);
@@ -216,6 +269,10 @@ export class ZoningRenderer implements ICustomRenderer {
         draw(m.line, gl.TRIANGLES, m.lineCount, m.color, 0.85);
       }
     if (this.parcelMesh) draw(this.parcelMesh.line, gl.TRIANGLES, this.parcelMesh.lineCount, [1, 1, 1], 0.95);
+    if (this.cursorMesh && this.cursor) {
+      draw(this.cursorMesh.fill, gl.TRIANGLES, this.cursorMesh.fillCount, [1, 1, 1], 0.28);
+      draw(this.cursorMesh.line, gl.TRIANGLES, this.cursorMesh.lineCount, [1, 1, 1], 0.95);
+    }
     gl.disableVertexAttribArray(p.pos);
   }
 }
@@ -229,3 +286,36 @@ function inRing(p: Pos, r: Pos[]): boolean {
 }
 
 export { inRing };
+
+/** Column-major 4x4 product a * b (WebGL order). */
+function multiply4(a: number[], b: number[]): number[] {
+  const o = new Array<number>(16).fill(0);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+  return o;
+}
+
+/** Inverse of a column-major 4x4 matrix, or null when it has none. */
+function invert4(m: number[]): number[] | null {
+  const inv = new Array<number>(16);
+  inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+  inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+  inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+  inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+  inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+  inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+  inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+  inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+  inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+  inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+  inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+  inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+  inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+  inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+  inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+  inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+  const det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+  if (!det) return null;
+  return inv.map((v) => v / det);
+}
+
+export { invert4, multiply4 };

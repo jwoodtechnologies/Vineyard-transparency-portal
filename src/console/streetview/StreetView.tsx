@@ -356,7 +356,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
         </div>
         <ViewerBoundary key={photo.id} onError={onError}>
           <Suspense fallback={<p className="vc-sv-loading">Loading the street photo.</p>}>
-            <PhotoViewer token={token} photo={photo} pin={pin} districts={districts} parcel={parcel} showZoning={showZoning} onCamera={setCamera} onError={onError} />
+            <PhotoViewer token={token} photo={photo} pin={pin} districts={districts} parcel={parcel} showZoning={showZoning} onCamera={setCamera} onError={onError} dark={dark} wide={wide} />
           </Suspense>
         </ViewerBoundary>
         <p className="vc-sv-credit">

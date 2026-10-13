@@ -4,13 +4,16 @@
  * the pin on the ground (zoningRenderer.ts) with a small label chip per district, and reports where the
  * camera is and which way it looks so the map's camera cone follows.
  */
-import { useEffect, useRef, useState } from 'react';
-import { Viewer, type Image as MlyImage } from 'mapillary-js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Maximize2 } from 'lucide-react';
+import { NavigationDirection, Viewer, type Image as MlyImage, type ViewerMouseEvent } from 'mapillary-js';
 import 'mapillary-js/dist/mapillary.css';
 import { destination, distance } from '../measure/geo';
 import { centerOnPin, type Photo, type Pos } from './geo';
 import type { Camera } from './mapDraw';
 import { inRing, ZoningRenderer, type District } from './zoningRenderer';
+import { MiniMap } from './MiniMap';
+import { datesAt, nearestTo, photosAround, type DateChoice } from './nearby';
 
 interface Props {
   token: string;
@@ -21,6 +24,9 @@ interface Props {
   showZoning: boolean;
   onCamera: (c: Camera) => void;
   onError: () => void;
+  dark: boolean;
+  /** Beside the map on a wider screen: the small map sits bottom left and can swap with the photo. */
+  wide: boolean;
 }
 
 interface Chip {
@@ -56,7 +62,7 @@ function chipPoint(ring: Pos[], pin: Pos): Pos {
   return c;
 }
 
-export default function PhotoViewer({ token, photo, pin, districts, parcel, showZoning, onCamera, onError }: Props) {
+export default function PhotoViewer({ token, photo, pin, districts, parcel, showZoning, onCamera, onError, dark, wide }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const rendererRef = useRef<ZoningRenderer | null>(null);
@@ -66,15 +72,42 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const cbs = useRef({ onCamera, onError });
   const cam = useRef<Pos>(photo.pos);
   const look = useRef(0);
+  const shownId = useRef<string | null>(null);
+  const [camera, setCamera] = useState<Camera | null>({ pos: photo.pos, bearing: photo.compass ?? 0, fov: 60 });
+  const [taken, setTaken] = useState<number | null>(photo.capturedAt);
+  const [shown, setShown] = useState(photo.id);
+  const [dates, setDates] = useState<DateChoice[]>([]);
+  const [swapped, setSwapped] = useState(false);
   useEffect(() => {
     cbs.current = { onCamera, onError };
   });
+
+  /** Moves to a photo by id; a photo that cannot be reached from here is left alone. */
+  const go = useCallback((id: string) => {
+    viewerRef.current?.moveTo(id).catch(() => undefined);
+  }, []);
+  /** Moves to the photo nearest a spot on the ground (a click on the road, or a tap on the small map). */
+  const goToward = useCallback(
+    (target: Pos) => {
+      void photosAround(token, target, 20).then((list) => {
+        const next = nearestTo(list, target, shownId.current);
+        if (next) go(next.id);
+      });
+    },
+    [token, go],
+  );
 
   // One viewer per photo search; moving along the street happens inside it.
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const viewer = new Viewer({ accessToken: token, container: el, imageId: photo.id, component: { cover: false, marker: false, attribution: true, direction: true, sequence: true, keyboard: true, zoom: true } });
+    // Large arrows on the road for forward and back (the direction component), drag to look, wheel or pinch to zoom.
+    const viewer = new Viewer({
+      accessToken: token,
+      container: el,
+      imageId: photo.id,
+      component: { cover: false, marker: false, attribution: true, direction: { minWidth: 300, maxWidth: 560 }, sequence: true, keyboard: true, zoom: true },
+    });
     viewerRef.current = viewer;
     const renderer = new ZoningRenderer(districts, parcel);
     viewer.addCustomRenderer(renderer);
@@ -118,6 +151,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
             cam.current = [pos.lng, pos.lat];
             look.current = pov.bearing;
             cbs.current.onCamera({ pos: [pos.lng, pos.lat], bearing: pov.bearing, fov });
+            setCamera({ pos: [pos.lng, pos.lat], bearing: pov.bearing, fov });
             placeChips();
             // Once more after the next drawn frame and after the view settles: the overlay reads the drawn view.
             requestAnimationFrame(() => !gone && placeChips());
@@ -132,6 +166,14 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       const img = ev.image;
       const ll = img.computedLngLat ?? img.lngLat;
       renderer.setCamera([ll.lng, ll.lat], img.computedAltitude);
+      shownId.current = img.id;
+      setTaken(img.capturedAt || null);
+      setShown(img.id);
+      // Other days photos were taken here: the Dates menu (only when there is more than one).
+      const here: Pos = [ll.lng, ll.lat];
+      void photosAround(token, here, 25).then((list) => {
+        if (!gone && shownId.current === img.id) setDates(datesAt(list, here));
+      });
       if (first) {
         first = false;
         const pano = /spherical|equirectangular/.test(img.cameraType);
@@ -140,6 +182,26 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       }
       report();
     });
+    // Like Google's: a ground circle shows where a click would go; a click on the road moves to the photo
+    // nearest that spot, a double click or double tap steps forward.
+    let downAt: number[] | null = null;
+    let cursorFrame = 0;
+    viewer.on('mousemove', (e: ViewerMouseEvent) => {
+      cancelAnimationFrame(cursorFrame);
+      cursorFrame = requestAnimationFrame(() => renderer.setCursor(renderer.unprojectGround(e.pixelPoint[0], e.pixelPoint[1], el.clientWidth, el.clientHeight)));
+    });
+    viewer.on('mouseout', () => renderer.setCursor(null));
+    viewer.on('mousedown', (e: ViewerMouseEvent) => (downAt = e.pixelPoint));
+    viewer.on('click', (e: ViewerMouseEvent) => {
+      const moved = downAt ? Math.hypot(e.pixelPoint[0] - downAt[0], e.pixelPoint[1] - downAt[1]) : 0;
+      downAt = null;
+      if (moved > 6) return; // a drag to look around
+      const target = renderer.unprojectGround(e.pixelPoint[0], e.pixelPoint[1], el.clientWidth, el.clientHeight);
+      if (!target) return;
+      renderer.setCursor(target);
+      goToward(target);
+    });
+    viewer.on('dblclick', () => void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined));
     viewer.on('position', report);
     viewer.on('pov', report);
     viewer.on('fov', report);
@@ -157,6 +219,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       clearTimeout(watchdog);
       clearTimeout(settle);
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(cursorFrame);
       ro.disconnect();
       viewer.remove();
       viewerRef.current = null;
@@ -167,12 +230,57 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   }, [token, photo.id]);
 
   useEffect(() => rendererRef.current?.setVisible(showZoning), [showZoning]);
+
+  // Keys: W or the up arrow forward, S or down back, A and D turn (the arrows inside the photo are the viewer's own).
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable || box.current?.contains(t))) return;
+      const v = viewerRef.current;
+      if (!v || e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === 'w' || k === 'arrowup') void v.moveDir(NavigationDirection.StepForward).catch(() => undefined);
+      else if (k === 's' || k === 'arrowdown') void v.moveDir(NavigationDirection.StepBackward).catch(() => undefined);
+      else if (k === 'a' || k === 'd' || k === 'arrowleft' || k === 'arrowright') void v.getCenter().then((c) => v.setCenter([(((c[0] + (k === 'a' || k === 'arrowleft' ? -0.04 : 0.04)) % 1) + 1) % 1, c[1]]));
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
   useEffect(() => rendererRef.current?.setParcel(parcel), [parcel]);
 
+  const takenLabel = taken ? new Date(taken).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+  const current = dates.find((d) => d.photo.id === shown)?.day ?? (taken ? new Date(taken).toISOString().slice(0, 10) : '');
+
   return (
-    <div className="vc-svp-view">
+    <div className="vc-svp-view" data-swapped={(wide && swapped) || undefined}>
       <div ref={box} className="vc-svp-canvas" role="img" aria-label="Street photo facing the pin. Drag to look around; use the arrows to move along the street." />
       {pinAt && <span className="vc-svp-pin" style={{ left: pinAt[0], top: pinAt[1] }} role="img" aria-label="The pin is here in the photo" />}
+      <div className="vc-svp-when">
+        {dates.length > 1 ? (
+          <label>
+            <span className="vc-sr">Photo date</span>
+            <select value={current} onChange={(e) => go(dates.find((d) => d.day === e.target.value)?.photo.id ?? '')} aria-label="Dates: photos taken here on other days">
+              {dates.map((d) => (
+                <option key={d.day} value={d.day}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          takenLabel && <span>Taken {takenLabel}</span>
+        )}
+      </div>
+      <div className="vc-svp-mini">
+        <MiniMap token={token} camera={camera} dark={dark} large={wide && swapped} onPick={(p, at) => (p ? go(p.id) : goToward(at))} />
+        {wide && (
+          <button type="button" className="vc-svp-swap" onClick={() => setSwapped((v) => !v)} aria-label={swapped ? 'Show the photo large' : 'Show the map large'} title={swapped ? 'Photo large' : 'Map large'}>
+            <Maximize2 size={15} strokeWidth={2} />
+          </button>
+        )}
+      </div>
       {showZoning && (
         <div className="vc-svp-chips" aria-hidden="true">
           {chips.map((c) => (
