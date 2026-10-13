@@ -1,0 +1,2 @@
+elevation 2 points: 200 2.038884s
+elevation 30 points: 200 2.091043s
