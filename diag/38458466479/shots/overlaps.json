@@ -1,0 +1,650 @@
+[
+  {
+    "file": "layout-390x844-light-streetview-photo.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-map-search",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 13,
+          "y": 80,
+          "w": 264,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-map-tools > button",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 285,
+          "y": 80,
+          "w": 92,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-map-legend",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 10,
+          "y": 776,
+          "w": 90,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 628,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 682,
+          "w": 44,
+          "h": 88
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 790,
+          "w": 44,
+          "h": 44
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-streetview-photo.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-map-search",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 13,
+          "y": 80,
+          "w": 264,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-map-tools > button",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 285,
+          "y": 80,
+          "w": 92,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-map-legend",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 10,
+          "y": 776,
+          "w": 90,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 628,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 682,
+          "w": 44,
+          "h": 88
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 790,
+          "w": 44,
+          "h": 44
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-streetview-photo.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-map-search",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 13,
+          "y": 85,
+          "w": 534,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-map-tools > button",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 555,
+          "y": 85,
+          "w": 92,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-map-legend",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 16,
+          "y": 462,
+          "w": 126,
+          "h": 78
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 356,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 410,
+          "w": 44,
+          "h": 88
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 518,
+          "w": 44,
+          "h": 44
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-streetview-photo.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-map-search",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 13,
+          "y": 85,
+          "w": 534,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-map-tools > button",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 555,
+          "y": 85,
+          "w": 92,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-map-legend",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 16,
+          "y": 462,
+          "w": 126,
+          "h": 78
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 356,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 410,
+          "w": 44,
+          "h": 88
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 518,
+          "w": 44,
+          "h": 44
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-streetview-photo.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1216,
+          "y": 414,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1231,
+          "y": 468,
+          "w": 29,
+          "h": 58
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1236,
+          "y": 546,
+          "w": 24,
+          "h": 24
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-streetview-photo.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1216,
+          "y": 414,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1231,
+          "y": 468,
+          "w": 29,
+          "h": 58
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1236,
+          "y": 546,
+          "w": 24,
+          "h": 24
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-streetview-photo.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1386,
+          "y": 734,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1401,
+          "y": 788,
+          "w": 29,
+          "h": 58
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1406,
+          "y": 866,
+          "w": 24,
+          "h": 24
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-streetview-photo.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1386,
+          "y": 734,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1401,
+          "y": 788,
+          "w": 29,
+          "h": 58
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1406,
+          "y": 866,
+          "w": 24,
+          "h": 24
+        }
+      }
+    ],
+    "errors": []
+  }
+]

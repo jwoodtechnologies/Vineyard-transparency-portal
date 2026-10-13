@@ -1,0 +1,1298 @@
+[
+  {
+    "file": "layout-390x844-light-map.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-layers.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-tools.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-card.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-projects.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-measure.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-measure-open.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-measure-parcel.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-streetview-photo.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-map-search",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 13,
+          "y": 80,
+          "w": 264,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-map-tools > button",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 285,
+          "y": 80,
+          "w": 92,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-map-legend",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 10,
+          "y": 776,
+          "w": 90,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 628,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 682,
+          "w": 44,
+          "h": 88
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 790,
+          "w": 44,
+          "h": 44
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-3d.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "3d",
+    "overlaps": [],
+    "errors": [],
+    "firstFrameMs": 420
+  },
+  {
+    "file": "layout-390x844-light-fullscreen.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-map.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-layers.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-tools.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-card.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-projects.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-measure.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-measure-open.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-measure-parcel.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-streetview-photo.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-map-search",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 13,
+          "y": 80,
+          "w": 264,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-map-tools > button",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 285,
+          "y": 80,
+          "w": 92,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-map-legend",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 10,
+          "y": 776,
+          "w": 90,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 628,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 682,
+          "w": 44,
+          "h": 88
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 844
+        },
+        "boxB": {
+          "x": 336,
+          "y": 790,
+          "w": 44,
+          "h": 44
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-3d.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "3d",
+    "overlaps": [],
+    "errors": [],
+    "firstFrameMs": 513
+  },
+  {
+    "file": "layout-390x844-dark-fullscreen.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-map.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-layers.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-tools.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-card.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-projects.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-measure.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-measure-open.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-measure-parcel.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-streetview-photo.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-map-search",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 13,
+          "y": 85,
+          "w": 534,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-map-tools > button",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 555,
+          "y": 85,
+          "w": 92,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-map-legend",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 16,
+          "y": 462,
+          "w": 126,
+          "h": 78
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 356,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 410,
+          "w": 44,
+          "h": 88
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 518,
+          "w": 44,
+          "h": 44
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-3d.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "3d",
+    "overlaps": [],
+    "errors": [],
+    "firstFrameMs": 590
+  },
+  {
+    "file": "layout-660x572-light-fullscreen.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-map.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-layers.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-tools.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-card.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-projects.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-measure.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-measure-open.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-measure-parcel.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-streetview-photo.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-map-search",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 13,
+          "y": 85,
+          "w": 534,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-map-tools > button",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 555,
+          "y": 85,
+          "w": 92,
+          "h": 46
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-map-legend",
+        "b": ".vc-svp",
+        "boxA": {
+          "x": 16,
+          "y": 462,
+          "w": 126,
+          "h": 78
+        },
+        "boxB": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 356,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 410,
+          "w": 44,
+          "h": 88
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 0,
+          "y": 0,
+          "w": 660,
+          "h": 572
+        },
+        "boxB": {
+          "x": 606,
+          "y": 518,
+          "w": 44,
+          "h": 44
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-3d.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "3d",
+    "overlaps": [],
+    "errors": [],
+    "firstFrameMs": 435
+  },
+  {
+    "file": "layout-660x572-dark-fullscreen.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-map.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-layers.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-tools.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-card.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-projects.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-measure.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-measure-open.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-measure-parcel.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-streetview-photo.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1216,
+          "y": 414,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1231,
+          "y": 468,
+          "w": 29,
+          "h": 58
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1236,
+          "y": 546,
+          "w": 24,
+          "h": 24
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-light-3d.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "3d",
+    "overlaps": [],
+    "errors": [],
+    "firstFrameMs": 494
+  },
+  {
+    "file": "layout-1270x580-light-fullscreen.png",
+    "viewport": "1270x580",
+    "theme": "light",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-map.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-layers.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-tools.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-card.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-projects.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-measure.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-measure-open.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-measure-parcel.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-streetview-photo.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1216,
+          "y": 414,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1231,
+          "y": 468,
+          "w": 29,
+          "h": 58
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 635,
+          "y": 67,
+          "w": 635,
+          "h": 513
+        },
+        "boxB": {
+          "x": 1236,
+          "y": 546,
+          "w": 24,
+          "h": 24
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-1270x580-dark-3d.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "3d",
+    "overlaps": [],
+    "errors": [],
+    "firstFrameMs": 480
+  },
+  {
+    "file": "layout-1270x580-dark-fullscreen.png",
+    "viewport": "1270x580",
+    "theme": "dark",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-map.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-layers.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-tools.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-card.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-projects.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-measure.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-measure-open.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-measure-parcel.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-streetview-photo.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1386,
+          "y": 734,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1401,
+          "y": 788,
+          "w": 29,
+          "h": 58
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1406,
+          "y": 866,
+          "w": 24,
+          "h": 24
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-3d.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "3d",
+    "overlaps": [],
+    "errors": [],
+    "firstFrameMs": 676
+  },
+  {
+    "file": "layout-1440x900-light-fullscreen.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-map.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-layers.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-tools.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-card.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-projects.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-measure.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-measure-open.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-measure-parcel.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-streetview-photo.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "overlaps": [
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right full screen",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1386,
+          "y": 734,
+          "w": 44,
+          "h": 44
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right zoom",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1401,
+          "y": 788,
+          "w": 29,
+          "h": 58
+        }
+      },
+      {
+        "a": ".vc-svp",
+        "b": "ctrl-bottom-right (i)",
+        "boxA": {
+          "x": 720,
+          "y": 67,
+          "w": 720,
+          "h": 833
+        },
+        "boxB": {
+          "x": 1406,
+          "y": 866,
+          "w": 24,
+          "h": 24
+        }
+      }
+    ],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-3d.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "3d",
+    "overlaps": [],
+    "errors": [],
+    "firstFrameMs": 671
+  },
+  {
+    "file": "layout-1440x900-dark-fullscreen.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  }
+]
