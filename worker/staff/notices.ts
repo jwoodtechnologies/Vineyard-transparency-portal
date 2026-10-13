@@ -8,7 +8,8 @@ import { badRequest, json, notFound } from '../lib/http';
 import { plainLine, plainText, stripTags, webUrl } from '../lib/contrib';
 import { utahToday } from '../lib/coverage';
 import { isIsoDate, nowIso } from '../lib/util';
-import { ensureNoticeTable, type NoticeRow } from '../api/notices';
+import { ensureNoticeTable, NOTICE_KINDS, type NoticeRow } from '../api/notices';
+import { readPlace, type Place } from '../lib/mapShape';
 import { auditStatement, published, requireArea, type StaffUser } from './core';
 import type { StaffCall } from './modules';
 import { registerUndo } from './undo';
@@ -25,6 +26,9 @@ interface Fields {
   startsOn: string | null;
   endsOn: string | null;
   shown: boolean;
+  onBar: boolean;
+  /** Set when the notice is also drawn on the map. */
+  place: { title: string; kind: string; geometry: Place } | null;
 }
 
 function date(v: unknown, what: string): string | null {
@@ -32,6 +36,17 @@ function date(v: unknown, what: string): string | null {
   if (!s) return null;
   if (!isIsoDate(s)) throw badRequest(`Choose the ${what} from the calendar.`);
   return s;
+}
+
+function readPlaceFields(v: unknown): Fields['place'] {
+  if (!v || typeof v !== 'object') return null;
+  const p = v as Record<string, unknown>;
+  const geometry = readPlace(p.geometry);
+  if (typeof geometry === 'string') throw badRequest(geometry);
+  const title = stripTags(plainLine(p.title, 80));
+  if (!title) throw badRequest('Name the place, such as "Main Street closed".');
+  const kind = NOTICE_KINDS.find((k) => k.key === p.kind)?.key ?? 'other';
+  return { title, kind, geometry };
 }
 
 function readFields(b: Record<string, unknown>): Fields {
@@ -44,6 +59,9 @@ function readFields(b: Record<string, unknown>): Fields {
   const startsOn = date(b.startsOn, 'first day');
   const endsOn = date(b.endsOn, 'last day');
   if (startsOn && endsOn && endsOn < startsOn) throw badRequest('The last day is before the first day.');
+  const place = readPlaceFields(b.place);
+  const onBar = b.onBar !== false;
+  if (!onBar && !place) throw badRequest('Choose where the notice shows: the top of every page, the map, or both.');
   return {
     tone: b.tone === 'alert' ? 'alert' : 'info',
     message,
@@ -52,6 +70,8 @@ function readFields(b: Record<string, unknown>): Fields {
     startsOn,
     endsOn,
     shown: b.shown !== false,
+    onBar,
+    place,
   };
 }
 
@@ -73,12 +93,44 @@ export function statusOf(r: Pick<NoticeRow, 'shown' | 'starts_on' | 'ends_on'>, 
   return 'showing';
 }
 
+/** The notice's place as the staff screen holds it, or null when it is not on the map. */
+function placeOf(n: Pick<NoticeRow, 'place_title' | 'place_kind' | 'place_geometry'>): { title: string; kind: string; geometry: unknown } | null {
+  if (!n.place_geometry) return null;
+  try {
+    return { title: n.place_title ?? '', kind: n.place_kind ?? 'other', geometry: JSON.parse(n.place_geometry) as unknown };
+  } catch {
+    return null;
+  }
+}
+
+const columns = (r: NoticeRow) => [
+  r.id,
+  r.tone,
+  r.message,
+  r.link_url,
+  r.link_label,
+  r.starts_on,
+  r.ends_on,
+  r.shown,
+  r.on_bar,
+  r.place_title,
+  r.place_kind,
+  r.place_geometry,
+  r.created_at,
+  r.created_by,
+  r.updated_at,
+  r.updated_by,
+];
+const INSERT =
+  'INSERT INTO site_notices (id, tone, message, link_url, link_label, starts_on, ends_on, shown, on_bar, place_title, place_kind, place_geometry, created_at, created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+
 async function list(env: Env): Promise<Record<string, unknown>> {
   await ensureNoticeTable(env);
   const today = utahToday();
   const r = await env.CATALOG_DB.prepare('SELECT * FROM site_notices ORDER BY created_at DESC LIMIT 100').all<NoticeRow>();
   return {
     today,
+    kinds: NOTICE_KINDS,
     items: (r.results ?? []).map((n) => ({
       id: n.id,
       tone: n.tone,
@@ -88,6 +140,8 @@ async function list(env: Env): Promise<Record<string, unknown>> {
       startsOn: n.starts_on,
       endsOn: n.ends_on,
       shown: Number(n.shown) === 1,
+      onBar: Number(n.on_bar) === 1,
+      place: placeOf(n),
       status: statusOf(n, today),
       createdAt: n.created_at,
       createdBy: n.created_by,
@@ -110,15 +164,17 @@ async function add(env: Env, me: StaffUser, b: Record<string, unknown>): Promise
     starts_on: f.startsOn,
     ends_on: f.endsOn,
     shown: f.shown ? 1 : 0,
+    on_bar: f.onBar ? 1 : 0,
+    place_title: f.place?.title ?? null,
+    place_kind: f.place?.kind ?? null,
+    place_geometry: f.place ? JSON.stringify(f.place.geometry) : null,
     created_at: now,
     created_by: me.name,
     updated_at: now,
     updated_by: me.name,
   };
   await env.CATALOG_DB.batch([
-    env.CATALOG_DB.prepare(
-      'INSERT INTO site_notices (id, tone, message, link_url, link_label, starts_on, ends_on, shown, created_at, created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    ).bind(row.id, row.tone, row.message, row.link_url, row.link_label, row.starts_on, row.ends_on, row.shown, row.created_at, row.created_by, row.updated_at, row.updated_by),
+    env.CATALOG_DB.prepare(INSERT).bind(...columns(row)),
     auditStatement(env, me, { area: 'notices', action: 'added', entity: 'notice', entityId: row.id, summary: `Posted the notice ${label(row)}`, after: row }),
   ]);
   await published(env);
@@ -138,12 +194,18 @@ async function edit(env: Env, me: StaffUser, b: Record<string, unknown>): Promis
     starts_on: f.startsOn,
     ends_on: f.endsOn,
     shown: f.shown ? 1 : 0,
+    on_bar: f.onBar ? 1 : 0,
+    place_title: f.place?.title ?? null,
+    place_kind: f.place?.kind ?? null,
+    place_geometry: f.place ? JSON.stringify(f.place.geometry) : null,
     updated_at: now,
     updated_by: me.name,
   };
   const hiding = Number(before.shown) === 1 && !f.shown;
   await env.CATALOG_DB.batch([
-    env.CATALOG_DB.prepare('UPDATE site_notices SET tone = ?, message = ?, link_url = ?, link_label = ?, starts_on = ?, ends_on = ?, shown = ?, updated_at = ?, updated_by = ? WHERE id = ?').bind(
+    env.CATALOG_DB.prepare(
+      'UPDATE site_notices SET tone = ?, message = ?, link_url = ?, link_label = ?, starts_on = ?, ends_on = ?, shown = ?, on_bar = ?, place_title = ?, place_kind = ?, place_geometry = ?, updated_at = ?, updated_by = ? WHERE id = ?',
+    ).bind(
       after.tone,
       after.message,
       after.link_url,
@@ -151,6 +213,10 @@ async function edit(env: Env, me: StaffUser, b: Record<string, unknown>): Promis
       after.starts_on,
       after.ends_on,
       after.shown,
+      after.on_bar,
+      after.place_title,
+      after.place_kind,
+      after.place_geometry,
       now,
       me.name,
       before.id,
@@ -194,24 +260,6 @@ registerUndo('notice', async (env, _user, entry) => {
   }
   const before = entry.before_json ? (JSON.parse(entry.before_json) as NoticeRow) : null;
   if (!before?.id) throw badRequest('The earlier version was not kept.');
-  await env.CATALOG_DB.batch([
-    env.CATALOG_DB.prepare('DELETE FROM site_notices WHERE id = ?').bind(before.id),
-    env.CATALOG_DB.prepare(
-      'INSERT INTO site_notices (id, tone, message, link_url, link_label, starts_on, ends_on, shown, created_at, created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    ).bind(
-      before.id,
-      before.tone,
-      before.message,
-      before.link_url,
-      before.link_label,
-      before.starts_on,
-      before.ends_on,
-      before.shown,
-      before.created_at,
-      before.created_by,
-      before.updated_at,
-      before.updated_by,
-    ),
-  ]);
+  await env.CATALOG_DB.batch([env.CATALOG_DB.prepare('DELETE FROM site_notices WHERE id = ?').bind(before.id), env.CATALOG_DB.prepare(INSERT).bind(...columns(before))]);
   return `Put back the notice ${label(before)}`;
 });
