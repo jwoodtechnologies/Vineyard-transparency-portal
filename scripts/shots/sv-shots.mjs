@@ -154,10 +154,11 @@ for (const prof of PROFILES) {
     const { ctx, page, notes, cx, cy } = await open(prof, lineSpot, 18, false, { 'vtp:streetphotos': 'on' });
     run.notes = notes;
     await page.waitForTimeout(2500);
-    for (const [dx, dy] of [[40, 0], [40, 6], [40, 12], [40, -6], [40, -12], [80, 8], [80, 0]]) {
+    // Sweep across the middle of the map until the pointer rests on a line and the thumbnail shows.
+    for (let dx = -160; dx <= 160; dx += 6) {
       if (await page.locator('.vc-mly-tip:not([hidden]) img').count()) break;
-      await page.mouse.move(cx + dx, cy + dy);
-      await page.waitForTimeout(900);
+      await page.mouse.move(cx + dx, cy + 30);
+      await page.waitForTimeout(dx % 24 === 0 ? 700 : 120);
     }
     await page.waitForTimeout(1500);
     run.thumb = await page.locator('.vc-mly-tip:not([hidden]) img').count();
