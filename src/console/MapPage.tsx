@@ -18,7 +18,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 maplibregl.setWorkerUrl(workerUrl);
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, Crosshair, Layers, MessageSquare, Ruler, Search, X } from 'lucide-react';
+import { ChevronDown, Crosshair, Layers, MessageSquare, PersonStanding, Ruler, Search, X } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
@@ -34,6 +34,8 @@ import { ProjectViewpoint, viewpointFor, type Pos } from './streetView';
 import { StreetViewLink } from './StreetViewLink';
 import { MeasureTool } from './measure/MeasureTool';
 import { decodeShape } from './measure/shape';
+import { StreetView } from './streetview/StreetView';
+import { useLongPress } from './streetview/longPress';
 import { setHead } from '@/lib/head';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
@@ -569,10 +571,12 @@ export default function MapPage() {
   // A shared measurement opens with the layers panel closed, so nothing covers the shape.
   const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820 && !measureInit);
   const [measuring, setMeasuring] = useState(() => Boolean(measureInit));
+  // Street view (src/console/streetview): a pin from a long press or the Street view button.
+  const [sv, setSv] = useState<{ start: Pos | null; key: number } | null>(null);
   const measuringRef = useRef(measuring);
   useEffect(() => {
-    measuringRef.current = measuring;
-  }, [measuring]);
+    measuringRef.current = measuring || Boolean(sv);
+  }, [measuring, sv]);
   // The legend starts folded on phones so it never sits on top of the zoom buttons.
   const [legendOpen, setLegendOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 640);
   // Set when a color-coded layer is turned on: the legend opens with a short highlight.
@@ -1196,6 +1200,7 @@ export default function MapPage() {
   const getMap = useCallback(() => mapRef.current, []);
   const measureSnap = useCallback(() => ({ parcels: data.parcels ?? mergedParcels(), roads: data.roads ?? null }), [data]);
   const startMeasure = () => {
+    setSv(null);
     setPicked(null);
     setListActive(null);
     clearHighlight(mapRef.current);
@@ -1214,13 +1219,44 @@ export default function MapPage() {
       { replace: true },
     );
   }, [setParams]);
+  const startStreetView = (start: Pos | null) => {
+    if (measuring) closeMeasure();
+    setPicked(null);
+    setListActive(null);
+    clearHighlight(mapRef.current);
+    if (window.innerWidth <= 820) setPanel(false);
+    setSv({ start, key: Date.now() });
+  };
+  useLongPress(getMap, mapGen, ready, !measuring, (at) => startStreetView(at));
+  const closeStreetView = useCallback(() => setSv(null), []);
+  const loadZoning = useCallback(() => {
+    const info = catalog?.find((l) => l.key === 'zoning');
+    return info ? loadLayer(info) : Promise.reject(new Error('no zoning layer'));
+  }, [catalog]);
+  // Street view's 3D mode shows zoning on the ground; it is put back as it was when that ends.
+  const showMapZoning = useCallback(() => {
+    let added = false;
+    setOn((cur) => {
+      if (cur.has('zoning')) return cur;
+      added = true;
+      return new Set([...cur, 'zoning']);
+    });
+    return () => {
+      if (!added) return;
+      setOn((cur) => {
+        const next = new Set(cur);
+        next.delete('zoning');
+        return next;
+      });
+    };
+  }, []);
   const activeProject = picked ? (picked.layer === 'projects' && typeof picked.props.Project_Name === 'string' ? picked.props.Project_Name : null) : listActive;
 
   return (
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
       <div className="vc-map-shell" data-projects={projectsShown ? (wide ? 'side' : 'sheet') : undefined}>
-      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked) && !measuring} data-measure={measuring || undefined}>
+      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked) && !measuring && !sv} data-measure={measuring || undefined} data-sv={sv ? 'on' : undefined}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
         {!painted && (
           <div className="vc-map-loading" role="status">
@@ -1262,6 +1298,9 @@ export default function MapPage() {
           </button>
           <button type="button" className="vc-map-fab" data-icon-only="true" data-on={measuring || undefined} onClick={() => (measuring ? closeMeasure() : startMeasure())} aria-pressed={measuring} aria-label="Measure" title="Measure">
             <Ruler size={17} strokeWidth={1.9} />
+          </button>
+          <button type="button" className="vc-map-fab" data-icon-only="true" data-on={Boolean(sv) || undefined} onClick={() => (sv ? closeStreetView() : startStreetView(null))} aria-pressed={Boolean(sv)} aria-label="Street view" title="Street view (or press and hold on the map)">
+            <PersonStanding size={18} strokeWidth={1.9} />
           </button>
         </div>
 
@@ -1373,7 +1412,9 @@ export default function MapPage() {
 
         {measuring && <MeasureTool getMap={getMap} gen={mapGen} ready={ready} initial={measureInit} snapData={measureSnap} onClose={closeMeasure} />}
 
-        {picked && !measuring && (
+        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} loadZoning={loadZoning} showMapZoning={showMapZoning} onClose={closeStreetView} />}
+
+        {picked && !measuring && !sv && (
           <aside className="vc-map-card" aria-label="Details">
             <div className="vc-map-card-head">
               <span className="vc-map-kind">
@@ -1464,7 +1505,7 @@ export default function MapPage() {
           </div>
         )}
       </div>
-      {projectsShown && !measuring && (
+      {projectsShown && !measuring && !sv && (
         <ProjectViewpoint.Provider value={projectViewpoint}>
           <MapProjects onShow={showProject} onClose={closeProjects} active={activeProject} wide={wide} leaving={projectsLeaving} startExpanded={openTall} />
         </ProjectViewpoint.Provider>
