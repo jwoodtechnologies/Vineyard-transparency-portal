@@ -80,7 +80,7 @@ FY27_PLAN = [
     {"id": 16, "gis": "Vineyard Connector Overpass Bridge", "items": [["rda", "Vineyard Connector promenade overpass (UDOT)", 2200000]]},
     {"id": 18, "gis": "Holdaway Road Complete Street Design & Survey", "items": [["general", "Holdaway Road bike boulevard study", 25000]]},
     {"id": 21, "gis": "Rail Consolidation", "items": [["rda", "Rail spur realignment: design and construction", 3500000]]},
-    {"id": 25, "gis": "Public Works Building Expansion & Improvements", "items": [["impact", "Public Works building improvements (25%)", 300000], ["water", "Public Works building improvements", 250000], ["wastewater", "Public Works building improvements", 250000], ["rda", "Public Works building improvements", 400000]]},
+    {"id": 25, "gis": "Public Works Building Expansion & Improvements", "items": [["impact", "Public Works building improvements (25%)", 300000], ["wastewater", "Public Works building improvements", 250000], ["water", "Public Works building improvements", 250000], ["rda", "Public Works building improvements", 400000]]},
     {"id": 28, "gis": "Slide Hill at Grove Park", "items": [["general", "Finish construction of Slide Hill at Grove Park", 64959]]},
     {"id": 29, "gis": "Engineering for Field (Gammon Park / Robin's Property)", "items": [["general", "Master plan design of the Robin’s property", 50000]]},
     {"id": 31, "gis": "Skate Park & Pump Track", "items": [["rap", "Skate park near Vineyard City Hall (RAP tax and UORG grant)", 1420000]]},
