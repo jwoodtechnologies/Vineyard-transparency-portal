@@ -699,7 +699,7 @@ export default function MapPage() {
     const create = (style: maplibregl.StyleSpecification) => {
       if (cancelled || !box.current) return;
       const point = pointRef.current;
-      const m = new maplibregl.Map({ container: box.current, style, maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 19, minZoom: 10,
+      const m = new maplibregl.Map({ container: box.current, style, maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 21, minZoom: 10,
         // Simple movement: one finger pans, pinch and double tap zoom, the wheel zooms; nothing rotates or tilts by accident.
         dragRotate: false, touchPitch: false, pitchWithRotate: false, cooperativeGestures: false });
       m.touchZoomRotate.disableRotation();
@@ -1425,7 +1425,7 @@ function mapPoint(params: URLSearchParams): { lat: number; lng: number; zoom: nu
   // Utah County and around: anything else is a mistyped link, and the map opens on the city instead.
   if (lat < 39 || lat > 41.5 || lng < -113 || lng > -110.5) return null;
   const z = Number(params.get('z'));
-  return { lat, lng, zoom: Number.isFinite(z) && z > 0 ? Math.max(10, Math.min(19, z)) : 17, label: params.get('label')?.slice(0, 120) || null };
+  return { lat, lng, zoom: Number.isFinite(z) && z > 0 ? Math.max(10, Math.min(21, z)) : 17, label: params.get('label')?.slice(0, 120) || null };
 }
 
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
