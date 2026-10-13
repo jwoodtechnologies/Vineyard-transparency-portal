@@ -1,5 +1,5 @@
 /**
- * /budget : the fiscal 2027 budget made readable. Five views:
+ * /budget : the city's current budget made readable. Five views:
  *   Spending       every $100 of General Fund spending as 100 squares or a donut, tap a color to open its departments;
  *                  then each fund's own budget as a table (never summed into an all-funds total)
  *   Revenue        the same for revenue, with taxes shown apart from fees, grants and money moved between funds
@@ -21,7 +21,7 @@ import { useJson } from './api';
 import { CsvButton } from './CsvButton';
 import { csvName } from './csv';
 import { ProjectDetail } from './ProjectDetail';
-import { money, pct, short, swatch, treemap, type Budget, type BudgetLine, type Project } from './budget';
+import { fyShort, fySpan, isAmended, money, pct, short, swatch, treemap, type Budget, type BudgetLine, type Project } from './budget';
 import { formatDate } from '@/lib/dates';
 import { setHead } from '@/lib/head';
 import { ErrorNote } from './ErrorNote';
@@ -59,7 +59,7 @@ function FundList({ b }: { b: Budget }) {
         <thead>
           <tr>
             <th>Fund</th>
-            <th>FY2027</th>
+            <th>FY{b.fiscalYear}</th>
           </tr>
         </thead>
         <tbody>
@@ -71,7 +71,7 @@ function FundList({ b }: { b: Budget }) {
           ))}
         </tbody>
       </table>
-      <p className="vc-bud-fine">Budgeted revenue with prior-year fund balance. FY 27 budget book, page 3.</p>
+      <p className="vc-bud-fine">Budgeted revenue with prior-year fund balance. {fyShort(b)} budget book.</p>
     </Numbers>
   );
 }
@@ -172,7 +172,7 @@ function RevenueTab({ b }: { b: Budget }) {
           <thead>
             <tr>
               <th>Source</th>
-              <th>FY2027</th>
+              <th>FY{b.fiscalYear}</th>
             </tr>
           </thead>
           <tbody>
@@ -356,12 +356,29 @@ export default function BudgetPage() {
   const lastYear = useMemo(() => (b ? b.departments.filter((d) => d.prior > d.amended) : []), [b]);
   const cutDepts = lastYear.length;
   const cutTotal = lastYear.reduce((t, d) => t + (d.prior - d.amended), 0);
+  // The cut cards that apply to this budget: the amendment's, the one since the tentative budget, and the one from last year.
+  const cuts: Array<{ label: string; value: string; note: string }> = [];
+  if (b) {
+    if (isAmended(b) && b.general.cutByAmendment > 0) cuts.push({ label: 'Cut by the amendment', value: short(b.general.cutByAmendment), note: [b.amendmentOrdinance, longDay(b.amended)].filter(Boolean).join(', ') });
+    if (b.general.tentativeTotal > b.general.amended.total) {
+      cuts.push({
+        label: 'Cut since tentative',
+        value: short(b.general.tentativeTotal - b.general.amended.total),
+        note: `from ${short(b.general.tentativeTotal)}${b.tentativeDate ? ` on ${longDay(b.tentativeDate)}` : ''}`,
+      });
+    }
+    if (cutDepts > 0) cuts.push({ label: `Cut from fiscal ${b.fiscalYear - 1}`, value: short(cutTotal), note: `${cutDepts} department${cutDepts === 1 ? '' : 's'}` });
+  }
 
   return (
     <Frame wide>
       <header className="vc-page-head">
         <h1 className="vc-page-title">Budget</h1>
-        {tab !== 'past' && <p className="vc-page-sub">FY 2027 · July 1, 2026 to June 30, 2027</p>}
+        {tab !== 'past' && b && (
+          <p className="vc-page-sub">
+            FY {b.fiscalYear} · July 1, {b.fiscalYear - 1} to June 30, {b.fiscalYear}
+          </p>
+        )}
         {tab !== 'past' && b?.adoptionOrdinance && (
           <p className="vc-page-sub">
             Adopted {longDay(b.adopted)} by{' '}
@@ -408,26 +425,26 @@ export default function BudgetPage() {
                 <i data-k="left" style={{ flexGrow: Math.max(b.general.amended.surplus, b.general.revenueTotal * 0.015) }} />
               </div>
               <p className="vc-bud-cap">
-                General Fund, as amended {longDay(b.amended)}
-                {b.amendmentOrdinance ? ` by ${b.amendmentOrdinance}` : ''}.
+                {isAmended(b) ? (
+                  <>
+                    General Fund, as amended {longDay(b.amended)}
+                    {b.amendmentOrdinance ? ` by ${b.amendmentOrdinance}` : ''}.
+                  </>
+                ) : (
+                  <>General Fund, as adopted {longDay(b.adopted)}.</>
+                )}
               </p>
-              <div className="vc-bud-hero vc-bud-cuts">
-                <div data-k="cut">
-                  <span>Cut by the amendment</span>
-                  <b>{short(b.general.cutByAmendment)}</b>
-                  <em>{[b.amendmentOrdinance, longDay(b.amended)].filter(Boolean).join(', ')}</em>
+              {cuts.length > 0 && (
+                <div className="vc-bud-hero vc-bud-cuts" style={{ gridTemplateColumns: `repeat(${cuts.length}, minmax(0, 1fr))` }}>
+                  {cuts.map((c) => (
+                    <div key={c.label} data-k="cut">
+                      <span>{c.label}</span>
+                      <b>{c.value}</b>
+                      <em>{c.note}</em>
+                    </div>
+                  ))}
                 </div>
-                <div data-k="cut">
-                  <span>Cut since tentative</span>
-                  <b>{short(b.general.tentativeTotal - b.general.amended.total)}</b>
-                  <em>from {short(b.general.tentativeTotal)} on May 12, 2026</em>
-                </div>
-                <div data-k="cut">
-                  <span>Cut from fiscal 2026</span>
-                  <b>{short(cutTotal)}</b>
-                  <em>{cutDepts} departments</em>
-                </div>
-              </div>
+              )}
               {b.newer.length > 0 && (
                 <p className="vc-bud-cap">
                   Newer paper posted, not included yet:{' '}
@@ -460,31 +477,35 @@ export default function BudgetPage() {
                 {tab === 'sales' && <SalesTaxSources />}
                 <li>
                   <Link to={docHref(b.docs.book)}>
-                    <FileText size={13} /> FY 27 Final Budget (PDF)
+                    <FileText size={13} /> {fyShort(b)} Final Budget (PDF)
                   </Link>
                 </li>
                 {b.adoptionOrdinance && b.adoptionOrdinanceDoc && (
                   <li>
                     <Link to={docHref(b.adoptionOrdinanceDoc)}>
-                      <FileText size={13} /> {b.adoptionOrdinance}, Final Budget for FY 2026-2027 (PDF)
+                      <FileText size={13} /> {b.adoptionOrdinance}, Final Budget for {fySpan(b)} (PDF)
                     </Link>
                   </li>
                 )}
                 <li>
                   <Link to={docHref(b.docs.slides)}>
-                    <FileText size={13} /> FY 27 Budget slides (PDF)
+                    <FileText size={13} /> {fyShort(b)} Budget slides (PDF)
                   </Link>
                 </li>
-                <li>
-                  <Link to={docHref(b.docs.tentative)}>
-                    <FileText size={13} /> FY 27 Tentative Budget, May 2026 (PDF)
-                  </Link>
-                </li>
-                <li>
-                  <Link to={docHref(b.docs.amendment)}>
-                    <FileText size={13} /> FY 27 First Budget Amendment, {longDay(b.amended)} (PDF)
-                  </Link>
-                </li>
+                {b.docs.tentative && (
+                  <li>
+                    <Link to={docHref(b.docs.tentative)}>
+                      <FileText size={13} /> {fyShort(b)} Tentative Budget{b.tentativeDate ? `, ${longDay(b.tentativeDate)}` : ''} (PDF)
+                    </Link>
+                  </li>
+                )}
+                {b.docs.amendment && isAmended(b) && (
+                  <li>
+                    <Link to={docHref(b.docs.amendment)}>
+                      <FileText size={13} /> {fyShort(b)} {b.amendmentName ?? 'Budget Amendment'}, {longDay(b.amended)} (PDF)
+                    </Link>
+                  </li>
+                )}
                 <li>
                   <Link to="/budget?view=past">Earlier years: past budgets</Link>
                 </li>

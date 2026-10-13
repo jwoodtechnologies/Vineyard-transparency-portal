@@ -17,6 +17,8 @@ export interface ProjectDetailData {
   key: string;
   name: string;
   budget: {
+    /** The fiscal year of the budget these lines are from; absent from an older cached response. */
+    fiscalYear?: number;
     total: number;
     adopted: string;
     documentId: string;

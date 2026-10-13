@@ -38,6 +38,10 @@ export interface Budget {
   amended: string;
   /** The ordinance that adopted the amendment, e.g. "Ordinance 2026-10". */
   amendmentOrdinance: string;
+  /** What the latest amendment is called, e.g. "First Budget Amendment"; absent from an older cached response. */
+  amendmentName?: string;
+  /** The day the council saw the tentative budget; empty when none. */
+  tentativeDate?: string;
   /** The ordinance that adopted the budget ("Ordinance 2026-08") and its document; absent from an older cached response. */
   adoptionOrdinance?: string;
   adoptionOrdinanceDoc?: string;
@@ -220,3 +224,10 @@ export function fiscalYearOf(d: Pick<DocumentSummary, 'title' | 'date' | 'year' 
   }
   return ok(month >= 5 ? y + 1 : y);
 }
+
+/** "FY 27": the fiscal year as the city's budget documents write it. */
+export const fyShort = (b: Pick<Budget, 'fiscalYear'>) => `FY ${String(b.fiscalYear % 100).padStart(2, '0')}`;
+/** "FY 2026-2027". */
+export const fySpan = (b: Pick<Budget, 'fiscalYear'>) => `FY ${b.fiscalYear - 1}-${b.fiscalYear}`;
+/** True when the budget has been amended since it was adopted. */
+export const isAmended = (b: Pick<Budget, 'adopted' | 'amended'>) => b.amended > b.adopted;

@@ -58,7 +58,7 @@ export function ProjectDetail({ project, budget = 'full' }: { project: ProjectRe
     <div className="vc-pd">
       {budget === 'full' && b.lines.length > 0 && (
         <section className="vc-pd-sec" aria-label="Budget">
-          <h3 className="vc-pd-h">FY 2027 budget</h3>
+          <h3 className="vc-pd-h">FY {b.fiscalYear ?? 2027} budget</h3>
           {b.lines.length > 1 && <p className="vc-pd-total">{USD.format(b.total)}</p>}
           <ul className="vc-pd-lines">
             {b.lines.map((l) => (
@@ -94,7 +94,7 @@ export function ProjectDetail({ project, budget = 'full' }: { project: ProjectRe
             <>
               {' · '}
               <DocLink id={s.documentId} className="vc-pd-inline">
-                FY 27 Final Budget
+                FY {String((b.fiscalYear ?? 2027) % 100).padStart(2, '0')} Final Budget
               </DocLink>
             </>
           )}

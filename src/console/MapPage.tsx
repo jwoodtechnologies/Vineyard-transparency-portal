@@ -114,7 +114,12 @@ const LOOK: Record<string, Look> = {
   schools: { color: '#1c7ed6', kind: 'circle', radius: 7, label: 'Name', labelZoom: 12.5 },
   businesses: { color: '#e67700', kind: 'circle', radius: 4.5 },
   udot: { color: '#5c7cfa', kind: 'line', width: 4, label: 'pin_desc', labelZoom: 14 },
+  // Closures and notices staff place on the map: points, lines and areas in one layer, colored by kind.
+  alerts: { color: '#e03131', kind: 'line', by: 'Type', width: 5, radius: 8, label: 'Title', labelZoom: 12 },
 };
+
+/** The color of each kind of placed notice (the kinds are fixed, so a kind keeps its color whatever else is showing). */
+const ALERT_COLORS: Record<string, string> = { 'Road closure': '#e03131', Detour: '#1c7ed6', Construction: '#e8590c', Event: '#ae3ec9', Notice: '#495057' };
 
 /** Which property names a feature: used for search, the details card and "Ask about this". */
 const NAME_FIELD: Record<string, string[]> = {
@@ -140,6 +145,7 @@ const NAME_FIELD: Record<string, string[]> = {
   wayfinding: ['Description', 'Type'],
   boundary: ['NAME'],
   udot: ['pin_desc'],
+  alerts: ['Title'],
 };
 
 const LABEL: Record<string, string> = {
@@ -159,6 +165,7 @@ const LABEL: Record<string, string> = {
   Consultant: 'Consultant',
   ZONE: 'Zone',
   District: 'District',
+  More: 'More information',
   Ordinance: 'Ordinance',
   OrdinanceDate: 'Ordinance date',
   ACRES: 'Acres',
@@ -224,7 +231,7 @@ const LABEL: Record<string, string> = {
   planned_construction_year: 'Planned construction year (UDOT)',
 };
 
-const HIDE = new Set(['OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Length', '__c', '__label', '__src', '__loading', '__owner', 'CULDESAC', 'SITE_STATE']);
+const HIDE = new Set(['Budget_Year', 'OBJECTID', 'FID', 'GlobalID', 'Shape__Area', 'Shape__Length', '__c', '__label', '__src', '__loading', '__owner', 'CULDESAC', 'SITE_STATE']);
 
 /** Parcel outline colors: yellow on imagery and dark maps, violet on the light streets map. */
 const parcelLine = (dark: boolean) => (dark ? '#ffd400' : '#7048e8');
@@ -286,7 +293,7 @@ function nameOf(layer: string, p: Record<string, unknown>): string {
 
 /** What each color means, for layers colored by a field (zoning, land use). */
 const LEGENDS = new Map<string, Array<[string, string]>>();
-const LEGEND_TITLE: Record<string, string> = { zoning: 'Zoning', landuse: 'Future land use', evaczones: 'Evacuation zone', greenspace: 'Green space', watersedge: "Water's Edge district", rdaparcels: 'RDA', subdivisions: 'Neighborhood' };
+const LEGEND_TITLE: Record<string, string> = { alerts: 'Closures and notices', zoning: 'Zoning', landuse: 'Future land use', evaczones: 'Evacuation zone', greenspace: 'Green space', watersedge: "Water's Edge district", rdaparcels: 'RDA', subdivisions: 'Neighborhood' };
 function legendValue(v: string): string {
   return !v.trim() || /^null$/i.test(v) ? 'Not listed' : v;
 }
@@ -299,7 +306,7 @@ function colorize(layer: string, fc: FC): FC {
   const by = LOOK[layer]?.by;
   if (!by) return fc;
   const values = [...new Set(fc.features.map((f) => String(f.properties?.[by] ?? '')))].sort();
-  const idx = new Map(values.map((v, i) => [v, PALETTE[i % PALETTE.length]]));
+  const idx = new Map(values.map((v, i) => [v, layer === 'alerts' ? (ALERT_COLORS[v] ?? ALERT_COLORS.Notice) : PALETTE[i % PALETTE.length]]));
   LEGENDS.set(layer, values.map((v) => [v, idx.get(v) as string]));
   return { ...fc, features: fc.features.map((f) => ({ ...f, properties: { ...f.properties, __c: idx.get(String(f.properties?.[by] ?? '')) } })) };
 }
@@ -391,7 +398,9 @@ const PROJECT_CASING: Array<[number, number]> = [[11, 3.4], [14, 4.6], [17, 6.6]
 /** The parcel collection each map's source last took. */
 const parcelDrawn = new WeakMap<maplibregl.Map, FC>();
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda'];
-const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'alerts', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+const ALERT_WIDTH: Array<[number, number]> = [[11, 3], [14, 5], [17, 9]];
+const ALERT_CASING: Array<[number, number]> = [[11, 5.5], [14, 8], [17, 13]];
 
 /** Readable area names: "GENEVA PHASE 2-MEGAPLEX" becomes "Geneva Phase 2, Megaplex". */
 function areaName(v: unknown, key: string): string {
@@ -474,8 +483,9 @@ function askFor(p: { layer: string; name: string; props: Record<string, unknown>
   const name = p.name;
   switch (p.layer) {
     case 'projects': {
-      const bits = [v('Project_Phase') && `${v('Project_Phase')} phase`, v('FY27_Budget') && `fiscal 2027 budget ${v('FY27_Budget')}`].filter(Boolean).join(', ');
-      return `What is the current status, fiscal 2027 budget, funding and schedule of the ${name} capital project${bits ? ` (${bits})` : ''}, and what has the City Council decided about it?`;
+      const fiscal = Number(p.props.Budget_Year) || 2027;
+      const bits = [v('Project_Phase') && `${v('Project_Phase')} phase`, v('FY27_Budget') && `fiscal ${fiscal} budget ${v('FY27_Budget')}`].filter(Boolean).join(', ');
+      return `What is the current status, fiscal ${fiscal} budget, funding and schedule of the ${name} capital project${bits ? ` (${bits})` : ''}, and what has the City Council decided about it?`;
     }
     case 'roads':
       return `What capital projects, City Council decisions and plans involve ${name} in Vineyard?`;
@@ -920,6 +930,13 @@ export default function MapPage() {
           map.addLayer({ id: `${src}-fill`, type: 'fill', source: src, minzoom, paint: { 'fill-color': lc, 'fill-opacity': hover(0, 0.16) } }, before);
           map.addLayer({ id: `${src}-casing`, type: 'line', source: src, minzoom, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: casing(PARCEL_CASING) }, before);
           map.addLayer({ id: `${src}-line`, type: 'line', source: src, minzoom, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': lc, 'line-width': byZoom(PARCEL_WIDTH), 'line-opacity': 0.95 } }, before);
+        } else if (key === 'alerts') {
+          // Points, lines and areas in one source: each is drawn by its own shape, in the color of its kind.
+          const tone = ['coalesce', ['get', '__c'], look.color] as unknown as string;
+          map.addLayer({ id: `${src}-fill`, type: 'fill', source: src, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': tone, 'fill-opacity': hover(0.22, 0.4) } }, before);
+          map.addLayer({ id: `${src}-casing`, type: 'line', source: src, filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: casing(ALERT_CASING) }, before);
+          map.addLayer({ id: `${src}-line`, type: 'line', source: src, filter: ['!=', ['geometry-type'], 'Point'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': tone, 'line-width': byZoom(ALERT_WIDTH), 'line-opacity': 0.95 } }, before);
+          map.addLayer({ id: `${src}-circle`, type: 'circle', source: src, filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-color': tone, 'circle-radius': hover(look.radius ?? 8, (look.radius ?? 8) + 3), 'circle-stroke-color': dark ? '#0a0a0b' : '#ffffff', 'circle-stroke-width': 2.5 } });
         } else if (look.kind === 'fill') {
           map.addLayer({ id: `${src}-fill`, type: 'fill', source: src, minzoom, paint: { 'fill-color': color, 'fill-opacity': hover(look.opacity ?? 0.2, Math.min(0.6, (look.opacity ?? 0.2) + 0.25)) } }, before);
           // Capital projects: a bright edge on a dark casing, thicker when zoomed in.
@@ -959,7 +976,13 @@ export default function MapPage() {
         // exactly one label each (at their largest part), never one per tile or per piece.
         const areaLabels = look.kind === 'fill' && key !== 'boundary';
         if (look.label && map.getStyle().glyphs && areaLabels && !map.getSource(`${src}-pts`)) map.addSource(`${src}-pts`, { type: 'geojson', data: labelPoints(fc, look.label, key) });
-        if (look.label && map.getStyle().glyphs) {
+        if (key === 'alerts' && map.getStyle().glyphs) {
+          const text = { 'text-color': dark ? '#f5f5f6' : '#212529', 'text-halo-color': dark ? 'rgba(10,10,11,0.92)' : 'rgba(255,255,255,0.95)', 'text-halo-width': 1.8 };
+          const size = ['interpolate', ['linear'], ['zoom'], 12, 11, 16, 14] as unknown as number;
+          // A line is named once, along its middle; a point or an area, once, under or in it.
+          map.addLayer({ id: `${src}-linelabel`, type: 'symbol', source: src, minzoom: look.labelZoom ?? 12, filter: ['==', ['geometry-type'], 'LineString'], layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'Title'], 'text-font': ['Noto Sans Bold'], 'text-size': size, 'text-max-width': 9, 'text-padding': 4 }, paint: text });
+          map.addLayer({ id: `${src}-label`, type: 'symbol', source: src, minzoom: look.labelZoom ?? 12, filter: ['!=', ['geometry-type'], 'LineString'], layout: { 'text-field': ['get', 'Title'], 'text-font': ['Noto Sans Bold'], 'text-size': size, 'text-max-width': 9, 'text-padding': 4, 'text-offset': [0, 1.3], 'text-anchor': 'top' }, paint: text });
+        } else if (look.label && map.getStyle().glyphs) {
           map.addLayer({
             id: `${src}-label`,
             type: 'symbol',
@@ -995,7 +1018,7 @@ export default function MapPage() {
         }
       }
       const vis = on.has(key) || key === 'boundary' ? 'visible' : 'none';
-      for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`, `${src}-dash`, `${src}-circle`, `${src}-label`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+      for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`, `${src}-dash`, `${src}-circle`, `${src}-label`, `${src}-linelabel`]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
       // With the city-wide lines, the tiles draw from zoom 16; without them, from zoom 15.
       if (key === 'parcels') for (const id of [`${src}-fill`, `${src}-casing`, `${src}-line`]) if (map.getLayer(id)) map.setLayerZoomRange(id, linesOk ? FULL_ZOOM : (info.minZoom ?? 0), 24);
     }
@@ -1268,7 +1291,7 @@ export default function MapPage() {
                 <div className="vc-map-legend-body">
                   {shown.map((k) => {
                   const values = LOOK[k]?.by ? LEGENDS.get(k) : null;
-                  if (values && values.length > 1 && values.length <= 16)
+                  if (values && (values.length > 1 || k === 'alerts') && values.length <= 16)
                     return (
                       <div key={k}>
                         <p className="vc-map-legend-title">{LEGEND_TITLE[k] ?? name(k)}</p>
@@ -1302,7 +1325,7 @@ export default function MapPage() {
           <aside className="vc-map-card" aria-label="Details">
             <div className="vc-map-card-head">
               <span className="vc-map-kind">
-                <span className="vc-map-swatch" style={{ background: lookOf(picked.layer, dark)?.color }} /> {picked.label}
+                <span className="vc-map-swatch" style={{ background: (picked.layer === 'alerts' && typeof picked.props.__c === 'string' ? picked.props.__c : null) ?? lookOf(picked.layer, dark)?.color }} /> {picked.label}
               </span>
               <button type="button" className="vc-ghost" data-icon-only="true" onClick={() => (setPicked(null), setListActive(null), clearHighlight(mapRef.current))} aria-label="Close details">
                 <X size={17} />
@@ -1329,8 +1352,16 @@ export default function MapPage() {
                 .filter(([, v]) => v)
                 .map(([k, v]) => (
                   <div key={k} data-wide={String(v).length > 48}>
-                    <dt>{LABEL[k] ?? k.replace(/_/g, ' ')}</dt>
-                    <dd>{v}</dd>
+                    <dt>{k === 'FY27_Budget' ? `Budgeted for fiscal ${Number(picked.props.Budget_Year) || 2027}` : (LABEL[k] ?? k.replace(/_/g, ' '))}</dt>
+                    <dd>
+                      {picked.layer === 'alerts' && k === 'More' && /^https?:\/\//i.test(String(v)) ? (
+                        <a href={String(v)} target="_blank" rel="noopener noreferrer">
+                          Open the city page
+                        </a>
+                      ) : (
+                        v
+                      )}
+                    </dd>
                   </div>
                 ))}
               {picked.layer === 'parcels' && (() => {
@@ -1364,11 +1395,13 @@ export default function MapPage() {
             {picked.layer === 'projects' && typeof picked.props.Project_Name === 'string' && (
               <ProjectDetail key={picked.props.Project_Name} project={{ gis: picked.props.Project_Name }} budget="source" />
             )}
-            <div className="vc-map-card-actions">
-              <Link to={ask} className="vc-primary">
-                <MessageSquare size={15} strokeWidth={1.8} /> Ask about this
-              </Link>
-            </div>
+            {picked.layer !== 'alerts' && (
+              <div className="vc-map-card-actions">
+                <Link to={ask} className="vc-primary">
+                  <MessageSquare size={15} strokeWidth={1.8} /> Ask about this
+                </Link>
+              </div>
+            )}
           </aside>
         )}
 

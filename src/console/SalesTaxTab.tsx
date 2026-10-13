@@ -16,6 +16,9 @@ const amountOf = (b: Budget, name: string) => b.revenue.find((l) => l.name === n
 export default function SalesTaxTab({ b }: { b: Budget }) {
   const sales = amountOf(b, 'Sales tax');
   const history = b.history.find((h) => h.key === 'sales');
+  // The sentence about its rank is only said while the budget's own lines bear it out.
+  const ranked = [...b.revenue].sort((x, y) => y.amount - x.amount);
+  const secondToProperty = ranked[0]?.name === 'Property tax' && ranked[1]?.name === 'Sales tax';
 
   const rateSlices: Slice[] = RATE_GROUPS.map((g, slot) => {
     const parts = RATE_PARTS.filter((p) => p.group === g.key);
@@ -43,7 +46,7 @@ export default function SalesTaxTab({ b }: { b: Budget }) {
         <div data-k="spend">
           <span>Sales tax revenue</span>
           <b>{short(sales)}</b>
-          <em>FY27 budget</em>
+          <em>FY{String(b.fiscalYear % 100).padStart(2, '0')} budget</em>
         </div>
         <div data-k="cut">
           <span>Sales tax rate</span>
@@ -58,7 +61,7 @@ export default function SalesTaxTab({ b }: { b: Budget }) {
       </div>
 
       <p className="vc-bud-lede">
-        Sales tax is the city&apos;s second-largest source of money after property tax: {short(sales)} budgeted for fiscal 2027.
+        {secondToProperty ? "Sales tax is the city's second-largest source of money after property tax" : "Sales tax is one of the city's sources of money"}: {short(sales)} budgeted for fiscal {b.fiscalYear}.
       </p>
 
       <section className="vc-bud-sec">

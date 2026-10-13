@@ -195,7 +195,7 @@ export interface MapLayerInfo {
   key: string;
   label: string;
   group: 'Plans' | 'Land' | 'Streets' | 'Places' | 'Safety';
-  geometry: 'polygon' | 'line' | 'point';
+  geometry: 'polygon' | 'line' | 'point' | 'mixed';
   pages: number;
   on: boolean;
   minZoom: number | null;
