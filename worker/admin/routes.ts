@@ -9,6 +9,7 @@
  *    would exceed ARCHIVE_STORAGE_HARD_STOP_BYTES (never above ARCHIVE_STORAGE_CEILING_BYTES), or when one
  *    object exceeds ARCHIVE_MAX_LARGE_OBJECT_BYTES. Files over ARCHIVE_MAX_OBJECT_BYTES go up in parts (./multipart.ts).
  */
+import { ensureManual, unlocked } from '../lib/manual';
 import { e2eApprove, e2eCleanup, e2eState } from '../contrib/resident';
 import catalogSql from '../../migrations/catalog/0001_catalog.sql';
 import searchSql from '../../migrations/search/0001_search.sql';
@@ -121,7 +122,7 @@ async function mergeDuplicateMeetings(env: Env): Promise<{ dated: number; merged
   const db = env.CATALOG_DB;
   const repo = new SearchRepository(env);
   let dated = 0;
-  const undated = await db.prepare("SELECT id, title, search_shard FROM documents WHERE document_type IN ('minutes','agenda','agenda_packet') AND document_date IS NULL LIMIT 5000").all<{ id: string; title: string; search_shard: number | null }>();
+  const undated = await db.prepare("SELECT id, title, search_shard FROM documents WHERE document_type IN ('minutes','agenda','agenda_packet') AND document_date IS NULL AND manual_json IS NULL LIMIT 5000").all<{ id: string; title: string; search_shard: number | null }>();
   for (const d of undated.results ?? []) {
     const date = dateInTitle(d.title);
     if (!date) continue;
@@ -133,7 +134,7 @@ async function mergeDuplicateMeetings(env: Env): Promise<{ dated: number; merged
   let merged = 0;
   // Code site entries that were only a title (no minutes text, no file) are not records.
   const empties = await db
-    .prepare("SELECT id, search_shard FROM documents WHERE source_id = 'vineyard-municipal-code' AND mime_type LIKE 'text/html%' AND document_type IN ('minutes','resolution','ordinance') AND coalesce(file_size, 0) < 200 LIMIT 2000")
+    .prepare("SELECT id, search_shard FROM documents WHERE source_id = 'vineyard-municipal-code' AND mime_type LIKE 'text/html%' AND document_type IN ('minutes','resolution','ordinance') AND coalesce(file_size, 0) < 200 AND manual_json IS NULL LIMIT 2000")
     .all<{ id: string; search_shard: number | null }>();
   if ((empties.results ?? []).length || (groups.results ?? []).length) await ensureRedirects(env);
   for (const e of empties.results ?? []) {
@@ -176,7 +177,7 @@ async function fixRecordDates(env: Env): Promise<{ cleared: number; dated: numbe
   const db = env.CATALOG_DB;
   const repo = new SearchRepository(env);
   const scope = "source_id = 'vineyard-municipal-code' AND document_type IN ('resolution','ordinance')";
-  const c = await db.prepare(`UPDATE documents SET document_date = NULL WHERE ${scope} AND document_date LIKE '%-01-01'`).run();
+  const c = await db.prepare(`UPDATE documents SET document_date = NULL WHERE ${scope} AND document_date LIKE '%-01-01' AND manual_json IS NULL`).run();
   for (const [, sdb] of SearchRepository.boundShards(env)) await sdb.prepare(`UPDATE shard_documents SET document_date = NULL WHERE ${scope} AND document_date LIKE '%-01-01'`).run().catch(() => undefined);
   const rows = await db.prepare(`SELECT id, year, search_shard FROM documents WHERE ${scope} AND document_date IS NULL AND year IS NOT NULL AND search_shard IS NOT NULL ORDER BY random() LIMIT 300`).all<{ id: string; year: number; search_shard: number }>();
   let dated = 0;
@@ -209,7 +210,7 @@ async function fixRecordDates(env: Env): Promise<{ cleared: number; dated: numbe
   // City website files filed without a date get the one their title prints (newsletters, email
   // updates, notices), so "this year" questions find them.
   const undated = await db
-    .prepare("SELECT id, title, search_shard FROM documents WHERE source_id = 'vineyard-city-website' AND document_date IS NULL AND title IS NOT NULL LIMIT 1500")
+    .prepare("SELECT id, title, search_shard FROM documents WHERE source_id = 'vineyard-city-website' AND document_date IS NULL AND title IS NOT NULL AND manual_json IS NULL LIMIT 1500")
     .all<{ id: string; title: string; search_shard: number | null }>();
   let titled = 0;
   for (const d of undated.results ?? []) {
@@ -229,6 +230,7 @@ async function fixRecordDates(env: Env): Promise<{ cleared: number; dated: numbe
 }
 
 async function migrate(env: Env): Promise<Response> {
+  await ensureManual(env);
   const catalog = splitSql(catalogSql);
   const search = splitSql(searchSql);
   const r1 = await env.CATALOG_DB.batch(catalog.map((q) => env.CATALOG_DB.prepare(q)));
@@ -276,7 +278,7 @@ async function migrate(env: Env): Promise<Response> {
   // Agenda-item attachments (the draft minutes of an earlier meeting, staff reports) whose record was removed by an earlier
   // merge: queue them to be fetched and filed again, minutes first. The saved version stamp on each one is cleared as well,
   // because with it the source answers "not changed" and nothing would be filed.
-  const lostAttachments = `SELECT url_key FROM crawl_queue WHERE source_id = 'vineyard-civicclerk-meetings' AND url LIKE '%#attachment=%' AND document_id IS NOT NULL AND document_id NOT IN (SELECT id FROM documents)`;
+  const lostAttachments = `SELECT url_key FROM crawl_queue WHERE source_id = 'vineyard-civicclerk-meetings' AND url LIKE '%#attachment=%' AND document_id IS NOT NULL AND document_id NOT IN (SELECT id FROM documents) AND document_id NOT IN (SELECT document_id FROM document_holds)`;
   const restored = await env.CATALOG_DB
     .batch([
       env.CATALOG_DB.prepare(`UPDATE document_sources SET etag = NULL, last_modified = NULL WHERE canonical_key IN (${lostAttachments})`),
@@ -397,6 +399,7 @@ export async function upsertBodies(env: Env, body: Json, budget: Budget): Promis
 }
 
 export async function upsertMeetings(env: Env, body: Json, budget: Budget): Promise<Response> {
+  await ensureManual(env);
   const list = (Array.isArray(body.meetings) ? (body.meetings as Json[]) : []).filter((x) => idOk(x.id) && s(x.title) && idOk(x.sourceId)).slice(0, 100);
   const now = nowIso();
   const stmts: D1PreparedStatement[] = [];
@@ -408,10 +411,14 @@ export async function upsertMeetings(env: Env, body: Json, budget: Budget): Prom
            agenda_document_id, packet_document_id, minutes_document_id, minutes_status, source_id, source_url, external_id, media_json, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'not_available', ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET title = excluded.title, government_body_id = excluded.government_body_id, government_body_name = excluded.government_body_name,
-           meeting_type = excluded.meeting_type, meeting_date = excluded.meeting_date, start_time = excluded.start_time, location = excluded.location,
+           meeting_type = excluded.meeting_type,
+           -- What staff set by hand (a move, a new time or place, a cancellation) stays until they change it.
+           meeting_date = CASE WHEN ${unlocked('meeting_date', 'meetings')} THEN excluded.meeting_date ELSE meetings.meeting_date END,
+           start_time = CASE WHEN ${unlocked('start_time', 'meetings')} THEN excluded.start_time ELSE meetings.start_time END,
+           location = CASE WHEN ${unlocked('location', 'meetings')} THEN excluded.location ELSE meetings.location END,
            -- A meeting with a notice or file on record is confirmed, whatever the agenda portal's copy says.
            -- A meeting canceled by a cancellation notice on record stays canceled when the agenda portal still lists it.
-           status = CASE WHEN meetings.status = 'cancelled' AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = meetings.id AND lower(d.title) LIKE '%cancel%') THEN 'cancelled'
+           status = CASE WHEN NOT ${unlocked('status', 'meetings')} THEN meetings.status WHEN meetings.status = 'cancelled' AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = meetings.id AND lower(d.title) LIKE '%cancel%') THEN 'cancelled'
              WHEN excluded.status = 'unconfirmed' AND EXISTS (SELECT 1 FROM documents d WHERE d.meeting_id = meetings.id) THEN meetings.status ELSE excluded.status END,
            media_json = excluded.media_json, source_url = excluded.source_url, updated_at = excluded.updated_at
          WHERE meetings.title IS NOT excluded.title OR meetings.meeting_date IS NOT excluded.meeting_date OR meetings.start_time IS NOT excluded.start_time
@@ -535,6 +542,7 @@ async function retryErrors(env: Env, budget: Budget): Promise<Response> {
  * document, a new version of a known URL, a duplicate binary found at another URL, or unchanged.
  */
 export async function upsertDocument(env: Env, body: Json, budget: Budget): Promise<Response> {
+  await ensureManual(env);
   const d = (body.document ?? {}) as Json;
   const src = (body.source ?? {}) as Json;
   const canonicalKey = s(src.canonicalKey, 64);
@@ -581,6 +589,12 @@ export async function upsertDocument(env: Env, body: Json, budget: Budget): Prom
     known = null;
   }
   const id = `doc_${(await sha256Hex(`vtp:${canonicalKey}`)).slice(0, 16)}`;
+  // A record staff hid is never filed again, whichever link or copy of its file comes back.
+  const held = await db
+    .prepare('SELECT document_id FROM document_holds WHERE document_id = ? OR (? IS NOT NULL AND sha256 = ?) OR document_id IN (SELECT document_id FROM document_sources WHERE canonical_key = ?) LIMIT 1')
+    .bind(id, sha, sha, canonicalKey)
+    .first<{ document_id: string }>();
+  if (held) return json({ status: 'unchanged', held: true, documentId: held.document_id, shard: null, needsChunks: false, needsArchive: false, rowsWritten: 0 });
   if (!known) {
     // A record already filed under this file's own id (its source link having been lost) is that same record, not a new one;
     // whatever else was filed under it is read again, so the record holds this file's content alone.
@@ -609,8 +623,9 @@ export async function upsertDocument(env: Env, body: Json, budget: Budget): Prom
         sourceRow(),
         db
           .prepare(
-            `UPDATE documents SET last_seen_at = ?, original_available = 1, meeting_id = coalesce(meeting_id, ?), government_body_id = coalesce(government_body_id, ?),
-               government_body_name = coalesce(government_body_name, ?), document_date = coalesce(document_date, ?), year = coalesce(year, ?) WHERE id = ?`,
+            `UPDATE documents SET last_seen_at = ?, original_available = 1, meeting_id = CASE WHEN ${unlocked('meeting_id')} THEN coalesce(meeting_id, ?) ELSE meeting_id END, government_body_id = coalesce(government_body_id, ?),
+               government_body_name = coalesce(government_body_name, ?), document_date = CASE WHEN ${unlocked('document_date')} THEN coalesce(document_date, ?) ELSE document_date END,
+               year = CASE WHEN ${unlocked('document_date')} THEN coalesce(year, ?) ELSE year END WHERE id = ?`,
           )
           .bind(now, s(d.meetingId, 128), s(d.governmentBodyId, 128), s(d.governmentBodyName, 200), s(d.documentDate, 10), n(d.year), known.id),
       ]);
@@ -631,7 +646,8 @@ export async function upsertDocument(env: Env, body: Json, budget: Budget): Prom
         .prepare(
           `UPDATE documents SET sha256 = ?, file_size = ?, page_count = ?, current_version = ?, archive_key = NULL, archive_status = 'not_archived', archived_at = NULL,
              text_status = ?, ocr_status = ?, updated_at = ?, last_seen_at = ?, mime_type = ?, original_url = ?,
-             title = ?, document_date = coalesce(?, document_date), year = coalesce(?, year), currency = coalesce(?, currency) WHERE id = ?`,
+             title = CASE WHEN ${unlocked('title')} THEN ? ELSE title END, document_date = CASE WHEN ${unlocked('document_date')} THEN coalesce(?, document_date) ELSE document_date END,
+             year = CASE WHEN ${unlocked('document_date')} THEN coalesce(?, year) ELSE year END, currency = coalesce(?, currency) WHERE id = ?`,
         )
         .bind(sha, n(d.fileSize), n(d.pageCount), version, s(d.textStatus, 20) ?? 'pending', s(d.ocrStatus, 20) ?? 'not_required', now, now, s(d.mimeType, 100) ?? known.mime_type, sourceUrl, title, s(d.documentDate, 10), n(d.year), s(d.currency, 20), known.id),
       sourceRow(),
@@ -659,7 +675,7 @@ export async function upsertDocument(env: Env, body: Json, budget: Budget): Prom
       .first<Json>();
     if (same) {
       docIdCache.id = String(same.id);
-      const r = await db.batch([sourceRow(), db.prepare('UPDATE documents SET last_seen_at = ?, meeting_id = coalesce(meeting_id, ?) WHERE id = ?').bind(now, s(d.meetingId, 128), same.id)]);
+      const r = await db.batch([sourceRow(), db.prepare(`UPDATE documents SET last_seen_at = ?, meeting_id = CASE WHEN ${unlocked('meeting_id')} THEN coalesce(meeting_id, ?) ELSE meeting_id END WHERE id = ?`).bind(now, s(d.meetingId, 128), same.id)]);
       const rows = sum(r);
       await budget.record(rows);
       return json({ status: 'duplicate', documentId: same.id, shard: same.search_shard, needsChunks: false, needsArchive: false, rowsWritten: rows });
@@ -675,7 +691,7 @@ export async function upsertDocument(env: Env, body: Json, budget: Budget): Prom
       docIdCache.id = String(dup.id);
       const r = await db.batch([
         sourceRow(),
-        db.prepare('UPDATE documents SET last_seen_at = ?, meeting_id = coalesce(meeting_id, ?), government_body_id = coalesce(government_body_id, ?), government_body_name = coalesce(government_body_name, ?) WHERE id = ?').bind(now, s(d.meetingId, 128), s(d.governmentBodyId, 128), s(d.governmentBodyName, 200), dup.id),
+        db.prepare(`UPDATE documents SET last_seen_at = ?, meeting_id = CASE WHEN ${unlocked('meeting_id')} THEN coalesce(meeting_id, ?) ELSE meeting_id END, government_body_id = coalesce(government_body_id, ?), government_body_name = coalesce(government_body_name, ?) WHERE id = ?`).bind(now, s(d.meetingId, 128), s(d.governmentBodyId, 128), s(d.governmentBodyName, 200), dup.id),
       ]);
       const rows = sum(r);
       await budget.record(rows);
