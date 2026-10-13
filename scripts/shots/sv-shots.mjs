@@ -57,7 +57,7 @@ for (const prof of PROFILES) {
       });
       const page = await ctx.newPage();
       const notes = [];
-      page.on('console', (m) => /Content Security Policy|Refused to/.test(m.text()) && notes.push(redact(m.text()).slice(0, 300)));
+      page.on('console', (m) => /Content Security Policy|Refused to|Street photo/.test(m.text()) && !/cloudflareinsights/.test(m.text()) && notes.push(redact(m.text()).slice(0, 300)));
       page.on('pageerror', (e) => notes.push(redact('pageerror: ' + e.message)));
       const tag = `${prof.name}-${kind}${dark ? '-dark' : ''}`;
       try {

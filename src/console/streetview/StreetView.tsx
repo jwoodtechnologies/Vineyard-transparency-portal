@@ -24,7 +24,8 @@ class ViewerBoundary extends Component<{ onError: () => void; children: ReactNod
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidCatch() {
+  componentDidCatch(error: unknown) {
+    console.warn('Street photo viewer failed:', error instanceof Error ? error.message : error);
     this.props.onError();
   }
   render() {
