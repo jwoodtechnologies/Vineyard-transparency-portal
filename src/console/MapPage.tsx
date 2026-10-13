@@ -18,7 +18,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 maplibregl.setWorkerUrl(workerUrl);
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, Crosshair, Layers, MessageSquare, Search, X } from 'lucide-react';
+import { ChevronDown, Crosshair, Layers, MessageSquare, Ruler, Search, X } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
@@ -32,6 +32,8 @@ import { FULL_ZOOM, levelFor, LINES_MIN_ZOOM, loadLines, MID_ZOOM, tapLooksUpPar
 import { formatDate } from '@/lib/dates';
 import { ProjectViewpoint, viewpointFor, type Pos } from './streetView';
 import { StreetViewLink } from './StreetViewLink';
+import { MeasureTool } from './measure/MeasureTool';
+import { decodeShape } from './measure/shape';
 import { setHead } from '@/lib/head';
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
@@ -563,6 +565,13 @@ export default function MapPage() {
   const quietFocus = useRef(false);
   const layersBtn = useRef<HTMLButtonElement>(null);
   const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820);
+  // The Measure tool (src/console/measure): open from its button or a ?m= link; map taps measure while it is open.
+  const [measureInit] = useState(() => decodeShape(params.get('m')));
+  const [measuring, setMeasuring] = useState(() => Boolean(measureInit));
+  const measuringRef = useRef(measuring);
+  useEffect(() => {
+    measuringRef.current = measuring;
+  }, [measuring]);
   // The legend starts folded on phones so it never sits on top of the zoom buttons.
   const [legendOpen, setLegendOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 640);
   // Set when a color-coded layer is turned on: the legend opens with a short highlight.
@@ -745,6 +754,7 @@ export default function MapPage() {
       });
       // One click handler for every layer: the topmost feature under the pointer wins.
       m.on('click', (e) => {
+        if (measuringRef.current) return;
         if (window.innerWidth <= 820) setPanel(false);
         const ids = (m.getStyle().layers ?? []).map((l) => l.id).filter((id) => /^vtp-(?!pick|boundary|mask)[a-z]+-(fill|line|dash|circle)$/.test(id) && m.getLayoutProperty(id, 'visibility') !== 'none');
         const hits = m.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]], { layers: ids });
@@ -1182,13 +1192,34 @@ export default function MapPage() {
       { replace: true },
     );
   }, [setParams]);
+  const getMap = useCallback(() => mapRef.current, []);
+  const measureSnap = useCallback(() => ({ parcels: data.parcels ?? mergedParcels(), roads: data.roads ?? null }), [data]);
+  const startMeasure = () => {
+    setPicked(null);
+    setListActive(null);
+    clearHighlight(mapRef.current);
+    if (window.innerWidth <= 820) setPanel(false);
+    setMeasuring(true);
+  };
+  const closeMeasure = useCallback(() => {
+    setMeasuring(false);
+    setParams(
+      (cur) => {
+        if (!cur.has('m')) return cur;
+        const next = new URLSearchParams(cur);
+        next.delete('m');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setParams]);
   const activeProject = picked ? (picked.layer === 'projects' && typeof picked.props.Project_Name === 'string' ? picked.props.Project_Name : null) : listActive;
 
   return (
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
       <div className="vc-map-shell" data-projects={projectsShown ? (wide ? 'side' : 'sheet') : undefined}>
-      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked)}>
+      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked) && !measuring} data-measure={measuring || undefined}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
         {!painted && (
           <div className="vc-map-loading" role="status">
@@ -1227,6 +1258,9 @@ export default function MapPage() {
           </button>
           <button type="button" className="vc-map-fab" data-icon-only="true" onClick={locate} aria-label="Show my location">
             <Crosshair size={17} strokeWidth={1.9} />
+          </button>
+          <button type="button" className="vc-map-fab" data-icon-only="true" data-on={measuring || undefined} onClick={() => (measuring ? closeMeasure() : startMeasure())} aria-pressed={measuring} aria-label="Measure" title="Measure">
+            <Ruler size={17} strokeWidth={1.9} />
           </button>
         </div>
 
@@ -1336,7 +1370,9 @@ export default function MapPage() {
           );
         })()}
 
-        {picked && (
+        {measuring && <MeasureTool getMap={getMap} gen={mapGen} ready={ready} initial={measureInit} snapData={measureSnap} onClose={closeMeasure} />}
+
+        {picked && !measuring && (
           <aside className="vc-map-card" aria-label="Details">
             <div className="vc-map-card-head">
               <span className="vc-map-kind">
@@ -1427,7 +1463,7 @@ export default function MapPage() {
           </div>
         )}
       </div>
-      {projectsShown && (
+      {projectsShown && !measuring && (
         <ProjectViewpoint.Provider value={projectViewpoint}>
           <MapProjects onShow={showProject} onClose={closeProjects} active={activeProject} wide={wide} leaving={projectsLeaving} startExpanded={openTall} />
         </ProjectViewpoint.Provider>
