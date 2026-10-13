@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { geodeticToEnu } from 'mapillary-js';
 import { destination, distance, type Pos } from '../src/console/measure/geo';
-import { bearingToPin, centerOnPin, coneRing, nearestPhoto, parsePhotos, photoSearchUrl, ringToLocal, turn, type Photo } from '../src/console/streetview/geo';
+import { bearingToPin, centerOnPin, coneRing, nearestPhoto, parsePhotos, photoSearchUrl, rankPhotos, ringToLocal, turn, type Photo } from '../src/console/streetview/geo';
 
 const PIN: Pos = [-111.7445, 40.305];
 /** A photo `m` meters from the pin in direction `from` (degrees from north). */
@@ -24,6 +24,10 @@ describe('nearest photo', () => {
     expect(nearestPhoto([away, toward], PIN)?.id).toBe('toward');
     // A 360 degree photo can always be turned, so the nearer one wins.
     expect(nearestPhoto([{ ...away, pano: true }, toward], PIN)?.id).toBe('away');
+  });
+
+  it('lists the others in order, to try when the best one does not load', () => {
+    expect(rankPhotos([photo('far', 45, 0), photo('near', 12, 90), photo('mid', 30, 180), photo('out', 80, 0)], PIN).map((p) => p.id)).toEqual(['near', 'mid', 'far']);
   });
 
   it('takes the newest of two photos at the same spot', () => {

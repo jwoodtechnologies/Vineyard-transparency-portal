@@ -11,7 +11,7 @@ import type * as maplibregl from 'maplibre-gl';
 import type { FeatureCollection, Geometry } from 'geojson';
 import { ExternalLink, Layers, X } from 'lucide-react';
 import { getJson } from '../api';
-import { googleStreetViewUrl, MAX_PHOTO_M, nearestPhoto, parsePhotos, photoSearchUrl, type Photo, type Pos } from './geo';
+import { googleStreetViewUrl, MAX_PHOTO_M, parsePhotos, photoSearchUrl, rankPhotos, type Photo, type Pos } from './geo';
 import { addSvLayers, drawSv, pinMarker, removeSvLayers, type Camera } from './mapDraw';
 import { addBuildings, enter3d, fly3d, leave3d, type Saved } from './threeD';
 import type { District } from './zoningRenderer';
@@ -93,6 +93,8 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
   const [pin, setPin] = useState<Pos | null>(start);
   const [phase, setPhase] = useState<Phase>(start ? 'search' : 'pick');
   const [photo, setPhoto] = useState<Photo | null>(null);
+  // The next nearest photos, tried in turn when one does not load (at most three in all).
+  const [spare, setSpare] = useState<Photo[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [why3d, setWhy3d] = useState<'none' | 'off' | 'error'>('none');
   const [districts, setDistricts] = useState<District[]>([]);
@@ -192,8 +194,10 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
       }
       try {
         const res = await fetch(photoSearchUrl(t, pin), { headers: { accept: 'application/json' } });
-        const found = res.ok ? nearestPhoto(parsePhotos(await res.json()), pin) : null;
+        const ranked = res.ok ? rankPhotos(parsePhotos(await res.json()), pin) : [];
+        const found = ranked[0] ?? null;
         if (stale) return;
+        setSpare(ranked.slice(1, 3));
         if (!res.ok) setWhy3d('error');
         else setWhy3d('none');
         setPhoto(found);
@@ -287,9 +291,15 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
   }, [onClose]);
 
   const onError = useCallback(() => {
+    if (spare.length) {
+      setPhoto(spare[0]);
+      setCamera({ pos: spare[0].pos, bearing: 0, fov: 0 });
+      setSpare(spare.slice(1));
+      return;
+    }
     setWhy3d('error');
     setPhase('3d');
-  }, []);
+  }, [spare]);
 
   const google = pin ? (
     <a className="vc-sv-bar-btn" href={googleStreetViewUrl(pin)} target="_blank" rel="noopener noreferrer" aria-label="Open in Google Street View (new tab)" title="Open in Google Street View">
@@ -318,7 +328,7 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
           {zoningToggle}
           {google}
         </div>
-        <ViewerBoundary onError={onError}>
+        <ViewerBoundary key={photo.id} onError={onError}>
           <Suspense fallback={<p className="vc-sv-loading">Loading the street photo.</p>}>
             <PhotoViewer token={token} photo={photo} pin={pin} districts={districts} parcel={parcel} showZoning={showZoning} onCamera={setCamera} onError={onError} />
           </Suspense>

@@ -142,12 +142,13 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     viewer.on('position', report);
     viewer.on('pov', report);
     viewer.on('fov', report);
-    // The viewer opens the photo from its imageId option; one that has not shown in 20 seconds counts as failed.
+    // The viewer opens the photo from its imageId option; one that has not shown in 12 seconds counts as failed
+    // (photos usually show in under 4).
     const watchdog = window.setTimeout(() => {
       if (gone || !first) return;
-      console.warn('Street photo could not be opened: no image after 20 seconds.');
+      console.warn('Street photo could not be opened: no image after 12 seconds.');
       cbs.current.onError();
-    }, 20000);
+    }, 12000);
     const ro = new ResizeObserver(() => viewer.resize());
     ro.observe(el);
     return () => {

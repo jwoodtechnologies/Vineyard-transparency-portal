@@ -71,15 +71,20 @@ export const bearingToPin = (photo: Photo, pin: Pos): number => bearing(photo.po
  * newest wins. Null when none is close enough.
  */
 export function nearestPhoto(photos: Photo[], pin: Pos, max = MAX_PHOTO_M): Photo | null {
-  let best: { p: Photo; score: number } | null = null;
+  return rankPhotos(photos, pin, max)[0] ?? null;
+}
+
+/** Every photo within `max` of the pin, best first by the same rule (the next ones are tried when one fails to load). */
+export function rankPhotos(photos: Photo[], pin: Pos, max = MAX_PHOTO_M): Photo[] {
+  const scored: Array<{ p: Photo; score: number }> = [];
   for (const p of photos) {
     const d = distance(p.pos, pin);
     if (d > max) continue;
     const away = !p.pano && p.compass != null && d > 3 && Math.abs(turn(p.compass, bearingToPin(p, pin))) > 60;
-    const score = d + (away ? 30 : 0);
-    if (!best || score < best.score - 0.01 || (Math.abs(score - best.score) <= 0.01 && (p.capturedAt ?? 0) > (best.p.capturedAt ?? 0))) best = { p, score };
+    scored.push({ p, score: d + (away ? 30 : 0) });
   }
-  return best?.p ?? null;
+  scored.sort((a, b) => (Math.abs(a.score - b.score) <= 0.01 ? (b.p.capturedAt ?? 0) - (a.p.capturedAt ?? 0) : a.score - b.score));
+  return scored.map((x) => x.p);
 }
 
 /**
