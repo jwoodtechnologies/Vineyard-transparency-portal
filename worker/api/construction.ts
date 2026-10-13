@@ -9,6 +9,8 @@ import { latestSnapshot, recentSnapshots, snapshotHtml, WATCHED_PAGES } from '..
 import { extractHtml } from '../sync/extract';
 import { categorize } from '../sync/urls';
 import { findGlance, type GlanceTable } from '../lib/glance';
+import { readContent } from '../lib/siteContent';
+import { mergeConstruction, type ConstructionContent } from '../../src/lib/constructionRows';
 
 export { findGlance, type GlanceTable };
 type Table = Parameters<typeof findGlance>[0][number];
@@ -78,9 +80,20 @@ export async function bestConstruction(env: Env): Promise<Parsed | null> {
   return rows.map(parseSnapshot).find(good) ?? null;
 }
 
+/** What staff corrected or added under Construction now; nothing when it cannot be read, so the city page still shows. */
+const staffWork = (env: Env): Promise<ConstructionContent | null> =>
+  readContent(env, 'construction')
+    .then((r) => (r?.value as ConstructionContent | undefined) ?? null)
+    .catch(() => null);
+
 export async function getConstruction(env: Env): Promise<Response> {
   const page = WATCHED_PAGES.find((p) => p.id === 'construction')!;
-  const [best, snap] = await Promise.all([bestConstruction(env), latestSnapshot(env, 'construction')]);
+  const [best, snap, mine] = await Promise.all([bestConstruction(env), latestSnapshot(env, 'construction'), staffWork(env)]);
+  const glance = mergeConstruction(best?.glance ?? null, mine);
+  if (!best && glance?.rows.length) {
+    // The city page has not been read yet, but staff have posted projects: those show on their own.
+    return json({ available: true, sourceUrl: page.url, asOf: null, lastCheckedAt: snap.lastCheckedAt, heading: null, glance, city: null, text: '', documents: [], versions: snap.versions }, { cache: 'public, max-age=60' });
+  }
   if (!best) {
     return json({ available: false, sourceUrl: page.url, lastCheckedAt: snap.lastCheckedAt }, { cache: 'public, max-age=60' });
   }
@@ -91,7 +104,9 @@ export async function getConstruction(env: Env): Promise<Response> {
       asOf: best.retrievedAt,
       lastCheckedAt: snap.lastCheckedAt,
       heading: best.heading,
-      glance: best.glance,
+      glance,
+      // The city's own table before staff changes, for the staff screen.
+      city: best.glance,
       text: best.text,
       documents: await withRecordIds(env, best.documents),
       versions: snap.versions,
