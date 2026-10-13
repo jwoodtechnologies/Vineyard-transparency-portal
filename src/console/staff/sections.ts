@@ -71,6 +71,15 @@ export const SECTIONS: Section[] = [
     Component: lazy(() => import('./Updates')),
   },
   { path: 'directory', label: 'Directory', blurb: 'Keep the Mayor and Council, city staff and board members up to date.', area: 'people', tile: true, Component: lazy(() => import('./Directory')) },
+  {
+    path: 'submissions',
+    label: 'Submissions',
+    tileTitle: 'Review submissions',
+    blurb: 'Approve or reject what residents sent, and hide or remove anything already public.',
+    area: 'submissions',
+    tile: true,
+    Component: lazy(() => import('./Submissions')),
+  },
   { path: 'people', label: 'Accounts', blurb: 'Add staff, choose what each person can edit, turn accounts off.', managers: true, tile: true, Component: lazy(() => import('./People')) },
   { path: 'activity', label: 'Activity', blurb: 'See every change and undo a mistake.', tile: true, managersTile: true, Component: lazy(() => import('./Activity')) },
 ];

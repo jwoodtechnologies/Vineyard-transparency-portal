@@ -14,6 +14,7 @@ const DOES: Record<string, string> = {
   budget: 'update the budget',
   notices: 'post notices, events and updates',
   site: 'edit site pages and links',
+  submissions: 'review resident submissions',
 };
 
 function sentence(parts: string[]): string {

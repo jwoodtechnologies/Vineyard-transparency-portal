@@ -123,5 +123,6 @@ export const AREA_NAME: Record<string, string> = {
   budget: 'Budget',
   notices: 'Events and notices',
   site: 'Site pages and links',
+  submissions: 'Resident submissions',
   accounts: 'Accounts',
 };

@@ -205,20 +205,20 @@ async function submission(env: Env, id: unknown): Promise<Record<string, unknown
 const isPending = (sub: Record<string, unknown>) => sub.status === 'pending';
 
 /** One-click removal: out of the catalog and search, and the file deleted. */
-export async function removeSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
+export async function removeSubmission(env: Env, id: unknown, by = 'by owner'): Promise<Record<string, unknown>> {
   const sub = await submission(env, id);
   if (sub.removed_at) return { ok: true };
   if (sub.document_id) await removeRecord(env, String(sub.document_id), 'resident');
   if (sub.file_key && env.ARCHIVE) await env.ARCHIVE.delete(String(sub.file_key)).catch(() => undefined);
   await env.CATALOG_DB.prepare('UPDATE resident_submissions SET removed_at = ? WHERE id = ?').bind(nowIso(), sub.id).run();
-  await log(env, 'remove', String(sub.id), null, 'by owner');
+  await log(env, 'remove', String(sub.id), null, by);
   return { ok: true };
 }
 
-export async function hideSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
+export async function hideSubmission(env: Env, id: unknown, by = 'by owner'): Promise<Record<string, unknown>> {
   const sub = await submission(env, id);
   if (isPending(sub)) throw badRequest('Approve or reject this item first.');
-  if (!sub.hidden_at && !sub.removed_at) await hide(env, sub, null, 'by owner');
+  if (!sub.hidden_at && !sub.removed_at) await hide(env, sub, null, by);
   return { ok: true };
 }
 
@@ -236,7 +236,7 @@ async function publish(env: Env, sub: Record<string, unknown>): Promise<{ docume
 }
 
 /** Puts a hidden item back (reports start again from zero). */
-export async function restoreSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
+export async function restoreSubmission(env: Env, id: unknown, by = 'by owner'): Promise<Record<string, unknown>> {
   const sub = await submission(env, id);
   if (isPending(sub)) throw badRequest('Approve or reject this item first.');
   if (sub.removed_at) throw badRequest('Removed items cannot be restored.');
@@ -247,7 +247,7 @@ export async function restoreSubmission(env: Env, id: unknown): Promise<Record<s
     env.CATALOG_DB.prepare('DELETE FROM resident_reports WHERE submission_id = ?').bind(sub.id),
   ]);
   await purgeCached(r.documentId);
-  await log(env, 'restore', String(sub.id), null, 'by owner');
+  await log(env, 'restore', String(sub.id), null, by);
   return { ok: true };
 }
 
@@ -275,14 +275,14 @@ export async function approveSubmission(env: Env, id: unknown, by = 'by owner'):
 }
 
 /** Owner rejection: the file and the row are deleted. Nothing was ever public. */
-export async function rejectSubmission(env: Env, id: unknown): Promise<Record<string, unknown>> {
+export async function rejectSubmission(env: Env, id: unknown, by = 'by owner'): Promise<Record<string, unknown>> {
   const sub = await pendingSubmission(env, id);
   if (sub.file_key && env.ARCHIVE) await env.ARCHIVE.delete(String(sub.file_key)).catch(() => undefined);
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('DELETE FROM resident_reports WHERE submission_id = ?').bind(sub.id),
     env.CATALOG_DB.prepare('DELETE FROM resident_submissions WHERE id = ?').bind(sub.id),
   ]);
-  await log(env, 'reject', String(sub.id), null, `by owner: ${String(sub.title)}`);
+  await log(env, 'reject', String(sub.id), null, `${by}: ${String(sub.title)}`);
   return { ok: true };
 }
 
@@ -306,10 +306,10 @@ export async function submissionFile(env: Env, id: unknown): Promise<Response> {
   });
 }
 
-export async function setSubmissionsOpen(env: Env, open: boolean): Promise<Record<string, unknown>> {
+export async function setSubmissionsOpen(env: Env, open: boolean, by = 'by owner'): Promise<Record<string, unknown>> {
   await ensureContribTables(env);
   await setSetting(env, 'submissions_open', open ? '1' : '0');
-  await log(env, open ? 'resume' : 'pause', null, null, 'by owner');
+  await log(env, open ? 'resume' : 'pause', null, null, by);
   return { ok: true, open };
 }
 

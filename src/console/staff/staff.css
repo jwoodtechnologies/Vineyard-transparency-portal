@@ -1340,3 +1340,8 @@
 .vs-testlink {
   margin: -0.35rem 0 1rem;
 }
+
+/* ---- resident submissions */
+.vs-sub-body {
+  white-space: pre-line;
+}

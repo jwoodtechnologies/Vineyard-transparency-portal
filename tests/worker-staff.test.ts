@@ -138,7 +138,7 @@ describe('first owner and sign-in', () => {
     const owner = await makeOwner();
     const state = await call('GET', '/state', undefined, { cookie: owner.cookie });
     expect(state.body.user).toMatchObject({ email: 'jacob@example.org', role: 'owner', name: 'Jacob Wood' });
-    expect(state.body.user.areas).toHaveLength(7);
+    expect(state.body.user.areas).toHaveLength(8);
     const again = await call('POST', '/bootstrap', { email: owner.email, password: 'a long panel password', pow: await pow() });
     expect(again.status).toBe(409);
     expect((await call('GET', '/state')).body.setupOpen).toBe(false);

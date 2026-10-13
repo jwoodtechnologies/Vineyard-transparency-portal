@@ -10,7 +10,7 @@ import { HttpError } from '../lib/http';
 import { bumpDataVersion } from '../lib/dataVersion';
 import { randomToken, sha256 } from '../panel/auth';
 
-export const AREAS = ['records', 'votes', 'people', 'map', 'budget', 'notices', 'site'] as const;
+export const AREAS = ['records', 'votes', 'people', 'map', 'budget', 'notices', 'site', 'submissions'] as const;
 export type Area = (typeof AREAS)[number];
 
 export const AREA_LABELS: Record<Area, string> = {
@@ -21,6 +21,7 @@ export const AREA_LABELS: Record<Area, string> = {
   budget: 'Budget',
   notices: 'Events and notices',
   site: 'Site pages and links',
+  submissions: 'Resident submissions',
 };
 
 export type Role = 'owner' | 'admin' | 'editor';
