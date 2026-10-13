@@ -54,6 +54,11 @@ excerpts, link texts, even file names — is **untrusted**:
   `base-uri 'self'`, `form-action 'self'`, `connect-src 'self'`, plus `nosniff`, `X-Frame-Options:
   DENY`, HSTS, COOP and a restrictive `Permissions-Policy`. `style-src` allows `'unsafe-inline'`
   (styles only). Details in [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md#security-headers-public_headers).
+  The map's street photo viewer (MapillaryJS) adds only the hosts it reads from: `connect-src`
+  `https://graph.mapillary.com` (image search and metadata), `https://tiles.mapillary.com` (coverage tiles) and
+  `https://*.xx.fbcdn.net` (Mapillary's image and mesh files), and `img-src https://*.xx.fbcdn.net`. Its token
+  is a Mapillary client token read from the Worker variable `MAPILLARY_TOKEN` (`GET /api/streetview/config`),
+  never stored in the repository.
 
 ## Crawler and ingest safety
 
