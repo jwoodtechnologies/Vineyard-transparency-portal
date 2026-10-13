@@ -1,10 +1,10 @@
 /**
  * Elevation along a distance line, from GET /api/map/elevation (the USGS point service through the
- * portal, at most 30 points a line): samples spaced evenly along the line, then gain, loss, low and high point.
+ * portal, at most 50 points a line): samples spaced evenly along the line, then gain, loss, low and high point.
  */
 import { along, pathLength, type Pos } from './geo';
 
-export const MAX_SAMPLES = 30;
+export const MAX_SAMPLES = 50;
 
 export interface ProfilePoint {
   /** Meters from the start of the line. */
@@ -23,11 +23,11 @@ export interface Profile {
   length: number;
 }
 
-/** Evenly spaced samples: about one every 25 meters, at least 2 and at most 30 (the server allows 50). */
+/** Evenly spaced samples: about one every 20 meters, at least 2 and at most 50. */
 export function samplePoints(pts: Pos[], closed: boolean): Pos[] {
   const path = closed && pts.length > 2 ? [...pts, pts[0]] : pts;
   if (path.length < 2) return [];
-  const n = Math.max(2, Math.min(MAX_SAMPLES, Math.ceil(pathLength(path) / 25) + 1));
+  const n = Math.max(2, Math.min(MAX_SAMPLES, Math.ceil(pathLength(path) / 20) + 1));
   return Array.from({ length: n }, (_, i) => along(path, i / (n - 1)));
 }
 
