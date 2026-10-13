@@ -392,7 +392,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
           <a href="https://www.mapillary.com" target="_blank" rel="noopener noreferrer">
             Mapillary
           </a>{' '}
-          contributors, CC BY-SA 4.0. Small map imagery: Utah County GIS and USGS. Zoning from Vineyard City Public GIS.
+          contributors, CC BY-SA 4.0.{wide ? '' : ' Small map imagery: Utah County GIS and USGS.'} Zoning from Vineyard City Public GIS.
         </p>
       </div>
     );
