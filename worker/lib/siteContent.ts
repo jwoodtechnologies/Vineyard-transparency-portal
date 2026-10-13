@@ -37,6 +37,7 @@ import {
   type ServiceLink,
   type ServicesContent,
 } from '../../src/lib/cityServices';
+import { WORK_ADDED_MAX, WORK_FIELDS, WORK_LIMITS, rowKey, type AddedWork, type ConstructionContent, type WorkFields } from '../../src/lib/constructionRows';
 import type { Area } from '../staff/core';
 
 export { PROJECT_CATEGORIES, type ProjectCategory };
@@ -361,10 +362,77 @@ function summarizeContacts(before: ContactsContent | null, after: ContactsConten
   return oneOrCount(changes, (n) => `Changed ${n} phone numbers and quick links`, 'Saved the phone numbers and quick links');
 }
 
+// ---- Construction now (the city's Construction Projects table, corrected and added to)
+
+const WORK_ID = /^c_[0-9a-f]{8,16}$/;
+const WORK_LABEL: Record<keyof WorkFields, string> = { where: 'Where', work: 'The work', status: 'Status', expected: 'Expected finish' };
+
+export function checkConstruction(v: unknown, lenient = false): ConstructionContent {
+  const o = asObject(v);
+  const editsIn = asObject(o.edits);
+  const edits = Object.create(null) as ConstructionContent['edits'];
+  for (const raw of Object.keys(editsIn).slice(0, 80)) {
+    const key = rowKey(raw);
+    if (!key) continue;
+    const e = asObject(editsIn[raw]);
+    const out: Partial<WorkFields> = {};
+    for (const f of WORK_FIELDS) if (typeof e[f] === 'string') out[f] = text(e[f], WORK_LIMITS[f], WORK_LABEL[f], lenient, f === 'work');
+    if (Object.keys(out).length) edits[key] = out;
+  }
+  let addedIn = Array.isArray(o.added) ? o.added : [];
+  if (addedIn.length > WORK_ADDED_MAX) {
+    if (!lenient) throw badRequest(`Keep added projects to ${WORK_ADDED_MAX} or fewer. Hide or remove finished ones first.`);
+    addedIn = addedIn.slice(0, WORK_ADDED_MAX);
+  }
+  const added: AddedWork[] = [];
+  const seen = new Set<string>();
+  for (const raw of addedIn) {
+    const a = asObject(raw);
+    const name = text(a.name, WORK_LIMITS.name, 'A project name', lenient, false);
+    if (!name) {
+      if (!lenient) throw badRequest('Give every added project a name.');
+      continue;
+    }
+    let id = typeof a.id === 'string' && WORK_ID.test(a.id) ? a.id : `c_${randomHex(5)}`;
+    if (seen.has(id)) id = `c_${randomHex(5)}`;
+    seen.add(id);
+    const row: AddedWork = { id, name, where: '', work: '', status: '', expected: '' };
+    for (const f of WORK_FIELDS) row[f] = text(a[f], WORK_LIMITS[f], WORK_LABEL[f], lenient, f === 'work');
+    added.push(row);
+  }
+  const ids = new Set(added.map((a) => a.id));
+  const hidden = [...new Set((Array.isArray(o.hidden) ? o.hidden : []).filter((x): x is string => typeof x === 'string').map((x) => (ids.has(x) ? x : rowKey(x))).filter(Boolean))].slice(0, 80);
+  return { edits, hidden, added };
+}
+
+function summarizeConstruction(before: ConstructionContent | null, after: ConstructionContent | null): string {
+  if (!after) return 'Put back the city page as it is for Construction now';
+  const changes: string[] = [];
+  const bAdded = new Map((before?.added ?? []).map((a) => [a.id, a]));
+  const aAdded = new Map(after.added.map((a) => [a.id, a]));
+  const nameOf = (k: string) => aAdded.get(k)?.name ?? bAdded.get(k)?.name ?? k;
+  for (const [id, a] of aAdded) {
+    const was = bAdded.get(id);
+    if (!was) changes.push(`Added "${a.name}" to Construction now`);
+    else if (JSON.stringify(was) !== JSON.stringify(a)) changes.push(`Changed "${a.name}" in Construction now`);
+  }
+  for (const [id, a] of bAdded) if (!aAdded.has(id)) changes.push(`Removed "${a.name}" from Construction now`);
+  for (const k of new Set([...Object.keys(before?.edits ?? {}), ...Object.keys(after.edits)])) {
+    if (JSON.stringify(before?.edits[k] ?? null) === JSON.stringify(after.edits[k] ?? null)) continue;
+    changes.push(after.edits[k] ? `Corrected "${nameOf(k)}" in Construction now` : `Put back the city's wording for "${nameOf(k)}"`);
+  }
+  const bh = new Set(before?.hidden ?? []);
+  const ah = new Set(after.hidden);
+  for (const k of ah) if (!bh.has(k)) changes.push(`Hid "${nameOf(k)}" from Construction now`);
+  for (const k of bh) if (!ah.has(k) && (aAdded.has(k) || !bAdded.has(k))) changes.push(`Showed "${nameOf(k)}" in Construction now again`);
+  return oneOrCount(changes, (n) => `Made ${n} changes to Construction now`, 'Saved Construction now');
+}
+
 const defineSpec = <T>(s: ContentSpec<T>): ContentSpec => s as unknown as ContentSpec;
 
 export const SPECS: Record<string, ContentSpec> = {
   projects: defineSpec<ProjectsContent>({ area: 'map', label: 'Map project descriptions', check: checkProjects, summarize: summarizeProjects }),
+  construction: defineSpec<ConstructionContent>({ area: 'map', label: 'Construction now', check: checkConstruction, summarize: summarizeConstruction }),
   services: defineSpec<ServicesContent>({ area: 'site', label: 'Service links', check: checkServices, summarize: summarizeServices }),
   contacts: defineSpec<ContactsContent>({ area: 'site', label: 'Phone numbers and quick links', check: checkContacts, summarize: summarizeContacts }),
 };
