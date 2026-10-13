@@ -564,9 +564,10 @@ export default function MapPage() {
   const [listActive, setListActive] = useState<string | null>(null);
   const quietFocus = useRef(false);
   const layersBtn = useRef<HTMLButtonElement>(null);
-  const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820);
   // The Measure tool (src/console/measure): open from its button or a ?m= link; map taps measure while it is open.
   const [measureInit] = useState(() => decodeShape(params.get('m')));
+  // A shared measurement opens with the layers panel closed, so nothing covers the shape.
+  const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820 && !measureInit);
   const [measuring, setMeasuring] = useState(() => Boolean(measureInit));
   const measuringRef = useRef(measuring);
   useEffect(() => {
