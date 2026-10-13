@@ -10,11 +10,28 @@ Everyone has their own named account. A department is only a label; what a perso
 - **Admin**: every area, and can add and manage editors.
 - **Editor**: only the areas they were given. Areas: records and meetings, votes, people and boards, map and projects, budget, events and notices (notices, events and updates), site pages and links.
 
-An owner or admin adds a person (name, email, department, role, areas). The portal shows a one-time sign-in link, valid for 7 days. The link carries its token after the `#`, so it never reaches a server log. The person opens it and chooses a passkey (fastest) or a password of at least 12 characters. Turning an account off signs it out at once. "Reset sign-in" removes every passkey, password and open session and makes a new link.
+An owner or admin adds a person (name, email, department, role, areas). The Accounts screen offers starting points so nobody has to tick boxes: **Social media specialist** (notices, events and updates only), **City recorder or clerk** (records, votes, people and boards) and **Finance** (budget), or "Choose the areas myself". A preset only fills in the department and areas, and both can still be changed before the account is created. The presets live in `src/console/staff/presets.ts`.
+
+The portal then shows a one-time sign-in link, valid for 7 days. The link carries its token after the `#`, so it never reaches a server log. Nothing is emailed: the administrator copies the link, copies it as a ready-made message, or opens it in their own email app. The person opens it and chooses a passkey (fastest) or a password of at least 12 characters, then saves their recovery codes. A link works once, and a link for a person who has already signed in is refused. Turning an account off signs it out at once, removes its recovery codes, and cannot be undone by any link; only an administrator can turn it back on. "Reset sign-in" removes every passkey, password, recovery code and open session and makes a new link.
+
+"Single use" accounts are limited ones: an editor with one area (the social media preset) can post notices, events and updates and cannot see or change anything else, and their sign-in link can be used only once.
 
 ## First owner
 
 While no staff owner exists, `/staff/setup` accepts the email and password of the existing private owner panel. That proves the person is the portal owner and opens the same account setup as any invited person. After the first owner exists, setup closes for good.
+
+Last resort if every owner is locked out and has lost their recovery codes: delete the owner row from `staff_users` in the D1 console. Setup opens again and the owner panel email and password prove who is asking.
+
+## Recovery without email
+
+The portal sends no email, so there is no emailed reset link and no email service to pay for or connect. Each person is given 8 recovery codes when they finish their account.
+
+- A code is 16 characters from an alphabet with no look-alike letters (about 79 bits), shown once, and stored only as a salted hash in `staff_recovery`.
+- On the sign-in page, "Lost your passkey or forgot your password?" opens `/staff/recover`. Email plus any unused code burns that code and opens the usual "set up a new sign-in" step, valid for 15 minutes. The old passkeys and password are removed only once the new sign-in is saved, and a fresh set of codes is issued.
+- Codes can be copied, downloaded or printed. People are asked to tick that they saved them before continuing.
+- Under Your account a person can make a new set at any time. It needs their current password, or a fresh passkey check if they have no password. A new set cancels the old one.
+- Someone with no codes left and no way in asks an owner or admin for "Reset sign-in", which makes a new link.
+- Recovery has its own attempt limits and the same proof of work as sign-in, and wrong email and wrong code give the same answer. The owner panel password cannot be used to recover a staff account.
 
 ## Sign-in protection
 
@@ -22,6 +39,7 @@ While no staff owner exists, `/staff/setup` accepts the email and password of th
 - A hidden field that people never see catches simple bots.
 - 8 failed attempts from one address, or 6 for one email, lock sign-in for 15 minutes. Wrong email and wrong password take the same time and give the same answer.
 - Sessions last 12 hours, are stored hashed, and are sent as an HttpOnly, Secure, SameSite=Strict cookie scoped to `/api/staff`. Every change request must come from the staff page itself.
+- If a session ends while someone is typing, a "Your session ended" box opens over the page. They sign in again there and what they typed is still on the page.
 
 ## Activity log
 
