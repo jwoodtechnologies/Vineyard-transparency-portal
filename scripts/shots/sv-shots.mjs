@@ -65,7 +65,7 @@ async function open(prof, spot, z, dark, extra = {}) {
   }, extra);
   const page = await ctx.newPage();
   const notes = [];
-  page.on('console', (m) => /Content Security Policy|Refused to|Street photo/.test(m.text()) && !/cloudflareinsights/.test(m.text()) && notes.push(redact(m.text()).slice(0, 300)));
+  page.on('console', (m) => /Content Security Policy|Refused to|Street photo|thumbnail/.test(m.text()) && !/cloudflareinsights/.test(m.text()) && notes.push(redact(m.text()).slice(0, 300)));
   page.on('pageerror', (e) => notes.push(redact('pageerror: ' + e.message)));
   await page.goto(`${BASE}/map?lat=${spot[1]}&lng=${spot[0]}&z=${z}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.vc-map canvas', { timeout: 20000 });
@@ -81,7 +81,7 @@ const touchTap = async (ctx, page, x, y, hold = 60) => {
   await page.waitForTimeout(hold);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 };
-const attribution = (page) => page.locator('.vc-svp .mapillary-attribution-container').textContent().catch(() => '');
+const attribution = (page) => page.getAttribute('.vc-svp-view', 'data-image').catch(() => '');
 
 for (const prof of PROFILES) {
   // 1) Find the street: the person dropped (desktop) or the button then a tap on a blue line (phone).

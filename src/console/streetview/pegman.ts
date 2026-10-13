@@ -48,12 +48,13 @@ export function usePersonDrag(button: RefObject<HTMLButtonElement | null>, getMa
     const down = (e: PointerEvent) => {
       if (e.button !== 0) return;
       start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      // Keep the pointer from the start: a quick drag leaves the button before the drag begins.
+      btn.setPointerCapture(e.pointerId);
     };
     const move = (e: PointerEvent) => {
       if (!start || e.pointerId !== start.id) return;
       if (!ghost) {
         if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < START_PX) return;
-        btn.setPointerCapture(e.pointerId);
         ghost = document.createElement('div');
         ghost.className = 'vc-pegman-ghost';
         ghost.innerHTML = PERSON_SVG;

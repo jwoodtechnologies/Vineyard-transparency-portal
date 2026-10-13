@@ -254,7 +254,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const current = dates.find((d) => d.photo.id === shown)?.day ?? (taken ? new Date(taken).toISOString().slice(0, 10) : '');
 
   return (
-    <div className="vc-svp-view" data-swapped={(wide && swapped) || undefined}>
+    <div className="vc-svp-view" data-swapped={(wide && swapped) || undefined} data-image={shown}>
       <div ref={box} className="vc-svp-canvas" role="img" aria-label="Street photo facing the pin. Drag to look around; use the arrows to move along the street." />
       {pinAt && <span className="vc-svp-pin" style={{ left: pinAt[0], top: pinAt[1] }} role="img" aria-label="The pin is here in the photo" />}
       <div className="vc-svp-when">

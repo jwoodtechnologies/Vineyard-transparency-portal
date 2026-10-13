@@ -174,6 +174,7 @@ export function useCoverage(getMap: () => maplibregl.Map | null, gen: number, re
         void mapillaryToken()
           .then((t) => (t ? thumbnail(t, photo.id) : null))
           .then((url) => {
+            if (!url) console.info('Street photo thumbnail: none for', photo.id);
             if (gone || last !== photo.id || !url) return;
             if (!tip.current) {
               const el = document.createElement('div');
@@ -198,7 +199,8 @@ export function useCoverage(getMap: () => maplibregl.Map | null, gen: number, re
     void mapillaryToken().then((t) => {
       if (gone || !t) return;
       addCoverage(map, t);
-      if (window.matchMedia?.('(hover: hover)').matches) {
+      // Mouse pointers only (a phone has no hover): the thumbnail on a line.
+      if (!window.matchMedia?.('(pointer: coarse)').matches) {
         map.on('mousemove', move);
         map.on('mouseout', leave);
       }

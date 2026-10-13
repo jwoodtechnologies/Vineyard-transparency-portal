@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef } from 'react';
 import * as maplibregl from 'maplibre-gl';
-import { blankStyle, streetsStyle } from '../mapBase';
+import { satelliteStyle } from '../mapBase';
 import { addCoverage, lineNear, photoNear } from './coverage';
 import type { Photo, Pos } from './geo';
 import { addSvLayers, drawSv, type Camera } from './mapDraw';
@@ -12,13 +12,14 @@ import { addSvLayers, drawSv, type Camera } from './mapDraw';
 interface Props {
   token: string;
   camera: Camera | null;
-  dark: boolean;
+  /** Kept for a future streets style; the small map uses the aerial photos in both themes. */
+  dark?: boolean;
   /** Larger (swapped with the photo on wider screens): the map follows the camera less tightly. */
   large: boolean;
   onPick: (photo: Photo | null, at: Pos) => void;
 }
 
-export function MiniMap({ token, camera, dark, large, onPick }: Props) {
+export function MiniMap({ token, camera, large, onPick }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const pick = useRef(onPick);
@@ -33,28 +34,27 @@ export function MiniMap({ token, camera, dark, large, onPick }: Props) {
     if (!el) return;
     let gone = false;
     let map: maplibregl.Map | null = null;
-    void streetsStyle(dark)
-      .catch(() => blankStyle(dark))
-      .then((style) => {
-        if (gone || !box.current) return;
-        const c = cam.current?.pos ?? [-111.745, 40.305];
-        map = new maplibregl.Map({ container: el, style, center: c, zoom: 17, attributionControl: false, dragRotate: false, pitchWithRotate: false, maxZoom: 19, minZoom: 12 });
-        map.touchZoomRotate.disableRotation();
-        map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-        mapRef.current = map;
-        map.on('load', () => {
-          if (!map) return;
-          addCoverage(map, token);
-          addSvLayers(map);
-          drawSv(map, cam.current, null);
-        });
-        map.on('click', (e) => {
-          if (!map) return;
-          const photo = photoNear(map, e.point, 24);
-          const line = photo ? null : lineNear(map, e.point, 16);
-          if (photo || line) pick.current(photo, photo ? photo.pos : line!.at);
-        });
+    // The county's aerial photos: ready at once (no style to fetch) and easy to match with the street photo.
+    void Promise.resolve(satelliteStyle()).then((style) => {
+      if (gone || !box.current) return;
+      const c = cam.current?.pos ?? [-111.745, 40.305];
+      map = new maplibregl.Map({ container: el, style, center: c, zoom: 17, attributionControl: false, dragRotate: false, pitchWithRotate: false, maxZoom: 19, minZoom: 12 });
+      map.touchZoomRotate.disableRotation();
+      map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+      mapRef.current = map;
+      map.on('load', () => {
+        if (!map) return;
+        addCoverage(map, token);
+        addSvLayers(map);
+        drawSv(map, cam.current, null);
       });
+      map.on('click', (e) => {
+        if (!map) return;
+        const photo = photoNear(map, e.point, 24);
+        const line = photo ? null : lineNear(map, e.point, 16);
+        if (photo || line) pick.current(photo, photo ? photo.pos : line!.at);
+      });
+    });
     const ro = new ResizeObserver(() => mapRef.current?.resize());
     ro.observe(el);
     return () => {
@@ -63,7 +63,7 @@ export function MiniMap({ token, camera, dark, large, onPick }: Props) {
       map?.remove();
       mapRef.current = null;
     };
-  }, [token, dark]);
+  }, [token]);
 
   // The cone follows the camera; the map keeps it in view.
   useEffect(() => {
