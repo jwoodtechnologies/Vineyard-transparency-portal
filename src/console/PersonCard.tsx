@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { getJson } from './api';
 import { ChevronRight, Mail, Phone, UserRound } from 'lucide-react';
 import { roleLine, type Person } from './people';
+import { useCityServices } from './useCityServices';
+import { cityHallPhone } from '@/lib/cityServices';
 
 export function PersonPhoto({ person, size = 56 }: { person: Person; size?: number }) {
   // A photo that fails to load falls back to the plain mark, never a broken image.
@@ -41,6 +43,7 @@ function useSince(slug: string, known?: number | null): number | null {
 
 export function PersonCard({ person, label }: { person: Person & { since?: number | null }; label?: string }) {
   const since = useSince(person.slug, person.since);
+  const { links } = useCityServices();
   return (
     <div className="vc-person-card" data-contact={label ? 'true' : undefined}>
       {label && <span className="vc-person-label">{label}</span>}
@@ -66,8 +69,8 @@ export function PersonCard({ person, label }: { person: Person & { since?: numbe
           )}
           {/* The city lists no direct line: City Hall's main number reaches them. */}
           {!person.email && !person.phone && person.current && (
-            <a href="tel:+18012261929">
-              <Phone size={13} /> City Hall 801-226-1929
+            <a href={links.cityHall.href}>
+              <Phone size={13} /> City Hall {cityHallPhone(links)}
             </a>
           )}
         </span>

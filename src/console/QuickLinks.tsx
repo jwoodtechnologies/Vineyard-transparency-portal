@@ -9,8 +9,10 @@ import { ArrowUpRight, ClipboardList, CreditCard, Mail, Map as MapIcon, Phone } 
 import type { ConsoleAnswer } from './types';
 import type { MapLayerInfo } from './api';
 import { getJson } from './api';
-import { LINKS, STAFF, type ServiceLink } from './services';
-import { DIRECTORY, directoryFor } from './directory';
+import { CITY_HALL, STAFF, type ServiceLink } from './services';
+import { directoryFor } from './directory';
+import { useCityServices } from './useCityServices';
+import type { DirectoryEntry, Links } from '@/lib/cityServices';
 import { dedupeCards, normalizeHref } from './cards';
 
 /** Keep in step with DATA_VERSION in MapPage so both read the same cached layer data. */
@@ -136,23 +138,26 @@ function mapBubbles(question: string, answerText: string, names: Names): Bubble[
   return out;
 }
 
-function serviceBubbles(question: string, hasCard = false): Bubble[] {
+function serviceBubbles(question: string, hasCard: boolean, links: Links, dir: DirectoryEntry[]): Bubble[] {
   const q = question;
   const out: Bubble[] = [];
-  const add = (l: ServiceLink, key: string) => out.push({ key, ...l });
-  if (/\b(code enforcement|violations?|complain\w*|report(ing)? (a |an )?(concern|problem|issue)|concerns?|nuisances?|weeds?|junk|graffiti|pot ?holes?|abandoned|illegal(ly)? park\w*|noise|noisy|loud|barking|trash (in|on)|overgrown|unsafe)\b/i.test(q)) add(LINKS.concern, 'concern');
-  if (/\b(street ?lights?|light (is )?out|lights? out)\b/i.test(q)) add(LINKS.streetlight, 'streetlight');
+  // A link staff hid is left out wherever it would have shown.
+  const add = (l: ServiceLink & { hidden?: boolean }, key: string) => {
+    if (!l.hidden) out.push({ key, label: l.label, hint: l.hint, href: l.href, kind: l.kind, internal: l.internal });
+  };
+  if (/\b(code enforcement|violations?|complain\w*|report(ing)? (a |an )?(concern|problem|issue)|concerns?|nuisances?|weeds?|junk|graffiti|pot ?holes?|abandoned|illegal(ly)? park\w*|noise|noisy|loud|barking|trash (in|on)|overgrown|unsafe)\b/i.test(q)) add(links.concern, 'concern');
+  if (/\b(street ?lights?|light (is )?out|lights? out)\b/i.test(q)) add(links.streetlight, 'streetlight');
   if (/\b(utilit(y|ies)|water bill|sewer|garbage|trash (service|pickup|can)|recycl|pay (my )?bill|bill pay|autopay|storm ?water fee)\b/i.test(q)) {
-    add(LINKS.payBill, 'pay');
-    add(LINKS.billing, 'billing');
-    if (/\b(start|new|set ?up|connect|moving in|move in)\b/i.test(q)) add(LINKS.startService, 'start');
-    if (/\b(stop|cancel|terminat|disconnect|moving out|move out)\b/i.test(q)) add(LINKS.stopService, 'stop');
+    add(links.payBill, 'pay');
+    add(links.billing, 'billing');
+    if (/\b(start|new|set ?up|connect|moving in|move in)\b/i.test(q)) add(links.startService, 'start');
+    if (/\b(stop|cancel|terminat|disconnect|moving out|move out)\b/i.test(q)) add(links.stopService, 'stop');
   }
-  if (/\b(permits?|inspections?|build(ing)? (a|an)|remodel|fence|shed|solar|adu)\b/i.test(q)) add(LINKS.permits, 'permits');
-  if (/\b(police|sheriff|non.?emergency|crime|suspicious)\b/i.test(q)) add(LINKS.police, 'police');
-  if (/\b(fire (department|station)|ems|ambulance)\b/i.test(q)) add(LINKS.fire, 'fire');
-  if (/\b(power outage|electric(ity)?|rocky mountain power)\b/i.test(q)) add(LINKS.power, 'power');
-  if (/\b(gas (leak|service)|natural gas|dominion|enbridge)\b/i.test(q)) add(LINKS.gas, 'gas');
+  if (/\b(permits?|inspections?|build(ing)? (a|an)|remodel|fence|shed|solar|adu)\b/i.test(q)) add(links.permits, 'permits');
+  if (/\b(police|sheriff|non.?emergency|crime|suspicious)\b/i.test(q)) add(links.police, 'police');
+  if (/\b(fire (department|station)|ems|ambulance)\b/i.test(q)) add(links.fire, 'fire');
+  if (/\b(power outage|electric(ity)?|rocky mountain power)\b/i.test(q)) add(links.power, 'power');
+  if (/\b(gas (leak|service)|natural gas|dominion|enbridge)\b/i.test(q)) add(links.gas, 'gas');
   if (/\b(budget|general fund|capital projects?|city spend\w*|tax revenue|property tax|sales tax|fiscal (year )?(20)?27|fy ?27)\b/i.test(q)) out.push({ key: 'budget', label: 'See the budget', hint: 'Fiscal year 2027, in pictures', href: '/budget', kind: 'page', internal: true });
 
   if (/\b(construction|road ?work|road closures?|lane closures?|detours?|chip ?seal\w*|pavement preservation|paving|repav\w*|what('?s| is) being built)\b/i.test(q) && !/\b(permits?|codes?|standards?|fees?|inspections?|licen[cs]es?|contractors?|bids?|rfp|jobs?|employ\w*|apply|zoning)\b/i.test(q)) {
@@ -160,21 +165,21 @@ function serviceBubbles(question: string, hasCard = false): Bubble[] {
   }
 
   // Every form, portal and report the city links from its Transparency Portal, when asked for.
-  for (const e of directoryFor(q)) if (!out.some((b) => b.href === e.href)) out.push({ key: `dir:${e.id}`, label: e.label, hint: e.hint, href: e.href, kind: e.kind });
+  for (const e of directoryFor(q, 4, dir)) if (!out.some((b) => b.href === e.href)) out.push({ key: `dir:${e.id}`, label: e.label, hint: e.hint, href: e.href, kind: e.kind });
 
   const contactish = /\b(contact|phone|call|email|reach|who (do|should) i|who is|who's|staff|city hall|office hours|hours|address)\b/i.test(q);
   // A staff card already shows who to contact: no second bubble for the same person.
   const people = hasCard ? [] : STAFF.filter((s) => s.match.test(q));
   for (const s of people.slice(0, 2)) {
     if (s.email) out.push({ key: `mail:${s.name}`, label: s.name, hint: `${s.title} · ${s.email}`, href: `mailto:${s.email}`, kind: 'mail' });
-    else if (s.phone && s.phone !== '801-226-1929') out.push({ key: `tel:${s.name}`, label: s.name, hint: `${s.title} · ${s.phone}`, href: `tel:+1${s.phone.replace(/\D/g, '')}`, kind: 'call' });
-    else out.push({ key: `staff:${s.name}`, label: s.name, hint: s.title, href: LINKS.cityHall.href, kind: 'call' });
+    else if (s.phone && s.phone !== CITY_HALL.phone) out.push({ key: `tel:${s.name}`, label: s.name, hint: `${s.title} · ${s.phone}`, href: `tel:+1${s.phone.replace(/\D/g, '')}`, kind: 'call' });
+    else out.push({ key: `staff:${s.name}`, label: s.name, hint: s.title, href: links.cityHall.href, kind: 'call' });
   }
   if (contactish || people.length || out.some((b) => b.key === 'concern' || b.key === 'billing')) {
-    if (!out.some((b) => b.href === LINKS.cityHall.href)) add(LINKS.cityHall, 'cityhall');
+    if (!out.some((b) => b.href === links.cityHall.href)) add(links.cityHall, 'cityhall');
     if (contactish) {
-      add(LINKS.contact, 'contact');
-      add(LINKS.staff, 'staff');
+      add(links.contact, 'contact');
+      add(links.staff, 'staff');
     }
   }
   return out;
@@ -189,7 +194,8 @@ function answerText(a: ConsoleAnswer): string {
 export function QuickLinks({ answer }: { answer: ConsoleAnswer }) {
   const question = answer.question ?? '';
   const text = answerText(answer);
-  const services = serviceBubbles(question, Boolean(answer.contact || answer.people?.length));
+  const { links, services: dir } = useCityServices();
+  const services = serviceBubbles(question, Boolean(answer.contact || answer.people?.length), links, dir);
   // Map bubbles only when the question is about a place: a road, project, park, area or "where".
   // Questions about votes, meetings, people, money or law get none, whatever the answer mentions.
   const wantsMap = answer.mode !== 'conversation' && (/\bmap\b|\bwhere\b|\blocated\b/i.test(question) || (MAPPY.test(question) && !NOT_MAP.test(question)) || new RegExp(NUM_ROAD.source, 'i').test(question));
@@ -210,9 +216,9 @@ export function QuickLinks({ answer }: { answer: ConsoleAnswer }) {
   // (with the official form one tap further), the staff directory opens People.
   const mapped = [...(answerMap.length ? [...maps, ...services] : [...services, ...maps])].map((b): Bubble => {
     if (b.internal || !b.href.startsWith('http')) return b;
-    if (b.href === LINKS.staff.href) return { ...b, href: '/people', internal: true };
+    if (b.href === links.staff.href) return { ...b, href: '/people', internal: true };
     // The city's own pages open inside the portal with the official form one tap further; a service run by someone else (the library, the bookmobile, permits, alerts) opens its official site straight away.
-    const entry = DIRECTORY.find((e) => e.href === b.href);
+    const entry = dir.find((e) => e.href === b.href);
     return entry && /^https:\/\/(www\.)?vineyardutah\.gov\//.test(entry.href) ? { ...b, href: `/services/${entry.id}`, internal: true } : b;
   });
   // One card per destination, and never two cards with the same title; the answer's own page card is not repeated.

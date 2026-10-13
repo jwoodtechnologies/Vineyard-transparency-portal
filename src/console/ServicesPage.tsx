@@ -4,20 +4,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, ChevronDown, ChevronRight, ClipboardList, CreditCard, Map as MapIcon, Phone, Search } from 'lucide-react';
 import { Frame } from './Chrome';
 import { Link } from 'react-router-dom';
-import { DIRECTORY, DIRECTORY_GROUPS } from './directory';
+import { DIRECTORY_GROUPS } from './directory';
+import { useCityServices } from './useCityServices';
 import { setHead } from '@/lib/head';
 
 const ICON = { form: ClipboardList, pay: CreditCard, call: Phone, mail: Phone, page: ArrowUpRight, map: MapIcon } as const;
 
 export default function ServicesPage() {
   const [q, setQ] = useState('');
+  const { services } = useCityServices();
   useEffect(() => {
     setHead('City services');
   }, []);
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return t ? DIRECTORY.filter((e) => `${e.label} ${e.hint ?? ''} ${e.group}`.toLowerCase().includes(t) || e.match.test(q)) : DIRECTORY;
-  }, [q]);
+    return t ? services.filter((e) => `${e.label} ${e.hint ?? ''} ${e.group}`.toLowerCase().includes(t) || e.match.test(q)) : services;
+  }, [q, services]);
   return (
     <Frame>
       <header className="vc-page-head">

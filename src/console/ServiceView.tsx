@@ -8,7 +8,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowUpRight, FileText } from 'lucide-react';
 import { BackButton, Frame } from './Chrome';
 import { useJson } from './api';
-import { DIRECTORY } from './directory';
+import { useCityServices } from './useCityServices';
 
 interface Hit {
   id: string;
@@ -20,7 +20,8 @@ const ACTION: Record<string, string> = { form: 'Open the form', pay: 'Pay online
 
 export default function ServiceView() {
   const { id } = useParams();
-  const entry = DIRECTORY.find((e) => e.id === id) ?? null;
+  const { services, ready } = useCityServices();
+  const entry = services.find((e) => e.id === id) ?? null;
   const hit = useJson<{ items: Hit[] }>(entry && /^https:/.test(entry.href) ? `/api/documents?url=${encodeURIComponent(entry.href)}` : null);
   const doc = hit.status === 'done' ? (hit.data.items[0] ?? null) : null;
   const text = useJson<Array<{ page: number; text: string }>>(doc && doc.mimeType === 'text/html' ? `/api/documents/${encodeURIComponent(doc.id)}/text` : null);
@@ -35,6 +36,17 @@ export default function ServiceView() {
       .slice(0, 80);
   }, [text]);
 
+  // A service staff added is only known once their changes load: wait for them before saying it is not listed.
+  if (!entry && !ready) {
+    return (
+      <Frame>
+        <BackButton fallback="/services" />
+        <div className="vc-empty" style={{ marginTop: '2rem' }} role="status">
+          Loading...
+        </div>
+      </Frame>
+    );
+  }
   if (!entry) {
     return (
       <Frame>
@@ -54,9 +66,15 @@ export default function ServiceView() {
         <h1 className="vc-page-title">{entry.label}</h1>
         {entry.hint && <p className="vc-page-sub">{entry.hint}</p>}
       </header>
-      <a href={entry.href} className="vc-primary vc-svc-cta" target={external ? '_blank' : undefined} rel="noopener noreferrer">
-        {ACTION[entry.kind] ?? 'Open'} <ArrowUpRight size={16} />
-      </a>
+      {entry.href.startsWith('/') ? (
+        <Link to={entry.href} className="vc-primary vc-svc-cta">
+          {ACTION[entry.kind] ?? 'Open'} <ArrowUpRight size={16} />
+        </Link>
+      ) : (
+        <a href={entry.href} className="vc-primary vc-svc-cta" target={external ? '_blank' : undefined} rel="noopener noreferrer">
+          {ACTION[entry.kind] ?? 'Open'} <ArrowUpRight size={16} />
+        </a>
+      )}
       {doc && doc.mimeType !== 'text/html' && (
         <Link to={`/documents/${encodeURIComponent(doc.id)}`} className="vc-svc-doc">
           <FileText size={15} /> Read it here: {doc.title}
