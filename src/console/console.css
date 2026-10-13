@@ -4649,6 +4649,15 @@ html.vc-soc-lock, html.vc-soc-lock body { overflow: hidden; }
     background-repeat: no-repeat !important;
     background-position: center !important;
   }
+  /* The open credit leaves room for the 44 px (i) button so its text never runs under it. */
+  .vc-map .maplibregl-ctrl-bottom-right > .maplibregl-ctrl-attrib.maplibregl-compact-show,
+  .maplibregl-ctrl-attrib.maplibregl-compact-show {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 52px;
+    box-sizing: border-box;
+  }
   button:not(.vc-cite),
   summary,
   textarea,
