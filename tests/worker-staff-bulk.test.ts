@@ -107,3 +107,29 @@ describe('adding several files to the records area', () => {
     expect(out[items[1].key]).toMatchObject({ status: 'error', message: 'This file is already in the archive.' });
   });
 });
+
+describe('a file whose storage fails partway', () => {
+  it('leaves nothing behind, so trying again adds it', async () => {
+    const h = await staffHarness();
+    const owner = await h.makeOwner();
+    const clerk = await h.addPerson(owner.cookie, { name: 'Sam Clerk', email: 'sam@vineyard.example', role: 'editor', areas: ['records'] });
+    const archive = (h.env as unknown as { ARCHIVE: { put: (...a: unknown[]) => Promise<unknown> } }).ARCHIVE;
+    const put = archive.put.bind(archive);
+    let fail = true;
+    archive.put = async (...a: unknown[]) => {
+      if (fail) {
+        fail = false;
+        throw new Error('storage dropped');
+      }
+      return put(...a);
+    };
+    const bytes = new Uint8Array(await pdfWith('Storage fails the first time'));
+    const first = await h.call('POST', '/records/file', undefined, { cookie: clerk.cookie, form: fileForm(bytes, 'minutes.pdf', { type: 'minutes' }) });
+    expect(first.status).toBe(500);
+    expect(first.body.error.message).toBe('The record could not be saved. Try again.');
+    expect(h.env.CATALOG_DB.db.prepare("SELECT count(*) AS n FROM documents WHERE source_id = 'portal-staff'").get()).toEqual({ n: 0 });
+    const again = await h.call('POST', '/records/file', undefined, { cookie: clerk.cookie, form: fileForm(bytes, 'minutes.pdf', { type: 'minutes' }) });
+    expect(again.status).toBe(201);
+    expect(h.env.CATALOG_DB.db.prepare("SELECT count(*) AS n FROM documents WHERE source_id = 'portal-staff'").get()).toEqual({ n: 1 });
+  });
+});

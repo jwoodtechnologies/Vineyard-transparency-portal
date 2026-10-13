@@ -8,7 +8,7 @@ import { intVar } from '../env';
 import { Budget } from '../admin/routes';
 import { HttpError, badRequest, notFound } from '../lib/http';
 import { isIsoDate, nowIso } from '../lib/util';
-import { MIME, STAFF_TYPES, plainLine, plainText, sanitizeName, sniffFile, titleFromName, webUrl, type FileKind } from '../lib/contrib';
+import { MIME, STAFF_SOURCE_ID, STAFF_TYPES, plainLine, plainText, sanitizeName, sniffFile, titleFromName, webUrl, type FileKind } from '../lib/contrib';
 import { sha256Hex } from '../sync/ingest';
 import { SYNC_PDF_BYTES, archiveRoom, contributionFrom, createRecord, removeRecord, updateRecord, type ContribKind, type Contribution } from './indexing';
 import { ensureContribTables, ensurePortalSources } from './schema';
@@ -125,6 +125,13 @@ export async function staffFile(env: Env, request: Request, me: Me): Promise<Rec
     await audit(env, me, 'add', id, r.documentId, title);
     return { ok: true, id, documentId: r.documentId, status: r.indexStatus };
   } catch (e) {
+    // A record made before the failure (storage dropped after the catalog row was written) goes too, so a
+    // retry of the same file is not refused as already in the archive. The duplicate check above means no
+    // staff record with this file existed before this attempt; one that existed already is never touched.
+    if (!(e instanceof Error && e.message.startsWith('not_new:'))) {
+      const left = await env.CATALOG_DB.prepare('SELECT id FROM documents WHERE sha256 = ? AND source_id = ? LIMIT 1').bind(sha, STAFF_SOURCE_ID).first<{ id: string }>().catch(() => null);
+      if (left) await removeRecord(env, left.id, 'staff').catch(() => undefined);
+    }
     await env.CATALOG_DB.prepare('DELETE FROM uploads WHERE id = ?').bind(id).run();
     friendly(e);
   }
