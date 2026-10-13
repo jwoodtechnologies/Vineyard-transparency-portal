@@ -22,6 +22,9 @@ export const STAFF_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS staff_invites (
     token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, kind TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, created_by TEXT)`,
   'CREATE INDEX IF NOT EXISTS idx_staff_invites_user ON staff_invites(user_id)',
+  // Single-use recovery codes. Only a salted hash is kept; the person saw the codes once.
+  'CREATE TABLE IF NOT EXISTS staff_recovery (code_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at TEXT NOT NULL)',
+  'CREATE INDEX IF NOT EXISTS idx_staff_recovery_user ON staff_recovery(user_id)',
   'CREATE TABLE IF NOT EXISTS staff_attempts (id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT, email TEXT, at TEXT NOT NULL, ok INTEGER NOT NULL)',
   'CREATE INDEX IF NOT EXISTS idx_staff_attempts_at ON staff_attempts(at)',
   'CREATE TABLE IF NOT EXISTS staff_pow (challenge TEXT PRIMARY KEY, bits INTEGER NOT NULL, expires_at TEXT NOT NULL)',

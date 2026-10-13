@@ -10,9 +10,31 @@ import type { Env } from '../env';
 import { HttpError, badRequest, json, notFound, readJson } from '../lib/http';
 import { PBKDF2_ITERATIONS, getOwner, hashPassword, lockedOut, randomToken, recordAttempt as recordPanelAttempt, sameString, sha256 } from '../panel/auth';
 import { bytesToB64url, newChallenge, type LoginInput, type RegisterInput } from '../panel/passkey';
-import { AREAS, AREA_LABELS, auditStatement, canGrant, canManage, canManageUsers, currentUser, endSession, isArea, isRole, newUserId, published, requireUser, sessionCookie, startSession, toUser, type Area, type AuditRow, type Role, type StaffUser } from './core';
+import {
+  AREAS,
+  AREA_LABELS,
+  auditStatement,
+  canGrant,
+  canManage,
+  canManageUsers,
+  currentUser,
+  endSession,
+  isArea,
+  isRole,
+  newUserId,
+  published,
+  requireUser,
+  sessionCookie,
+  startSession,
+  toUser,
+  type Area,
+  type AuditRow,
+  type Role,
+  type StaffUser,
+} from './core';
 import { checkPow, newPow, POW_BITS, POW_BITS_UNDER_ATTACK } from './pow';
 import { MAX_PASSKEYS, registerStaffPasskey, verifyStaffPasskey } from './passkey';
+import { codesLeft, newCodeSet, normalizeCode, spendCode } from './recovery';
 import { ensureStaffTables } from './schema';
 import { undoerFor, canUndoEntity } from './undo';
 import { handleStaffModules } from './modules';
@@ -21,6 +43,7 @@ const PRIVATE_HEADERS = { 'x-robots-tag': 'noindex, nofollow, noarchive', 'refer
 const INVITE_DAYS = 7;
 const MIN_PASSWORD = 12;
 const DUMMY_SALT = 'AAAAAAAAAAAAAAAAAAAAAA';
+const RECOVERY_LINK_MINUTES = 15;
 
 const reply = (body: unknown, init: { status?: number; headers?: Record<string, string> } = {}) => json(body, { status: init.status, headers: { ...PRIVATE_HEADERS, ...(init.headers ?? {}) } });
 
@@ -65,8 +88,21 @@ async function guardAttempts(env: Env, ip: string, email: string | null): Promis
   if (f.mine >= 8 || (email && f.theirs >= 6)) throw new HttpError(429, 'rate_limited', 'Too many failed attempts. Try again in 15 minutes.', 900);
 }
 
+/** Recovery has its own counters, so junk sign-in attempts for someone's email can never block their recovery. */
+async function guardRecover(env: Env, ip: string, key: string): Promise<void> {
+  const since = new Date(Date.now() - 15 * 60_000).toISOString();
+  const r = await env.CATALOG_DB.prepare(
+    "SELECT sum(CASE WHEN ip = ?1 AND email LIKE 'recover:%' THEN 1 ELSE 0 END) AS mine, sum(CASE WHEN email = ?2 THEN 1 ELSE 0 END) AS theirs FROM staff_attempts WHERE at >= ?3 AND ok = 0",
+  )
+    .bind(ip, key, since)
+    .first<{ mine: number | null; theirs: number | null }>();
+  if (Number(r?.mine ?? 0) >= 8 || Number(r?.theirs ?? 0) >= 30) throw new HttpError(429, 'rate_limited', 'Too many attempts. Try again in 15 minutes.', 900);
+}
+
 const record = (env: Env, ip: string, email: string | null, ok: boolean) =>
-  env.CATALOG_DB.prepare('INSERT INTO staff_attempts (ip, email, at, ok) VALUES (?, ?, ?, ?)').bind(ip, email, new Date().toISOString(), ok ? 1 : 0).run();
+  env.CATALOG_DB.prepare('INSERT INTO staff_attempts (ip, email, at, ok) VALUES (?, ?, ?, ?)')
+    .bind(ip, email, new Date().toISOString(), ok ? 1 : 0)
+    .run();
 
 let lastCleanup = 0;
 async function maybeCleanup(env: Env): Promise<void> {
@@ -105,18 +141,44 @@ async function issueInvite(env: Env, userId: string, kind: 'invite' | 'recovery'
   const expiresAt = new Date(Date.now() + hours * 3600_000).toISOString();
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare('DELETE FROM staff_invites WHERE user_id = ?').bind(userId),
-    env.CATALOG_DB.prepare('INSERT INTO staff_invites (token_hash, user_id, kind, expires_at, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)').bind(await sha256(token), userId, kind, expiresAt, new Date().toISOString(), createdBy),
+    env.CATALOG_DB.prepare('INSERT INTO staff_invites (token_hash, user_id, kind, expires_at, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)').bind(
+      await sha256(token),
+      userId,
+      kind,
+      expiresAt,
+      new Date().toISOString(),
+      createdBy,
+    ),
   ]);
   return { token, expiresAt };
 }
 
-async function readInvite(env: Env, token: unknown): Promise<{ user: FullRow; kind: string; hash: string }> {
+interface InviteRow {
+  token_hash: string;
+  user_id: string;
+  kind: string;
+  expires_at: string;
+  created_at: string;
+  created_by: string | null;
+}
+
+const LINK_GONE = 'This link has expired or was already used. Ask for a new one.';
+
+/**
+ * A link only works for the state it was made for: a first link for an account that has never been
+ * used, a recovery link for an account that is on. A turned-off account can never be switched back on
+ * by a link, however it was made.
+ */
+async function readInvite(env: Env, token: unknown): Promise<{ user: FullRow; kind: string; hash: string; invite: InviteRow }> {
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{30,80}$/.test(token)) throw new HttpError(404, 'not_found', 'This link is not valid. Ask for a new one.');
   const hash = await sha256(token);
-  const inv = await env.CATALOG_DB.prepare('SELECT user_id, kind FROM staff_invites WHERE token_hash = ? AND expires_at > ?').bind(hash, new Date().toISOString()).first<{ user_id: string; kind: string }>();
+  const inv = await env.CATALOG_DB.prepare('SELECT token_hash, user_id, kind, expires_at, created_at, created_by FROM staff_invites WHERE token_hash = ? AND expires_at > ?')
+    .bind(hash, new Date().toISOString())
+    .first<InviteRow>();
   const user = inv ? await byId(env, inv.user_id) : null;
-  if (!inv || !user) throw new HttpError(404, 'not_found', 'This link has expired or was already used. Ask for a new one.');
-  return { user, kind: inv.kind, hash };
+  const fits = user && inv && (inv.kind === 'recovery' ? user.active === 1 : user.active === 0 && user.last_login_at === null);
+  if (!inv || !user || !fits) throw new HttpError(404, 'not_found', LINK_GONE);
+  return { user, kind: inv.kind, hash, invite: inv };
 }
 
 const userHandle = async (id: string) => bytesToB64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`vtp-staff:${id}`))).slice(0, 16));
@@ -261,38 +323,92 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
 
     if (route === '/invite/accept') {
       limit(`ia:${ip}`, 20);
-      const { user, kind, hash } = await readInvite(env, b.token);
+      const { user, kind, hash, invite } = await readInvite(env, b.token);
       const password = typeof b.password === 'string' && b.password ? b.password : null;
       const passkey = b.passkey && typeof b.passkey === 'object' ? (b.passkey as RegisterInput) : null;
       if (!password && !passkey) throw badRequest('Choose a passkey or a password to finish.');
       if (password && !validPassword(password)) throw badRequest(`Use a password of at least ${MIN_PASSWORD} characters.`);
       const name = text(b.name, 80) || user.name;
-      if (kind === 'recovery') await env.CATALOG_DB.prepare('DELETE FROM staff_passkeys WHERE user_id = ?').bind(user.id).run();
+      const salt = randomToken(16);
+      const passwordHash = password ? await hashPassword(password, salt) : null;
+      const oldKeys = kind === 'recovery' ? ((await env.CATALOG_DB.prepare('SELECT id FROM staff_passkeys WHERE user_id = ?').bind(user.id).all<{ id: string }>()).results ?? []).map((r) => r.id) : [];
+
+      // Spend the link first: of any number of simultaneous requests, exactly one gets to finish the account.
+      const spent = await env.CATALOG_DB.prepare('DELETE FROM staff_invites WHERE token_hash = ? AND expires_at > ? RETURNING token_hash').bind(hash, new Date().toISOString()).first();
+      if (!spent) throw new HttpError(404, 'not_found', LINK_GONE);
       if (passkey) {
         try {
           await registerStaffPasskey(env, user.id, passkey, origin, rpId);
         } catch (e) {
+          // A passkey that did not verify must not use up the link or remove the old passkeys.
+          await env.CATALOG_DB.prepare('INSERT OR IGNORE INTO staff_invites (token_hash, user_id, kind, expires_at, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)')
+            .bind(invite.token_hash, invite.user_id, invite.kind, invite.expires_at, invite.created_at, invite.created_by)
+            .run();
           throw badRequest(e instanceof Error ? e.message : 'Could not add the passkey.');
         }
       }
       const sets = ['name = ?', 'active = 1'];
       const vals: unknown[] = [name];
-      if (password) {
-        const salt = randomToken(16);
+      if (passwordHash) {
         sets.push('pass_hash = ?', 'salt = ?', 'iterations = ?');
-        vals.push(await hashPassword(password, salt), salt, PBKDF2_ITERATIONS);
+        vals.push(passwordHash, salt, PBKDF2_ITERATIONS);
       } else if (kind === 'recovery') {
         sets.push('pass_hash = NULL', 'salt = NULL', 'iterations = NULL');
       }
-      const joined = auditStatement(env, { id: user.id, name }, { area: 'accounts', action: kind === 'recovery' ? 'recovered' : 'joined', entity: 'account', entityId: user.id, summary: `${name} ${kind === 'recovery' ? 'set up a new sign-in' : 'finished setting up their account'}` });
-      await env.CATALOG_DB.batch([
-        env.CATALOG_DB.prepare(`UPDATE staff_users SET ${sets.join(', ')} WHERE id = ?`).bind(...vals, user.id),
-        env.CATALOG_DB.prepare('DELETE FROM staff_invites WHERE token_hash = ?').bind(hash),
+      const codes = await newCodeSet(env, user.id);
+      const joined = auditStatement(
+        env,
+        { id: user.id, name },
+        {
+          area: 'accounts',
+          action: kind === 'recovery' ? 'recovered' : 'joined',
+          entity: 'account',
+          entityId: user.id,
+          summary: `${name} ${kind === 'recovery' ? 'set up a new sign-in' : 'finished setting up their account'}`,
+        },
+      );
+      const guard = kind === 'recovery' ? 'active = 1' : 'active = 0 AND last_login_at IS NULL';
+      const statements = [
+        env.CATALOG_DB.prepare(`UPDATE staff_users SET ${sets.join(', ')} WHERE id = ? AND ${guard}`).bind(...vals, user.id),
         env.CATALOG_DB.prepare('DELETE FROM staff_sessions WHERE user_id = ?').bind(user.id),
+        ...codes.statements,
         joined,
-      ]);
+      ];
+      // A recovery removes the passkeys that were there before, and only those.
+      if (oldKeys.length) statements.push(env.CATALOG_DB.prepare(`DELETE FROM staff_passkeys WHERE user_id = ? AND id IN (${oldKeys.map(() => '?').join(',')})`).bind(user.id, ...oldKeys));
+      const done = await env.CATALOG_DB.batch(statements);
+      if (Number(done[0].meta?.changes ?? 0) !== 1) {
+        // The account was turned off while the link was open.
+        await env.CATALOG_DB.prepare('DELETE FROM staff_recovery WHERE user_id = ?').bind(user.id).run();
+        throw new HttpError(404, 'not_found', LINK_GONE);
+      }
       const fresh = (await byId(env, user.id))!;
-      return reply({ user: publicUser(toUser(fresh)) }, { headers: { 'set-cookie': await startSession(env, user.id, request) } });
+      return reply({ user: publicUser(toUser(fresh)), recoveryCodes: codes.codes }, { headers: { 'set-cookie': await startSession(env, user.id, request) } });
+    }
+
+    // Lost a passkey and a password: a recovery code opens the same "set up a new sign-in" step as an administrator's link.
+    if (route === '/recover') {
+      limit(`rc:${ip}`, 10);
+      if (typeof b.website === 'string' && b.website) throw badRequest('Could not recover the account.'); // honeypot
+      await checkPow(env, b.pow);
+      const email = text(b.email, 200).toLowerCase();
+      const key = `recover:${email}`;
+      await guardRecover(env, ip, key);
+      const row = validEmail(email) ? await byEmail(env, email) : null;
+      const code = normalizeCode(b.code);
+      // The same lookups run whether or not the email, the account or the code is real.
+      const live = Boolean(row && row.active === 1);
+      const spent = await spendCode(env, live ? row!.id : 'none', code ?? 'NONE');
+      const ok = Boolean(live && code && spent);
+      await record(env, ip, key, ok);
+      if (!ok || !row) throw new HttpError(401, 'unauthorized', 'That email and recovery code do not match.');
+      const inv = await issueInvite(env, row.id, 'recovery', null, RECOVERY_LINK_MINUTES / 60);
+      await auditStatement(
+        env,
+        { id: row.id, name: row.name },
+        { area: 'accounts', action: 'used a recovery code', entity: 'account', entityId: row.id, summary: `${row.name} signed in with a recovery code` },
+      ).run();
+      return reply({ token: inv.token });
     }
 
     // ---- everything below needs a signed-in person
@@ -339,6 +455,29 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
       return reply({ ok: true }, { headers: { 'set-cookie': await startSession(env, me.id, request) } });
     }
 
+    // A new sheet of recovery codes replaces the old one. It needs proof it is really the person: their password, or a passkey.
+    if (route === '/recovery/new') {
+      limit(`rn:${me.id}`, 6);
+      const row = (await byId(env, me.id))!;
+      if (row.pass_hash) {
+        const current = typeof b.current === 'string' ? b.current : '';
+        await guardAttempts(env, ip, me.email);
+        const ok = sameString(await hashPassword(current, row.salt ?? DUMMY_SALT, row.iterations ?? PBKDF2_ITERATIONS), row.pass_hash);
+        await record(env, ip, me.email, ok);
+        if (!ok) throw new HttpError(403, 'unauthorized', 'The current password is not right.');
+      } else {
+        if (!b.passkey || typeof b.passkey !== 'object') throw badRequest('Confirm with your passkey to make new codes.');
+        const who = await verifyStaffPasskey(env, b.passkey as unknown as LoginInput, origin, rpId).catch(() => null);
+        if (who !== me.id) throw new HttpError(403, 'unauthorized', 'That passkey does not belong to this account.');
+      }
+      const codes = await newCodeSet(env, me.id);
+      await env.CATALOG_DB.batch([
+        ...codes.statements,
+        auditStatement(env, me, { area: 'accounts', action: 'made new recovery codes', entity: 'account', entityId: me.id, summary: `${me.name} made a new set of recovery codes` }),
+      ]);
+      return reply({ codes: codes.codes });
+    }
+
     if (route === '/users') {
       if (!canManageUsers(me)) throw new HttpError(403, 'unauthorized', 'Only administrators can add people.');
       const email = text(b.email, 200).toLowerCase();
@@ -353,7 +492,16 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
       const id = newUserId();
       const department = text(b.department, 80) || null;
       await env.CATALOG_DB.batch([
-        env.CATALOG_DB.prepare('INSERT INTO staff_users (id, email, name, department, role, areas, active, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)').bind(id, email, name, department, role, JSON.stringify(areas), new Date().toISOString(), me.id),
+        env.CATALOG_DB.prepare('INSERT INTO staff_users (id, email, name, department, role, areas, active, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)').bind(
+          id,
+          email,
+          name,
+          department,
+          role,
+          JSON.stringify(areas),
+          new Date().toISOString(),
+          me.id,
+        ),
         auditStatement(env, me, { area: 'accounts', action: 'added', entity: 'account', entityId: id, summary: `Added ${name} (${role})`, after: { email, name, department, role, areas } }),
       ]);
       const inv = await issueInvite(env, id, 'invite', me.id);
@@ -377,7 +525,14 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
       const department = 'department' in b ? text(b.department, 80) || null : t.department;
       const after = { name, department, role, areas, active };
       const statements = [
-        env.CATALOG_DB.prepare('UPDATE staff_users SET name = ?, department = ?, role = ?, areas = ?, active = ? WHERE id = ?').bind(name, department, role, JSON.stringify(areas), active ? 1 : 0, t.id),
+        env.CATALOG_DB.prepare('UPDATE staff_users SET name = ?, department = ?, role = ?, areas = ?, active = ? WHERE id = ?').bind(
+          name,
+          department,
+          role,
+          JSON.stringify(areas),
+          active ? 1 : 0,
+          t.id,
+        ),
         auditStatement(env, me, {
           area: 'accounts',
           action: active === t.active ? 'changed' : active ? 'turned on' : 'turned off',
@@ -388,7 +543,14 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
           after,
         }),
       ];
-      if (!active) statements.push(env.CATALOG_DB.prepare('DELETE FROM staff_sessions WHERE user_id = ?').bind(t.id));
+      if (!active) {
+        // A turned-off account keeps nothing that could bring it back: no sessions, no open links, no recovery codes.
+        statements.push(
+          env.CATALOG_DB.prepare('DELETE FROM staff_sessions WHERE user_id = ?').bind(t.id),
+          env.CATALOG_DB.prepare('DELETE FROM staff_invites WHERE user_id = ?').bind(t.id),
+          env.CATALOG_DB.prepare('DELETE FROM staff_recovery WHERE user_id = ?').bind(t.id),
+        );
+      }
       await env.CATALOG_DB.batch(statements);
       return reply({ ok: true });
     }
@@ -399,8 +561,10 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
       if (!target) throw notFound('That account does not exist.');
       const t = toUser(target);
       if (!canManage(me, t)) throw new HttpError(403, 'unauthorized', 'Ask an owner to reset this account.');
-      // Removes every way to sign in and every open session; the new link sets up fresh ones.
+      if (!t.active && target.last_login_at) throw new HttpError(409, 'bad_request', 'This account is turned off. Turn it on first, then make a new link.');
+      // Removes every way to sign in, every recovery code and every open session; the new link sets up fresh ones.
       await env.CATALOG_DB.batch([
+        env.CATALOG_DB.prepare('DELETE FROM staff_recovery WHERE user_id = ?').bind(t.id),
         env.CATALOG_DB.prepare('DELETE FROM staff_passkeys WHERE user_id = ?').bind(t.id),
         env.CATALOG_DB.prepare('DELETE FROM staff_sessions WHERE user_id = ?').bind(t.id),
         env.CATALOG_DB.prepare('UPDATE staff_users SET pass_hash = NULL, salt = NULL, iterations = NULL WHERE id = ?').bind(t.id),
@@ -439,7 +603,7 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
   if (route === '/me/credentials') {
     const keys = await env.CATALOG_DB.prepare('SELECT id, name, created_at, last_used_at FROM staff_passkeys WHERE user_id = ? ORDER BY created_at').bind(me.id).all();
     const row = await byId(env, me.id);
-    return reply({ passkeys: keys.results ?? [], hasPassword: Boolean(row?.pass_hash), maxPasskeys: MAX_PASSKEYS });
+    return reply({ passkeys: keys.results ?? [], hasPassword: Boolean(row?.pass_hash), maxPasskeys: MAX_PASSKEYS, recoveryLeft: await codesLeft(env, me.id) });
   }
 
   if (route === '/users') {
