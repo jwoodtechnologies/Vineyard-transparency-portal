@@ -12,8 +12,10 @@ import { PARCEL_AREA } from './mapLayers';
 export const MAX_ELEVATION_POINTS = 50;
 export const EPQS = 'https://epqs.nationalmap.gov/v1/json';
 const UA = 'VineyardTransparencyPortal/1.0 (+https://vineyardportal.org)';
-/** Points asked of USGS at once. */
-const AT_ONCE = 10;
+/** Points asked of USGS at once (a Worker keeps six connections open at a time). */
+const AT_ONCE = 6;
+/** A point USGS has not answered in this time is left out, so one slow point never holds up the profile. */
+const POINT_TIMEOUT_MS = 6000;
 
 /** The points in ?p=, rounded to five decimals (about a meter), or an error naming what is wrong. */
 export function parseElevationPoints(v: string | null): Array<[number, number]> {
@@ -36,7 +38,11 @@ export const epqsUrl = (lng: number, lat: number) => `${EPQS}?x=${lng}&y=${lat}&
 /** One point's elevation in meters, or null when USGS has none or did not answer. */
 async function pointElevation(lng: number, lat: number, fetcher: typeof fetch): Promise<number | null> {
   try {
-    const res = await fetcher(epqsUrl(lng, lat), { headers: { accept: 'application/json', 'user-agent': UA }, cf: { cacheTtl: 30 * 86400, cacheEverything: true } } as RequestInit);
+    const res = await fetcher(epqsUrl(lng, lat), {
+      headers: { accept: 'application/json', 'user-agent': UA },
+      signal: AbortSignal.timeout(POINT_TIMEOUT_MS),
+      cf: { cacheTtl: 30 * 86400, cacheEverything: true },
+    } as RequestInit);
     if (!res.ok) {
       void res.body?.cancel();
       return null;
@@ -52,10 +58,15 @@ async function pointElevation(lng: number, lat: number, fetcher: typeof fetch): 
 export async function getElevation(url: URL, fetcher: typeof fetch = fetch): Promise<Response> {
   const pts = parseElevationPoints(url.searchParams.get('p'));
   const out: Array<number | null> = new Array(pts.length).fill(null);
-  for (let i = 0; i < pts.length; i += AT_ONCE) {
-    const batch = await Promise.all(pts.slice(i, i + AT_ONCE).map(([x, y]) => pointElevation(x, y, fetcher)));
-    batch.forEach((v, j) => (out[i + j] = v));
-  }
+  // A small pool: each lane takes the next point as soon as its last one is answered.
+  let next = 0;
+  const lane = async () => {
+    while (next < pts.length) {
+      const i = next++;
+      out[i] = await pointElevation(pts[i][0], pts[i][1], fetcher);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(AT_ONCE, pts.length) }, lane));
   if (out.every((v) => v == null)) throw new HttpError(502, 'backend_unavailable', 'The USGS elevation service did not respond. Try again shortly.');
   const complete = out.every((v) => v != null);
   return json(
