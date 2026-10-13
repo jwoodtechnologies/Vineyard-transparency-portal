@@ -1,0 +1,1 @@
+{"status":{"apiCode":408,"apiMessage":"Query timeout. Narrow your filter (smaller bbox, narrower date range, or a specific sequenceId \/ userId) and retry.","httpCode":400,"httpMessage":"Bad Request"}}
