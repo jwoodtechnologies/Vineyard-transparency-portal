@@ -20,6 +20,7 @@ import { handleAsk } from './ai/rag';
 import { spenderEnv } from './ai/meter';
 import { listEvents } from './api/events';
 import { getMapLayer, getParcelAt, getParcelLines, getParcelOutlines, listMapLayers } from './api/map';
+import { getElevation } from './lib/elevation';
 import { getLatest } from './api/latest';
 import { getBudget, getBudgetArchive } from './api/budget';
 import { getDraftMinutes } from './api/draftMinutes';
@@ -173,6 +174,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       if (b === 'parcels' && parts.length === 5) return getParcelOutlines(parts[2], parts[3], parts[4]);
       if (b === 'parcel' && parts.length === 2) return getParcelAt(url);
       if (b === 'parcel-lines' && parts.length === 2) return getParcelLines(env, request, url);
+      if (b === 'elevation' && parts.length === 2) return getElevation(url);
       break;
     case 'meetings':
       return b ? getMeeting(env, request, id(b)) : listMeetings(env, url);
