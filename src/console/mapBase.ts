@@ -7,7 +7,8 @@
  *  - every style has a background layer, and the map box uses the same color while loading, so
  *    there is never a blank grey box.
  * Satellite is Utah County's newest aerial imagery (3 and 6 inch photography), with the USGS
- * imagery service as a fallback if the county service does not answer.
+ * imagery service as a fallback if the county service does not answer. The county service draws
+ * each tile on request, so high density screens get 512 pixel images for the same 256 pixel tile.
  */
 import type * as maplibregl from 'maplibre-gl';
 
@@ -21,18 +22,29 @@ const OFM_TILEJSON = `${OFM}/planet`;
 export const BASE_BG = { streetsLight: '#f2f3f0', streetsDark: '#0e0e10', satellite: '#1f2427', blankLight: '#ffffff', blankDark: '#0a0a0b' };
 export const streetsBg = (dark: boolean) => (dark ? BASE_BG.streetsDark : BASE_BG.streetsLight);
 
-const COUNTY_IMAGERY = 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=jpgpng&f=image';
+const COUNTY_IMAGERY = (px: number) => `https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=${px},${px}&format=jpgpng&f=image`;
+/**
+ * Image size and deepest tile zoom asked of the county service. The finest county photos are 3 inch
+ * (about 0.08 m); a 256 pixel tile at tile zoom 20 (map zoom 19) is about 0.11 m per pixel in
+ * Vineyard, so 512 pixel images at tile zoom 20 (high density screens) or 256 pixel images up to
+ * tile zoom 21 reach that detail. Past it MapLibre enlarges the last tiles smoothly.
+ */
+function countyTiles(): { px: number; maxzoom: number } {
+  const dpr = typeof window !== 'undefined' && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+  return dpr >= 1.5 ? { px: 512, maxzoom: 20 } : { px: 256, maxzoom: 21 };
+}
 const USGS_IMAGERY = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
 const USGS_ATTR = '<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a>';
 
 /** Utah County aerials, with the USGS layer hidden underneath until it is needed (see watchSatellite). */
 export function satelliteStyle(): maplibregl.StyleSpecification {
+  const { px, maxzoom } = countyTiles();
   return {
     version: 8,
     glyphs: GLYPHS,
     sources: {
-      county: { type: 'raster', tiles: [COUNTY_IMAGERY], tileSize: 256, minzoom: 0, maxzoom: 20, attribution: 'Imagery: Utah County GIS' },
-      usgs: { type: 'raster', tiles: [USGS_IMAGERY], tileSize: 256, maxzoom: 16, attribution: USGS_ATTR },
+      county: { type: 'raster', tiles: [COUNTY_IMAGERY(px)], tileSize: 256, minzoom: 0, maxzoom, attribution: 'Imagery: Utah County GIS' },
+      usgs: { type: 'raster', tiles: [USGS_IMAGERY], tileSize: 256, maxzoom: 16, attribution: `Imagery: ${USGS_ATTR}` },
     },
     layers: [
       { id: 'sat-bg', type: 'background', paint: { 'background-color': BASE_BG.satellite } },
