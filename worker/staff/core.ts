@@ -75,13 +75,19 @@ export function requireArea(user: StaffUser, area: Area): void {
 
 export const canManageUsers = (user: StaffUser): boolean => user.role === 'owner' || user.role === 'admin';
 
-/** A manager can act on people below their own level; an owner can also act on other owners. */
+/**
+ * A manager can act on people below their own level. There is one master owner, made once at setup from the owner-panel
+ * sign-in: nobody else can change or turn off that account, and only the owner can change their own name.
+ */
 export function canManage(actor: StaffUser, target: Pick<StaffUser, 'role' | 'id'>): boolean {
+  if (target.role === 'owner') return actor.id === target.id;
   if (actor.role === 'owner') return true;
   return actor.role === 'admin' && RANK[target.role] < RANK.admin;
 }
 
+/** The owner role is never handed out: it comes only from setup. The owner can make admins and editors; an admin, editors. */
 export function canGrant(actor: StaffUser, role: Role): boolean {
+  if (role === 'owner') return false;
   if (actor.role === 'owner') return true;
   return actor.role === 'admin' && role === 'editor';
 }
