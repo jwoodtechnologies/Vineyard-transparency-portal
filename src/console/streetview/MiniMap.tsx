@@ -1,6 +1,6 @@
 /**
  * The small map in the corner of the street photo viewer: the blue street photo lines and the camera cone,
- * following the camera. Tapping a blue line on it jumps there. Part of the viewer's chunk.
+ * following the camera. Tapping a street with photos on it jumps there. Part of the viewer's chunk.
  */
 import { useEffect, useRef } from 'react';
 import * as maplibregl from 'maplibre-gl';
@@ -76,5 +76,5 @@ export function MiniMap({ token, camera, large, onPick }: Props) {
     if (p.x < w * margin || p.x > w * (1 - margin) || p.y < h * margin || p.y > h * (1 - margin)) map.easeTo({ center: camera.pos, duration: 300 });
   }, [camera, large]);
 
-  return <div ref={box} className="vc-svp-mini-map" role="img" aria-label="Small map: the blue lines have street photos; the cone shows where the photo looks. Tap a blue line to jump there." />;
+  return <div ref={box} className="vc-svp-mini-map" role="img" aria-label="Small map: the cone shows where the photo looks. Tap a street to go there." />;
 }

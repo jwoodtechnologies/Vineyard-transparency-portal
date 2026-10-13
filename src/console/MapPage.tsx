@@ -568,7 +568,8 @@ export default function MapPage() {
   // The Measure tool (src/console/measure): open from its button or a ?m= link; map taps measure while it is open.
   const [measureInit] = useState(() => decodeShape(params.get('m')));
   // A shared measurement opens with the layers panel closed, so nothing covers the shape.
-  const [panel, setPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth > 820 && !measureInit);
+  // The layers panel opens only from Tools.
+  const [panel, setPanel] = useState(false);
   const [measuring, setMeasuring] = useState(() => Boolean(measureInit));
   // Street view (src/console/streetview): a pin from a long press or the Street view button.
   const [sv, setSv] = useState<{ start: Pos | null; photo: Photo | null; key: number } | null>(null);

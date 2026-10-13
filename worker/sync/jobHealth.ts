@@ -14,6 +14,14 @@ import type { Env } from '../env';
 import { listChecks } from './checks';
 
 export const WATCHDOG_THRESHOLD = 3;
+
+/**
+ * Checks the Worker no longer runs, with what covers them now. Their old rows stay in check_status but
+ * are reported as covered, never failing.
+ */
+export const COVERED_CHECKS: Record<string, string> = {
+  civicclerk: 'Covered by the GitHub ingest (vineyard-civicclerk-meetings); CivicClerk refuses Cloudflare (403).',
+};
 export const SOURCE_FAILING_STATUSES = ['unreachable', 'degraded', 'changed', 'authentication_required'] as const;
 
 /**
@@ -74,6 +82,8 @@ export interface JobHealth {
   lastErrorAt: string | null;
   lastError: string | null;
   status?: string;
+  /** For a check the Worker no longer runs: what covers it now. */
+  covered?: string;
 }
 
 export interface JobHealthReport {
@@ -87,17 +97,21 @@ const latest = (...xs: Array<string | null | undefined>) => xs.filter((x): x is 
 
 export async function jobHealth(env: Env): Promise<JobHealthReport> {
   const checks = await listChecks(env);
-  const jobs: JobHealth[] = checks.map((c) => ({
-    kind: 'job',
-    id: c.id,
-    name: c.id,
-    consecutiveFailures: c.consecutiveFailures,
-    failing: c.consecutiveFailures >= WATCHDOG_THRESHOLD,
-    lastRunAt: latest(c.lastOkAt, c.lastErrorAt),
-    lastSuccessAt: c.lastOkAt,
-    lastErrorAt: c.lastErrorAt,
-    lastError: publicError(c.lastError),
-  }));
+  const jobs: JobHealth[] = checks.map((c) =>
+    COVERED_CHECKS[c.id]
+      ? { kind: 'job', id: c.id, name: c.id, status: 'covered', covered: COVERED_CHECKS[c.id], consecutiveFailures: 0, failing: false, lastRunAt: latest(c.lastOkAt, c.lastErrorAt), lastSuccessAt: c.lastOkAt, lastErrorAt: null, lastError: null }
+      : {
+          kind: 'job',
+          id: c.id,
+          name: c.id,
+          consecutiveFailures: c.consecutiveFailures,
+          failing: c.consecutiveFailures >= WATCHDOG_THRESHOLD,
+          lastRunAt: latest(c.lastOkAt, c.lastErrorAt),
+          lastSuccessAt: c.lastOkAt,
+          lastErrorAt: c.lastErrorAt,
+          lastError: publicError(c.lastError),
+        },
+  );
   await ensureSourceCounter(env);
   const rows = await env.CATALOG_DB.prepare(
     'SELECT id, name, status, status_message, last_checked_at, last_success_at, coalesce(consecutive_failures, 0) AS consecutive_failures FROM sources WHERE crawl_enabled = 1 ORDER BY id',

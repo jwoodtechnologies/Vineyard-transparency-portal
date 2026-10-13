@@ -75,6 +75,7 @@ function districtsOf(fc: FC): District[] {
 
 /** The map page's zoning fill layer. */
 const ZONING_FILL = 'vtp-zoning-fill';
+const coarseQuery = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(pointer: coarse)').matches);
 const wideQuery = () => typeof window !== 'undefined' && window.innerWidth > 820;
 
 export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null, loadZoning, showMapZoning, onClose }: Props) {
@@ -92,6 +93,24 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   // Zoning shows only after a tap on Zoning, each time street view opens.
   const [showZoning, setShowZoning] = useState(false);
   const [wide, setWide] = useState(wideQuery);
+  const [coarse] = useState(coarseQuery);
+  // The 3D buttons join the map's own control stack at the bottom right (above full screen and zoom), so
+  // the stack lays them out and nothing overlaps.
+  const [stackHost, setStackHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const map = getMap();
+    const corner = phase === '3d' ? map?.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-bottom-right') : null;
+    if (!corner) return;
+    const host = document.createElement('div');
+    host.className = 'vc-sv-3d-host';
+    corner.prepend(host);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the host exists only once the 3D view opens
+    setStackHost(host);
+    return () => {
+      host.remove();
+      setStackHost(null);
+    };
+  }, [getMap, gen, phase]);
   const panelRef = useRef<HTMLDivElement>(null);
   const phaseRef = useRef(phase);
   useEffect(() => {
@@ -224,14 +243,12 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     if (!map || !ready || !pin) return;
     if (phase === '3d') {
       if (saved.current?.map === map) map.easeTo({ center: pin, duration: 450 });
-      else saved.current = { map, at: enter3d(map, pin, dark), orbitOff: enableOrbit(map) };
+      else saved.current = { map, at: enter3d(map, pin), orbitOff: enableOrbit(map) };
     } else if (phase === 'photo' && saved.current) {
       saved.current.orbitOff();
       leave3d(saved.current.map, saved.current.at);
       saved.current = null;
     }
-    // The theme is handled below; this runs for a new pin or phase.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getMap, ready, phase, pin]);
   useEffect(
     () => () => {
@@ -273,7 +290,10 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   }, [getMap, phase, showZoning, showMapZoning]);
   useEffect(() => {
     const map = getMap();
-    if (map && ready && phase === '3d') addBuildings(map, dark);
+    if (!map || !ready || phase !== '3d') return;
+    // After the first 3D frame is on screen: the terrain and buildings then stream in.
+    let frame = requestAnimationFrame(() => (frame = requestAnimationFrame(() => addBuildings(map, dark))));
+    return () => cancelAnimationFrame(frame);
   }, [getMap, gen, ready, phase, dark]);
 
   // On wider screens the photo sits beside the map: the map keeps the pin and cone in its open part.
@@ -379,19 +399,19 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
 
   return (
     <>
-      <div className="vc-sv-note" role="status">
+      <div className="vc-sv-note" role="status" data-compact={phase === '3d' || undefined}>
         <div className="vc-sv-bar">
           {close}
           <p className="vc-sv-title">
-            {phase === 'pick' ? (wide ? 'Click a blue line to see the street, or anywhere else for a 3D view.' : 'Tap a blue line to see the street') : phase === 'search' ? 'Looking for a street photo near this spot.' : ''}
+            {phase === 'pick' ? (coarse ? 'Tap a street' : 'Click a street') : phase === 'search' ? 'Looking for a street photo near this spot.' : ''}
           </p>
           {phase === '3d' && zoningToggle}
           {phase === '3d' && google}
         </div>
       </div>
       {phase === '3d' && getMap() && createPortal(<Sky getMap={getMap} />, getMap()!.getContainer())}
-      {phase === '3d' && (
-        <div className="vc-sv-3d" role="group" aria-label="Look around">
+      {phase === '3d' && stackHost && createPortal(
+        <div className="vc-sv-3d maplibregl-ctrl" role="group" aria-label="Look around">
           <Compass getMap={getMap} />
           <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && turn(getMap()!, -30)} aria-label="Turn left" title="Turn left (A)">
             <RotateCcw size={18} strokeWidth={2} />
@@ -405,7 +425,8 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
           <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && setPin(stepFrom(getMap()!, -12))} aria-label="Back" title="Back (S)">
             <ArrowDown size={18} strokeWidth={2} />
           </button>
-        </div>
+        </div>,
+        stackHost,
       )}
     </>
   );

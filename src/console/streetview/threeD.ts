@@ -162,19 +162,24 @@ export function removeBuildings(map: maplibregl.Map): void {
 
 const still = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-/** Tilts down to street level over the pin and returns where the camera was. */
-export function enter3d(map: maplibregl.Map, pin: Pos, dark: boolean): Saved {
+/**
+ * Street level over the pin at once (no flight), tilted so a band of sky shows at the top, facing the way
+ * the map already faces; returns where the camera was. The terrain and buildings are added after this first
+ * frame is drawn (StreetView), so the view opens fast and they stream in. Marks vtp-3d-first-frame.
+ */
+export function enter3d(map: maplibregl.Map, pin: Pos): Saved {
   const saved: Saved = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), maxPitch: map.getMaxPitch(), sky: map.getSky() };
-  map.setMaxPitch(80);
-  addBuildings(map, dark);
-  fly3d(map, pin);
+  map.setMaxPitch(MAX_PITCH);
+  map.setSky(SKY);
+  map.jumpTo({ center: pin, zoom: 18.4, pitch: START_PITCH, bearing: map.getBearing() });
+  map.once('render', () => performance.mark?.('vtp-3d-first-frame'));
+  map.triggerRepaint();
   return saved;
 }
 
-/** Street level over the pin: close in, tilted about 75 degrees, facing the way the map already faces. */
-export function fly3d(map: maplibregl.Map, pin: Pos): void {
-  map.easeTo({ center: pin, zoom: 18.6, pitch: 75, bearing: map.getBearing(), duration: still() ? 0 : 1200 });
-}
+/** The 3D view's first tilt: about 10 degrees short of level, which leaves a band of sky above the horizon. */
+export const START_PITCH = 80;
+const MAX_PITCH = 85;
 
 export function leave3d(map: maplibregl.Map, saved: Saved): void {
   removeBuildings(map);

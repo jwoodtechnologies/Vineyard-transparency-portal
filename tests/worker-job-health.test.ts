@@ -11,6 +11,13 @@ const fail = (msg: string) => async () => {
 };
 
 describe('job health for the watchdog', () => {
+  it('reports the old Worker CivicClerk check as covered by the GitHub ingest, never failing', async () => {
+    const env = testEnv();
+    for (let i = 0; i < 5; i++) await track(env, 'civicclerk', fail('CivicClerk 403 Forbidden'));
+    const r = await jobHealth(env);
+    expect(r.jobs.find((j) => j.id === 'civicclerk')).toMatchObject({ failing: false, consecutiveFailures: 0, status: 'covered', lastError: null });
+  });
+
   it('counts failures in a row per check and resets on success', async () => {
     const env = testEnv();
     await track(env, 'utah-pmn', fail('fetch failed'));

@@ -1,7 +1,8 @@
 /**
  * Scheduled checks (Cloudflare Cron Trigger, every five minutes; the :00 tick also reads news):
- *   1. CivicClerk: meetings from three weeks back to two months ahead. New or changed meetings are
- *      saved right away and newly posted agendas, packets, minutes and attachments are queued.
+ *   1. CivicClerk: not called from here. CivicClerk answers Cloudflare's addresses with 403, so its
+ *      meetings and files come from the GitHub ingest (vineyard-civicclerk-meetings), which this job
+ *      starts every ten minutes (civicclerk-dispatch in worker/sync/run.ts).
  *   2. City website, Utah Public Notice Website and the city events calendar (worker/sync/run.ts).
  *   3. Queue: new files are fetched, their text extracted and indexed for search and chat, and
  *      priority records archived, inside the Worker (worker/sync/ingest.ts).
@@ -10,8 +11,7 @@
  * counted against the same daily D1 budget as ingestion.
  */
 import type { Env } from './env';
-import { Budget, upsertBodies, upsertMeetings, upsertQueue } from './admin/routes';
-import { CC_API, mapEvent, type CcEvent } from './lib/civicclerk';
+import { Budget, upsertQueue } from './admin/routes';
 import { ensureNewsTables } from './lib/news';
 import { UCSO_ARCHIVE, UCSO_SOURCE, cleanText, mentionsVineyard, recent, releaseBody, ucsoPage, type UcsoItem } from './lib/sheriff';
 import { processVotes } from './api/votes';
@@ -27,47 +27,6 @@ const UA = { 'user-agent': 'VineyardTransparencyPortal/1.0 (+https://vineyardpor
 async function sha256Hex(text: string): Promise<string> {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-const iso = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
-
-async function refreshCivicClerk(env: Env, budget: Budget): Promise<Record<string, number>> {
-  const now = new Date();
-  const from = new Date(now.getTime() - 21 * 86400_000);
-  const to = new Date(now.getTime() + 60 * 86400_000);
-  const flt = `startDateTime ge ${iso(from)} and startDateTime lt ${iso(to)}`;
-  let url: string | null = `${CC_API}/Events?$filter=${encodeURIComponent(flt)}&$orderby=${encodeURIComponent('startDateTime desc')}`;
-  const events: CcEvent[] = [];
-  const seen = new Set<number>();
-  for (let page = 0; url && page < 10; page++) {
-    const res = await fetch(url, { headers: UA });
-    if (!res.ok) throw new Error(`CivicClerk ${res.status} ${res.statusText}: ${(await res.text().catch(() => '')).slice(0, 160)}`);
-    const data = (await res.json()) as { value?: CcEvent[]; '@odata.nextLink'?: string };
-    const fresh = (data.value ?? []).filter((e) => e && !seen.has(e.id));
-    if (!fresh.length) break;
-    fresh.forEach((e) => seen.add(e.id));
-    events.push(...fresh);
-    const next = data['@odata.nextLink'];
-    url = typeof next === 'string' && next.startsWith(`${CC_API}/Events`) ? next : null;
-  }
-
-  const meetings: Record<string, unknown>[] = [];
-  const bodies = new Map<string, Record<string, unknown>>();
-  const items: Record<string, unknown>[] = [];
-  for (const ev of events) {
-    const m = mapEvent(ev, now);
-    if (!m) continue;
-    meetings.push(m.meeting);
-    if (m.body) bodies.set(m.body.id, m.body);
-    for (const f of m.files) {
-      // Files for recent and upcoming meetings go to the front of the queue, ahead of the archive backfill.
-      items.push({ urlKey: await sha256Hex(f.identifier), sourceId: 'vineyard-civicclerk-meetings', url: f.url, kind: 'document', priority: f.priority - 30, parentUrl: f.parentUrl, metadata: f.metadata, runId: 'hourly' });
-    }
-  }
-  if (bodies.size) await upsertBodies(env, { bodies: [...bodies.values()] }, budget);
-  for (let i = 0; i < meetings.length; i += 100) await upsertMeetings(env, { meetings: meetings.slice(i, i + 100) }, budget);
-  for (let i = 0; i < items.length; i += 400) await upsertQueue(env, { items: items.slice(i, i + 400) }, budget);
-  return { events: events.length, meetings: meetings.length, files: items.length };
 }
 
 async function refreshSheriff(env: Env, budget: Budget): Promise<Record<string, number>> {
@@ -165,9 +124,7 @@ export async function runHourly(env: Env, scheduledTime = Date.now()): Promise<R
   const summary: Record<string, unknown> = {};
   // The hourly check writes only a few rows, so it runs even after the backfill has used the
   // day's ingestion allowance (that allowance sits well under the D1 Free daily limit).
-  const [cc, ucso] = await Promise.all([track(env, 'civicclerk', () => refreshCivicClerk(env, budget)), track(env, 'sheriff', () => refreshSheriff(env, budget))]);
-  summary.civicclerk = cc;
-  summary.sheriff = ucso;
+  summary.sheriff = await track(env, 'sheriff', () => refreshSheriff(env, budget));
   // New minutes become voting records within the hour.
   Object.assign(summary, await runSync(env, scheduledTime, budget));
   summary.votes = await track(env, 'votes', () => processVotes(env, 8_000, 40));
