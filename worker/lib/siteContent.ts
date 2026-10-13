@@ -496,12 +496,53 @@ function summarizeTaxRates(before: TaxRatesContent | null, after: TaxRatesConten
   return oneOrCount(changes, (n) => `Made ${n} changes to the property tax rates`, 'Saved the property tax rates');
 }
 
+// ---- Boards and commissions (what each one does, when it meets, how to apply)
+
+export interface BoardsContent {
+  boards: Record<string, { about?: string; schedule?: string; applyUrl?: string }>;
+}
+
+export function checkBoards(v: unknown, lenient = false): BoardsContent {
+  const o = asObject(asObject(v).boards);
+  const boards = Object.create(null) as BoardsContent['boards'];
+  for (const id of Object.keys(o).slice(0, 60)) {
+    if (!/^[a-z0-9-]{2,80}$/.test(id)) {
+      if (!lenient) throw badRequest('That board is not on the list. Reload and try again.');
+      continue;
+    }
+    const b = asObject(o[id]);
+    const entry: BoardsContent['boards'][string] = {};
+    const about = text(b.about, 400, 'What it does', lenient, true);
+    const schedule = text(b.schedule, 120, 'When it meets', lenient, false);
+    if (about) entry.about = about;
+    if (schedule) entry.schedule = schedule;
+    if (typeof b.applyUrl === 'string' && b.applyUrl.trim()) {
+      const h = href(b.applyUrl, lenient);
+      if (h) entry.applyUrl = h;
+    }
+    if (Object.keys(entry).length) boards[id] = entry;
+  }
+  return { boards };
+}
+
+function summarizeBoards(before: BoardsContent | null, after: BoardsContent | null): string {
+  if (!after) return 'Removed the board details entered by staff';
+  const ids = [...new Set([...Object.keys(before?.boards ?? {}), ...Object.keys(after.boards)])].filter((k) => JSON.stringify(before?.boards[k] ?? null) !== JSON.stringify(after.boards[k] ?? null));
+  const name = (k: string) => k.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return oneOrCount(
+    ids.map((k) => (after.boards[k] ? `Changed the details of the ${name(k)}` : `Removed the details of the ${name(k)}`)),
+    (n) => `Changed the details of ${n} boards`,
+    'Saved the board details',
+  );
+}
+
 const defineSpec = <T>(s: ContentSpec<T>): ContentSpec => s as unknown as ContentSpec;
 
 export const SPECS: Record<string, ContentSpec> = {
   projects: defineSpec<ProjectsContent>({ area: 'map', label: 'Map project descriptions', check: checkProjects, summarize: summarizeProjects }),
   construction: defineSpec<ConstructionContent>({ area: 'map', label: 'Construction now', check: checkConstruction, summarize: summarizeConstruction }),
   taxRates: defineSpec<TaxRatesContent>({ area: 'budget', label: 'Property tax rates', check: checkTaxRates, summarize: summarizeTaxRates }),
+  boards: defineSpec<BoardsContent>({ area: 'people', label: 'Board details', check: checkBoards, summarize: summarizeBoards }),
   services: defineSpec<ServicesContent>({ area: 'site', label: 'Service links', check: checkServices, summarize: summarizeServices }),
   contacts: defineSpec<ContactsContent>({ area: 'site', label: 'Phone numbers and quick links', check: checkContacts, summarize: summarizeContacts }),
 };
