@@ -1,11 +1,12 @@
 /**
- * City phone numbers the assistant writes into its answers, with any change staff made in the staff portal (Phone numbers and
+ * City phone numbers and property tax rates the assistant writes into its answers, with any change staff made in the staff portal (Phone numbers and
  * quick links). Read at most once a minute per worker; until the first read, and whenever a read fails, the built-in numbers
  * are used, so an answer always has a number.
  */
 import type { Env } from '../env';
 import { contactsFrom, type ContactsContent } from '../../src/lib/cityServices';
 import { readContent } from './siteContent';
+import { setStaffRates, type CertifiedTaxRate } from './taxRates';
 
 interface Phones {
   cityHall: string;
@@ -32,8 +33,9 @@ export async function refreshCityFacts(env: Env, now = Date.now()): Promise<void
   if (now - readAt < 60_000) return;
   readAt = now;
   try {
-    const stored = await readContent(env, 'contacts');
+    const [stored, rates] = await Promise.all([readContent(env, 'contacts'), readContent(env, 'taxRates')]);
     phones = phonesFrom((stored?.value as ContactsContent | undefined) ?? null);
+    setStaffRates(((rates?.value as { rates?: CertifiedTaxRate[] } | undefined)?.rates ?? []) as CertifiedTaxRate[]);
   } catch {
     // Keep the last numbers.
   }

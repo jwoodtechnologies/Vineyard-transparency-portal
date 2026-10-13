@@ -428,11 +428,80 @@ function summarizeConstruction(before: ConstructionContent | null, after: Constr
   return oneOrCount(changes, (n) => `Made ${n} changes to Construction now`, 'Saved Construction now');
 }
 
+// ---- Property tax rates (the chat's tax rate answers)
+
+const RATE = /^0?\.\d{3,8}$/;
+const DOC_ID = /^doc_[0-9a-f]{16}$/;
+
+export interface TaxRatesContent {
+  rates: Array<{ fiscalYear: number; rate: string; adopted: string; docId: string; docTitle: string; docKind: 'minutes' | 'resolution'; page: number }>;
+}
+
+export function checkTaxRates(v: unknown, lenient = false): TaxRatesContent {
+  const o = asObject(v);
+  const list = Array.isArray(o.rates) ? o.rates.slice(0, 30) : [];
+  const out: TaxRatesContent['rates'] = [];
+  const fail = (m: string) => {
+    if (!lenient) throw badRequest(m);
+  };
+  for (const raw of list) {
+    const r = asObject(raw);
+    const fiscalYear = Number(r.fiscalYear);
+    const rate = typeof r.rate === 'string' ? r.rate.trim() : '';
+    const adopted = typeof r.adopted === 'string' ? r.adopted.trim() : '';
+    const docId = typeof r.docId === 'string' ? r.docId.trim() : '';
+    const page = Number(r.page);
+    if (!Number.isInteger(fiscalYear) || fiscalYear < 2000 || fiscalYear > 2100) {
+      fail('Choose the fiscal year, for example 2027.');
+      continue;
+    }
+    if (!RATE.test(rate)) {
+      fail('Type the rate as the record prints it, for example 0.003796.');
+      continue;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(adopted)) {
+      fail('Choose the date the council adopted it.');
+      continue;
+    }
+    if (!DOC_ID.test(docId)) {
+      fail('Paste the portal link to the record that states the rate.');
+      continue;
+    }
+    if (!Number.isInteger(page) || page < 1 || page > 5000) {
+      fail('Give the page of the record where the rate is printed.');
+      continue;
+    }
+    const docKind = r.docKind === 'resolution' ? 'resolution' : 'minutes';
+    const docTitle = text(r.docTitle, 200, 'The record title', lenient, false) || docId;
+    if (out.some((x) => x.fiscalYear === fiscalYear)) {
+      fail(`Fiscal ${fiscalYear} is listed twice.`);
+      continue;
+    }
+    out.push({ fiscalYear, rate: rate.startsWith('.') ? `0${rate}` : rate, adopted, docId, docTitle, docKind, page });
+  }
+  return { rates: out.sort((a, b) => b.fiscalYear - a.fiscalYear) };
+}
+
+function summarizeTaxRates(before: TaxRatesContent | null, after: TaxRatesContent | null): string {
+  if (!after) return 'Removed the property tax rates entered by staff';
+  const was = new Map((before?.rates ?? []).map((r) => [r.fiscalYear, r]));
+  const changes: string[] = [];
+  for (const r of after.rates) {
+    const w = was.get(r.fiscalYear);
+    if (!w) changes.push(`Added the fiscal ${r.fiscalYear} property tax rate, ${r.rate}`);
+    else if (JSON.stringify(w) !== JSON.stringify(r)) changes.push(`Changed the fiscal ${r.fiscalYear} property tax rate to ${r.rate}`);
+    was.delete(r.fiscalYear);
+  }
+  for (const y of was.keys()) changes.push(`Removed the fiscal ${y} property tax rate`);
+  return oneOrCount(changes, (n) => `Made ${n} changes to the property tax rates`, 'Saved the property tax rates');
+}
+
 const defineSpec = <T>(s: ContentSpec<T>): ContentSpec => s as unknown as ContentSpec;
 
 export const SPECS: Record<string, ContentSpec> = {
   projects: defineSpec<ProjectsContent>({ area: 'map', label: 'Map project descriptions', check: checkProjects, summarize: summarizeProjects }),
   construction: defineSpec<ConstructionContent>({ area: 'map', label: 'Construction now', check: checkConstruction, summarize: summarizeConstruction }),
+  taxRates: defineSpec<TaxRatesContent>({ area: 'budget', label: 'Property tax rates', check: checkTaxRates, summarize: summarizeTaxRates }),
   services: defineSpec<ServicesContent>({ area: 'site', label: 'Service links', check: checkServices, summarize: summarizeServices }),
   contacts: defineSpec<ContactsContent>({ area: 'site', label: 'Phone numbers and quick links', check: checkContacts, summarize: summarizeContacts }),
 };

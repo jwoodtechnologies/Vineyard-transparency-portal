@@ -47,6 +47,18 @@ export const CERTIFIED_TAX_RATES: CertifiedTaxRate[] = [
   },
 ];
 
+const BUILT_IN = [...CERTIFIED_TAX_RATES];
+
+/**
+ * Rates staff entered in the staff portal (Budget area, site_content key "taxRates"), laid over the built-in ones by fiscal
+ * year, so the chat's answers use them with the record staff named as the source. Called by refreshCityFacts.
+ */
+export function setStaffRates(list: CertifiedTaxRate[]): void {
+  const byYear = new Map(BUILT_IN.map((e) => [e.fiscalYear, e]));
+  for (const e of list) byYear.set(e.fiscalYear, e);
+  CERTIFIED_TAX_RATES.splice(0, CERTIFIED_TAX_RATES.length, ...[...byYear.values()].sort((a, b) => a.fiscalYear - b.fiscalYear));
+}
+
 /** The newest entry in the table. */
 export function newestCertifiedRate(): CertifiedTaxRate {
   return [...CERTIFIED_TAX_RATES].sort((a, b) => b.fiscalYear - a.fiscalYear)[0];
