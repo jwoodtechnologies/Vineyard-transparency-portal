@@ -26,12 +26,16 @@ let photoSpot = null;
 if (token) {
   // Geneva Road and the north side of Vineyard, where the reviewer saw coverage.
   for (const bbox of ['-111.7420,40.2950,-111.7330,40.3150', '-111.7600,40.3150,-111.7300,40.3300', '-111.7700,40.2800,-111.7000,40.3300']) {
-    const r = await fetch(`https://graph.mapillary.com/images?access_token=${encodeURIComponent(token)}&fields=id,computed_geometry,is_pano&bbox=${bbox}&limit=50`);
+    const r = await fetch(`https://graph.mapillary.com/images?access_token=${encodeURIComponent(token)}&fields=id,computed_geometry,computed_compass_angle,is_pano&bbox=${bbox}&limit=50`);
     const list = (await r.json()).data ?? [];
     const pick = list.find((x) => x.is_pano) ?? list[0];
     if (pick) {
       const [lng, lat] = pick.computed_geometry.coordinates;
-      photoSpot = [lng - 0.0003, lat]; // about 25 m west of the photo, off Geneva Road into the city's zoned blocks
+      // About 30 m ahead of the camera and a little toward the city (west), so the pin is in the photo.
+      const b = (((pick.computed_compass_angle ?? 0) + 360) % 360) * (Math.PI / 180);
+      const turn = Math.sin(b) > 0 ? -0.4 : 0.4; // facing east of north: turn left (west); else right
+      const bb = b + (Math.cos(b) >= 0 ? turn : -turn);
+      photoSpot = [lng + (30 * Math.sin(bb)) / (111320 * Math.cos((lat * Math.PI) / 180)), lat + (30 * Math.cos(bb)) / 111320];
       log.spots.photo = { bbox, image: pick.id, pano: pick.is_pano, pin: photoSpot, found: list.length };
       break;
     }

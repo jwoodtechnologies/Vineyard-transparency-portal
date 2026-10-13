@@ -93,7 +93,8 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
         const out: Chip[] = [];
         px.forEach((p, i) => {
           const z = near[i].d.zone;
-          if (!p || seen.has(z)) return;
+          // Off the photo (a flat photo shows only what is in front of it): no chip.
+          if (!p || seen.has(z) || p[0] < 0 || p[1] < 0 || p[0] > el.clientWidth || p[1] > el.clientHeight) return;
           seen.add(z);
           out.push({ zone: z, color: near[i].d.color, x: p[0], y: p[1] });
         });
