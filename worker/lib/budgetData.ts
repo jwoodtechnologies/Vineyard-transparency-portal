@@ -15,32 +15,55 @@
  * /documents/doc_2c248c52cbadfa22?page=3 for the fund list). "page not recorded" means the document is known but the page
  * the value was keyed from was not written down; "NOT TRACED - verify" means no record for it was found
  * in the code, docs or commit history.
+ *
+ * These values are the built-in budget book. City staff can save a newer version in the staff portal
+ * (worker/staff/budget.ts); the Worker then swaps these live bindings for the saved version
+ * (applyBudgetBook below, called by worker/lib/budgetStore.ts), so every reader sees the same numbers.
  */
 
-export const BUDGET_FISCAL_YEAR = 2027;
+export let BUDGET_FISCAL_YEAR = 2027;
 // Source: FY 27 Final Budget (adopted June 23, 2026), page not recorded (doc_2c248c52cbadfa22)
-export const BUDGET_ADOPTED = '2026-06-23';
+export let BUDGET_ADOPTED = '2026-06-23';
 // Source: Ordinance 2026-08 "Final Budget For FY 2026-2027" (doc_600641aa07c8b64c), page 1: "Adopted by Ord. 2026-08 on
 // 6/23/2026", "ORDINANCE NO. 2026-08 ... ADOPTING THE FINAL BUDGET FOR THE FISCAL YEAR BEGINNING JULY 1, 2026, AND ENDING
 // JUNE 30, 2027". The adopting motion: 06/23/2026 City Council minutes, page 3 (doc_f7aa0533b44d693c), item "Accept the
 // Final FY 2026-2027 Budget", motion "to approve the Fiscal Year 2026-2027 Budget with an amendment for the road project",
 // passed 3-1 (Holdaway, Lauret, Wood yes; Nair no). The minutes do not print the ordinance number; the ordinance does.
-export const BUDGET_ADOPTION_ORDINANCE = 'Ordinance 2026-08';
-export const BUDGET_ADOPTION_ORDINANCE_DOC = 'doc_600641aa07c8b64c';
+export let BUDGET_ADOPTION_ORDINANCE = 'Ordinance 2026-08';
+export let BUDGET_ADOPTION_ORDINANCE_DOC = 'doc_600641aa07c8b64c';
 // Source: FY 27 First Budget Amendment (August 25, 2026), page not recorded (doc_3931ec08b88d5fbf)
-export const BUDGET_AMENDED = '2026-08-25';
+export let BUDGET_AMENDED = '2026-08-25';
 // Source: 08/25/2026 City Council minutes, page 5 (doc_7a0b2b44683f4559), item 8.1 "Approve Ordinance 2026-10
 // Budget Amendments to the Fiscal Year 2026-2027 Budget": motion to "adopt Ordinance 2026-10 amending the Fiscal
 // Year 2026-2027 budget", carried (GET /api/votes, motion doc_7a0b2b44683f4559:9).
-export const BUDGET_AMENDMENT_ORDINANCE = 'Ordinance 2026-10';
+export let BUDGET_AMENDMENT_ORDINANCE = 'Ordinance 2026-10';
+/** What the amendment is called in the portal's own sentences. */
+export let BUDGET_AMENDMENT_NAME = 'First Budget Amendment';
+// Source: FY 2027 Tentative Budget, budget summary (doc_4f9d4e3b68713059); the council saw it at its May 12, 2026 meeting
+export let BUDGET_TENTATIVE_DATE = '2026-05-12';
 
-export const BUDGET_DOCS = {
+/** True when the budget has been amended since it was adopted. */
+export const budgetAmended = (): boolean => BUDGET_AMENDED > BUDGET_ADOPTED;
+/** "FY 27": the fiscal year as the city's budget documents write it. */
+export const fiscalShort = (): string => `FY ${String(BUDGET_FISCAL_YEAR % 100).padStart(2, '0')}`;
+
+export interface BudgetDocs {
+  book: string;
+  slides: string;
+  amendment: string;
+  /** Summary of the amendment; empty when there is none. */
+  amendmentSummary: string;
+  /** The tentative budget the council saw before adopting; empty when there is none. */
+  tentative: string;
+}
+
+export let BUDGET_DOCS: BudgetDocs = {
   book: 'doc_2c248c52cbadfa22',
   slides: 'doc_4d69a97b95e87bea',
   amendment: 'doc_3931ec08b88d5fbf',
   amendmentSummary: 'doc_9570af43463830a8', // summary of the August 25, 2026 amendment; no value below is recorded as keyed from it
   tentative: 'doc_4f9d4e3b68713059', // FY 2027 tentative budget the council saw May 12, 2026
-} as const;
+};
 
 export interface BudgetFund {
   key: string;
@@ -53,7 +76,7 @@ export interface BudgetFund {
 
 /** All nine funds, FY2027 budget book page 3. */
 // Source (every `total` below): FY 27 Final Budget, page 3 (doc_2c248c52cbadfa22). The `about` text is the portal's own wording.
-export const FUNDS: BudgetFund[] = [
+export let FUNDS: BudgetFund[] = [
   { key: 'rda', name: 'Redevelopment Agency', about: 'Rebuilding the former Geneva Steel site: roads, rail, utilities and the downtown core.', total: 29_786_656 },
   { key: 'general', name: 'General Fund', about: 'Everyday city government: police, fire, parks, planning, the library and staff.', total: 17_774_808 },
   { key: 'water', name: 'Water', about: 'Culinary and secondary water service, paid for by water bills.', total: 7_575_979 },
@@ -90,7 +113,7 @@ export interface SpendGroup {
 //   amended: FY 27 Budget Amendment summary, page 2, "AMENDMENT FY 26-27" column (doc_9570af43463830a8), the same table as
 //            FY 27 First Budget Amendment, page 2 (doc_3931ec08b88d5fbf); rows where amended equals adopted were not changed by it
 // Note: the FY 27 Final Budget Slides print Planning as 592,442; the book's 529,442 is used.
-export const DEPARTMENTS: BudgetLine[] = [
+export let DEPARTMENTS: BudgetLine[] = [
   { name: 'Police', adopted: 4_705_075, amended: 4_705_075, prior: 4_103_125 },
   { name: 'Fire', adopted: 2_873_462, amended: 2_873_462, prior: 2_585_600 },
   { name: 'Parks', adopted: 956_369, amended: 952_369, prior: 1_117_111 },
@@ -114,7 +137,7 @@ export const DEPARTMENTS: BudgetLine[] = [
 // Source (every row below): adopted from FY 27 Final Budget, page 2, Transfers Out (doc_2c248c52cbadfa22);
 //   amended from the Budget Amendment summary, page 2 (doc_9570af43463830a8) and FY 27 First Budget Amendment, page 2 (doc_3931ec08b88d5fbf).
 //   prior: 0 is a placeholder (no FY2026 figure was keyed), not a value from a record.
-export const TRANSFERS_OUT: BudgetLine[] = [
+export let TRANSFERS_OUT: BudgetLine[] = [
   { name: 'Transportation Fund', adopted: 1_470_999, amended: 1_470_999, prior: 0 },
   { name: 'Capital Projects Fund', adopted: 1_033_762, amended: 1_033_762, prior: 0 },
   { name: 'Internal Service Fund', adopted: 605_534, amended: 580_534, prior: 0 },
@@ -122,7 +145,7 @@ export const TRANSFERS_OUT: BudgetLine[] = [
 ];
 
 /** The seven groups the budget bar uses; every department and transfer belongs to exactly one. */
-export const SPEND_GROUPS: SpendGroup[] = [
+export let SPEND_GROUPS: SpendGroup[] = [
   { key: 'safety', name: 'Police and fire', depts: ['Police', 'Fire'] },
   { key: 'transfers', name: 'Sent to other funds', depts: ['Transportation Fund', 'Capital Projects Fund', 'Internal Service Fund', 'Stormwater Fund'] },
   { key: 'streets', name: 'Streets, public works and trash', depts: ['Public Works', 'Engineering', 'Sanitation'] },
@@ -142,7 +165,7 @@ export interface RevenueLine {
 // are on page 2 (General Fund Summary) and on the slides, page 2 (doc_4d69a97b95e87bea). The rows add exactly to GENERAL.revenueBeforeTransfers.
 // Interest and fines: page 4 lists "Fines & Forfeitures 500" and "Interest Earnings 815,000"; the slides print "Interest Income ... $815,000"
 // and "Fines ... $500". (Before the October 2026 audit these two were swapped here.)
-export const REVENUE: RevenueLine[] = [
+export let REVENUE: RevenueLine[] = [
   { name: 'Property tax', amount: 5_395_500 },
   { name: 'Sales tax', amount: 3_800_000 },
   { name: 'Franchise fees', amount: 950_000 },
@@ -168,7 +191,7 @@ export const REVENUE: RevenueLine[] = [
 ];
 
 // Source (both rows): FY 27 Final Budget, page 2, Transfers In, and page 4 (doc_2c248c52cbadfa22)
-export const TRANSFERS_IN: RevenueLine[] = [
+export let TRANSFERS_IN: RevenueLine[] = [
   { name: 'Redevelopment Agency', amount: 640_016 },
   { name: 'Capital Projects Fund', amount: 1_300_000 },
 ];
@@ -180,18 +203,38 @@ export interface RevenueGroup {
 }
 
 /** Seven revenue groups for the revenue bar; transfers in from other funds are one of them. */
-export const REVENUE_GROUPS: RevenueGroup[] = [
+export let REVENUE_GROUPS: RevenueGroup[] = [
   { key: 'property', name: 'Property tax', lines: ['Property tax'] },
   { key: 'sales', name: 'Sales, transportation and RAP taxes', lines: ['Sales tax', 'Transportation tax', 'RAP tax'] },
   { key: 'transfers', name: 'Moved in from other funds', lines: ['Redevelopment Agency', 'Capital Projects Fund'] },
   { key: 'fees', name: 'Permits, inspections and development fees', lines: ['Building permits', 'Development fees', 'Inspection fees', 'Fire inspection fees', 'Business licenses'] },
   { key: 'fines', name: 'Sanitation charges and fines', lines: ['Sanitation charges', 'Fines'] },
   { key: 'state', name: 'Grants and state road funds', lines: ['Grants', 'Class B and C road funds'] },
-  { key: 'other', name: 'Franchise fees, interest and other', lines: ['Franchise fees', 'Interest', 'Recreation fees', 'Library fees', 'Sponsorships', 'Rents', 'Donations', 'Miscellaneous', 'Credit card fees'] },
+  {
+    key: 'other',
+    name: 'Franchise fees, interest and other',
+    lines: ['Franchise fees', 'Interest', 'Recreation fees', 'Library fees', 'Sponsorships', 'Rents', 'Donations', 'Miscellaneous', 'Credit card fees'],
+  },
 ];
 
+export interface GeneralSpending {
+  departments: number;
+  transfersOut: number;
+  total: number;
+  surplus: number;
+}
+export interface GeneralTotals {
+  revenueBeforeTransfers: number;
+  transfersIn: number;
+  revenueTotal: number;
+  adopted: GeneralSpending;
+  amended: GeneralSpending;
+  cutByAmendment: number;
+  tentativeTotal: number;
+}
+
 /** General Fund totals. */
-export const GENERAL = {
+export let GENERAL: GeneralTotals = {
   // Source: FY 27 Final Budget, page 2, Total Revenue (doc_2c248c52cbadfa22)
   revenueBeforeTransfers: 15_834_792,
   // Source: FY 27 Final Budget, page 2, Total Transfers In (doc_2c248c52cbadfa22)
@@ -207,14 +250,20 @@ export const GENERAL = {
   /** General Fund spending in the tentative budget the council saw May 12, 2026 (budget summary, page 2). */
   // Source: FY 2027 Tentative Budget, budget summary, page 2 (doc_4f9d4e3b68713059)
   tentativeTotal: 17_712_003,
-} as const;
+};
 
 /** Five years of the biggest General Fund lines: FY23 to FY25 actual, FY26 final budget, FY27 adopted. */
-export const HISTORY_YEARS = ['FY23', 'FY24', 'FY25', 'FY26', 'FY27'] as const;
+export let HISTORY_YEARS: string[] = ['FY23', 'FY24', 'FY25', 'FY26', 'FY27'];
 // Source, by column:
 //   Every column: FY 27 Final Budget, page 2, General Fund Summary (doc_2c248c52cbadfa22): FY23 to FY25 from the three ACTUAL columns,
 //   FY26 from the "AMEND #3 BUDGET FY 25-26" column, FY27 from the FY 26-27 column. The four revenue rows are also on page 4.
-export const HISTORY: Array<{ key: string; name: string; kind: 'revenue' | 'spending'; values: number[] }> = [
+export interface HistorySeries {
+  key: string;
+  name: string;
+  kind: 'revenue' | 'spending';
+  values: number[];
+}
+export let HISTORY: HistorySeries[] = [
   { key: 'property', name: 'Property tax', kind: 'revenue', values: [3_261_171, 3_683_386, 4_972_219, 4_950_000, 5_395_500] }, // Source: page 2, as above
   { key: 'sales', name: 'Sales tax', kind: 'revenue', values: [3_150_801, 3_204_125, 3_604_684, 3_588_000, 3_800_000] }, // Source: page 2, as above
   { key: 'franchise', name: 'Franchise fees', kind: 'revenue', values: [892_696, 824_467, 942_630, 951_600, 950_000] }, // Source: page 2, as above
@@ -224,7 +273,7 @@ export const HISTORY: Array<{ key: string; name: string; kind: 'revenue' | 'spen
 ];
 
 /** Where the money for a capital project comes from, in the fixed order the page colors them. */
-export const PROJECT_FUNDS: Array<{ key: string; name: string }> = [
+export let PROJECT_FUNDS: Array<{ key: string; name: string }> = [
   { key: 'rda', name: 'Redevelopment Agency' },
   { key: 'water', name: 'Water' },
   { key: 'impact', name: 'Impact fees' },
@@ -240,70 +289,106 @@ export interface CapitalProject {
   /** Department that carries the project, as printed on the slide. */
   dept: string;
   amount: number;
-  /** Slide page in the FY27 final budget slides. */
-  page: 4 | 5 | 6;
+  /** Slide page in the budget slides. */
+  page: number;
+  /** The project's feature (OBJECTID) on the city's Capital Improvement Plan map, when it is on the map; several lines can share one feature. */
+  feature?: number;
+  /** The city's own name for that feature, for reference. */
+  featureName?: string;
 }
 
 /** Capital projects as listed on the council's budget slides, pages 4 to 6. Amounts are as printed. */
 // Source (every row below): FY 27 Final Budget Slides, page = the row's `page` field (doc_4d69a97b95e87bea)
-export const PROJECTS: CapitalProject[] = [
+export let PROJECTS: CapitalProject[] = [
   // General Fund
-  { fund: 'general', dept: 'Parks and Recreation', name: 'Finish construction of Slide Hill at Grove Park', amount: 64_959, page: 4 },
-  { fund: 'general', dept: 'Parks and Recreation', name: 'Master plan design of the Robin’s property', amount: 50_000, page: 4 },
+  { fund: 'general', dept: 'Parks and Recreation', name: 'Finish construction of Slide Hill at Grove Park', amount: 64_959, page: 4, feature: 28, featureName: 'Slide Hill at Grove Park' },
+  {
+    fund: 'general',
+    dept: 'Parks and Recreation',
+    name: 'Master plan design of the Robin’s property',
+    amount: 50_000,
+    page: 4,
+    feature: 29,
+    featureName: "Engineering for Field (Gammon Park / Robin's Property)",
+  },
   { fund: 'general', dept: 'Parks and Recreation', name: 'Design and construct shoreline improvement', amount: 15_000, page: 4 },
-  { fund: 'general', dept: 'Parks and Recreation', name: 'Design and construct Utah Lake shoreline trail and bike station improvements', amount: 18_000, page: 4 },
+  {
+    fund: 'general',
+    dept: 'Parks and Recreation',
+    name: 'Design and construct Utah Lake shoreline trail and bike station improvements',
+    amount: 18_000,
+    page: 4,
+    feature: 84,
+    featureName: 'Utah Lake Shoreline Trail Amenities',
+  },
   { fund: 'general', dept: 'Parks and Recreation', name: 'Shoreline improvement (Utah Lake Authority grant)', amount: 7_000, page: 4 },
-  { fund: 'general', dept: 'Public Safety', name: 'Public safety master plan and impact fee study', amount: 60_000, page: 4 },
-  { fund: 'general', dept: 'Public Works', name: 'Dumpster enclosures', amount: 40_000, page: 4 },
+  {
+    fund: 'general',
+    dept: 'Public Safety',
+    name: 'Public safety master plan and impact fee study',
+    amount: 60_000,
+    page: 4,
+    feature: 94,
+    featureName: 'Public Safety Master Plan and Impact Fee Study',
+  },
+  { fund: 'general', dept: 'Public Works', name: 'Dumpster enclosures', amount: 40_000, page: 4, feature: 53, featureName: 'Dumpster Enclosures Fencing' },
   { fund: 'general', dept: 'Public Works', name: '170 North and North Vineyard Road crosswalk', amount: 15_000, page: 4 },
   { fund: 'general', dept: 'Public Works', name: 'Flip the Strip in all detention basins and collector roads', amount: 125_000, page: 4 },
-  { fund: 'general', dept: 'Engineering', name: 'Design of the 1200 North overpass bridge', amount: 500_000, page: 4 },
-  { fund: 'general', dept: 'Planning', name: 'Holdaway Road bike boulevard study', amount: 25_000, page: 4 },
+  { fund: 'general', dept: 'Engineering', name: 'Design of the 1200 North overpass bridge', amount: 500_000, page: 4, feature: 1, featureName: '1200 North Bridge' },
+  { fund: 'general', dept: 'Planning', name: 'Holdaway Road bike boulevard study', amount: 25_000, page: 4, feature: 18, featureName: 'Holdaway Road Complete Street Design & Survey' },
   // Impact fees
-  { fund: 'impact', dept: 'Transportation', name: 'Holdaway Fields 400 South betterment', amount: 500_000, page: 4 },
-  { fund: 'impact', dept: 'Transportation', name: 'Traffic signal at 600 North and Main Street', amount: 404_000, page: 4 },
-  { fund: 'impact', dept: 'Transportation', name: 'Public Works building improvements (25%)', amount: 300_000, page: 4 },
-  { fund: 'impact', dept: 'Transportation', name: '1600 North Geneva Road intersection widening', amount: 270_000, page: 4 },
+  { fund: 'impact', dept: 'Transportation', name: 'Holdaway Fields 400 South betterment', amount: 500_000, page: 4, feature: 11, featureName: 'Holdaway Fields 400 S Extension' },
+  { fund: 'impact', dept: 'Transportation', name: 'Traffic signal at 600 North and Main Street', amount: 404_000, page: 4, feature: 14, featureName: 'Traffic Signal – 600 N & Main' },
+  { fund: 'impact', dept: 'Transportation', name: 'Public Works building improvements (25%)', amount: 300_000, page: 4, feature: 25, featureName: 'Public Works Building Expansion & Improvements' },
+  { fund: 'impact', dept: 'Transportation', name: '1600 North Geneva Road intersection widening', amount: 270_000, page: 4, feature: 2, featureName: '1600 N Geneva Road Intersection Widening' },
   { fund: 'impact', dept: 'Transportation', name: 'Homesteads reimbursement', amount: 130_000, page: 4 },
-  { fund: 'impact', dept: 'Transportation', name: 'Install street lights along 170 South', amount: 100_000, page: 4 },
+  { fund: 'impact', dept: 'Transportation', name: 'Install street lights along 170 South', amount: 100_000, page: 4, feature: 12, featureName: 'Install Street Lights – 170 South' },
   { fund: 'impact', dept: 'Transportation', name: 'Holdaway Fields and Main Street betterment', amount: 80_000, page: 4 },
-  { fund: 'impact', dept: 'Transportation', name: 'Concrete and electrical for two sheds', amount: 66_000, page: 4 },
-  { fund: 'impact', dept: 'Transportation', name: 'One large shed', amount: 43_000, page: 4 },
-  { fund: 'impact', dept: 'Transportation', name: 'One small shed', amount: 20_000, page: 4 },
+  { fund: 'impact', dept: 'Transportation', name: 'Concrete and electrical for two sheds', amount: 66_000, page: 4, feature: 77, featureName: 'Concrete/Electrical for Sheds' },
+  { fund: 'impact', dept: 'Transportation', name: 'One large shed', amount: 43_000, page: 4, feature: 75, featureName: 'Large Shed – Roadway (1 shed)' },
+  { fund: 'impact', dept: 'Transportation', name: 'One small shed', amount: 20_000, page: 4, feature: 76, featureName: 'Small Shed – Roadway (1 shed)' },
   // RAP tax and grants (a separate block on the same slide)
-  { fund: 'rap', dept: 'Parks and Recreation', name: 'Skate park near Vineyard City Hall (RAP tax and UORG grant)', amount: 1_420_000, page: 4 },
+  { fund: 'rap', dept: 'Parks and Recreation', name: 'Skate park near Vineyard City Hall (RAP tax and UORG grant)', amount: 1_420_000, page: 4, feature: 31, featureName: 'Skate Park & Pump Track' },
   { fund: 'rap', dept: 'Parks and Recreation', name: 'ARCH Commission RAP tax allocation', amount: 20_000, page: 4 },
   // Transportation fund
   { fund: 'transport', dept: 'Engineering', name: '400 South roadway, additional cost', amount: 100_000, page: 5 },
   { fund: 'transport', dept: 'Public Works', name: 'Pedestrian ramp updates (HBA, Main Street and Center Street)', amount: 75_000, page: 5 },
-  { fund: 'transport', dept: 'Public Works', name: 'Parking implementation on 300 West: restriping and design', amount: 50_000, page: 5 },
+  {
+    fund: 'transport',
+    dept: 'Public Works',
+    name: 'Parking implementation on 300 West: restriping and design',
+    amount: 50_000,
+    page: 5,
+    feature: 3,
+    featureName: '300 West Striping & Design (Parking Implementation)',
+  },
   // Wastewater
-  { fund: 'wastewater', dept: 'Wastewater', name: 'Lift Station 2 upgrade (carried over from FY25)', amount: 600_000, page: 5 },
-  { fund: 'wastewater', dept: 'Wastewater', name: 'Public Works building improvements', amount: 250_000, page: 5 },
-  { fund: 'wastewater', dept: 'Wastewater', name: 'Sewer system improvements', amount: 150_000, page: 5 },
-  { fund: 'wastewater', dept: 'Wastewater', name: 'Storage building at Lift Station 2', amount: 125_000, page: 5 },
+  { fund: 'wastewater', dept: 'Wastewater', name: 'Lift Station 2 upgrade (carried over from FY25)', amount: 600_000, page: 5, feature: 38, featureName: 'Lift Station 2 Upgrade' },
+  { fund: 'wastewater', dept: 'Wastewater', name: 'Public Works building improvements', amount: 250_000, page: 5, feature: 25, featureName: 'Public Works Building Expansion & Improvements' },
+  { fund: 'wastewater', dept: 'Wastewater', name: 'Sewer system improvements', amount: 150_000, page: 5, feature: 92, featureName: 'Sewer System Improvements (Pipelining)' },
+  { fund: 'wastewater', dept: 'Wastewater', name: 'Storage building at Lift Station 2', amount: 125_000, page: 5, feature: 39, featureName: 'Storage Building - Lift Station 2' },
   { fund: 'wastewater', dept: 'Wastewater', name: 'Fiber to lift stations (rolled over)', amount: 15_000, page: 5 },
   // Water
   { fund: 'water', dept: 'Water', name: 'Central Utah Water Conservancy District take-down fee', amount: 1_850_000, page: 5 },
   { fund: 'water', dept: 'Water', name: '22 Lake Bottom water shares from Orem', amount: 554_500, page: 5 },
-  { fund: 'water', dept: 'Water', name: 'Water shares', amount: 300_000, page: 5 },
-  { fund: 'water', dept: 'Water', name: 'Public Works building improvements', amount: 250_000, page: 5 },
-  { fund: 'water', dept: 'Water', name: 'Secondary water master plan', amount: 100_000, page: 5 },
+  { fund: 'water', dept: 'Water', name: 'Water shares', amount: 300_000, page: 5, feature: 86, featureName: 'Water Shares Purchase' },
+  { fund: 'water', dept: 'Water', name: 'Public Works building improvements', amount: 250_000, page: 5, feature: 25, featureName: 'Public Works Building Expansion & Improvements' },
+  { fund: 'water', dept: 'Water', name: 'Secondary water master plan', amount: 100_000, page: 5, feature: 93, featureName: 'Secondary Water Master Plan' },
   { fund: 'water', dept: 'Water', name: 'Pressurized irrigation pond pump upgrade', amount: 96_000, page: 5 },
   { fund: 'water', dept: 'Public Works', name: 'Concrete aprons around hydrants', amount: 60_000, page: 5 },
   { fund: 'water', dept: 'Water', name: 'Backflow software', amount: 15_000, page: 5 },
   { fund: 'water', dept: 'Water', name: 'Trailer for backhoe', amount: 10_000, page: 5 },
   // Redevelopment Agency
   { fund: 'rda', dept: 'Redevelopment', name: 'Environmental remediation, Anderson Geneva east and west', amount: 6_000_000, page: 6 },
-  { fund: 'rda', dept: 'Redevelopment', name: 'Rail spur realignment: design and construction', amount: 3_500_000, page: 6 },
-  { fund: 'rda', dept: 'Redevelopment', name: 'Vineyard Beach improvements: design (TRCC grant and Flagship rebate)', amount: 3_372_441, page: 6 },
-  { fund: 'rda', dept: 'Redevelopment', name: 'Vineyard Connector promenade overpass (UDOT)', amount: 2_200_000, page: 6 },
+  { fund: 'rda', dept: 'Redevelopment', name: 'Rail spur realignment: design and construction', amount: 3_500_000, page: 6, feature: 21, featureName: 'Rail Consolidation' },
+  { fund: 'rda', dept: 'Redevelopment', name: 'Vineyard Beach improvements: design (TRCC grant and Flagship rebate)', amount: 3_372_441, page: 6, feature: 42, featureName: 'Vineyard Beach Park' },
+  { fund: 'rda', dept: 'Redevelopment', name: 'Vineyard Connector promenade overpass (UDOT)', amount: 2_200_000, page: 6, feature: 16, featureName: 'Vineyard Connector Overpass Bridge' },
   { fund: 'rda', dept: 'Redevelopment', name: 'Lift Station 4 (FY27 portion)', amount: 1_300_000, page: 6 },
   { fund: 'rda', dept: 'Engineering', name: 'Traffic signals at 600 North and Main Street and 400 North and Mill Road (carried over)', amount: 625_000, page: 6 },
-  { fund: 'rda', dept: 'Redevelopment', name: '400 North traffic signal: design and construction', amount: 625_000, page: 6 },
-  { fund: 'rda', dept: 'Redevelopment', name: 'Public Works building improvements', amount: 400_000, page: 6 },
+  { fund: 'rda', dept: 'Redevelopment', name: '400 North traffic signal: design and construction', amount: 625_000, page: 6, feature: 4, featureName: '400 North & Mill Road Traffic Signal' },
+  { fund: 'rda', dept: 'Redevelopment', name: 'Public Works building improvements', amount: 400_000, page: 6, feature: 25, featureName: 'Public Works Building Expansion & Improvements' },
   { fund: 'rda', dept: 'Redevelopment', name: 'Pedestrian enhancements (flashers)', amount: 55_000, page: 6 },
-  { fund: 'rda', dept: 'Redevelopment', name: 'City-wide economic development strategic plan', amount: 35_000, page: 6 },
+  { fund: 'rda', dept: 'Redevelopment', name: 'City-wide economic development strategic plan', amount: 35_000, page: 6, feature: 96, featureName: 'Economic Development Strategic Plan' },
 ];
 
 export interface BudgetPayload {
@@ -312,20 +397,24 @@ export interface BudgetPayload {
   adopted: string;
   amended: string;
   amendmentOrdinance: string;
+  /** "First Budget Amendment". */
+  amendmentName: string;
+  /** The day the council saw the tentative budget, or empty. */
+  tentativeDate: string;
   /** "Ordinance 2026-08", the ordinance that adopted the budget, and its document. */
   adoptionOrdinance: string;
   adoptionOrdinanceDoc: string;
-  docs: typeof BUDGET_DOCS;
+  docs: BudgetDocs;
   funds: BudgetFund[];
-  general: typeof GENERAL;
+  general: GeneralTotals;
   departments: BudgetLine[];
   transfersOut: BudgetLine[];
   spendGroups: SpendGroup[];
   revenue: RevenueLine[];
   transfersIn: RevenueLine[];
   revenueGroups: RevenueGroup[];
-  historyYears: readonly string[];
-  history: typeof HISTORY;
+  historyYears: string[];
+  history: HistorySeries[];
   projectFunds: typeof PROJECT_FUNDS;
   projects: CapitalProject[];
   projectsTotal: number;
@@ -335,10 +424,12 @@ export interface BudgetPayload {
 export function budgetPayload(): BudgetPayload {
   return {
     fiscalYear: BUDGET_FISCAL_YEAR,
-    label: 'Fiscal year 2027 (July 1, 2026 to June 30, 2027)',
+    label: `Fiscal year ${BUDGET_FISCAL_YEAR} (July 1, ${BUDGET_FISCAL_YEAR - 1} to June 30, ${BUDGET_FISCAL_YEAR})`,
     adopted: BUDGET_ADOPTED,
     amended: BUDGET_AMENDED,
     amendmentOrdinance: BUDGET_AMENDMENT_ORDINANCE,
+    amendmentName: BUDGET_AMENDMENT_NAME,
+    tentativeDate: BUDGET_TENTATIVE_DATE,
     adoptionOrdinance: BUDGET_ADOPTION_ORDINANCE,
     adoptionOrdinanceDoc: BUDGET_ADOPTION_ORDINANCE_DOC,
     docs: BUDGET_DOCS,
@@ -360,4 +451,95 @@ export function budgetPayload(): BudgetPayload {
       'Where the slides and the budget book differ, this page uses the budget book.',
     ],
   };
+}
+
+/** Everything staff can change, in one piece: what one saved version of the budget holds. */
+export interface BudgetBook {
+  fiscalYear: number;
+  adopted: string;
+  adoptionOrdinance: string;
+  adoptionOrdinanceDoc: string;
+  amended: string;
+  amendmentOrdinance: string;
+  amendmentName: string;
+  tentativeDate: string;
+  docs: BudgetDocs;
+  funds: BudgetFund[];
+  general: GeneralTotals;
+  departments: BudgetLine[];
+  transfersOut: BudgetLine[];
+  spendGroups: SpendGroup[];
+  revenue: RevenueLine[];
+  transfersIn: RevenueLine[];
+  revenueGroups: RevenueGroup[];
+  historyYears: string[];
+  history: HistorySeries[];
+  projectFunds: Array<{ key: string; name: string }>;
+  projects: CapitalProject[];
+}
+
+const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+/** A copy of the budget as it is now. */
+export function budgetBookNow(): BudgetBook {
+  return copy({
+    fiscalYear: BUDGET_FISCAL_YEAR,
+    adopted: BUDGET_ADOPTED,
+    adoptionOrdinance: BUDGET_ADOPTION_ORDINANCE,
+    adoptionOrdinanceDoc: BUDGET_ADOPTION_ORDINANCE_DOC,
+    amended: BUDGET_AMENDED,
+    amendmentOrdinance: BUDGET_AMENDMENT_ORDINANCE,
+    amendmentName: BUDGET_AMENDMENT_NAME,
+    tentativeDate: BUDGET_TENTATIVE_DATE,
+    docs: BUDGET_DOCS,
+    funds: FUNDS,
+    general: GENERAL,
+    departments: DEPARTMENTS,
+    transfersOut: TRANSFERS_OUT,
+    spendGroups: SPEND_GROUPS,
+    revenue: REVENUE,
+    transfersIn: TRANSFERS_IN,
+    revenueGroups: REVENUE_GROUPS,
+    historyYears: HISTORY_YEARS,
+    history: HISTORY,
+    projectFunds: PROJECT_FUNDS,
+    projects: PROJECTS,
+  });
+}
+
+/** The budget this file ships with, taken before any saved version is applied. */
+const BUILT_IN: BudgetBook = budgetBookNow();
+export const builtInBudgetBook = (): BudgetBook => copy(BUILT_IN);
+
+const listeners = new Set<() => void>();
+/** Runs `fn` after every applyBudgetBook (for tables derived from the budget, such as the map links). */
+export function onBudgetBookApplied(fn: () => void): void {
+  listeners.add(fn);
+}
+
+/** Makes `book` the budget every reader sees (null: the built-in one). Synchronous, so a request never sees half of a change. */
+export function applyBudgetBook(book: BudgetBook | null): void {
+  const b = copy(book ?? BUILT_IN);
+  BUDGET_FISCAL_YEAR = b.fiscalYear;
+  BUDGET_ADOPTED = b.adopted;
+  BUDGET_ADOPTION_ORDINANCE = b.adoptionOrdinance;
+  BUDGET_ADOPTION_ORDINANCE_DOC = b.adoptionOrdinanceDoc;
+  BUDGET_AMENDED = b.amended;
+  BUDGET_AMENDMENT_ORDINANCE = b.amendmentOrdinance;
+  BUDGET_AMENDMENT_NAME = b.amendmentName;
+  BUDGET_TENTATIVE_DATE = b.tentativeDate;
+  BUDGET_DOCS = b.docs;
+  FUNDS = b.funds;
+  GENERAL = b.general;
+  DEPARTMENTS = b.departments;
+  TRANSFERS_OUT = b.transfersOut;
+  SPEND_GROUPS = b.spendGroups;
+  REVENUE = b.revenue;
+  TRANSFERS_IN = b.transfersIn;
+  REVENUE_GROUPS = b.revenueGroups;
+  HISTORY_YEARS = b.historyYears;
+  HISTORY = b.history;
+  PROJECT_FUNDS = b.projectFunds;
+  PROJECTS = b.projects;
+  for (const fn of listeners) fn();
 }

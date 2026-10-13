@@ -17,7 +17,7 @@
  * A record goes to a project only when that project is the single best match among all funded
  * projects (`bestProject`); a tie goes to none.
  */
-import { BUDGET_ADOPTED, BUDGET_ADOPTION_ORDINANCE, PROJECTS, PROJECT_FUNDS, type CapitalProject } from './budgetData';
+import { BUDGET_ADOPTED, BUDGET_ADOPTION_ORDINANCE, BUDGET_FISCAL_YEAR, fiscalShort, PROJECTS, PROJECT_FUNDS, type CapitalProject } from './budgetData';
 import { FY27_PLAN } from './capitalPlan';
 
 export interface FundedProject {
@@ -190,10 +190,13 @@ export function searchPhrases(p: FundedProject): string[] {
 
 // ------------------------------------------------------------------------------------------ budget
 
-export const SLIDES_TITLE = 'FY 27 Final Budget Slides';
+/** "FY 27 Final Budget Slides", for the budget in force. */
+export const slidesTitle = () => `${fiscalShort()} Final Budget Slides`;
 const fundName = (key: string) => PROJECT_FUNDS.find((f) => f.key === key)?.name ?? key;
 
 export interface BudgetBlock {
+  /** The fiscal year of the budget in force (2027 for the year ending June 30, 2027). */
+  fiscalYear: number;
   total: number;
   adopted: string;
   documentTitle: string;
@@ -202,10 +205,11 @@ export interface BudgetBlock {
 
 export function budgetBlock(p: FundedProject, slidesId: string): BudgetBlock & { documentId: string } {
   return {
+    fiscalYear: BUDGET_FISCAL_YEAR,
     total: p.lines.reduce((s, l) => s + l.amount, 0),
     adopted: BUDGET_ADOPTED,
     documentId: slidesId,
-    documentTitle: SLIDES_TITLE,
+    documentTitle: slidesTitle(),
     lines: p.lines.map((l) => ({ name: l.name, fund: l.fund, fundName: fundName(l.fund), dept: l.dept, amount: l.amount, page: l.page })),
   };
 }
@@ -271,11 +275,13 @@ export function cleanLabel(s: string): string {
   return cap.length > 140 ? `${cap.slice(0, 137).replace(/\s+\S*$/, '')}...` : cap;
 }
 
-/** The council's (or the RDA board's) vote adopting the fiscal 2027 budget, held on the adoption date. */
+/** The council's (or the RDA board's) vote adopting the current fiscal year's budget, held on the adoption date. */
 export function isBudgetAdoption(m: Pick<MotionLike, 'date' | 'result' | 'item' | 'motion'>): boolean {
   if (m.date !== BUDGET_ADOPTED || m.result !== 'carried') return false;
   const t = `${m.item ?? ''} ${m.motion}`.toLowerCase().replace(/[^a-z0-9\s\-–]/g, ' ');
-  return /\bbudget\b/.test(t) && /(2026\s*[-–]\s*2027|\bfy\s*27\b|\bfy\s*2027\b|fiscal\s+year\s+2027)/.test(t) && !/\btentative\b|\bamending the\b|\bamendments? to the (?:fiscal|fy|budget|\d{4})/.test(t);
+  const fy = BUDGET_FISCAL_YEAR;
+  const named = new RegExp(`(${fy - 1}\\s*[-–]\\s*${fy}|\\bfy\\s*${fy % 100}\\b|\\bfy\\s*${fy}\\b|fiscal\\s+year\\s+${fy})`);
+  return /\bbudget\b/.test(t) && named.test(t) && !/\btentative\b|\bamending the\b|\bamendments? to the (?:fiscal|fy|budget|\d{4})/.test(t);
 }
 
 /** Which body adopted the budget for a fund: the Redevelopment Agency board for its own fund, the City Council for the rest. */
@@ -290,7 +296,7 @@ export function projectVotes(p: FundedProject, motions: MotionLike[], all: Funde
   for (const body of bodies)
     for (const m of adoption.filter((x) => x.bodyId === body))
       // The council's budget vote: the minutes do not print the ordinance number, Ordinance 2026-08 itself does (budgetData).
-      out.push({ kind: 'budget', label: body === 'redevelopment-agency' ? 'Approved the RDA budget for FY 2027' : 'Approved the FY 2027 budget', ...base(m), number: motionNumber(m) ?? (body === 'city-council' ? BUDGET_ADOPTION_ORDINANCE : null) });
+      out.push({ kind: 'budget', label: body === 'redevelopment-agency' ? `Approved the RDA budget for FY ${BUDGET_FISCAL_YEAR}` : `Approved the FY ${BUDGET_FISCAL_YEAR} budget`, ...base(m), number: motionNumber(m) ?? (body === 'city-council' ? BUDGET_ADOPTION_ORDINANCE : null) });
   for (const m of motions) {
     if (!m.date || isBudgetAdoption(m)) continue;
     // A consent motion: the one consent item that names the project.
@@ -332,7 +338,7 @@ export function glanceStatus(p: FundedProject, rows: Array<Record<string, string
 }
 
 export function budgetStatus(bookId: string): ProjectStatus {
-  return { label: 'Funded in the adopted FY 2027 budget', completion: null, asOf: BUDGET_ADOPTED, source: 'budget', sourceUrl: null, documentId: bookId };
+  return { label: `Funded in the adopted FY ${BUDGET_FISCAL_YEAR} budget`, completion: null, asOf: BUDGET_ADOPTED, source: 'budget', sourceUrl: null, documentId: bookId };
 }
 
 // ------------------------------------------------------------------------------------------ documents
