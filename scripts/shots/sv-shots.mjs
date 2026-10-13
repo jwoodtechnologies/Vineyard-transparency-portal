@@ -85,6 +85,26 @@ const touchTap = async (ctx, page, x, y, hold = 60) => {
   await page.waitForTimeout(hold);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 };
+/** The share of near black pixels in the outer tenth of the view on each side, read from a screenshot. */
+const blackEdge = (page, png) =>
+  page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const side = (x0, x1) => {
+      const d = g.getImageData(x0, 0, x1 - x0, img.height).data;
+      let dark = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] < 24) dark++;
+      return Math.round((dark / (d.length / 4)) * 100) / 100;
+    };
+    const w = Math.max(1, Math.floor(img.width / 10));
+    return { left: side(0, w), right: side(img.width - w, img.width) };
+  }, png.toString('base64'));
 const attribution = (page) => page.getAttribute('.vc-svp-view', 'data-image').catch(() => '');
 
 for (const prof of PROFILES) {
@@ -125,7 +145,22 @@ for (const prof of PROFILES) {
         run.dateOptions = await page.locator('.vc-svp-when option').allTextContents();
         run.chips = await page.locator('.vc-svp-chip').allTextContents();
         run.miniMap = await page.locator('.vc-svp-mini canvas').count();
+        run.miniMapInfo = await page.locator('.vc-svp-mini .maplibregl-ctrl-attrib').count();
+        run.zoningPressed = await page.getAttribute('.vc-svp .vc-sv-bar-btn[aria-pressed]', 'aria-pressed').catch(() => null);
         if (!dark) {
+          // Look as far left as a drag allows: a flat photo must not show black past its edge.
+          const v = await page.locator('.vc-svp-canvas').boundingBox();
+          for (let i = 0; i < 3; i++) {
+            await page.mouse.move(v.x + v.width * 0.2, v.y + v.height * 0.5);
+            await page.mouse.down();
+            await page.mouse.move(v.x + v.width * 0.95, v.y + v.height * 0.5, { steps: 10 });
+            await page.mouse.up();
+            await page.waitForTimeout(400);
+          }
+          await page.waitForTimeout(1200);
+          const shot = await page.screenshot({ clip: v });
+          run.edgeBlack = await blackEdge(page, shot);
+          await page.screenshot({ path: `${OUT}/${tag}-2b-edge.png` });
           // Click (or tap) on the road ahead: the next photo that way.
           const c = await page.locator('.vc-svp-canvas').boundingBox();
           const before = await attribution(page);
@@ -215,6 +250,31 @@ for (const prof of PROFILES) {
       await page.click('.vc-sv-compass');
       await page.waitForTimeout(600);
       run.look.afterCompassTap = await facing();
+      // Face east toward the Wasatch and look up near eye level: terrain, sky and clouds.
+      for (let i = 0; i < 3; i++) {
+        await page.click('button[aria-label="Turn right"]');
+        await page.waitForTimeout(350);
+      }
+      if (prof.ctx.hasTouch) {
+        const cdp = await ctx.newCDPSession(page);
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy + 120, id: 1 }] });
+        for (let i = 1; i <= 8; i++) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx, y: cy + 120 - i * 5, id: 1 }] });
+          await page.waitForTimeout(16);
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      } else {
+        await page.mouse.move(cx, cy + 120);
+        await page.mouse.down();
+        await page.mouse.move(cx, cy + 80, { steps: 8 });
+        await page.mouse.up();
+      }
+      await page.waitForTimeout(9000);
+      run.look.east = await facing();
+      run.look.sky = await page.evaluate(() => getComputedStyle(document.querySelector('.vc-sv-sky') ?? document.body).height);
+      run.look.zoningPressed = await page.getAttribute('.vc-sv-bar-btn[aria-pressed]', 'aria-pressed').catch(() => null);
+      run.look.title = (await page.textContent('.vc-sv-title').catch(() => ''))?.trim();
+      await page.screenshot({ path: `${OUT}/${prof.name}-8-3d-east.png` });
       run.look.noteSame = note0 === (await page.textContent('.vc-sv-note'));
     } catch (e) {
       run.error = redact(e).slice(0, 500);
