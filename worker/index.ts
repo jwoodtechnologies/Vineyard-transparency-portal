@@ -30,6 +30,7 @@ import { getConstruction, getPageSource } from './api/construction';
 import { getProjectDetail } from './api/projects';
 import { handlePages } from './api/pages';
 import { bumpDataVersion, dataVersion } from './lib/dataVersion';
+import { ensureBudgetBook } from './lib/budgetStore';
 import { runFrequent, runHourly } from './cron';
 import { handleAdmin } from './admin/routes';
 import { PANEL_PREFIX, handleFeedback, handlePanel, handleVisit } from './panel/routes';
@@ -58,6 +59,9 @@ function changed(env: Env, ctx: ExecutionContext, method: string, res: Response)
 async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const method = request.method;
+
+  // The budget readers see is the saved version staff last published (or the built-in one); a read of the database happens only when the data version moved.
+  await ensureBudgetBook(env);
 
   if (path.startsWith('/api/admin/')) return changed(env, ctx, method, await handleAdmin(env, request, url));
   // The staff portal publishes its own changes (see worker/staff/core.ts `published`), so signing in never refreshes the public caches.
@@ -160,7 +164,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
       if (!b || ((b === 'members' || b === 'years' || b === 'attendance' || b === 'meetings') && !c)) return handleVotes(env, url, b);
       break;
     case 'map':
-      if (b === 'layers' && !c) return listMapLayers();
+      if (b === 'layers' && !c) return listMapLayers(env);
       if (b === 'layers' && c && /^[a-z]{2,20}$/.test(c) && parts.length === 3) return getMapLayer(env, c, url);
       if (b === 'parcels' && parts.length === 5) return getParcelOutlines(parts[2], parts[3], parts[4]);
       if (b === 'parcel' && parts.length === 2) return getParcelAt(url);
