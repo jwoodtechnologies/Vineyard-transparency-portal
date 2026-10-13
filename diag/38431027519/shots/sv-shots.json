@@ -1,0 +1,69 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "205849761373841",
+      "pano": false,
+      "pin": [
+        -111.73498679095802,
+        40.29747482073531
+      ],
+      "at": [
+        -111.73492402048,
+        40.297740027606
+      ],
+      "found": 49,
+      "pageSearch": {
+        "count": 1,
+        "withComputed": 1,
+        "pickInIt": false
+      }
+    },
+    "none": [
+      -111.7455,
+      40.3035
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone",
+      "notes": [],
+      "hint": "Tap a blue line to see the street",
+      "error": "TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n"
+    },
+    {
+      "tag": "phone-dark",
+      "notes": [],
+      "hint": "Tap a blue line to see the street",
+      "error": "TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n"
+    },
+    {
+      "tag": "phone-3d",
+      "notes": [],
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle"
+    },
+    {
+      "tag": "desktop",
+      "notes": [],
+      "ghostOnLine": 0,
+      "error": "TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n"
+    },
+    {
+      "tag": "desktop-dark",
+      "notes": [],
+      "ghostOnLine": 0,
+      "error": "TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n"
+    },
+    {
+      "tag": "desktop-hover",
+      "notes": [],
+      "thumb": 0
+    },
+    {
+      "tag": "desktop-3d",
+      "notes": [],
+      "note": "No street photo within 60 m of this spot yet. This is a 3D view of the map.ZoningGoogle"
+    }
+  ],
+  "tokenSet": true
+}
