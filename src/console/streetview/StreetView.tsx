@@ -6,7 +6,7 @@
  * buildings raised and zoning on the ground. Google Street View stays as a secondary link. Full screen on
  * phones with a slim bar; beside the map on wider screens.
  */
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type * as maplibregl from 'maplibre-gl';
 import type { FeatureCollection, Geometry } from 'geojson';
 import { ExternalLink, Layers, X } from 'lucide-react';
@@ -17,6 +17,20 @@ import { addBuildings, enter3d, fly3d, leave3d, type Saved } from './threeD';
 import type { District } from './zoningRenderer';
 
 const PhotoViewer = lazy(() => import('./PhotoViewer'));
+
+/** A viewer that fails while drawing (or its chunk fails to load) falls back to the 3D view, never taking the map page down. */
+class ViewerBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onError();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 type FC = FeatureCollection<Geometry, Record<string, unknown>>;
 
@@ -303,9 +317,11 @@ export function StreetView({ getMap, gen, ready, dark, start, loadZoning, showMa
           {zoningToggle}
           {google}
         </div>
-        <Suspense fallback={<p className="vc-sv-loading">Loading the street photo.</p>}>
-          <PhotoViewer token={token} photo={photo} pin={pin} districts={districts} parcel={parcel} showZoning={showZoning} onCamera={setCamera} onError={onError} />
-        </Suspense>
+        <ViewerBoundary onError={onError}>
+          <Suspense fallback={<p className="vc-sv-loading">Loading the street photo.</p>}>
+            <PhotoViewer token={token} photo={photo} pin={pin} districts={districts} parcel={parcel} showZoning={showZoning} onCamera={setCamera} onError={onError} />
+          </Suspense>
+        </ViewerBoundary>
         <p className="vc-sv-credit">
           Street photos from{' '}
           <a href="https://www.mapillary.com" target="_blank" rel="noopener noreferrer">

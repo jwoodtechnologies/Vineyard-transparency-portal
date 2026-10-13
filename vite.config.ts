@@ -31,6 +31,46 @@ const SCREENS: Record<string, string> = {
 };
 
 /**
+ * MapillaryJS (the map's street photo viewer) builds its image filter with `new Function`, which the site's
+ * Content Security Policy forbids (no 'unsafe-eval'). This swaps that one method for a plain evaluator with
+ * the same rules (==, !=, <, <=, >, >= with a type check, in, !in, all), so the CSP stays as it is. The
+ * build fails if a new version of the library changes the method, rather than shipping eval again.
+ */
+function mapillaryNoEval(): Plugin {
+  const from = 'createFilter(filter) {\n        return new Function("node", "return " + this._compile(filter) + ";");\n    }';
+  const to = `createFilter(filter) {
+        const test = (f, node) => {
+            if (f == null || f.length <= 1) return true;
+            const op = f[0];
+            const v = (p) => node[p];
+            switch (op) {
+                case "==": return v(f[1]) === f[2];
+                case "!=": return v(f[1]) !== f[2];
+                case ">": return typeof v(f[1]) === typeof f[2] && v(f[1]) > f[2];
+                case ">=": return typeof v(f[1]) === typeof f[2] && v(f[1]) >= f[2];
+                case "<": return typeof v(f[1]) === typeof f[2] && v(f[1]) < f[2];
+                case "<=": return typeof v(f[1]) === typeof f[2] && v(f[1]) <= f[2];
+                case "in": return f.slice(2).indexOf(v(f[1])) !== -1;
+                case "!in": return f.slice(2).indexOf(v(f[1])) === -1;
+                case "all": return f.slice(1).every((g) => test(g, node));
+                default: return true;
+            }
+        };
+        return (node) => test(filter, node);
+    }`;
+  return {
+    name: 'mapillary-no-eval',
+    transform(code, id) {
+      if (!/mapillary-js[\\/]dist[\\/]mapillary\.module\.js$/.test(id)) return;
+      if (!code.includes(from)) throw new Error('mapillary-js changed its createFilter: check it for eval before upgrading.');
+      const out = code.replace(from, to);
+      if (/new Function\(/.test(out)) throw new Error('mapillary-js still uses new Function.');
+      return { code: out, map: null };
+    },
+  };
+}
+
+/**
  * Fast first paint (build only):
  * - the entry carries no stylesheet (each screen brings its own), so the static app shell in index.html
  *   paints from its inline styles at once;
@@ -124,7 +164,7 @@ function pdfjsAssets(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), fastStart(), pdfjsAssets()],
+  plugins: [react(), tailwindcss(), fastStart(), pdfjsAssets(), mapillaryNoEval()],
   // The client's own build id (src/console/api.ts): a new build discards the API copies kept on the device.
   define: { __VTP_BUILD__: JSON.stringify(BUILD_ID) },
   resolve: {
