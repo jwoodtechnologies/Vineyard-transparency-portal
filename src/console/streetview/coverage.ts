@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react';
 import type * as maplibregl from 'maplibre-gl';
 import { getJson } from '../api';
 import { distance, nearestOnSegment } from '../measure/geo';
-import type { Photo, Pos } from './geo';
+import { PREFER_BAND_M, preferOrder, type Photo, type Pos } from './geo';
 
 export const COVERAGE_SRC = 'vtp-mly';
 const LINE = 'vtp-mly-seq';
@@ -73,7 +73,10 @@ const box = (p: { x: number; y: number }, r: number): [[number, number], [number
   [p.x + r, p.y + r],
 ];
 
-/** The photo spot drawn nearest a screen point, within `r` pixels (photo dots exist from zoom 14 in the tiles). */
+/**
+ * The photo spot at a screen point, within `r` pixels (photo dots exist from zoom 14 in the tiles). Among
+ * spots about as near as the nearest, a 360 degree photo comes first, then the newest day (as rankPhotos).
+ */
 export function photoNear(map: maplibregl.Map, p: { x: number; y: number }, r = 28): Photo | null {
   if (!map.getLayer(DOTS)) return null;
   // The dots layer draws from zoom 16, but its tiles are there from 14: query the source's features directly.
@@ -83,22 +86,24 @@ export function photoNear(map: maplibregl.Map, p: { x: number; y: number }, r = 
   const ll: Pos = [at.lng, at.lat];
   const edge = map.unproject([p.x + r, p.y]);
   const maxM = distance(ll, [edge.lng, edge.lat]);
-  let best: { f: (typeof feats)[number]; d: number } | null = null;
+  const near: Array<{ p: Photo; score: number }> = [];
+  const seen = new Set<string>();
   for (const f of feats) {
     if (f.geometry.type !== 'Point') continue;
     const d = distance(ll, f.geometry.coordinates as Pos);
-    if (d <= maxM && (!best || d < best.d)) best = { f, d };
+    const q = f.properties ?? {};
+    const id = String(q.id);
+    if (d > maxM || seen.has(id)) continue;
+    seen.add(id);
+    const compass = Number(q.compass_angle);
+    near.push({
+      score: d,
+      p: { id, pos: f.geometry.coordinates as Pos, compass: Number.isFinite(compass) ? compass : null, pano: q.is_pano === true || q.is_pano === 1, capturedAt: Number(q.captured_at) || null },
+    });
   }
-  if (!best) return null;
-  const q = best.f.properties ?? {};
-  const compass = Number(q.compass_angle);
-  return {
-    id: String(q.id),
-    pos: (best.f.geometry as unknown as { coordinates: Pos }).coordinates,
-    compass: Number.isFinite(compass) ? compass : null,
-    pano: q.is_pano === true || q.is_pano === 1,
-    capturedAt: Number(q.captured_at) || null,
-  };
+  if (!near.length) return null;
+  const best = Math.min(...near.map((x) => x.score));
+  return near.filter((x) => x.score <= best + PREFER_BAND_M).sort(preferOrder)[0].p;
 }
 
 /** The blue line under a screen point (within `r` pixels): its sequence id and the nearest point on it. */

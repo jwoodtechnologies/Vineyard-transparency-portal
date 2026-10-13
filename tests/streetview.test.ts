@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { geodeticToEnu } from 'mapillary-js';
 import { destination, distance, type Pos } from '../src/console/measure/geo';
-import { bearingToPin, centerOnPin, coneRing, nearestPhoto, parsePhotos, photoSearchUrl, rankPhotos, ringToLocal, turn, type Photo } from '../src/console/streetview/geo';
+import { bearingToPin, centerOnPin, clampFlatCenter, coneRing, nearestPhoto, parsePhotos, photoSearchUrl, rankPhotos, ringToLocal, turn, type Photo } from '../src/console/streetview/geo';
 
 const PIN: Pos = [-111.7445, 40.305];
 /** A photo `m` meters from the pin in direction `from` (degrees from north). */
@@ -28,6 +28,17 @@ describe('nearest photo', () => {
 
   it('lists the others in order, to try when the best one does not load', () => {
     expect(rankPhotos([photo('far', 45, 0), photo('near', 12, 90), photo('mid', 30, 180), photo('out', 80, 0)], PIN).map((p) => p.id)).toEqual(['near', 'mid', 'far']);
+  });
+
+  it('prefers a 360 degree photo, then the newest day, among photos at about the same spot', () => {
+    const day = 86_400_000;
+    const old = photo('2017', 4, 0, { pano: false, capturedAt: 100 * day });
+    const newer = photo('2020', 9, 90, { pano: false, capturedAt: 1200 * day });
+    const sphere = photo('360', 12, 180, { pano: true, capturedAt: 50 * day });
+    expect(rankPhotos([old, newer], PIN).map((p) => p.id)).toEqual(['2020', '2017']);
+    expect(rankPhotos([old, newer, sphere], PIN).map((p) => p.id)).toEqual(['360', '2020', '2017']);
+    // Much farther than the nearest: distance still wins.
+    expect(nearestPhoto([old, photo('far360', 40, 0, { pano: true, capturedAt: 1300 * day })], PIN)?.id).toBe('2017');
   });
 
   it('takes the newest of two photos at the same spot', () => {
@@ -74,6 +85,21 @@ describe('facing the pin', () => {
     expect(turn(0, 180)).toBe(180);
   });
 
+  it('keeps the view of a flat photo inside the photo', () => {
+    // A 4:3 photo about 70 degrees wide (focal 0.7), a 40 degree tall view at 16:10.
+    const c = (x: number, y = 0.5) => clampFlatCenter([x, y], 40, 1.6, 0.7, 4000, 3000);
+    expect(c(0.5)).toEqual([0.5, 0.5]);
+    const left = c(0.05)[0];
+    expect(left).toBeGreaterThan(0.05);
+    expect(left).toBeLessThan(0.5);
+    expect(c(0.95)[0]).toBeCloseTo(1 - left, 6);
+    // The left edge of the view lands on the left edge of the photo.
+    const viewHalf = Math.atan(Math.tan((20 * Math.PI) / 180) * 1.6);
+    expect(Math.atan(((left - 0.5) * 1) / 0.7) - viewHalf).toBeCloseTo(-Math.atan(0.5 / 0.7), 6);
+    // Wider than the photo: centered.
+    expect(clampFlatCenter([0.2, 0.5], 80, 3, 0.7, 4000, 3000)[0]).toBe(0.5);
+  });
+
   it('centers a 360 degree photo on the pin and turns a flat one as far as it can', () => {
     // Camera facing east, pin to its north: a quarter turn left.
     expect(centerOnPin(photo('p', 20, 180, { compass: 90 }), PIN)[0]).toBeCloseTo(0.25, 3);
@@ -103,5 +129,23 @@ describe('zoning in the photo', () => {
     expect(xyz(3)[0]).toBeCloseTo(0, 6);
     // Two meters below the reference, bent down only by the earth's curve (under a millimeter at 100 m).
     for (let i = 0; i < 4; i++) expect(xyz(i)[2]).toBeCloseTo(-2, 2);
+  });
+});
+
+describe('moving in the photo', () => {
+  it('steps forward along the street for a click straight ahead, keeping the heading', async () => {
+    const { aheadTo } = await import('../src/console/streetview/nearby');
+    const ahead = (m: number, side: number, extra: Partial<Photo>) => ({ ...photo('x', 0, 0), pos: destination(destination(PIN, 0, m), 90, side), ...extra });
+    // Camera at the pin facing north; a click 12 m ahead.
+    const target = destination(PIN, 0, 12);
+    const sideways = ahead(11, 3, { id: 'side', pano: false, compass: 90 });
+    const along = ahead(10, 0, { id: 'along', pano: false, compass: 2 });
+    expect(aheadTo([sideways, along], PIN, 0, target, null)?.id).toBe('along');
+    // A 360 degree photo ahead can be turned to keep the heading.
+    expect(aheadTo([sideways, ahead(13, 1, { id: 'sphere', pano: true })], PIN, 0, target, null)?.id).toBe('sphere');
+    // A click off to the side is not a step forward.
+    expect(aheadTo([along], PIN, 0, destination(PIN, 90, 12), null)).toBeNull();
+    // Behind the camera never counts.
+    expect(aheadTo([ahead(-8, 0, { id: 'behind', pano: true })], PIN, 0, target, null)).toBeNull();
   });
 });

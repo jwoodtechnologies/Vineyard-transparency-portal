@@ -66,12 +66,26 @@ export function turn(from: number, to: number): number {
 export const bearingToPin = (photo: Photo, pin: Pos): number => bearing(photo.pos, pin);
 
 /**
- * The photo to open for a pin: the nearest within MAX_PHOTO_M. A flat photo facing away from the pin (more
- * than 60 degrees off) counts as 30 m farther, since it cannot be turned to show the pin; among equals the
- * newest wins. Null when none is close enough.
+ * The photo to open for a pin. Photos within 60 m are scored by distance, a flat photo facing away from
+ * the pin (more than 60 degrees off) counting as 30 m farther since it cannot be turned to show the pin.
+ * Among those within PREFER_BAND_M of the best score a 360 degree photo comes first, then the newest day,
+ * then the nearest. Null when none is close enough.
  */
 export function nearestPhoto(photos: Photo[], pin: Pos, max = MAX_PHOTO_M): Photo | null {
   return rankPhotos(photos, pin, max)[0] ?? null;
+}
+
+/** How much farther than the best photo a 360 degree or newer one may be and still be preferred. */
+export const PREFER_BAND_M = 15;
+
+const DAY = 86_400_000;
+const dayOf = (t: number | null) => (t ? Math.floor(t / DAY) : 0);
+
+/** 360 first, then the newest day, then the nearest: the order photos at about the same spot are shown in. */
+export function preferOrder<T extends { p: Photo; score: number }>(a: T, b: T): number {
+  if (a.p.pano !== b.p.pano) return a.p.pano ? -1 : 1;
+  const days = dayOf(b.p.capturedAt) - dayOf(a.p.capturedAt);
+  return days || a.score - b.score || (b.p.capturedAt ?? 0) - (a.p.capturedAt ?? 0);
 }
 
 /** Every photo within `max` of the pin, best first by the same rule (the next ones are tried when one fails to load). */
@@ -83,8 +97,31 @@ export function rankPhotos(photos: Photo[], pin: Pos, max = MAX_PHOTO_M): Photo[
     const away = !p.pano && p.compass != null && d > 3 && Math.abs(turn(p.compass, bearingToPin(p, pin))) > 60;
     scored.push({ p, score: d + (away ? 30 : 0) });
   }
-  scored.sort((a, b) => (Math.abs(a.score - b.score) <= 0.01 ? (b.p.capturedAt ?? 0) - (a.p.capturedAt ?? 0) : a.score - b.score));
-  return scored.map((x) => x.p);
+  scored.sort((a, b) => a.score - b.score);
+  if (!scored.length) return [];
+  const limit = scored[0].score + PREFER_BAND_M;
+  const close = scored.filter((x) => x.score <= limit).sort(preferOrder);
+  return [...close, ...scored.filter((x) => x.score > limit)].map((x) => x.p);
+}
+
+/**
+ * Keeps a flat photo's view on the photo: the center (MapillaryJS basic coordinates, [0, 1] across and
+ * down) is moved back in so no edge of the view goes past the edge of the photo, which shows black. The
+ * view is `vfov` degrees tall at `aspect` (width over height); the photo is `w` by `h` with a focal length
+ * `focal` (a fraction of its longer side). A view larger than the photo one way is centered that way.
+ */
+export function clampFlatCenter(center: [number, number], vfov: number, aspect: number, focal: number, w: number, h: number): [number, number] {
+  const halfV = ((vfov * Math.PI) / 180) / 2;
+  const halfH = Math.atan(Math.tan(halfV) * aspect);
+  const long = Math.max(w, h, 1);
+  const axis = (c: number, extent: number, halfView: number) => {
+    const room = Math.atan(extent / 2 / focal) - halfView;
+    if (room <= 0) return 0.5;
+    const a = Math.atan(((c - 0.5) * extent) / focal);
+    if (Math.abs(a) <= room) return c;
+    return 0.5 + (Math.tan(Math.sign(a) * room) * focal) / extent;
+  };
+  return [axis(center[0], w / long, halfH), axis(center[1], h / long, halfV)];
 }
 
 /**

@@ -3,7 +3,8 @@
  * lands on the road, and the other dates photos were taken at the same spot. One Graph API search per
  * spot (rounded to about a meter), kept for the visit.
  */
-import { distance } from '../measure/geo';
+import { bearing, distance } from '../measure/geo';
+import { turn } from './geo';
 import { parsePhotos, photoSearchUrl, type Photo, type Pos } from './geo';
 
 const cache = new Map<string, Promise<Photo[]>>();
@@ -26,6 +27,28 @@ export function nearestTo(photos: Photo[], target: Pos, exclude: string | null, 
   let best: { p: Photo; d: number } | null = null;
   for (const p of photos) {
     if (p.id === exclude) continue;
+    const d = distance(p.pos, target);
+    if (d <= max && (!best || d < best.d)) best = { p, d };
+  }
+  return best?.p ?? null;
+}
+
+/** A click this close to straight ahead (degrees either way) counts as a step forward along the street. */
+export const AHEAD_DEG = 30;
+
+/**
+ * The next photo for a click straight ahead: ahead of the camera along `heading`, facing within 45 degrees
+ * of it (or 360 degree), nearest the clicked spot within `max` meters of it. Null when the click is off to
+ * the side or nothing fits; the caller then uses nearestTo or a plain step forward.
+ */
+export function aheadTo(photos: Photo[], cam: Pos, heading: number, target: Pos, exclude: string | null, max = 20): Photo | null {
+  if (Math.abs(turn(heading, bearing(cam, target))) > AHEAD_DEG) return null;
+  let best: { p: Photo; d: number } | null = null;
+  for (const p of photos) {
+    if (p.id === exclude) continue;
+    const step = distance(cam, p.pos);
+    if (step < 1.5 || Math.abs(turn(heading, bearing(cam, p.pos))) > 50) continue;
+    if (!p.pano && (p.compass == null || Math.abs(turn(heading, p.compass)) > 45)) continue;
     const d = distance(p.pos, target);
     if (d <= max && (!best || d < best.d)) best = { p, d };
   }

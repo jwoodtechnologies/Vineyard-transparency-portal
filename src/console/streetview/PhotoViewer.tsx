@@ -9,11 +9,12 @@ import { Maximize2 } from 'lucide-react';
 import { NavigationDirection, Viewer, type Image as MlyImage, type ViewerMouseEvent } from 'mapillary-js';
 import 'mapillary-js/dist/mapillary.css';
 import { destination, distance } from '../measure/geo';
-import { centerOnPin, type Photo, type Pos } from './geo';
+import { centerOnPin, clampFlatCenter, turn, type Photo, type Pos } from './geo';
 import type { Camera } from './mapDraw';
 import { inRing, ZoningRenderer, type District } from './zoningRenderer';
 import { MiniMap } from './MiniMap';
-import { datesAt, nearestTo, photosAround, type DateChoice } from './nearby';
+import { AHEAD_DEG, aheadTo, datesAt, nearestTo, photosAround, type DateChoice } from './nearby';
+import { bearing } from '../measure/geo';
 
 interface Props {
   token: string;
@@ -73,6 +74,9 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const cam = useRef<Pos>(photo.pos);
   const look = useRef(0);
   const shownId = useRef<string | null>(null);
+  // The heading to keep after a step forward, and the shown photo's frame when it is flat (null for 360).
+  const keepHeading = useRef<number | null>(null);
+  const flat = useRef<{ focal: number; w: number; h: number } | null>(null);
   const [camera, setCamera] = useState<Camera | null>({ pos: photo.pos, bearing: photo.compass ?? 0, fov: 60 });
   const [taken, setTaken] = useState<number | null>(photo.capturedAt);
   const [shown, setShown] = useState(photo.id);
@@ -86,10 +90,25 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const go = useCallback((id: string) => {
     viewerRef.current?.moveTo(id).catch(() => undefined);
   }, []);
-  /** Moves to the photo nearest a spot on the ground (a click on the road, or a tap on the small map). */
+  /**
+   * Moves toward a spot on the ground (a click on the road, or a tap on the small map). A click straight
+   * ahead steps forward along the street and keeps facing the same way; elsewhere, the photo nearest it.
+   */
   const goToward = useCallback(
     (target: Pos) => {
+      const from = cam.current,
+        heading = look.current;
       void photosAround(token, target, 20).then((list) => {
+        const step = aheadTo(list, from, heading, target, shownId.current);
+        if (step) {
+          keepHeading.current = heading;
+          return go(step.id);
+        }
+        if (Math.abs(turn(heading, bearing(from, target))) <= AHEAD_DEG) {
+          keepHeading.current = heading;
+          void viewerRef.current?.moveDir(NavigationDirection.StepForward).catch(() => (keepHeading.current = null));
+          return;
+        }
         const next = nearestTo(list, target, shownId.current);
         if (next) go(next.id);
       });
@@ -142,8 +161,19 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       }
       setChips(out);
     };
+    // A flat photo shows black past its edges: the view is kept on the photo.
+    const clamp = () => {
+      const f = flat.current;
+      if (!f || !el.clientHeight) return;
+      Promise.all([viewer.getCenter(), viewer.getFieldOfView()]).then(([c, fov]) => {
+        if (gone || flat.current !== f) return;
+        const [x, y] = clampFlatCenter([c[0], c[1]], fov, el.clientWidth / el.clientHeight, f.focal, f.w, f.h);
+        if (Math.abs(x - c[0]) > 1e-4 || Math.abs(y - c[1]) > 1e-4) viewer.setCenter([x, y]);
+      }, () => undefined);
+    };
     const report = () => {
       cancelAnimationFrame(frame);
+      clamp();
       frame = requestAnimationFrame(() => {
         Promise.all([viewer.getPosition(), viewer.getPointOfView(), viewer.getFieldOfView()]).then(
           ([pos, pov, fov]) => {
@@ -167,6 +197,10 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       const ll = img.computedLngLat ?? img.lngLat;
       renderer.setCamera([ll.lng, ll.lat], img.computedAltitude);
       shownId.current = img.id;
+      const pano = /spherical|equirectangular/.test(img.cameraType);
+      const focal = Number(img.cameraParameters?.[0]);
+      flat.current = pano ? null : { focal: focal > 0.1 ? focal : 0.85, w: img.width || 4, h: img.height || 3 };
+      const compass = img.computedCompassAngle ?? img.compassAngle;
       setTaken(img.capturedAt || null);
       setShown(img.id);
       // Other days photos were taken here: the Dates menu (only when there is more than one).
@@ -176,10 +210,13 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       });
       if (first) {
         first = false;
-        const pano = /spherical|equirectangular/.test(img.cameraType);
         // Opened on the pin itself (a photo picked on a blue line): it keeps facing along the street.
-        if (distance([ll.lng, ll.lat], pin) > 4) viewer.setCenter(centerOnPin({ ...photo, pos: [ll.lng, ll.lat], pano, compass: img.computedCompassAngle ?? img.compassAngle ?? photo.compass }, pin));
+        if (distance([ll.lng, ll.lat], pin) > 4) viewer.setCenter(centerOnPin({ ...photo, pos: [ll.lng, ll.lat], pano, compass: compass ?? photo.compass }, pin));
+      } else if (keepHeading.current != null) {
+        // A step forward: a 360 degree photo is turned to keep facing the same way (a flat one already does).
+        if (pano && compass != null) viewer.setCenter([(((0.5 + turn(compass, keepHeading.current) / 360) % 1) + 1) % 1, 0.5]);
       }
+      keepHeading.current = null;
       report();
     });
     // Like Google's: a ground circle shows where a click would go; a click on the road moves to the photo
