@@ -20,25 +20,46 @@ export interface NoticeRow {
   starts_on: string | null;
   ends_on: string | null;
   shown: number;
+  /** 1 when the notice shows in the bar at the top of every page. */
+  on_bar: number;
+  /** Set when the notice is also drawn on the map: a short name, a kind (see NOTICE_KINDS), and the shape as GeoJSON text. */
+  place_title: string | null;
+  place_kind: string | null;
+  place_geometry: string | null;
   created_at: string;
   created_by: string | null;
   updated_at: string;
   updated_by: string | null;
 }
 
+/** What a notice on the map is: the words staff choose from and the word the map shows. */
+export const NOTICE_KINDS: Array<{ key: string; label: string }> = [
+  { key: 'closure', label: 'Road closure' },
+  { key: 'detour', label: 'Detour' },
+  { key: 'work', label: 'Construction' },
+  { key: 'event', label: 'Event' },
+  { key: 'other', label: 'Notice' },
+];
+
 let ready: Promise<void> | null = null;
 export function ensureNoticeTable(env: Env): Promise<void> {
-  ready ??= env.CATALOG_DB.prepare(
-    `CREATE TABLE IF NOT EXISTS site_notices (
-       id TEXT PRIMARY KEY, tone TEXT NOT NULL, message TEXT NOT NULL, link_url TEXT, link_label TEXT, starts_on TEXT, ends_on TEXT,
-       shown INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, created_by TEXT, updated_at TEXT NOT NULL, updated_by TEXT)`,
-  )
-    .run()
-    .then(() => undefined)
-    .catch((e) => {
-      ready = null;
-      throw e;
-    });
+  ready ??= (async () => {
+    await env.CATALOG_DB.prepare(
+      `CREATE TABLE IF NOT EXISTS site_notices (
+         id TEXT PRIMARY KEY, tone TEXT NOT NULL, message TEXT NOT NULL, link_url TEXT, link_label TEXT, starts_on TEXT, ends_on TEXT,
+         shown INTEGER NOT NULL DEFAULT 1, on_bar INTEGER NOT NULL DEFAULT 1, place_title TEXT, place_kind TEXT, place_geometry TEXT,
+         created_at TEXT NOT NULL, created_by TEXT, updated_at TEXT NOT NULL, updated_by TEXT)`,
+    ).run();
+    // A table made before notices could go on the map lacks these columns; adding one that is already there is harmless.
+    for (const col of ['on_bar INTEGER NOT NULL DEFAULT 1', 'place_title TEXT', 'place_kind TEXT', 'place_geometry TEXT']) {
+      await env.CATALOG_DB.prepare(`ALTER TABLE site_notices ADD COLUMN ${col}`)
+        .run()
+        .catch(() => undefined);
+    }
+  })().catch((e) => {
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 
@@ -51,7 +72,7 @@ export async function publicNotices(env: Env): Promise<Response> {
     await ensureNoticeTable(env);
     const today = utahToday();
     const r = await env.CATALOG_DB.prepare(
-      `SELECT id, tone, message, link_url, link_label, updated_at FROM site_notices WHERE ${SHOWING_SQL} ORDER BY CASE tone WHEN 'alert' THEN 0 ELSE 1 END, created_at DESC LIMIT 3`,
+      `SELECT id, tone, message, link_url, link_label, updated_at FROM site_notices WHERE on_bar = 1 AND ${SHOWING_SQL} ORDER BY CASE tone WHEN 'alert' THEN 0 ELSE 1 END, created_at DESC LIMIT 3`,
     )
       .bind(today, today)
       .all<{ id: string; tone: string; message: string; link_url: string | null; link_label: string | null; updated_at: string }>();

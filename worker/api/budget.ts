@@ -1,6 +1,6 @@
-/** GET /api/budget : the adopted fiscal 2027 budget, plus any newer budget document the city has posted since. */
+/** GET /api/budget : the city's adopted budget (the built-in one or the version staff saved), plus any newer budget document the city has posted since. */
 import type { Env } from '../env';
-import { budgetPayload, BUDGET_ADOPTION_ORDINANCE_DOC, BUDGET_AMENDED, BUDGET_DOCS } from '../lib/budgetData';
+import { budgetPayload, BUDGET_ADOPTION_ORDINANCE_DOC, BUDGET_AMENDED, BUDGET_DOCS, fiscalShort } from '../lib/budgetData';
 import { computeTrail } from './trail';
 import type { DocumentSummary } from '../../src/types/models';
 import { CACHE, json } from '../lib/http';
@@ -20,7 +20,7 @@ export async function getBudget(env: Env): Promise<Response> {
       .all<Row>();
     newer = (r.results ?? []).map((d) => ({ id: String(d.id), title: String(d.title), date: d.document_date == null ? null : String(d.document_date) }));
   } catch {
-    // The numbers below are fixed; only the "newer document" notice depends on the database.
+    // The numbers come from the budget in force; only the "newer document" notice depends on the database.
   }
   return json({ ...budgetPayload(), newer, adoptionBudgetDoc: await adoptionBudgetDoc(env) }, { cache: CACHE.list });
 }
@@ -48,7 +48,7 @@ async function adoptionBudgetDoc(env: Env): Promise<{ id: string; title: string 
   } catch {
     // The known book below.
   }
-  return { id: BUDGET_DOCS.book, title: 'FY 27 Final Budget' };
+  return { id: BUDGET_DOCS.book, title: `${fiscalShort()} Final Budget` };
 }
 
 /**

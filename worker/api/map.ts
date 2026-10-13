@@ -14,20 +14,24 @@
 import type { Env } from '../env';
 import { API_SECURITY_HEADERS, badRequest, HttpError, json, notFound, readJson } from '../lib/http';
 import { checkParcelLines, isParcelLineLevel, PARCEL_LINES_MAX_BYTES, parcelLinesKey } from '../lib/parcelLines';
-import { budgetForFeature } from '../lib/capitalPlan';
+import { budgetForFeature, FY27_PROJECTS_WHERE } from '../lib/capitalPlan';
+import { BUDGET_FISCAL_YEAR } from '../lib/budgetData';
+import { ALERTS_KEY, alertsLayer, hasMapNotices } from './mapAlerts';
 import { BASE, byKey, cityParcelAtUrl, COUNTY_PAGE, countyOwnerAtUrl, countyParcelAtUrl, countyParcelTileUrl, MAP_LAYERS, PARCEL_TILE_PAGES, parcelCard, parcelPoint, parcelTileBody, type MapLayerDef } from '../lib/mapLayers';
 
 export { MAP_LAYERS, type MapLayerDef };
 
-/** Public catalog of layers (no upstream URLs needed by the client). */
-export function listMapLayers(): Response {
-  const layers = MAP_LAYERS.map(({ key, label, group, geometry, pages, on, minZoom, tiles, attribution, lines, linesMinZoom }) => ({ key, label, group, geometry, pages: pages ?? 1, on: Boolean(on), minZoom: minZoom ?? null, ...(tiles ? { tiles, attribution: attribution ?? null } : {}), ...(lines ? { lines, linesMinZoom: linesMinZoom ?? null } : {}) }));
-  return json({ layers, source: { name: 'Vineyard City Public GIS', url: 'https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb' } }, { headers: { 'cache-control': 'public, max-age=3600' } });
+/** Public catalog of layers (no upstream URLs needed by the client). The staff-placed notices layer is listed only while there is one to show. */
+export async function listMapLayers(env: Env): Promise<Response> {
+  const layers: Array<Record<string, unknown>> = MAP_LAYERS.map(({ key, label, group, geometry, pages, on, minZoom, tiles, attribution, lines, linesMinZoom }) => ({ key, label, group, geometry, pages: pages ?? 1, on: Boolean(on), minZoom: minZoom ?? null, ...(tiles ? { tiles, attribution: attribution ?? null } : {}), ...(lines ? { lines, linesMinZoom: linesMinZoom ?? null } : {}) }));
+  if (await hasMapNotices(env)) layers.push({ key: ALERTS_KEY, label: 'Closures and notices', group: 'Streets', geometry: 'mixed', pages: 1, on: true, minZoom: null });
+  return json({ layers, source: { name: 'Vineyard City Public GIS', url: 'https://experience.arcgis.com/experience/5d675261cad649ffb85deee52dcbe1cb' } }, { headers: { 'cache-control': 'public, max-age=60' } });
 }
 
 export function upstreamUrl(layer: MapLayerDef, page: number): string {
   const p = new URLSearchParams({
-    where: layer.where ?? '1=1',
+    // The capital projects layer follows the budget's map links, which staff can change (worker/lib/capitalPlan.ts).
+    where: layer.key === 'projects' ? FY27_PROJECTS_WHERE : (layer.where ?? '1=1'),
     outFields: layer.fields.join(','),
     returnGeometry: 'true',
     outSR: '4326',
@@ -49,7 +53,8 @@ export function upstreamUrl(layer: MapLayerDef, page: number): string {
 }
 
 /** GET /api/map/layers/:key?page=0 → GeoJSON FeatureCollection, cached for 12 hours. */
-export async function getMapLayer(_env: Env, key: string, url: URL): Promise<Response> {
+export async function getMapLayer(env: Env, key: string, url: URL): Promise<Response> {
+  if (key === ALERTS_KEY) return alertsLayer(env);
   const layer = byKey.get(key);
   if (!layer || !layer.path) throw notFound('Unknown map layer.');
   const page = Math.max(0, Math.min((layer.pages ?? 1) - 1, Number(url.searchParams.get('page') ?? 0) || 0));
@@ -158,7 +163,7 @@ export async function getParcelAt(url: URL): Promise<Response> {
 }
 
 /**
- * The projects layer, with each feature's fiscal 2027 budget amount and funding source added from
+ * The projects layer, with each feature's budget amount for the current fiscal year and funding source added from
  * the adopted budget. The city's own budget, funding and construction-year fields are dropped: for
  * these projects they describe earlier plans and would sit next to (and disagree with) the budget.
  */
@@ -172,13 +177,14 @@ async function annotatedProjects(upstream: Response): Promise<Response> {
     const match = Number.isFinite(oid) ? budgetForFeature(oid) : null;
     const { OBJECTID: _id, ...rest } = props;
     void _id;
-    f.properties = match ? { FY27_Budget: match.amount, FY27_Source: match.source, ...rest } : rest;
+    f.properties = match ? { FY27_Budget: match.amount, FY27_Source: match.source, Budget_Year: BUDGET_FISCAL_YEAR, ...rest } : rest;
   }
   return new Response(JSON.stringify(data), {
     status: 200,
     headers: {
       'content-type': 'application/geo+json; charset=utf-8',
-      'cache-control': 'public, max-age=43200, stale-while-revalidate=86400',
+      // Shorter than the other layers: the amounts come from the budget, which staff can change.
+      'cache-control': 'public, max-age=300, stale-while-revalidate=3600',
       'x-content-type-options': 'nosniff',
     },
   });
