@@ -52,7 +52,7 @@ for (const prof of PROFILES) {
         await page.click('.vc-measure-more');
         if (c.profile) {
           await page.click('.vc-measure-pill');
-          await page.waitForSelector('.vc-measure-chart', { timeout: 20000 }).catch(() => errors.push('no elevation chart'));
+          await page.waitForSelector('.vc-measure-chart', { timeout: 45000 }).catch(() => errors.push('no elevation chart'));
         }
         await page.waitForTimeout(1500);
         const file = `${prof.name}-${c.name}${dark ? '-dark' : ''}.png`;

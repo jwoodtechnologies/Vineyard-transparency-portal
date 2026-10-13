@@ -126,6 +126,8 @@ jobs:
             # Screenshots of the live map's tools (scripts/shots/map-shots.mjs), phone and desktop, as PNGs.
             PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
             (cd "$PW" && npm init -y > /dev/null && npm i -s playwright@1.56.1 && npx playwright install --with-deps chromium) > "$OUT/setup.txt" 2>&1 || true
+            P=$(python3 -c "print(';'.join(f'{-111.7475+i*0.0001:.5f},40.30440' for i in range(30)))")
+            for q in "-111.74500,40.30500;-111.74400,40.30500" "$P"; do curl -sS -o /dev/null --max-time 60 -w "elevation $(echo "$q" | tr ';' '\n' | wc -l) points: %{http_code} %{time_total}s\n" "https://vineyardportal.org/api/map/elevation?p=$q" >> "$OUT/map-shots-timing.txt" 2>&1 || true; done
             node scripts/shots/map-shots.mjs --base https://vineyardportal.org --pw "$PW/node_modules/playwright/index.mjs" --out "$OUT/shots" > "$OUT/map-shots.txt" 2>&1 || echo "exit=$?" >> "$OUT/map-shots.txt"
           elif [[ "$TASK" == "map-perf" ]]; then
             # Parcel lines on /map at zoom 12 to 15 on the phone profile: bytes over the wire and time until drawn.
