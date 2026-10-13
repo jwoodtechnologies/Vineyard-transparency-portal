@@ -86,7 +86,7 @@ function card(r: Row) {
     term: str(r.term),
     email: str(r.email),
     phone: str(r.phone),
-    photo: r.photo_url ? `/api/people/${encodeURIComponent(String(r.slug))}/photo` : null,
+    photo: r.photo_url ? `/api/people/${encodeURIComponent(String(r.slug))}/photo?v=${encodeURIComponent(String(r.photo_url).slice(-14))}` : null,
     sourceUrl: String(r.source_url),
     current: Number(r.current) === 1,
     asOf: String(r.last_seen),
@@ -140,6 +140,12 @@ export async function getPersonPhoto(env: Env, slug: string): Promise<Response> 
   await ensurePeopleTable(env);
   const row = await env.CATALOG_DB.prepare('SELECT photo_url FROM people WHERE slug = ?').bind(slug).first<{ photo_url: string | null }>();
   const src = row?.photo_url;
+  // A photo staff uploaded lives in the portal's own storage.
+  if (src?.startsWith('r2:media/people/') && env.ARCHIVE) {
+    const obj = await env.ARCHIVE.get(src.slice(3));
+    if (!obj) throw notFound('Photo unavailable.');
+    return new Response(obj.body, { headers: { 'content-type': obj.httpMetadata?.contentType ?? 'image/jpeg', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
+  }
   if (!src || !PHOTO_HOST.test(src)) throw notFound('No photo on file.');
   const cache = (caches as unknown as { default: Cache }).default;
   const key = new Request(`https://vineyardportal.org/__photo/${encodeURIComponent(slug)}?u=${encodeURIComponent(src)}`);
