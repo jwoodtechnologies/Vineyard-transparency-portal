@@ -53,7 +53,8 @@ export function toDocumentSummary(row: Row): DocumentSummary {
     fileSize: num(row.file_size),
     categories: categories(row),
     currency: currency(row.currency),
-    displayTitle: shown.title,
+    // A title staff typed is shown as they wrote it.
+    displayTitle: typeof row.manual_json === 'string' && row.manual_json.includes('"title"') ? String(row.title) : shown.title,
     agendaItemNumber: shown.item,
     status: recordStatus(label, false, shown),
   };
@@ -111,7 +112,16 @@ export function toSource(row: Row): SourceRegistryEntry {
 }
 
 export function parseMedia(row: Row): MeetingMedia[] {
-  return parseJsonArray<MeetingMedia>(row.media_json).filter((m) => m && typeof m === 'object' && typeof m.label === 'string');
+  const fromSource = parseJsonArray<MeetingMedia>(row.media_json).filter((m) => m && typeof m === 'object' && typeof m.label === 'string');
+  // A video link staff added comes first; the agenda portal's own links still follow.
+  let added: MeetingMedia[] = [];
+  try {
+    const m = typeof row.manual_json === 'string' ? (JSON.parse(row.manual_json) as { media?: unknown }) : null;
+    if (Array.isArray(m?.media)) added = (m.media as MeetingMedia[]).filter((x) => x && typeof x.label === 'string' && typeof x.url === 'string' && /^https:\/\//.test(x.url));
+  } catch {
+    /* not JSON: ignore */
+  }
+  return [...added, ...fromSource.filter((x) => !added.some((a) => a.url === (x as { url?: string }).url))];
 }
 
 export function toMeetingSummary(row: Row): MeetingSummary {
