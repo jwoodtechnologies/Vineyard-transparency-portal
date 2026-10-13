@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { ROLE_LABEL, canManageUsers, staff, when, type AuditItem, type Me } from './api';
+import { ROLE_LABEL, canEditArea, canManageUsers, staff, when, type AuditItem, type Me } from './api';
 import { visibleSections } from './sections';
 import { useStaffCtx } from './useStaff';
+import Assistant from './Assistant';
 
 /** What each area lets a person do, in the words they would use. */
 const DOES: Record<string, string> = {
@@ -49,6 +50,8 @@ export default function Home() {
           {me.department ? `, ${me.department}` : ''}. {me.role === 'editor' ? `You can ${sentence(me.areas.map((a) => DOES[a]).filter(Boolean))}.` : 'You can edit every part of the portal.'}
         </p>
       </div>
+
+      {['map', 'notices', 'records'].some((a) => canEditArea(me, a)) && <Assistant />}
 
       <ul className="vs-tiles">
         {tiles.map((s) => (

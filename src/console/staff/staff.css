@@ -1412,3 +1412,21 @@
 .vs-bulk-intro {
   margin: 0 0 0.9rem;
 }
+
+/* ---- staff assistant */
+.vs-assist-file {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.vs-assist-plan {
+  display: grid;
+  gap: 0.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--vc-line);
+}
+.vs-assist-plan .vs-h2 {
+  margin: 0 0 0.5rem;
+}
