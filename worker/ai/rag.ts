@@ -26,6 +26,7 @@ import { AGENDA_NOT_POSTED, AGENDA_TYPES, PLACE_TIME_Q, meetingPlaceText, countA
 import { bodyOf } from './scheduleIntent';
 import { resolveTime, timeNote, utahToday } from './timeframe';
 import { topicsFor } from './topics';
+import { cityHallPhone, policePhone, refreshCityFacts } from '../lib/cityFacts';
 import { isJobsQuestion, jobsText, openJobs } from './jobs';
 import { isConstructionNowQuestion, serviceAnswer } from './serviceAnswers';
 import { constructionAnswer } from './constructionAnswer';
@@ -846,12 +847,12 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   body = { ...body, question: fixSpelling(body.question) };
   // People: a name, a title, or "he"/"she" meaning the person in the last answer. Who someone is
   // comes straight from the city's own directory; a follow-up about them names them for the search.
-  const staff = await currentStaff(env).catch(() => [] as StaffPerson[]);
+  const [staff] = await Promise.all([currentStaff(env).catch(() => [] as StaffPerson[]), refreshCityFacts(env)]);
   const turnsBack = (body.conversation ?? []).slice(-2).reverse().map((t) => t.content);
   const namedNow = namedIn(body.question, staff)[0] ?? null;
   const who = namedNow ?? titleIn(body.question, staff) ?? ((body as { followUp?: boolean }).followUp !== false && isPersonFollowUp(body.question) ? personFromTurns(turnsBack, staff) : null);
   if (who && isIdentityQuestion(body.question, namedNow ?? who)) {
-    const text = whoIsAnswer(who);
+    const text = whoIsAnswer(who, cityHallPhone());
     return { kind: 'final', response: { ...base, question: body.question, retrievalStatus: 'grounded', answer: text, paragraphs: [{ segments: [{ text, citations: [] }] }], citations: [], suggestedFollowUps: [], notice: null, engine: 'directory', people: [who.slug] } as AskResponse };
   }
   // "Who is my council member?", "who is on the city council?": the elected officials the city's own
@@ -1307,7 +1308,7 @@ async function prepare(env: Env, body: AskRequest): Promise<Prepared> {
   // searched by name and lead, and the model is told the plain state of things it must cite.
   const govIds = new Set<string>();
   const topicIds = new Set<string>();
-  const topics = topicsFor(body.question, todayUT);
+  const topics = topicsFor(body.question, todayUT, { police: policePhone() });
   for (const t of topics) {
     const lists = await Promise.all(t.queries.map((x) => retrieve(x.q, { ...filters, ...(x.from ? { dateFrom: x.from } : {}) }).catch(() => [] as ChunkHit[])));
     const found = interleave(lists, 4);

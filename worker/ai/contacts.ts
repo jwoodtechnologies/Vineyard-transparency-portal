@@ -68,13 +68,13 @@ export function isIdentityQuestion(q: string, named: StaffPerson | null): boolea
 const DEPT = (p: StaffPerson) => (p.department && p.department !== p.role && !/mayor and city council/i.test(p.department) ? p.department.replace(/'S\b/g, "'s") : null);
 
 /** One plain sentence from the city's own directory, with contact details the city publishes. */
-export function whoIsAnswer(p: StaffPerson): string {
+export function whoIsAnswer(p: StaffPerson, cityHall = '801-226-1929'): string {
   const dept = DEPT(p);
   const where = p.kind === 'elected' ? "on the city's list of elected officials" : "on the city's staff directory";
   const role = /^council ?member$/i.test(p.role) ? 'a member of the City Council' : /^(a|an|the)\b/i.test(p.role) ? p.role : `the ${p.role}`;
   const first = `${p.name} is ${role}${dept ? ` (${dept})` : ''} for Vineyard, as listed ${where}.`;
   const reach = [p.email ? `email ${p.email}` : null, p.phone ? `call ${p.phone}` : null].filter(Boolean);
-  return reach.length ? `${first} To reach ${p.name.split(/\s+/)[0]}, ${reach.join(' or ')}.` : `${first} The city does not list a direct email or phone, so reach ${p.name.split(/\s+/)[0]} through City Hall at 801-226-1929.`;
+  return reach.length ? `${first} To reach ${p.name.split(/\s+/)[0]}, ${reach.join(' or ')}.` : `${first} The city does not list a direct email or phone, so reach ${p.name.split(/\s+/)[0]} through City Hall at ${cityHall}.`;
 }
 
 /** What a resident is asking for help with, and which staff title handles it. */

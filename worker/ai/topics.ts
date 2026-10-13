@@ -96,8 +96,9 @@ TOPICS.push({
   queries: [{ q: '"Nuisances Generally" noise decibels' }, { q: '"NON-EMERGENCY POLICE" 798-5600' }, { q: '"Report a Concern" code enforcement', from: '2025-01-01' }],
   // Source: Vineyard Municipal Code 8.08.010 (Nuisances Generally), https://vineyard.municipalcodeonline.com/, section
   // given, page not applicable (the 55 dBA 7:00 a.m. to 10:30 p.m. and 50 dBA night limits). Report a Concern form and
-  // non-emergency line 801-798-5600: src/console/services.ts LINKS (city contact pages, verified September 30, 2026).
-  note: 'Noise and nuisance complaints: Vineyard Municipal Code 8.08.010 (Nuisances Generally) makes it a nuisance for activities to exceed 55 decibels (dBA) between 7:00 a.m. and 10:30 p.m. and 50 decibels between 10:30 p.m. and 7:00 a.m.; quote the limits exactly as the code section states them and cite it. To report: file the city\'s Report a Concern form (it goes to Code Enforcement), and for noise happening right now, especially at night, call the Utah County Sheriff\'s non-emergency line at 801-798-5600 (Vineyard\'s police service); call 911 only for emergencies. Give the rule first, then these steps.',
+  // non-emergency line: LINKS.police in src/lib/cityServices.ts (city contact pages, verified September 30, 2026), or the
+  // number staff set under Phone numbers and quick links.
+  note: 'Noise and nuisance complaints: Vineyard Municipal Code 8.08.010 (Nuisances Generally) makes it a nuisance for activities to exceed 55 decibels (dBA) between 7:00 a.m. and 10:30 p.m. and 50 decibels between 10:30 p.m. and 7:00 a.m.; quote the limits exactly as the code section states them and cite it. To report: file the city\'s Report a Concern form (it goes to Code Enforcement), and for noise happening right now, especially at night, call the Utah County Sheriff\'s non-emergency line at {POLICE_PHONE} (Vineyard\'s police service); call 911 only for emergencies. Give the rule first, then these steps.',
 });
 
 /** The Geneva Urban Renewal Area: who receives what share of the tax increment. */
@@ -114,7 +115,7 @@ TOPICS.push({
   note: 'Geneva Urban Renewal Area tax increment: the Redevelopment Agency captures (receives) a share of the tax increment from the project area, its participation rate, and the rest of the increment passes through to the taxing entities. State any percentage exactly as the cited record words it and say who it belongs to as the record says (for example the share the Agency captures, or the pass through to taxing entities). Never write that the taxing entities each receive the share the Agency captures.',
 });
 
-export function topicsFor(question: string, today = new Date().toISOString().slice(0, 10)): CivicTopic[] {
+export function topicsFor(question: string, today = new Date().toISOString().slice(0, 10), phones: { police: string } = { police: '801-798-5600' }): CivicTopic[] {
   const y = Number(today.slice(0, 4));
   const m = Number(today.slice(5, 7));
   const next = y % 2 === 1 && m <= 11 ? y : y % 2 === 1 ? y + 2 : y + 1;
@@ -125,6 +126,7 @@ export function topicsFor(question: string, today = new Date().toISOString().sli
       .replace(/\{FY\}/g, String(fy))
       .replace(/\{FYS\}/g, String(fy % 100))
       .replace(/\{FY_START\}/g, String(fy - 1))
-      .replace(/\{PROJECTS\}/g, projectFacts());
+      .replace(/\{PROJECTS\}/g, projectFacts())
+      .replace(/\{POLICE_PHONE\}/g, phones.police);
   return TOPICS.filter((t) => t.match.test(question)).map((t) => ({ ...t, note: t.id === 'budget' ? `${fill(t.note)} ${budgetFacts()}` : fill(t.note), queries: t.queries.map((x) => ({ ...x, q: fill(x.q), ...(x.from ? { from: fill(x.from) } : {}) })) }));
 }
