@@ -24,6 +24,9 @@ interface Board {
   lastMeeting: string | null;
   nextMeeting: string | null;
   active: boolean;
+  about?: string;
+  schedule?: string;
+  applyUrl?: string;
   members: Array<{ slug: string; name: string; role: string; term: string | null; photo: string | null }>;
 }
 
@@ -48,6 +51,8 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
       </button>
       {open && (
         <div className="vc-board-body">
+          {b.about && <p className="vc-board-about">{b.about}</p>}
+          {b.schedule && <p className="vc-board-none">Meets {b.schedule.replace(/^meets\s+/i, '')}</p>}
           {b.members.length > 0 ? (
             <ul className="vc-people">
               {b.members.map((m) => (
@@ -88,6 +93,11 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
           )}
           {b.meetingName.toLowerCase() !== b.name.toLowerCase() && !b.meetingName.toLowerCase().includes(b.name.toLowerCase()) && <p className="vc-board-none">The city website still lists this body as the {b.meetingName}.</p>}
           <div className="vc-board-links">
+            {b.applyUrl && (
+              <a href={b.applyUrl} className="vc-chip" {...(b.applyUrl.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                Apply to serve
+              </a>
+            )}
             {b.meetings > 0 && (
               <Link to={`/meetings?type=meetings&body=${encodeURIComponent(b.id)}`} className="vc-chip">
                 <CalendarDays size={13} /> Meetings
