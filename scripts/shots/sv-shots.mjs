@@ -71,10 +71,11 @@ async function open(prof, spot, z, dark, extra = {}) {
   page.on('console', (m) => /Content Security Policy|Refused to|Street photo|thumbnail/.test(m.text()) && !/cloudflareinsights/.test(m.text()) && notes.push(redact(m.text()).slice(0, 300)));
   page.on('pageerror', (e) => notes.push(redact('pageerror: ' + e.message)));
   await page.goto(`${BASE}/map?lat=${spot[1]}&lng=${spot[0]}&z=${z}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.vc-map canvas', { timeout: 20000 });
-  await page.waitForSelector('button[aria-label="Street view"]:not([disabled])', { timeout: 20000 });
+  // A slow load is noted, not fatal: the block's own steps say what did not work.
+  await page.waitForSelector('.vc-map canvas', { timeout: 30000 }).catch(() => notes.push('map canvas slow'));
+  await page.waitForSelector('button[aria-label="Street view"]:not([disabled])', { timeout: 30000 }).catch(() => notes.push('street view button slow'));
   await page.waitForTimeout(3500);
-  const box = await page.locator('.vc-map').boundingBox();
+  const box = (await page.locator('.vc-map').boundingBox().catch(() => null)) ?? { x: 0, y: 0, ...prof.ctx.viewport };
   return { ctx, page, notes, cx: box.x + box.width / 2, cy: box.y + box.height / 2 };
 }
 
@@ -176,6 +177,44 @@ for (const prof of PROFILES) {
       await page.waitForTimeout(6000);
       await page.screenshot({ path: `${OUT}/${prof.name}-6-3d.png` });
       run.note = (await page.textContent('.vc-sv-note'))?.trim();
+      // Looking around: a drag turns the view, the buttons turn and step, the compass faces north again.
+      const facing = async () => Number(((await page.getAttribute('.vc-sv-compass', 'aria-label')) ?? '').match(/facing (-?\d+)/)?.[1] ?? NaN);
+      const pinY = async () => (await page.locator('.vc-sv-pin').boundingBox().catch(() => null))?.y ?? null;
+      run.look = { start: await facing() };
+      if (prof.ctx.hasTouch) {
+        const cdp = await ctx.newCDPSession(page);
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx + 60, y: cy, id: 1 }] });
+        for (let i = 1; i <= 10; i++) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx + 60 - i * 15, y: cy - i * 3, id: 1 }] });
+          await page.waitForTimeout(16);
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      } else {
+        await page.mouse.move(cx + 60, cy);
+        await page.mouse.down();
+        await page.mouse.move(cx - 90, cy - 30, { steps: 10 });
+        await page.mouse.up();
+      }
+      await page.waitForTimeout(400);
+      run.look.afterDrag = await facing();
+      await page.click('button[aria-label="Turn right"]');
+      await page.waitForTimeout(500);
+      run.look.afterTurnRight = await facing();
+      if (!prof.ctx.hasTouch) {
+        await page.keyboard.press('a');
+        await page.waitForTimeout(500);
+        run.look.afterKeyA = await facing();
+      }
+      const note0 = await page.textContent('.vc-sv-note');
+      await page.click('button[aria-label="Forward"]');
+      await page.waitForTimeout(1500);
+      run.look.forwardKeeps3d = (await page.locator('.vc-sv-compass').count()) === 1;
+      run.look.pinY = await pinY();
+      await page.screenshot({ path: `${OUT}/${prof.name}-7-3d-turned.png` });
+      await page.click('.vc-sv-compass');
+      await page.waitForTimeout(600);
+      run.look.afterCompassTap = await facing();
+      run.look.noteSame = note0 === (await page.textContent('.vc-sv-note'));
     } catch (e) {
       run.error = redact(e).slice(0, 500);
     }
