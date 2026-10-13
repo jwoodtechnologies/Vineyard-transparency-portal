@@ -231,7 +231,8 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
       if (handled) return handled;
       throw notFound('Unknown API route.');
     }
-    const b = await readJson<Record<string, unknown>>(request, 32 * 1024);
+    // Wording saved from the content screens carries a whole piece at a time, so it gets a larger limit than other requests.
+    const b = await readJson<Record<string, unknown>>(request, route.startsWith('/content/') ? 96 * 1024 : 32 * 1024);
 
     if (route === '/login') {
       limit(`login:${ip}`, 20);
