@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, CalendarDays, CircleDollarSign, ClipboardList, FileText, History, Landmark, Map as MapIcon, Moon, Scale, Sun, Users, Vote } from 'lucide-react';
+import { ArrowLeft, Building2, CalendarDays, CircleDollarSign, ClipboardList, FileText, HardHat, History, Landmark, Map as MapIcon, Moon, Scale, Sun, Users, Vote } from 'lucide-react';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 import { Wordmark } from './Wordmark';
 import { HeaderSearch } from './HeaderSearch';
@@ -68,6 +68,7 @@ const MENU_ROWS: Array<{ to: string; label: string; Icon: typeof FileText }> = [
   { to: '/votes', label: 'Voting records', Icon: Vote },
   { to: '/records?c=laws', label: 'Ordinances and resolutions', Icon: Scale },
   { to: '/budget', label: 'Budget and finance', Icon: CircleDollarSign },
+  { to: '/construction', label: 'Construction projects', Icon: HardHat },
   { to: '/boards', label: 'Boards and commissions', Icon: Landmark },
   { to: '/records?c=rda', label: 'Redevelopment Agency', Icon: Building2 },
 ];
