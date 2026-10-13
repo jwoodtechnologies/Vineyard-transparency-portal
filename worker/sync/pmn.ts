@@ -4,6 +4,7 @@
  * attached files. New notices are queued as records (the notice page holds the posted agenda text)
  * and their attachments as documents.
  */
+import { ensureManual } from '../lib/manual';
 import type { Env } from '../env';
 import { Budget, upsertBodies, upsertMeetings, upsertQueue } from '../admin/routes';
 import { bodyFor, classifyType } from '../lib/civicclerk';
@@ -90,8 +91,29 @@ async function registerSource(env: Env): Promise<void> {
 }
 
 /** Finds new Vineyard notices and queues them (notice page + attachments). */
+/** Staff changes on a meeting known only from its notice are copied to the agenda portal's record of it before the notice copy goes. */
+export async function carryManualToAgendaPortal(env: Env): Promise<number> {
+  const rows = await env.CATALOG_DB.prepare(
+    `SELECT m1.manual_json AS manual, m1.meeting_date AS d, m1.start_time AS t, m1.location AS l, m1.status AS st, m2.id AS target
+     FROM meetings m1 JOIN meetings m2 ON m2.government_body_id = m1.government_body_id AND m2.id LIKE 'mtg_cc_%'
+       AND (m2.meeting_date = m1.meeting_date OR m2.meeting_date = json_extract(m1.manual_json, '$.original_date'))
+     WHERE m1.id LIKE 'mtg_pmn_%' AND m1.manual_json IS NOT NULL AND m2.manual_json IS NULL LIMIT 50`,
+  ).all<{ manual: string; d: string; t: string | null; l: string | null; st: string; target: string }>();
+  for (const r of rows.results ?? []) {
+    const m = JSON.parse(r.manual) as Record<string, unknown>;
+    await env.CATALOG_DB.prepare(
+      `UPDATE meetings SET manual_json = ?, meeting_date = CASE WHEN ? THEN ? ELSE meeting_date END, start_time = CASE WHEN ? THEN ? ELSE start_time END,
+         location = CASE WHEN ? THEN ? ELSE location END, status = CASE WHEN ? THEN ? ELSE status END WHERE id = ?`,
+    )
+      .bind(r.manual, 'meeting_date' in m ? 1 : 0, r.d, 'start_time' in m ? 1 : 0, r.t, 'location' in m ? 1 : 0, r.l, 'status' in m ? 1 : 0, r.st, r.target)
+      .run();
+  }
+  return (rows.results ?? []).length;
+}
+
 export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, number>> {
   await registerSource(env);
+  await ensureManual(env);
   const now = new Date().toISOString();
   let notices: PmnNotice[];
   try {
@@ -114,7 +136,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
     const body = bodyOfNotice(n);
     if (!body) continue;
     const found = await env.CATALOG_DB.prepare(
-      `SELECT id, agenda_document_id, packet_document_id FROM meetings WHERE meeting_date = ? AND (government_body_id = ? OR lower(government_body_name) = lower(?))
+      `SELECT id, agenda_document_id, packet_document_id FROM meetings WHERE (meeting_date = ?1 OR json_extract(manual_json, '$.original_date') = ?1) AND (government_body_id = ?2 OR lower(government_body_name) = lower(?3))
        ORDER BY CASE WHEN id LIKE 'mtg_cc_%' THEN 0 ELSE 1 END LIMIT 1`,
     )
       .bind(n.eventDate, body.id, body.name)
@@ -123,7 +145,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
       // A notice for the day confirms a meeting the agenda portal listed only as an undated copy;
       // a cancellation notice cancels the meeting on file, whatever its status.
       const status = noticeStatus(n.title, n.eventDate, today);
-      await env.CATALOG_DB.prepare(`UPDATE meetings SET status = ?1 WHERE id = ?2 AND (status = 'unconfirmed' OR (?1 = 'cancelled' AND status IS NOT 'cancelled'))`).bind(status, found.id).run();
+      await env.CATALOG_DB.prepare(`UPDATE meetings SET status = ?1 WHERE id = ?2 AND json_type(manual_json, '$.status') IS NULL AND (status = 'unconfirmed' OR (?1 = 'cancelled' AND status IS NOT 'cancelled'))`).bind(status, found.id).run();
       meetingFor.set(n.id, { id: found.id, hasAgenda: Boolean(found.agenda_document_id), hasPacket: Boolean(found.packet_document_id) });
       continue;
     }
@@ -150,7 +172,8 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
   if (bodies.size) await upsertBodies(env, { bodies: [...bodies.values()] }, budget);
   for (let i = 0; i < newMeetings.length; i += 100) await upsertMeetings(env, { meetings: newMeetings.slice(i, i + 100) }, budget);
   await repairNoticeBodies(env, now, budget);
-  // A meeting recorded from a notice gives way to the agenda portal's record of it once that arrives.
+  // A meeting recorded from a notice gives way to the agenda portal's record of it once that arrives, and what staff set on it moves along.
+  await carryManualToAgendaPortal(env);
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare(
       `UPDATE documents SET meeting_id = (SELECT m2.id FROM meetings m1 JOIN meetings m2 ON m2.meeting_date = m1.meeting_date AND m2.government_body_id = m1.government_body_id AND m2.id LIKE 'mtg_cc_%' WHERE m1.id = documents.meeting_id LIMIT 1)
@@ -170,7 +193,7 @@ export async function syncPmn(env: Env, budget: Budget): Promise<Record<string, 
     const body = bodyOfNotice(n);
     const urls = JSON.stringify([n.url, ...n.attachments.map((f) => f.url)]);
     links.push(
-      env.CATALOG_DB.prepare(`UPDATE documents SET meeting_id = ?, government_body_id = coalesce(government_body_id, ?) WHERE meeting_id IS NULL AND source_id = ? AND original_url IN (SELECT value FROM json_each(?))`).bind(
+      env.CATALOG_DB.prepare(`UPDATE documents SET meeting_id = ?, government_body_id = coalesce(government_body_id, ?) WHERE meeting_id IS NULL AND json_type(manual_json, '$.meeting_id') IS NULL AND source_id = ? AND original_url IN (SELECT value FROM json_each(?))`).bind(
         mtg.id,
         body?.id ?? null,
         PMN_SOURCE,
