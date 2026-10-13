@@ -7,6 +7,7 @@ import type { Env } from '../env';
 import { ensurePeopleTable } from './people';
 import { json } from '../lib/http';
 import { currentRoster } from './votes';
+import { readContent, type BoardsContent } from '../lib/siteContent';
 
 /** The city website's board names, matched to the meeting portal's bodies. */
 // Source (every key): board names as printed on the city's Board & Commission Members page,
@@ -118,6 +119,9 @@ export async function listBoards(env: Env): Promise<Response> {
     }));
   // Boards the city lists members for that have no meetings on file yet.
   for (const [id, name] of listedOnly) if (!out.some((b) => b.id === id)) out.push({ id, name, meetingName: name, hiddenExpired: hidden.get(id) ?? 0, kind: 'board', meetings: 0, firstMeeting: null, lastMeeting: null, nextMeeting: null, active: true, members: members.get(id) ?? [] });
+  // What staff wrote about each board (staff portal, People and boards): what it does, when it meets, how to apply.
+  const staffInfo = ((await readContent(env, 'boards').catch(() => null))?.value as BoardsContent | undefined)?.boards ?? {};
+  for (const b of out) Object.assign(b, Object.prototype.hasOwnProperty.call(staffInfo, b.id) ? staffInfo[b.id] : {});
   const order = (b: (typeof out)[number]) => (b.id === 'city-council' ? 0 : b.id === 'redevelopment-agency' ? 1 : b.kind === 'staff committee' ? 4 : b.active ? 2 : 3);
   out.sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return json({ boards: out, asOf: today }, { cache: 'public, max-age=600' });
