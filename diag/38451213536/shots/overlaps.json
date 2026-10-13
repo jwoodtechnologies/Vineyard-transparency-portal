@@ -1,0 +1,50 @@
+[
+  {
+    "file": "layout-390x844-light-streetview-photo.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-streetview-photo.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-streetview-photo.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-streetview-photo.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-streetview-photo.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-streetview-photo.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  }
+]

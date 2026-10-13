@@ -1,0 +1,530 @@
+[
+  {
+    "file": "layout-390x844-light-map.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-layers.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-tools.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-card.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-projects.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-measure.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-measure-open.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-measure-parcel.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-streetview-photo.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-3d.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "3d",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-light-fullscreen.png",
+    "viewport": "390x844",
+    "theme": "light",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-map.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-layers.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-tools.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-card.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-projects.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-measure.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-measure-open.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-measure-parcel.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-streetview-photo.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-3d.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "3d",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-390x844-dark-fullscreen.png",
+    "viewport": "390x844",
+    "theme": "dark",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-map.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-layers.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-tools.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-card.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-projects.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-measure.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-measure-open.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-measure-parcel.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-streetview-photo.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-3d.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "3d",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-light-fullscreen.png",
+    "viewport": "660x572",
+    "theme": "light",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-map.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-layers.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-tools.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-card.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-projects.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-measure.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-measure-open.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-measure-parcel.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-streetview-photo.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-3d.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "3d",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-660x572-dark-fullscreen.png",
+    "viewport": "660x572",
+    "theme": "dark",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-map.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-layers.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-tools.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-card.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-projects.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-measure.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-measure-open.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-measure-parcel.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-streetview-photo.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-3d.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "3d",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-light-fullscreen.png",
+    "viewport": "1440x900",
+    "theme": "light",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-map.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "map",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-layers.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "layers",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-tools.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "tools",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-card.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "card",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-projects.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "projects",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-measure.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "measure",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-measure-open.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "measure-open",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-measure-parcel.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "measure-parcel",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-streetview-photo.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "streetview-photo",
+    "error": "TimeoutError: page.waitForSelector: Timeout 25000ms exceeded.\nCall log:\n  - waiting for locator('.vc-svp') to be visible\n",
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-3d.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "3d",
+    "overlaps": [],
+    "errors": []
+  },
+  {
+    "file": "layout-1440x900-dark-fullscreen.png",
+    "viewport": "1440x900",
+    "theme": "dark",
+    "state": "fullscreen",
+    "overlaps": [],
+    "errors": []
+  }
+]
