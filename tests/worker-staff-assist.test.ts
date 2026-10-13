@@ -70,3 +70,18 @@ describe('the assistant route', () => {
     expect(none.body.message).toMatch(/not available/);
   });
 });
+
+describe('the master owner', () => {
+  it('is the only owner, and nobody else can change it', async () => {
+    const h = await staffHarness();
+    const owner = await h.makeOwner();
+    expect((await h.call('POST', '/users', { name: 'Second Owner', email: 'two@vineyard.example', role: 'owner' }, { cookie: owner.cookie })).status).toBe(403);
+    const admin = await h.addPerson(owner.cookie, { name: 'Ada Admin', email: 'ada@vineyard.example', role: 'admin' });
+    expect((await h.call('POST', '/users/update', { id: admin.id, role: 'owner' }, { cookie: owner.cookie })).status).toBe(403);
+    const list = (await h.call('GET', '/users', undefined, { cookie: admin.cookie })).body.items as Array<{ id: string; role: string; canManage: boolean }>;
+    const me = list.find((u) => u.role === 'owner')!;
+    expect(me.canManage).toBe(false);
+    expect((await h.call('POST', '/users/update', { id: me.id, active: false }, { cookie: admin.cookie })).status).toBe(403);
+    expect((await h.call('POST', '/users/update', { id: me.id, name: 'Not Jacob' }, { cookie: admin.cookie })).status).toBe(403);
+  });
+});
