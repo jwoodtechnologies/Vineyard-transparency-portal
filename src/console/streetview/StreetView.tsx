@@ -11,7 +11,7 @@ import type * as maplibregl from 'maplibre-gl';
 import type { FeatureCollection, Geometry } from 'geojson';
 import { ArrowDown, ArrowUp, ExternalLink, Layers, RotateCcw, RotateCw, X } from 'lucide-react';
 import { getJson } from '../api';
-import { googleStreetViewUrl, MAX_PHOTO_M, parsePhotos, photoSearchUrl, rankPhotos, type Photo, type Pos } from './geo';
+import { googleStreetViewUrl, parsePhotos, photoSearchUrl, rankPhotos, type Photo, type Pos } from './geo';
 import { addSvLayers, drawSv, pinMarker, removeSvLayers, type Camera } from './mapDraw';
 import { lineNear, mapillaryToken, photoNear, snapToLine } from './coverage';
 import { addBuildings, enter3d, leave3d, type Saved } from './threeD';
@@ -71,16 +71,8 @@ function districtsOf(fc: FC): District[] {
   return [...by.values()];
 }
 
-const ZONING_KEY = 'vtp-sv-zoning';
 /** The map page's zoning fill layer. */
 const ZONING_FILL = 'vtp-zoning-fill';
-const loadShowZoning = () => {
-  try {
-    return localStorage.getItem(ZONING_KEY) !== 'off';
-  } catch {
-    return true;
-  }
-};
 const wideQuery = () => typeof window !== 'undefined' && window.innerWidth > 820;
 
 export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null, loadZoning, showMapZoning, onClose }: Props) {
@@ -92,26 +84,17 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   // A photo picked on a blue line, opened ahead of the search's own pick.
   const direct = useRef<Photo | null>(startPhoto);
   const [token, setToken] = useState<string | null>(null);
-  const [why3d, setWhy3d] = useState<'none' | 'off' | 'error'>('none');
   const [districts, setDistricts] = useState<District[]>([]);
   const [parcel, setParcel] = useState<Pos[] | null>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
-  const [showZoning, setShowZoningState] = useState(loadShowZoning);
+  // Zoning shows only after a tap on Zoning, each time street view opens.
+  const [showZoning, setShowZoning] = useState(false);
   const [wide, setWide] = useState(wideQuery);
   const panelRef = useRef<HTMLDivElement>(null);
   const phaseRef = useRef(phase);
   useEffect(() => {
     phaseRef.current = phase;
   });
-
-  const setShowZoning = (v: boolean) => {
-    setShowZoningState(v);
-    try {
-      localStorage.setItem(ZONING_KEY, v ? 'on' : 'off');
-    } catch {
-      // Kept for this visit.
-    }
-  };
 
   useEffect(() => {
     const r = () => setWide(wideQuery());
@@ -206,7 +189,6 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       if (stale) return;
       setToken(t);
       if (!t) {
-        setWhy3d('off');
         setPhase('3d');
         return;
       }
@@ -219,14 +201,11 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
         const found = ranked[0] ?? null;
         if (stale) return;
         setSpare(ranked.slice(1, 3));
-        if (!res.ok && !first) setWhy3d('error');
-        else setWhy3d('none');
         setPhoto(found);
         setCamera(found ? { pos: found.pos, bearing: 0, fov: 0 } : null);
         setPhase(found ? 'photo' : '3d');
       } catch {
         if (stale) return;
-        setWhy3d('error');
         setPhase('3d');
       }
     });
@@ -351,7 +330,6 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       setSpare(spare.slice(1));
       return;
     }
-    setWhy3d('error');
     setPhase('3d');
   }, [spare]);
 
@@ -392,7 +370,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
           <a href="https://www.mapillary.com" target="_blank" rel="noopener noreferrer">
             Mapillary
           </a>{' '}
-          contributors, CC BY-SA 4.0. Zoning from Vineyard City Public GIS.
+          contributors, CC BY-SA 4.0. Small map imagery: Utah County GIS and USGS. Zoning from Vineyard City Public GIS.
         </p>
       </div>
     );
@@ -403,17 +381,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
         <div className="vc-sv-bar">
           {close}
           <p className="vc-sv-title">
-            {phase === 'pick'
-              ? wide
-                ? 'Click a blue line to see the street, or anywhere else for a 3D view.'
-                : 'Tap a blue line to see the street'
-              : phase === 'search'
-                ? 'Looking for a street photo near this spot.'
-                : why3d === 'off'
-                  ? 'Street photos are not available right now.'
-                  : why3d === 'error'
-                    ? 'The street photo could not be loaded.'
-                    : `No street photo within ${MAX_PHOTO_M} m of this spot yet.`}
+            {phase === 'pick' ? (wide ? 'Click a blue line to see the street, or anywhere else for a 3D view.' : 'Tap a blue line to see the street') : phase === 'search' ? 'Looking for a street photo near this spot.' : ''}
           </p>
           {phase === '3d' && zoningToggle}
           {phase === '3d' && google}

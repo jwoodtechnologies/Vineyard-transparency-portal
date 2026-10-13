@@ -5543,7 +5543,12 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 .vc-sv-3d-btn, .vc-sv-compass { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--vc-line); border-radius: 999px; background: var(--vc-surface); color: var(--vc-ink); box-shadow: var(--vc-shadow-sm); cursor: pointer; }
 .vc-sv-compass { width: 52px; height: 52px; touch-action: none; cursor: grab; }
 .vc-sv-compass svg { transition: none; }
-@media (max-width: 820px) { .vc-sv-3d { top: auto; right: auto; left: 0.8rem; bottom: calc(5rem + env(safe-area-inset-bottom)); transform: none; grid-auto-flow: column; align-items: center; } }
+/* Phones: a column at the right above full screen, clear of the Legend (left, and it can open tall); pinch
+   zooms in 3D, so the zoom buttons step aside. */
+@media (max-width: 820px) {
+  .vc-sv-3d { top: auto; bottom: calc(8.25rem + env(safe-area-inset-bottom)); transform: none; }
+  .vc-map-wrap:has(.vc-sv-3d) .maplibregl-ctrl-group:has(.maplibregl-ctrl-zoom-in) { display: none; }
+}
 /* MapillaryJS's playback speed expander reads as a stray bar beside the arrows; the arrows and play stay. */
 .vc-svp .mapillary-sequence-expander-button { display: none; }
 /* A ?lat=&lng= marker steps aside while the street view pin is out, so there is one orange pin. */
