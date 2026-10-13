@@ -1,0 +1,136 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "297376955438545",
+      "pano": false,
+      "pin": [
+        -111.73389790141067,
+        40.29915596229169
+      ],
+      "at": [
+        -111.73402408309,
+        40.299407687089
+      ],
+      "found": 50,
+      "pageSearch": {
+        "count": 115,
+        "withComputed": 115,
+        "pickInIt": true
+      }
+    },
+    "none": [
+      -111.7455,
+      40.3035
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone",
+      "notes": [],
+      "hint": "Tap a street",
+      "photoShownMs": 2917,
+      "date": "Taken Aug 28, 2017",
+      "dateOptions": [],
+      "chips": [],
+      "miniMap": 1,
+      "miniMapInfo": 0,
+      "zoningPressed": "false",
+      "edgeBlack": {
+        "left": 0,
+        "right": 0
+      },
+      "clickToGo": {
+        "before": "297376955438545",
+        "after": "519790612400745"
+      }
+    },
+    {
+      "tag": "phone-dark",
+      "notes": [],
+      "hint": "Tap a street",
+      "photoShownMs": 3347,
+      "date": "Taken Aug 28, 2017",
+      "dateOptions": [],
+      "chips": [],
+      "miniMap": 1,
+      "miniMapInfo": 0,
+      "zoningPressed": "false"
+    },
+    {
+      "tag": "phone-3d",
+      "notes": [],
+      "note": "ZoningGoogle",
+      "look": {
+        "start": 0,
+        "afterDrag": 53,
+        "afterTurnRight": 83,
+        "forwardKeeps3d": true,
+        "pinY": 403.375,
+        "afterCompassTap": 0,
+        "east": 0,
+        "sky": "183px",
+        "zoningPressed": "false",
+        "title": "",
+        "noteSame": true
+      }
+    },
+    {
+      "tag": "desktop",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 2504,
+      "date": "Taken Aug 28, 2017",
+      "dateOptions": [],
+      "chips": [],
+      "miniMap": 1,
+      "miniMapInfo": 0,
+      "zoningPressed": "false",
+      "edgeBlack": {
+        "left": 0,
+        "right": 0
+      },
+      "clickToGo": {
+        "before": "297376955438545",
+        "after": "304818254638101"
+      }
+    },
+    {
+      "tag": "desktop-dark",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 1631,
+      "date": "Taken Aug 28, 2017",
+      "dateOptions": [],
+      "chips": [],
+      "miniMap": 1,
+      "miniMapInfo": 0,
+      "zoningPressed": "false"
+    },
+    {
+      "tag": "desktop-hover",
+      "notes": [],
+      "thumb": 1
+    },
+    {
+      "tag": "desktop-3d",
+      "notes": [],
+      "note": "Looking for a street photo near this spot.",
+      "look": {
+        "start": 0,
+        "afterDrag": 53,
+        "afterTurnRight": 83,
+        "afterKeyA": 63,
+        "forwardKeeps3d": true,
+        "pinY": 432.234375,
+        "afterCompassTap": 0,
+        "east": 90,
+        "sky": "307px",
+        "zoningPressed": "false",
+        "title": "",
+        "noteSame": true
+      }
+    }
+  ],
+  "tokenSet": true
+}
