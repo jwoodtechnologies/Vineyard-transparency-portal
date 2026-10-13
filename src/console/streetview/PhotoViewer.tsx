@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Viewer, type Image as MlyImage } from 'mapillary-js';
 import 'mapillary-js/dist/mapillary.css';
-import { distance } from '../measure/geo';
+import { destination, distance } from '../measure/geo';
 import { centerOnPin, type Photo, type Pos } from './geo';
 import type { Camera } from './mapDraw';
 import { inRing, ZoningRenderer, type District } from './zoningRenderer';
@@ -65,6 +65,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const [pinAt, setPinAt] = useState<[number, number] | null>(null);
   const cbs = useRef({ onCamera, onError });
   const cam = useRef<Pos>(photo.pos);
+  const look = useRef(0);
   useEffect(() => {
     cbs.current = { onCamera, onError };
   });
@@ -85,7 +86,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     const placeChips = () => {
       const near = districts
         .flatMap((d) => d.rings.map((r) => ({ d, r, at: chipPoint(r, pin) })))
-        .filter((x) => distance(x.at, cam.current) < 250 && distance(x.at, cam.current) > 4)
+        .filter((x) => distance(x.at, cam.current) < 250)
         .sort((a, b) => distance(a.at, cam.current) - distance(b.at, cam.current))
         .slice(0, 5);
       const w = el.clientWidth,
@@ -97,8 +98,10 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       setPinAt(at(pin));
       const seen = new Set<string>();
       const out: Chip[] = [];
+      // A district's chip at its spot near the pin, or failing that 25 m ahead in the view when that is in the district.
+      const ahead = destination(cam.current, look.current, 25);
       for (const x of near) {
-        const px = at(x.at);
+        const px = at(x.at) ?? (inRing(ahead, x.r) ? at(ahead) : null);
         // Off the photo (a flat photo shows only what is in front of it): no chip.
         if (!px || seen.has(x.d.zone)) continue;
         seen.add(x.d.zone);
@@ -113,6 +116,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
           ([pos, pov, fov]) => {
             if (gone) return;
             cam.current = [pos.lng, pos.lat];
+            look.current = pov.bearing;
             cbs.current.onCamera({ pos: [pos.lng, pos.lat], bearing: pov.bearing, fov });
             placeChips();
             // Once more after the next drawn frame and after the view settles: the overlay reads the drawn view.
