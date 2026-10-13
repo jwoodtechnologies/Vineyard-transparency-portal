@@ -125,16 +125,17 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     viewer.on('position', report);
     viewer.on('pov', report);
     viewer.on('fov', report);
-    viewer.moveTo(photo.id).catch((e: unknown) => {
-      if (gone) return;
-      // The reason is kept in the console for maintainers; readers see the 3D view and a plain note.
-      console.warn('Street photo could not be opened:', e instanceof Error ? e.message : e);
+    // The viewer opens the photo from its imageId option; one that has not shown in 20 seconds counts as failed.
+    const watchdog = window.setTimeout(() => {
+      if (gone || !first) return;
+      console.warn('Street photo could not be opened: no image after 20 seconds.');
       cbs.current.onError();
-    });
+    }, 20000);
     const ro = new ResizeObserver(() => viewer.resize());
     ro.observe(el);
     return () => {
       gone = true;
+      clearTimeout(watchdog);
       cancelAnimationFrame(frame);
       ro.disconnect();
       viewer.remove();
