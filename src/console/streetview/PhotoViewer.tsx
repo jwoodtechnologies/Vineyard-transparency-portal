@@ -5,7 +5,6 @@
  * camera is and which way it looks so the map's camera cone follows.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Maximize2 } from 'lucide-react';
 import { NavigationDirection, Viewer, type Image as MlyImage, type ViewerMouseEvent } from 'mapillary-js';
 import 'mapillary-js/dist/mapillary.css';
 import { destination, distance } from '../measure/geo';
@@ -26,7 +25,7 @@ interface Props {
   onCamera: (c: Camera) => void;
   onError: () => void;
   dark: boolean;
-  /** Beside the map on a wider screen: the small map sits bottom left and can swap with the photo. */
+  /** Beside the map on a wider screen: no small map (the map beside it shows the person and cone). */
   wide: boolean;
 }
 
@@ -81,7 +80,6 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const [taken, setTaken] = useState<number | null>(photo.capturedAt);
   const [shown, setShown] = useState(photo.id);
   const [dates, setDates] = useState<DateChoice[]>([]);
-  const [swapped, setSwapped] = useState(false);
   useEffect(() => {
     cbs.current = { onCamera, onError };
   });
@@ -327,7 +325,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const current = dates.find((d) => d.photo.id === shown)?.day ?? (taken ? new Date(taken).toISOString().slice(0, 10) : '');
 
   return (
-    <div className="vc-svp-view" data-swapped={(wide && swapped) || undefined} data-image={shown}>
+    <div className="vc-svp-view" data-image={shown}>
       <div ref={box} className="vc-svp-canvas" role="img" aria-label="Street photo facing the pin. Drag to look around; use the arrows to move along the street." />
       {pinAt && <span className="vc-svp-pin" style={{ left: pinAt[0], top: pinAt[1] }} role="img" aria-label="The pin is here in the photo" />}
       <div className="vc-svp-when">
@@ -346,14 +344,12 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
           takenLabel && <span>Taken {takenLabel}</span>
         )}
       </div>
-      <div className="vc-svp-mini">
-        <MiniMap token={token} camera={camera} dark={dark} large={wide && swapped} onPick={(p, at) => (p ? go(p.id) : goToward(at))} />
-        {wide && (
-          <button type="button" className="vc-svp-swap" onClick={() => setSwapped((v) => !v)} aria-label={swapped ? 'Show the photo large' : 'Show the map large'} title={swapped ? 'Photo large' : 'Map large'}>
-            <Maximize2 size={15} strokeWidth={2} />
-          </button>
-        )}
-      </div>
+      {/* Phones only (the photo is full screen): beside the map, the map itself shows the person and cone. */}
+      {!wide && (
+        <div className="vc-svp-mini">
+          <MiniMap token={token} camera={camera} dark={dark} onPick={(p, at) => (p ? go(p.id) : goToward(at))} />
+        </div>
+      )}
       {showZoning && (
         <div className="vc-svp-chips" aria-hidden="true">
           {chips.map((c) => (

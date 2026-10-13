@@ -5554,16 +5554,11 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 .vc-svp[data-wide='true'] { position: absolute; inset: 0 0 0 auto; z-index: 8; width: 50%; border-left: 1px solid var(--vc-line); }
 .vc-svp-view { position: relative; flex: 1; min-height: 0; overflow: hidden; }
 /* More specific than MapillaryJS's own .mapillary-viewer { position: relative }, which would leave it no height. */
-/* The small map in the viewer's corner (top left on phones, bottom left beside the map), the swap button,
-   and the photo date or Dates menu (top right). */
+/* The small map in the viewer's corner (phones only, where the photo is full screen) and the photo date or
+   Dates menu (top right). */
 .vc-svp-mini { position: absolute; z-index: 6; top: 10px; left: 10px; width: 108px; height: 108px; border-radius: 14px; overflow: hidden; border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45); background: #202124; }
 /* More specific than MapLibre's .maplibregl-map { position: relative }, which would leave it no height. */
 .vc-svp-mini > .vc-svp-mini-map { position: absolute; inset: 0; width: 100%; height: 100%; }
-.vc-svp[data-wide='true'] .vc-svp-mini { top: auto; bottom: 40px; width: 240px; height: 170px; }
-.vc-svp-swap { position: absolute; z-index: 2; top: 6px; left: 6px; width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 9px; background: rgba(255, 255, 255, 0.92); color: #202124; cursor: pointer; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
-.vc-svp-view[data-swapped] .vc-svp-mini { inset: 0; width: auto; height: auto; border: 0; border-radius: 0; z-index: 1; }
-.vc-svp-view[data-swapped] > .vc-svp-canvas { inset: auto auto 40px 10px; width: 240px; height: 170px; z-index: 7; border-radius: 14px; overflow: hidden; border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45); }
-.vc-svp-view[data-swapped] .vc-svp-chips, .vc-svp-view[data-swapped] .vc-svp-pin { display: none; }
 .vc-svp-when { position: absolute; z-index: 6; top: 10px; right: 10px; }
 .vc-svp-when span, .vc-svp-when select { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(12, 12, 14, 0.75); color: #fff; font: inherit; font-size: 13px; font-weight: 600; }
 .vc-svp-when select { min-height: 44px; cursor: pointer; }

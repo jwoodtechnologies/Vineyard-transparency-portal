@@ -8,6 +8,7 @@
  *   node scripts/shots/sv-shots.mjs --base https://vineyardportal.org --out shots --pw <playwright index.mjs>
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { overlaps } from './overlap.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : 'true']] : acc), []),
@@ -88,8 +89,8 @@ const touchTap = async (ctx, page, x, y, hold = 60) => {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 };
 /** The share of near black pixels in the outer tenth of the view on each side, read from a screenshot. */
-const blackEdge = (page, png) =>
-  page.evaluate(async (b64) => {
+const blackEdge = (page, png, whole = false) =>
+  page.evaluate(async ([b64, whole]) => {
     const img = new Image();
     img.src = `data:image/png;base64,${b64}`;
     await img.decode();
@@ -104,9 +105,10 @@ const blackEdge = (page, png) =>
       for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] < 24) dark++;
       return Math.round((dark / (d.length / 4)) * 100) / 100;
     };
+    if (whole) return side(0, img.width);
     const w = Math.max(1, Math.floor(img.width / 10));
     return { left: side(0, w), right: side(img.width - w, img.width) };
-  }, png.toString('base64'));
+  }, [png.toString('base64'), whole]);
 /** Street view from the Tools menu (waiting for it to be ready). */
 const streetViewOn = async (page) => {
   await page.click('.vc-map-tools > button');
@@ -179,12 +181,6 @@ for (const prof of PROFILES) {
           await page.waitForTimeout(5000);
           run.clickToGo = { before, after: await attribution(page) };
           await page.screenshot({ path: `${OUT}/${tag}-3-moved.png` });
-          if (!prof.ctx.hasTouch) {
-            await page.click('.vc-svp-swap');
-            await page.waitForTimeout(2500);
-            await page.screenshot({ path: `${OUT}/${tag}-4-swapped.png` });
-            await page.click('.vc-svp-swap');
-          }
         }
       } catch (e) {
         await page.screenshot({ path: `${OUT}/${tag}-failed.png` }).catch(() => undefined);
@@ -303,6 +299,41 @@ for (const prof of PROFILES) {
     }
     await ctx.close();
   }
+}
+// The split view at a laptop size and the full screen photo on a phone, on Geneva Road: no two controls
+// overlap, no small map beside the map (the map shows the person and cone), and on the phone the small map
+// shows imagery, not an empty dark box.
+const GENEVA = [-111.7339, 40.2985];
+for (const prof of [
+  { name: 'split-1270x580', ctx: { viewport: { width: 1270, height: 580 } } },
+  { name: 'phone-390x844', ctx: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } },
+]) {
+  const run = { tag: `geneva-${prof.name}`, notes: [] };
+  log.runs.push(run);
+  const { ctx, page, notes, cx, cy } = await open(prof, GENEVA, 18, false);
+  run.notes = notes;
+  try {
+    if (prof.ctx.hasTouch) await touchTap(ctx, page, cx, cy, 800);
+    else await page.mouse.click(cx, cy, { button: 'right' });
+    await page.waitForSelector('.vc-svp', { timeout: 25000 });
+    await page.waitForSelector('.vc-svp .mapillary-attribution-container', { timeout: 25000 }).catch(() => notes.push('photo slow'));
+    await page.waitForTimeout(6000);
+    run.overlaps = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
+    run.miniMaps = await page.locator('.vc-svp-mini').count();
+    const mini = await page.locator('.vc-svp-mini').boundingBox().catch(() => null);
+    if (mini) {
+      run.miniBox = { w: Math.round(mini.width), h: Math.round(mini.height) };
+      // Share of near black pixels over the whole small map: an empty box reads close to 1.
+      const shot = await page.screenshot({ clip: mini });
+      const dark = await blackEdge(page, shot, true);
+      run.miniDark = dark;
+    }
+    run.ok = !run.overlaps.length && (prof.ctx.hasTouch ? run.miniMaps === 1 && run.miniDark < 0.5 && run.miniBox.w <= 140 : run.miniMaps === 0);
+    await page.screenshot({ path: `${OUT}/geneva-${prof.name}.png` });
+  } catch (e) {
+    run.error = redact(e).slice(0, 500);
+  }
+  await ctx.close();
 }
 await browser.close();
 const text = redact(JSON.stringify(log, null, 2));
