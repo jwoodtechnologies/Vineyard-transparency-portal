@@ -25,6 +25,14 @@ export interface Section {
 
 export const SECTIONS: Section[] = [
   { path: 'records', label: 'Records', blurb: 'Add agendas, minutes, reports and other documents.', area: 'records', tile: true, Component: lazy(() => import('./Records')) },
+  {
+    path: 'archive',
+    label: 'Fix records and meetings',
+    blurb: 'Correct any record, hide a duplicate, or mark a meeting canceled, moved or with a new place or video.',
+    area: 'records',
+    tile: true,
+    Component: lazy(() => import('./Archive')),
+  },
   { path: 'votes', label: 'Votes', blurb: 'Correct how a vote was recorded, add one the minutes missed, or take one down.', area: 'votes', tile: true, Component: lazy(() => import('./Votes')) },
   {
     path: 'projects',
