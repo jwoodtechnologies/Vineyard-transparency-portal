@@ -81,7 +81,6 @@ const AREA_LAYERS: Array<[RegExp, string, string]> = [
   [/\bland use|general plan\b/i, 'landuse', 'Land use'],
   [/\bsubdivision/i, 'subdivisions', 'Subdivisions'],
   [/\btrails?\b|\bbike path/i, 'trails', 'Trails'],
-  [/\bsnow ?plow|snow removal/i, 'snowplow', 'Snowplow routes'],
   [/\bevacuat/i, 'evaczones,evacroutes', 'Evacuation zones'],
   [/\bcrossing guard|school crossing/i, 'crossings', 'School crossings'],
   [/\bcapital (project|improvement)|\bcip\b/i, 'projects', 'Capital projects'],

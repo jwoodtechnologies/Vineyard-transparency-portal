@@ -18,7 +18,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 maplibregl.setWorkerUrl(workerUrl);
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, Crosshair, Layers, MessageSquare, PersonStanding, Ruler, Search, X } from 'lucide-react';
+import { ChevronDown, MessageSquare, Search, X } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
@@ -34,10 +34,11 @@ import { formatDate } from '@/lib/dates';
 import { ProjectViewpoint, viewpointFor, type Pos } from './streetView';
 import { StreetViewLink } from './StreetViewLink';
 import { MeasureTool } from './measure/MeasureTool';
+import { MapTools } from './MapTools';
 import { decodeShape } from './measure/shape';
 import { StreetView } from './streetview/StreetView';
 import { useLongPress } from './streetview/longPress';
-import { COVERAGE_BLUE, lineNear, photoNear, useCoverage } from './streetview/coverage';
+import { lineNear, photoNear, useCoverage } from './streetview/coverage';
 import { usePersonDrag } from './streetview/pegman';
 import type { Photo } from './streetview/geo';
 import { setHead } from '@/lib/head';
@@ -110,7 +111,6 @@ const LOOK: Record<string, Look> = {
   subdivisions: { color: '#1098ad', kind: 'fill', by: 'Subdivision', opacity: 0.14, width: 2.4, label: 'Subdivision', labelZoom: 12.5 },
   rda: { color: '#7048e8', kind: 'fill', opacity: 0.16, outline: '#5f3dc4', width: 2.6, dash: true, label: 'REDEV', labelZoom: 12 },
   rdaparcels: { color: '#7048e8', kind: 'fill', by: 'RDA', opacity: 0.3, width: 0.7, label: 'RDA', labelZoom: 15.5 },
-  snowplow: { color: '#1c7ed6', kind: 'line', width: 3 },
   evacroutes: { color: '#e03131', kind: 'line', width: 3.5 },
   evaczones: { color: '#f08c00', kind: 'fill', by: 'Zone', opacity: 0.16, width: 2.4, label: 'Zone', labelZoom: 12 },
   crossings: { color: '#f59f00', kind: 'circle', radius: 6, label: 'School_Name', labelZoom: 14 },
@@ -147,7 +147,6 @@ const NAME_FIELD: Record<string, string[]> = {
   amenities: ['Facility'],
   trails: ['FULLNAME', 'Facilities'],
   rdaparcels: ['RDA', 'PARCEL_ADD'],
-  snowplow: ['ROADNAME'],
   evacroutes: ['ToCity', 'Direction'],
   evaczones: ['Zone'],
   crossings: ['School_Name'],
@@ -224,8 +223,6 @@ const LABEL: Record<string, string> = {
   PARCEL_ADD: 'Address',
   acreage: 'Acres',
   total_taxable: 'Taxable value',
-  ROADNAME: 'Road',
-  Maintained: 'Maintained by',
   Direction: 'Direction',
   ToCity: 'Leads to',
   Zone: 'Zone',
@@ -296,7 +293,7 @@ const streetOf = (full: string) => titleWords(full.trim().replace(/^[NSEW]\s+(?=
 function nameOf(layer: string, p: Record<string, unknown>): string {
   for (const f of NAME_FIELD[layer] ?? []) {
     const v = fmt(f, p[f]);
-    if (v) return layer === 'roads' ? streetOf(v) : layer === 'snowplow' ? titleWords(v) : layer === 'rda' || layer === 'rdaparcels' ? areaName(v, layer) : v;
+    if (v) return layer === 'roads' ? streetOf(v) : layer === 'rda' || layer === 'rdaparcels' ? areaName(v, layer) : v;
   }
   return 'Map feature';
 }
@@ -411,7 +408,7 @@ const PROJECT_CASING: Array<[number, number]> = [[11, 3.4], [14, 4.6], [17, 6.6]
 /** The parcel collection each map's source last took. */
 const parcelDrawn = new WeakMap<maplibregl.Map, FC>();
 const SEARCHABLE = ['projects', 'roads', 'parks', 'schools', 'subdivisions', 'businesses', 'rda'];
-const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'snowplow', 'trails', 'evacroutes', 'udot', 'alerts', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
+const DRAW_ORDER = ['landuse', 'zoning', 'watersedge', 'evaczones', 'rdaparcels', 'rda', 'subdivisions', 'greenspace', 'parks', 'projects', 'parcels', 'plines', 'boundary', 'roads', 'trails', 'evacroutes', 'udot', 'alerts', 'amenities', 'wayfinding', 'businesses', 'crossings', 'schools'];
 const ALERT_WIDTH: Array<[number, number]> = [[11, 3], [14, 5], [17, 9]];
 const ALERT_CASING: Array<[number, number]> = [[11, 5.5], [14, 8], [17, 13]];
 
@@ -524,8 +521,6 @@ function askFor(p: { layer: string; name: string; props: Record<string, unknown>
       return `What City of Vineyard decisions, crossings or safety projects involve ${name}?`;
     case 'trails':
       return `What plans and projects involve the ${name} trail or bike route in Vineyard?`;
-    case 'snowplow':
-      return `Who plows ${name} in Vineyard when it snows?`;
     case 'evaczones':
     case 'evacroutes':
       return `What is Vineyard's evacuation plan for ${name}?`;
@@ -577,15 +572,10 @@ export default function MapPage() {
   const [measuring, setMeasuring] = useState(() => Boolean(measureInit));
   // Street view (src/console/streetview): a pin from a long press or the Street view button.
   const [sv, setSv] = useState<{ start: Pos | null; photo: Photo | null; key: number } | null>(null);
-  // The blue street photo lines: on while street view is open or the person is dragged, or always with the layer switch.
-  const [photosLayer, setPhotosLayer] = useState(() => {
-    try {
-      return localStorage.getItem('vtp:streetphotos') === 'on';
-    } catch {
-      return false;
-    }
-  });
+  // The blue street photo lines show only while street view is open or the person is dragged.
   const [svDragging, setSvDragging] = useState(false);
+  // The Tools menu is open (the Street view item in it can be dragged onto the map).
+  const [toolsOpen, setToolsOpen] = useState(false);
   const svButton = useRef<HTMLButtonElement>(null);
   const measuringRef = useRef(measuring);
   useEffect(() => {
@@ -1140,6 +1130,9 @@ export default function MapPage() {
     }
   };
 
+  /** Clear all: every layer off in one tap. The base map and the city boundary stay. */
+  const clearLayers = () => setOn((cur) => new Set([...cur].filter((k) => k === 'boundary')));
+
   const locate = () =>
     navigator.geolocation?.getCurrentPosition(
       (p) => mapRef.current?.flyTo({ center: [p.coords.longitude, p.coords.latitude], zoom: 16 }),
@@ -1241,24 +1234,15 @@ export default function MapPage() {
     if (window.innerWidth <= 820) setPanel(false);
     setSv({ start, photo, key: Date.now() });
   };
-  useCoverage(getMap, mapGen, ready, photosLayer || Boolean(sv) || svDragging);
+  useCoverage(getMap, mapGen, ready, Boolean(sv) || svDragging);
   // The person dropped on the map: the photo on the blue line there, else the spot (snapped onto a line close by).
-  const personDragged = usePersonDrag(svButton, getMap, ready, setSvDragging, ({ point, lngLat }) => {
+  const personDragged = usePersonDrag(svButton, getMap, ready && toolsOpen, setSvDragging, ({ point, lngLat }) => {
     const map = mapRef.current;
     if (!map) return;
     const photo = photoNear(map, point, 30);
     if (photo) startStreetView(photo.pos, photo);
     else startStreetView(lineNear(map, point, 18)?.at ?? lngLat);
   });
-  const togglePhotosLayer = () =>
-    setPhotosLayer((v) => {
-      try {
-        localStorage.setItem('vtp:streetphotos', v ? 'off' : 'on');
-      } catch {
-        /* private mode */
-      }
-      return !v;
-    });
   useLongPress(getMap, mapGen, ready, !measuring, (at) => startStreetView(at));
   const closeStreetView = useCallback(() => setSv(null), []);
   const loadZoning = useCallback(() => {
@@ -1320,38 +1304,33 @@ export default function MapPage() {
               </ul>
             )}
           </div>
-          <button type="button" ref={layersBtn} className="vc-map-fab" onClick={() => setPanel((p) => !p)} aria-expanded={panel} aria-label="Map layers">
-            <Layers size={17} strokeWidth={1.9} />
-            <span className="vc-nav-text">Layers</span>
-            <ChevronDown size={14} className="vc-map-chev" data-open={panel} />
-          </button>
-          <button type="button" className="vc-map-fab" data-icon-only="true" onClick={locate} aria-label="Show my location">
-            <Crosshair size={17} strokeWidth={1.9} />
-          </button>
-          <button type="button" className="vc-map-fab" data-icon-only="true" data-on={measuring || undefined} onClick={() => (measuring ? closeMeasure() : startMeasure())} aria-pressed={measuring} aria-label="Measure" title="Measure">
-            <Ruler size={17} strokeWidth={1.9} />
-          </button>
-          <button
-            ref={svButton}
-            type="button"
-            className="vc-map-fab vc-pegman"
-            data-icon-only="true"
-            data-on={Boolean(sv) || undefined}
-            disabled={!ready && !sv}
-            aria-busy={!ready || undefined}
-            onClick={() => (personDragged() ? undefined : sv ? closeStreetView() : startStreetView(null))} aria-pressed={Boolean(sv)} aria-label="Street view" title={ready ? 'Street view (or press and hold on the map)' : 'Street view: the map is loading'}>
-            <PersonStanding size={18} strokeWidth={1.9} />
-          </button>
+          <MapTools
+            ref={layersBtn}
+            layersOn={panel}
+            measuring={measuring}
+            streetView={Boolean(sv)}
+            ready={ready}
+            onLayers={() => setPanel((p) => !p)}
+            onLocate={locate}
+            onMeasure={() => (measuring ? closeMeasure() : startMeasure())}
+            onStreetView={() => (sv ? closeStreetView() : startStreetView(null))}
+            personRef={svButton}
+            personDragged={() => personDragged()}
+            onOpenChange={setToolsOpen}
+          />
         </div>
 
         {panel && (
           <aside className="vc-map-panel" aria-label="Layers">
             <div className="vc-map-panel-head">
-              <p className="vc-panel-label">Map style</p>
+              <button type="button" className="vc-map-close vc-map-clear" onClick={clearLayers} disabled={![...on].some((k) => k !== 'boundary')}>
+                Clear all
+              </button>
               <button type="button" className="vc-map-close" onClick={() => setPanel(false)} aria-label="Close layers">
                 <X size={16} strokeWidth={2} /> <span>Done</span>
               </button>
             </div>
+            <p className="vc-panel-label">Map style</p>
             <div className="vc-segment vc-map-bases" role="radiogroup" aria-label="Map style">
               {BASES.map((b) => (
                 <button
@@ -1396,14 +1375,6 @@ export default function MapPage() {
                 })}
               </div>
             ))}
-            <div className="vc-map-group">
-              <p className="vc-panel-label">Street view</p>
-              <label className="vc-map-layer">
-                <span className="vc-map-swatch" data-kind="line" style={{ background: COVERAGE_BLUE }} />
-                <span className="vc-map-lname">Street photos</span>
-                <input type="checkbox" className="vc-switch" checked={photosLayer} onChange={togglePhotosLayer} />
-              </label>
-            </div>
           </aside>
         )}
 
@@ -1473,20 +1444,7 @@ export default function MapPage() {
             </div>
             <h2 className="vc-map-card-title">{picked.name}</h2>
             <dl className="vc-map-facts">
-              {picked.layer === 'snowplow' ? (
-                <>
-                  <div>
-                    <dt>Maintained by</dt>
-                    <dd>{fmt('Maintained', picked.props.Maintained) ?? 'Not listed'}</dd>
-                  </div>
-                  {fmt('ROADCLASS', picked.props.ROADCLASS) && (
-                    <div>
-                      <dt>Road class</dt>
-                      <dd>{fmt('ROADCLASS', picked.props.ROADCLASS)}</dd>
-                    </div>
-                  )}
-                </>
-              ) : Object.entries(picked.props)
+              {Object.entries(picked.props)
                 .filter(([k]) => !HIDE.has(k) && !(NAME_FIELD[picked.layer] ?? []).slice(0, 1).includes(k))
                 .map(([k, v]) => [k, fmt(k, v)] as const)
                 .filter(([, v]) => v)

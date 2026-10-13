@@ -73,7 +73,9 @@ async function open(prof, spot, z, dark, extra = {}) {
   await page.goto(`${BASE}/map?lat=${spot[1]}&lng=${spot[0]}&z=${z}`, { waitUntil: 'domcontentloaded' });
   // A slow load is noted, not fatal: the block's own steps say what did not work.
   await page.waitForSelector('.vc-map canvas', { timeout: 30000 }).catch(() => notes.push('map canvas slow'));
-  await page.waitForSelector('button[aria-label="Street view"]:not([disabled])', { timeout: 30000 }).catch(() => notes.push('street view button slow'));
+  // Street view is in the Tools menu: wait until it can be picked, then close the menu.
+  await page.waitForSelector('.vc-map-tools > button', { timeout: 30000 }).catch(() => notes.push('tools button slow'));
+  await page.waitForFunction(() => !document.querySelector('.vc-map-loading'), null, { timeout: 30000 }).catch(() => notes.push('map loading slow'));
   await page.waitForTimeout(3500);
   const box = (await page.locator('.vc-map').boundingBox().catch(() => null)) ?? { x: 0, y: 0, ...prof.ctx.viewport };
   return { ctx, page, notes, cx: box.x + box.width / 2, cy: box.y + box.height / 2 };
@@ -105,6 +107,12 @@ const blackEdge = (page, png) =>
     const w = Math.max(1, Math.floor(img.width / 10));
     return { left: side(0, w), right: side(img.width - w, img.width) };
   }, png.toString('base64'));
+/** Street view from the Tools menu (waiting for it to be ready). */
+const streetViewOn = async (page) => {
+  await page.click('.vc-map-tools > button');
+  await page.waitForSelector('.vc-map-tools-item.vc-pegman:not([disabled])', { timeout: 30000 });
+  await page.click('.vc-map-tools-item.vc-pegman');
+};
 const attribution = (page) => page.getAttribute('.vc-svp-view', 'data-image').catch(() => '');
 
 for (const prof of PROFILES) {
@@ -117,9 +125,11 @@ for (const prof of PROFILES) {
       const { ctx, page, notes, cx, cy } = await open(prof, lineSpot, 18, dark);
       run.notes = notes;
       try {
-        const btn = await page.locator('button[aria-label="Street view"]').boundingBox();
+        await page.click('.vc-map-tools > button');
+        await page.waitForSelector('.vc-map-tools-item.vc-pegman:not([disabled])', { timeout: 30000 });
+        const btn = await page.locator('.vc-map-tools-item.vc-pegman').boundingBox();
         if (prof.ctx.hasTouch) {
-          await page.tap('button[aria-label="Street view"]');
+          await page.tap('.vc-map-tools-item.vc-pegman');
           await page.waitForTimeout(3000);
           if (!dark) await page.screenshot({ path: `${OUT}/${tag}-1-lines.png` });
           run.hint = (await page.textContent('.vc-sv-note').catch(() => ''))?.trim();
@@ -186,8 +196,10 @@ for (const prof of PROFILES) {
   if (lineSpot && !prof.ctx.hasTouch) {
     const run = { tag: `${prof.name}-hover`, notes: [] };
     log.runs.push(run);
-    const { ctx, page, notes, cx, cy } = await open(prof, lineSpot, 18, false, { 'vtp:streetphotos': 'on' });
+    const { ctx, page, notes, cx, cy } = await open(prof, lineSpot, 18, false);
     run.notes = notes;
+    // The blue lines show only while street view is in use.
+    await streetViewOn(page);
     await page.waitForTimeout(2500);
     // Sweep across the middle of the map until the pointer rests on a line and the thumbnail shows.
     for (let dx = -160; dx <= 160; dx += 6) {
