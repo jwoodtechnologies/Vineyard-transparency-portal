@@ -167,7 +167,7 @@ export default function People() {
   const { user, load } = useStaffCtx();
   const me = user as Me;
   const labels = load.status === 'ready' ? load.data.areas : [];
-  const roles: Role[] = me.role === 'owner' ? ['editor', 'admin', 'owner'] : ['editor'];
+  const roles: Role[] = me.role === 'owner' ? ['editor', 'admin'] : ['editor'];
   const { data, error: loadError, reload: refresh } = useStaffData<{ items: Person[] }>('/users');
   const people = data?.items ?? null;
   const [error, setError] = useState('');
