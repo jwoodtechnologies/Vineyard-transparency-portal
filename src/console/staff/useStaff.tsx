@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- one small context module */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createProofSource } from './sha';
-import { staff, type Me, type StaffState } from './api';
+import { SESSION_ENDED, staff, type Me, type StaffState } from './api';
 
 /** One solved bot-check kept ready for the sign-in screens. */
 export const proofs = createProofSource(() => staff<{ id: string; bits: number }>('/challenge'));
@@ -11,6 +11,9 @@ type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; dat
 interface Ctx {
   load: Load;
   user: Me | null;
+  /** True after a request found the session over; the page stays as it was and offers a quick sign-in. */
+  sessionEnded: boolean;
+  clearSessionEnded: () => void;
   reload: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -25,6 +28,13 @@ export function useStaffCtx(): Ctx {
 
 export function StaffProvider({ children }: { children: ReactNode }) {
   const [load, setLoad] = useState<Load>({ status: 'loading' });
+  const [sessionEnded, setSessionEnded] = useState(false);
+  useEffect(() => {
+    const ended = () => setSessionEnded(true);
+    window.addEventListener(SESSION_ENDED, ended);
+    return () => window.removeEventListener(SESSION_ENDED, ended);
+  }, []);
+  const clearSessionEnded = useCallback(() => setSessionEnded(false), []);
   useEffect(() => {
     let live = true;
     staff<StaffState>('/state').then(
@@ -50,7 +60,10 @@ export function StaffProvider({ children }: { children: ReactNode }) {
       await reload();
     }
   }, [reload]);
-  const value = useMemo<Ctx>(() => ({ load, user: load.status === 'ready' ? load.data.user : null, reload, signOut }), [load, reload, signOut]);
+  const value = useMemo<Ctx>(
+    () => ({ load, user: load.status === 'ready' ? load.data.user : null, sessionEnded, clearSessionEnded, reload, signOut }),
+    [load, sessionEnded, clearSessionEnded, reload, signOut],
+  );
   return <StaffContext.Provider value={value}>{children}</StaffContext.Provider>;
 }
 

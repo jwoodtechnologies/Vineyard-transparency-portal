@@ -16,6 +16,10 @@ export interface Section {
   managers?: boolean;
   /** Shown on the home screen as a tile. */
   tile: boolean;
+  /** What the home tile says when it should read as an action (the tab keeps the short label). */
+  tileTitle?: string;
+  /** Hidden from the home tiles for people who are not owners or administrators. */
+  managersTile?: boolean;
   Component: LazyExoticComponent<ComponentType>;
 }
 
@@ -23,12 +27,36 @@ export const SECTIONS: Section[] = [
   { path: 'records', label: 'Records', blurb: 'Add agendas, minutes, reports and other documents.', area: 'records', tile: true, Component: lazy(() => import('./Records')) },
   { path: 'votes', label: 'Votes', blurb: 'Correct how a vote was recorded, add one the minutes missed, or take one down.', area: 'votes', tile: true, Component: lazy(() => import('./Votes')) },
   { path: 'budget', label: 'Budget', blurb: 'Update the budget figures, totals and capital projects.', area: 'budget', tile: true, Component: lazy(() => import('./Budget')) },
-  { path: 'notices', label: 'Notices', blurb: 'Post a closure or alert at the top of every page.', area: 'notices', tile: true, Component: lazy(() => import('./Notices')) },
-  { path: 'events', label: 'Events', blurb: 'Add a community event, special meeting or closure day to the calendar.', area: 'notices', tile: true, Component: lazy(() => import('./Events')) },
-  { path: 'updates', label: 'Updates', blurb: 'Post a note about a finished project or a change to a service.', area: 'notices', tile: true, Component: lazy(() => import('./Updates')) },
-  { path: 'directory', label: 'People', blurb: 'Keep the Mayor and Council, city staff and board members up to date.', area: 'people', tile: true, Component: lazy(() => import('./Directory')) },
+  {
+    path: 'notices',
+    label: 'Notices',
+    tileTitle: 'Post a notice',
+    blurb: 'Show a closure or alert at the top of every public page, and on the map if you want.',
+    area: 'notices',
+    tile: true,
+    Component: lazy(() => import('./Notices')),
+  },
+  {
+    path: 'events',
+    label: 'Events',
+    tileTitle: 'Add an event',
+    blurb: 'Put a community event, special meeting or closure day on the public calendar.',
+    area: 'notices',
+    tile: true,
+    Component: lazy(() => import('./Events')),
+  },
+  {
+    path: 'updates',
+    label: 'Updates',
+    tileTitle: 'Post an update',
+    blurb: 'Share a finished project or a change to a service. It is listed on the Records page.',
+    area: 'notices',
+    tile: true,
+    Component: lazy(() => import('./Updates')),
+  },
+  { path: 'directory', label: 'Directory', blurb: 'Keep the Mayor and Council, city staff and board members up to date.', area: 'people', tile: true, Component: lazy(() => import('./Directory')) },
   { path: 'people', label: 'Accounts', blurb: 'Add staff, choose what each person can edit, turn accounts off.', managers: true, tile: true, Component: lazy(() => import('./People')) },
-  { path: 'activity', label: 'Activity', blurb: 'See every change and undo a mistake.', tile: true, Component: lazy(() => import('./Activity')) },
+  { path: 'activity', label: 'Activity', blurb: 'See every change and undo a mistake.', tile: true, managersTile: true, Component: lazy(() => import('./Activity')) },
 ];
 
 export function visibleSections(user: Me): Section[] {

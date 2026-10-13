@@ -9,6 +9,10 @@ export class StaffError extends Error {
   }
 }
 
+/** Paths where a 401 just means "wrong details", not "your session ended". */
+const AUTH_PATHS = /^\/(login|passkey\/|bootstrap|recover|invite\/)/;
+export const SESSION_ENDED = 'vtp-session-ended';
+
 export async function staff<T>(path: string, init: { method?: 'GET' | 'POST'; body?: unknown } = {}): Promise<T> {
   const method = init.method ?? (init.body === undefined ? 'GET' : 'POST');
   const headers: Record<string, string> = { accept: 'application/json' };
@@ -29,6 +33,7 @@ export async function staff<T>(path: string, init: { method?: 'GET' | 'POST'; bo
     /* an empty or non-JSON body */
   }
   if (!res.ok) {
+    if (res.status === 401 && !AUTH_PATHS.test(path)) window.dispatchEvent(new Event(SESSION_ENDED));
     const message = (data as { error?: { message?: string } } | null)?.error?.message;
     throw new StaffError(message ?? 'Something went wrong. Try again.', res.status);
   }
@@ -50,6 +55,7 @@ export async function staffUpload<T>(path: string, form: FormData): Promise<T> {
     /* an empty or non-JSON body */
   }
   if (!res.ok) {
+    if (res.status === 401) window.dispatchEvent(new Event(SESSION_ENDED));
     const message = (data as { error?: { message?: string } } | null)?.error?.message;
     throw new StaffError(message ?? 'The file could not be added. Try again.', res.status);
   }
@@ -118,4 +124,3 @@ export const AREA_NAME: Record<string, string> = {
   site: 'Site pages and links',
   accounts: 'Accounts',
 };
-

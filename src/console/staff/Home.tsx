@@ -1,14 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { AREA_NAME, ROLE_LABEL, staff, when, type AuditItem, type Me } from './api';
+import { ROLE_LABEL, canManageUsers, staff, when, type AuditItem, type Me } from './api';
 import { visibleSections } from './sections';
 import { useStaffCtx } from './useStaff';
+
+/** What each area lets a person do, in the words they would use. */
+const DOES: Record<string, string> = {
+  records: 'add records and meeting documents',
+  votes: 'correct votes',
+  people: 'keep the directory up to date',
+  map: 'update the map and projects',
+  budget: 'update the budget',
+  notices: 'post notices, events and updates',
+  site: 'edit site pages and links',
+};
+
+function sentence(parts: string[]): string {
+  if (parts.length < 2) return parts[0] ?? 'view the portal';
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
 
 export default function Home() {
   const { user } = useStaffCtx();
   const me = user as Me;
-  const tiles = visibleSections(me).filter((s) => s.tile);
+  const tiles = visibleSections(me).filter((s) => s.tile && (!s.managersTile || canManageUsers(me)));
   const [recent, setRecent] = useState<AuditItem[] | null>(null);
   useEffect(() => {
     let live = true;
@@ -29,8 +45,7 @@ export default function Home() {
         </h1>
         <p className="vs-lede">
           {ROLE_LABEL[me.role]}
-          {me.department ? `, ${me.department}` : ''}.{' '}
-          {me.role === 'editor' ? `You can edit ${me.areas.map((a) => (AREA_NAME[a] ?? a).toLowerCase()).join(', ')}.` : 'You can edit every part of the portal.'}
+          {me.department ? `, ${me.department}` : ''}. {me.role === 'editor' ? `You can ${sentence(me.areas.map((a) => DOES[a]).filter(Boolean))}.` : 'You can edit every part of the portal.'}
         </p>
       </div>
 
@@ -39,7 +54,7 @@ export default function Home() {
           <li key={s.path}>
             <Link to={`/staff/${s.path}`} className="vs-tile">
               <span className="vs-tile-text">
-                <span className="vs-tile-title">{s.label}</span>
+                <span className="vs-tile-title">{s.tileTitle ?? s.label}</span>
                 <span className="vs-tile-blurb">{s.blurb}</span>
               </span>
               <ChevronRight size={18} aria-hidden="true" />

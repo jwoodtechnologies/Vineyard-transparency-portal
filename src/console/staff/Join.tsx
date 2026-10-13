@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KeyRound } from 'lucide-react';
 import { staff } from './api';
 import { createPasskey, passkeysSupported } from './passkey';
 import { useStaffCtx } from './useStaff';
-import { Alert, Field, Spinner } from './ui';
+import { Alert, Field, PasswordInput, Spinner } from './ui';
+import RecoveryCodes from './RecoveryCodes';
 
 interface Invite {
   name: string;
@@ -14,14 +15,36 @@ interface Invite {
   minPassword: number;
 }
 
-/** Reads the one-time token from the link (kept after the # so it never reaches a server log). */
+const KEEP = 'vtp-staff-link';
+
+/**
+ * Reads the one-time token from the link. It sits after the # so it never reaches a server log; it is then
+ * removed from the address bar and kept for this tab only, so a reload or a trip back from the mail app does
+ * not lose it. It is forgotten as soon as the account is finished.
+ */
 function tokenFromLink(): string {
   const t = window.location.hash.slice(1);
-  if (t) window.history.replaceState(null, '', window.location.pathname);
-  return t;
+  try {
+    if (t) {
+      window.history.replaceState(null, '', window.location.pathname);
+      window.sessionStorage.setItem(KEEP, t);
+      return t;
+    }
+    return window.sessionStorage.getItem(KEEP) ?? '';
+  } catch {
+    return t;
+  }
 }
 
-/** Finishes an account: choose a passkey or a password. Used by invitation links and by first-time setup. */
+const forget = () => {
+  try {
+    window.sessionStorage.removeItem(KEEP);
+  } catch {
+    /* nothing to forget */
+  }
+};
+
+/** Finishes an account: choose a passkey or a password, then save the recovery codes. Used by links, recovery and first-time setup. */
 export default function Join({ token: given }: { token?: string }) {
   const { reload } = useStaffCtx();
   const navigate = useNavigate();
@@ -30,10 +53,11 @@ export default function Join({ token: given }: { token?: string }) {
   const invite = token ? lookup : 'bad';
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [again, setAgain] = useState('');
   const [usePassword, setUsePassword] = useState(false);
   const [busy, setBusy] = useState<'key' | 'password' | null>(null);
   const [error, setError] = useState('');
+  const [codes, setCodes] = useState<string[] | null>(null);
+  const passwordBox = useRef<HTMLDivElement>(null);
   const keys = passkeysSupported();
 
   useEffect(() => {
@@ -45,17 +69,25 @@ export default function Join({ token: given }: { token?: string }) {
         setLookup(i);
         setName(i.name === 'Owner' ? '' : i.name);
       },
-      () => live && setLookup('bad'),
+      () => {
+        forget();
+        if (live) setLookup('bad');
+      },
     );
     return () => {
       live = false;
     };
   }, [token]);
 
+  useEffect(() => {
+    if (usePassword) passwordBox.current?.querySelector('input')?.focus();
+  }, [usePassword]);
+
   async function finish(extra: Record<string, unknown>) {
-    await staff('/invite/accept', { body: { token, name, ...extra } });
+    const r = await staff<{ recoveryCodes: string[] }>('/invite/accept', { body: { token, name, ...extra } });
+    forget();
+    setCodes(r.recoveryCodes);
     await reload();
-    navigate('/staff', { replace: true });
   }
 
   async function withPasskey() {
@@ -77,7 +109,6 @@ export default function Join({ token: given }: { token?: string }) {
     setError('');
     if (!name.trim()) return setError('Enter your name first.');
     if (invite && invite !== 'bad' && password.length < invite.minPassword) return setError(`Use at least ${invite.minPassword} characters. A few words in a row works well.`);
-    if (password !== again) return setError('The two passwords do not match.');
     setBusy('password');
     try {
       await finish({ password });
@@ -87,12 +118,19 @@ export default function Join({ token: given }: { token?: string }) {
     }
   }
 
-  if (invite === null) return <section className="vs-card vs-narrow" aria-busy="true"><Spinner label="Checking your link" /></section>;
+  if (codes && invite && invite !== 'bad') return <RecoveryCodes codes={codes} email={invite.email} doneLabel="Go to the portal" onDone={() => navigate('/staff', { replace: true })} />;
+  if (invite === null) {
+    return (
+      <section className="vs-card vs-narrow" aria-busy="true">
+        <Spinner label="Checking your link" />
+      </section>
+    );
+  }
   if (invite === 'bad') {
     return (
       <section className="vs-card vs-narrow">
         <h1 className="vs-title">This link will not work</h1>
-        <p className="vs-lede">It may have expired or already been used. Ask a portal administrator to send you a new one.</p>
+        <p className="vs-lede">It may have expired or already been used. Ask a portal administrator to make you a new one, or use a recovery code if you have one.</p>
       </section>
     );
   }
@@ -127,10 +165,11 @@ export default function Join({ token: given }: { token?: string }) {
 
       {showPassword && (
         <form onSubmit={withPassword} noValidate>
-          <Field label="Choose a password" hint={`At least ${invite.minPassword} characters.`}>
-            {(id) => <input id={id} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
-          </Field>
-          <Field label="Type it again">{(id) => <input id={id} type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} />}</Field>
+          <div ref={passwordBox}>
+            <Field label="Choose a password" hint={`At least ${invite.minPassword} characters. Use Show to check what you typed.`}>
+              {(id) => <PasswordInput id={id} autoComplete="new-password" value={password} onChange={setPassword} />}
+            </Field>
+          </div>
           <button type="submit" className={`vs-btn ${keys ? 'vs-btn-quiet' : 'vs-btn-primary'} vs-block`} disabled={busy !== null}>
             {busy === 'password' && <Spinner label="Saving" />} Create account
           </button>

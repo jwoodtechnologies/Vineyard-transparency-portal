@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { staff } from './api';
 import { proofs } from './useStaff';
-import { Alert, Field, Spinner } from './ui';
+import { Alert, Field, PasswordInput, Spinner } from './ui';
 import Join from './Join';
 
 /** The very first owner account, opened with the existing portal owner email and password. */
@@ -32,6 +32,7 @@ export default function Setup({ open }: { open: boolean }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError('');
+    if (!email.trim() || !password) return setError(!email.trim() ? 'Enter the owner email address.' : 'Enter the owner password.');
     setBusy(true);
     try {
       const r = await staff<{ token: string }>('/bootstrap', { body: { email, password, pow: await proofs.take() } });
@@ -47,12 +48,15 @@ export default function Setup({ open }: { open: boolean }) {
       <h1 id="vs-setup" className="vs-title">
         Create the owner account
       </h1>
-      <p className="vs-lede">Enter the email and password of the portal owner, the same ones used for the private activity page. This only works once.</p>
+      <p className="vs-lede">
+        Enter the email and password of the portal owner, the same ones used for the private activity page. Next you will choose a passkey or password for your own staff sign-in and save your recovery
+        codes. This only works once.
+      </p>
       <form onSubmit={submit} noValidate>
         <Field label="Owner email">{(id) => <input id={id} type="email" autoComplete="username" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />}</Field>
-        <Field label="Owner password">{(id) => <input id={id} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />}</Field>
+        <Field label="Owner password">{(id) => <PasswordInput id={id} autoComplete="current-password" value={password} onChange={setPassword} />}</Field>
         <Alert>{error}</Alert>
-        <button type="submit" className="vs-btn vs-btn-primary vs-block" disabled={busy || !email || !password}>
+        <button type="submit" className="vs-btn vs-btn-primary vs-block" disabled={busy}>
           {busy && <Spinner label="Checking" />} Continue
         </button>
       </form>
