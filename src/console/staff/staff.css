@@ -1409,3 +1409,6 @@
 .dark .vs-bulk-err {
   color: #ff9a9a;
 }
+.vs-bulk-intro {
+  margin: 0 0 0.9rem;
+}

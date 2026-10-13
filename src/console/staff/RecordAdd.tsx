@@ -222,7 +222,7 @@ function BulkForm({ types, meetings, files, onBatch, onClose }: Omit<Props, 'onA
 
   return (
     <div role="group" aria-label="Add several files">
-      <p className="vs-hint">These details apply to every file. You can change each title below.</p>
+      <p className="vs-hint vs-bulk-intro">These details apply to every file. You can change each title below.</p>
       <Field label="Type of record">
         {(id) => (
           <select id={id} value={type} disabled={busy} onChange={(e) => setType(e.target.value)}>
