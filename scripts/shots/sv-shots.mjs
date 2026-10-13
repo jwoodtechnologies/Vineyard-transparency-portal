@@ -78,7 +78,11 @@ for (const prof of PROFILES) {
         } else await page.mouse.click(cx, cy, { button: 'right' });
         if (kind === 'photo') {
           await page.waitForSelector('.vc-svp', { timeout: 20000 });
-          await page.waitForTimeout(9000);
+          const t0 = Date.now();
+          // The viewer's own attribution appears once the photo has loaded.
+          const shown = await page.waitForSelector('.vc-svp .mapillary-attribution-container, .vc-svp [class*="mapillary-attribution"]', { timeout: 25000 }).then(() => true, () => false);
+          notes.push(shown ? `photo shown after ${Date.now() - t0} ms` : 'photo not shown within 25 s');
+          await page.waitForTimeout(3000);
           await page.screenshot({ path: `${OUT}/${tag}.png` });
           if (!dark) {
             await page.click('.vc-svp button[aria-pressed]');
