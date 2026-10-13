@@ -5652,3 +5652,7 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
   .vc-sv-3d { grid-template-columns: repeat(2, 44px); grid-auto-flow: row; align-items: center; }
   .vc-sv-3d .vc-sv-compass { grid-column: 1 / -1; justify-self: center; }
 }
+/* The street photo full screen (phones): the map's controls under it step aside. Beside the map (wider
+   screens, the photo takes the right half): the zoom and full screen stack and (i) move to the open map's edge. */
+.vc-map-wrap:has(.vc-svp:not([data-wide])) :is(.vc-map-top, .vc-map-legend, .vc-map .maplibregl-control-container) { visibility: hidden; }
+.vc-map-wrap:has(.vc-svp[data-wide='true']) .vc-map .maplibregl-ctrl-bottom-right { right: 50%; }
