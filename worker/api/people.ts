@@ -11,6 +11,7 @@
 import type { Env } from '../env';
 import { CACHE, HttpError, json, notFound } from '../lib/http';
 import { SearchRepository, type ChunkHit } from '../search/SearchRepository';
+import { isVacantBoardName } from '../lib/boardRenames';
 
 export interface PersonInput {
   slug: string;
@@ -93,12 +94,21 @@ function card(r: Row) {
   };
 }
 
+/** A person's listed boards without the ones that were cleared (worker/lib/boardRenames.ts); null when only cleared boards were listed. */
+function withoutVacant(r: Row): Row | null {
+  const parts = String(r.department ?? '').split(';').map((x) => x.trim()).filter(Boolean);
+  const kept = parts.filter((d) => !isVacantBoardName(d));
+  if (kept.length === parts.length) return r;
+  if (!kept.length && r.kind === 'board') return null;
+  return { ...r, department: kept.length ? kept.join('; ') : null };
+}
+
 export async function listPeople(env: Env): Promise<Response> {
   await ensurePeopleTable(env);
   const res = await env.CATALOG_DB.prepare(
     `SELECT * FROM people WHERE current = 1 ORDER BY CASE kind WHEN 'elected' THEN 0 WHEN 'staff' THEN 1 ELSE 2 END, CASE role WHEN 'Mayor' THEN 0 ELSE 1 END, name`,
   ).all<Row>();
-  return json({ people: (res.results ?? []).map(card) }, { cache: CACHE.list });
+  return json({ people: (res.results ?? []).map(withoutVacant).filter((r): r is Row => r !== null).map(card) }, { cache: CACHE.list });
 }
 
 const q = (s: string) => `"${s.replace(/"/g, '""')}"`;
@@ -115,7 +125,8 @@ function byDocument(hits: ChunkHit[], max: number) {
 export async function getPerson(env: Env, slug: string): Promise<Response> {
   await ensurePeopleTable(env);
   // Only people serving now have profiles; former officials appear only in the records themselves.
-  const row = await env.CATALOG_DB.prepare('SELECT * FROM people WHERE slug = ? AND current = 1').bind(slug).first<Row>();
+  const found = await env.CATALOG_DB.prepare('SELECT * FROM people WHERE slug = ? AND current = 1').bind(slug).first<Row>();
+  const row = found ? withoutVacant(found) : null;
   if (!row) throw notFound('That person is not in the city directory.');
   const person = card(row);
   const repo = new SearchRepository(env);

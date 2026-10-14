@@ -7,6 +7,7 @@ import type { Env } from '../env';
 import { ensurePeopleTable } from './people';
 import { json } from '../lib/http';
 import { currentRoster } from './votes';
+import { RENAMED_BOARDS, isVacantBoard } from '../lib/boardRenames';
 import { readContent, type BoardsContent } from '../lib/siteContent';
 
 /** The city website's board names, matched to the meeting portal's bodies. */
@@ -19,6 +20,7 @@ import { readContent, type BoardsContent } from '../lib/siteContent';
 const ALIAS: Record<string, string> = {
   'bicycle advisory commission': 'active-transportation-commission',
   'active transportation commission': 'active-transportation-commission',
+  'pedestrian safety commission': 'active-transportation-commission',
   'executive youth council': 'youth-council',
   'youth council': 'youth-council',
   'library board': 'vineyard-library-board',
@@ -76,6 +78,7 @@ export async function listBoards(env: Env): Promise<Response> {
       const id = ALIAS[b.toLowerCase()] ?? slug(b);
       websiteBoards.set(id, b);
       if (!ALIAS[b.toLowerCase()]) listedOnly.set(id, b);
+      if (isVacantBoard(id)) continue;
       // A listed term that ended before this year: shown only if the minutes show them still serving.
       const end = (p.term ?? '').match(/((?:19|20)\d{2})\s*$/);
       if (end && Number(end[1]) < year && !satWith(id, p.name)) {
@@ -93,6 +96,7 @@ export async function listBoards(env: Env): Promise<Response> {
   const boardIds = [...new Set([...websiteBoards.keys(), 'planning-commission', 'arch-commission'])].filter((id) => id !== 'city-council' && id !== 'redevelopment-agency');
   await Promise.all(
     boardIds.map(async (id) => {
+      if (isVacantBoard(id)) return;
       const r = await currentRoster(env, id, siteNames.get(id) ?? [websiteBoards.get(id) ?? id]).catch(() => null);
       if (r?.length) {
         members.set(id, r.map((c) => ({ slug: c.slug ?? `pc-${slug(c.name)}`, name: c.name, role: c.role, term: c.term, photo: c.photo })));
@@ -102,7 +106,7 @@ export async function listBoards(env: Env): Promise<Response> {
   );
   // The boards the city website lists today, plus the City Council and the Redevelopment Agency.
   const out = (bodies.results ?? [])
-    .filter((b) => !SKIP.has(b.id) && (b.id === 'city-council' || b.id === 'redevelopment-agency' || websiteBoards.has(b.id)))
+    .filter((b) => !SKIP.has(b.id) && (b.id === 'city-council' || b.id === 'redevelopment-agency' || websiteBoards.has(b.id) || b.id in RENAMED_BOARDS))
     .map((b) => ({
       id: b.id,
       // The name the body meets under (the website may still use an older one).
@@ -119,6 +123,13 @@ export async function listBoards(env: Env): Promise<Response> {
     }));
   // Boards the city lists members for that have no meetings on file yet.
   for (const [id, name] of listedOnly) if (!out.some((b) => b.id === id)) out.push({ id, name, meetingName: name, hiddenExpired: hidden.get(id) ?? 0, kind: 'board', meetings: 0, firstMeeting: null, lastMeeting: null, nextMeeting: null, active: true, members: members.get(id) ?? [] });
+  // Renamed boards: the current name, the name the older meetings were held under, and no members when it was cleared.
+  for (const b of out) {
+    const r = RENAMED_BOARDS[b.id];
+    if (!r) continue;
+    Object.assign(b, { name: r.name, meetingName: r.name, formerName: r.formerName });
+    if (r.vacant) Object.assign(b, { members: [], hiddenExpired: 0, vacant: true });
+  }
   // What staff wrote about each board (staff portal, People and boards): what it does, when it meets, how to apply.
   const staffInfo = ((await readContent(env, 'boards').catch(() => null))?.value as BoardsContent | undefined)?.boards ?? {};
   for (const b of out) Object.assign(b, Object.prototype.hasOwnProperty.call(staffInfo, b.id) ? staffInfo[b.id] : {});
