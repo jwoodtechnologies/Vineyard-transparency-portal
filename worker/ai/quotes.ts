@@ -152,7 +152,7 @@ const BODY_NAMES: Record<string, string> = {
   'redevelopment-agency': 'Redevelopment Agency',
   'vineyard-library-board': 'Library Board',
   'arch-commission': 'ARCH Commission',
-  'active-transportation-commission': 'Active Transportation Commission',
+  'active-transportation-commission': 'Pedestrian Safety Commission',
 };
 
 /** "FY 27 Final Budget (June 23, 2026), page 12" */
@@ -186,7 +186,7 @@ const MEETING_BODIES: Array<[RegExp, string, string]> = [
   [/\bRDA\b|redevelopment/i, 'redevelopment-agency', 'Redevelopment Agency'],
   [/library board|\blibrary\b.*\b(meeting|agenda|minutes)\b/i, 'vineyard-library-board', 'Library Board'],
   [/\barch\b|architect/i, 'arch-commission', 'ARCH Commission'],
-  [/active transportation|\bATC\b/i, 'active-transportation-commission', 'Active Transportation Commission'],
+  [/pedestrian safety|active transportation|\bATC\b|\bPSC\b/i, 'active-transportation-commission', 'Pedestrian Safety Commission'],
   [/youth council/i, 'youth-council', 'Youth Council'],
   [/development review/i, 'development-review-committee', 'Development Review Committee'],
   [/\bcouncil\b/i, 'city-council', 'City Council'],

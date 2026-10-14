@@ -30,7 +30,7 @@ const BODIES: Array<{ ask: RegExp; label: string; match: RegExp; like: string }>
   { ask: /\bRDA\b|redevelopment/i, label: 'Redevelopment Agency', match: /redevelopment|\bRDA\b/i, like: '%Redevelopment%' },
   { ask: /\barch\b|architect/i, label: 'ARCH Commission', match: /\bARCH\b/i, like: '%ARCH Commission%' },
   { ask: /\blibrary board\b|\blibrary\b.*\bmeeting\b/i, label: 'Library Board', match: /library board/i, like: '%Library Board%' },
-  { ask: /active transportation|\bATC\b/i, label: 'Active Transportation Commission', match: /active transportation|\bATC\b/i, like: '%Active Transportation%' },
+  { ask: /pedestrian safety|active transportation|\bATC\b/i, label: 'Pedestrian Safety Commission', match: /pedestrian safety|active transportation|\bATC\b/i, like: '%Active Transportation%' },
   { ask: /development review/i, label: 'Development Review Committee', match: /development review/i, like: '%Development Review%' },
   { ask: /youth council/i, label: 'Youth Council', match: /youth council/i, like: '%Youth Council%' },
   { ask: /vineyard cares coalition/i, label: 'Vineyard Cares Coalition', match: /vineyard cares coalition/i, like: '%Vineyard Cares Coalition%' },
