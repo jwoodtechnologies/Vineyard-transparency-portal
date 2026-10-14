@@ -58,6 +58,7 @@ export function parsePmnResults(html: string): PmnNotice[] {
 const TITLE_BODIES: Array<[RegExp, string]> = [
   [/\bARCH\b/, 'ARCH Commission'],
   [/\bactive transportation\b/i, 'Active Transportation Commission'],
+  [/\bpedestrian safety commission\b/i, 'Active Transportation Commission'],
   [/\bplanning commission\b/i, 'Planning Commission'],
   [/\bredevelopment agency\b|\bRDA\b/, 'Redevelopment Agency'],
   [/\bdevelopment review committee\b/i, 'Development Review Committee'],
