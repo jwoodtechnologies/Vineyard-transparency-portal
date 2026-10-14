@@ -184,7 +184,7 @@ async function readInvite(env: Env, token: unknown): Promise<{ user: FullRow; ki
 const userHandle = async (id: string) => bytesToB64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`vtp-staff:${id}`))).slice(0, 16));
 
 function publicUser(u: StaffUser) {
-  return { id: u.id, email: u.email, name: u.name, department: u.department, role: u.role, areas: u.areas };
+  return { id: u.id, email: u.email, name: u.name, department: u.department, role: u.role, areas: u.areas, tour: u.tour };
 }
 
 async function activeOwners(env: Env): Promise<number> {
@@ -414,6 +414,14 @@ export async function handleStaff(env: Env, request: Request, url: URL, ctx: Exe
 
     // ---- everything below needs a signed-in person
     const me = await requireUser(env, request);
+
+    // The new staff tour, finished or skipped: kept on the account, so it starts by itself only once.
+    if (route === '/me/tour') {
+      const state = b.state;
+      if (state !== 'done' && state !== 'skipped') throw badRequest('Say done or skipped.');
+      await env.CATALOG_DB.prepare('UPDATE staff_users SET tour = ? WHERE id = ?').bind(state, me.id).run();
+      return reply({ ok: true, tour: state });
+    }
 
     if (route === '/passkey/add/options') {
       const ids = await env.CATALOG_DB.prepare('SELECT id FROM staff_passkeys WHERE user_id = ?').bind(me.id).all<{ id: string }>();

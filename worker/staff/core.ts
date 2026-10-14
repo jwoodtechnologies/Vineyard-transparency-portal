@@ -35,6 +35,8 @@ export interface StaffUser {
   role: Role;
   areas: Area[];
   active: boolean;
+  /** The new staff tour: null until finished or skipped (see ensureStaffTables). */
+  tour: string | null;
 }
 
 interface UserRow {
@@ -45,6 +47,7 @@ interface UserRow {
   role: string;
   areas: string;
   active: number;
+  tour?: string | null;
   pass_hash?: string | null;
   salt?: string | null;
   iterations?: number | null;
@@ -61,7 +64,7 @@ export function toUser(r: UserRow): StaffUser {
   } catch {
     /* an unreadable list means no areas */
   }
-  return { id: r.id, email: r.email, name: r.name, department: r.department, role: isRole(r.role) ? r.role : 'editor', areas, active: r.active === 1 };
+  return { id: r.id, email: r.email, name: r.name, department: r.department, role: isRole(r.role) ? r.role : 'editor', areas, active: r.active === 1, tour: r.tour ?? null };
 }
 
 /** Owners and admins reach every area; editors only the ones they were given. */
@@ -129,7 +132,7 @@ export async function currentUser(env: Env, request: Request): Promise<StaffUser
   const token = cookieToken(request);
   if (!token) return null;
   const row = await env.CATALOG_DB.prepare(
-    `SELECT u.id, u.email, u.name, u.department, u.role, u.areas, u.active FROM staff_sessions s
+    `SELECT u.id, u.email, u.name, u.department, u.role, u.areas, u.active, u.tour FROM staff_sessions s
      JOIN staff_users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`,
   )
     .bind(await sha256(token), new Date().toISOString())

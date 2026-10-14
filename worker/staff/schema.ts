@@ -38,10 +38,26 @@ let ready: Promise<void> | null = null;
 
 export function ensureStaffTables(env: Env): Promise<void> {
   ready ??= env.CATALOG_DB.batch(STAFF_SCHEMA.map((s) => env.CATALOG_DB.prepare(s)))
+    .then(() => addTourColumn(env))
     .then(() => undefined)
     .catch((e: unknown) => {
       ready = null;
       throw e;
     });
   return ready;
+}
+
+/**
+ * staff_users.tour: the new staff tour. NULL until the person finishes or skips it ('done', 'skipped'); the
+ * tour starts by itself while it is NULL. Accounts already in use when the column arrives get 'before', so
+ * only people who join from an invite after this see it by itself (anyone can take it from the account menu).
+ */
+async function addTourColumn(env: Env): Promise<void> {
+  const added = await env.CATALOG_DB.prepare('ALTER TABLE staff_users ADD COLUMN tour TEXT')
+    .run()
+    .then(
+      () => true,
+      () => false, // already there
+    );
+  if (added) await env.CATALOG_DB.prepare("UPDATE staff_users SET tour = 'before' WHERE active = 1").run();
 }
