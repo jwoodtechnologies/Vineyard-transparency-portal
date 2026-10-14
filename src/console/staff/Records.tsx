@@ -193,7 +193,7 @@ export default function Records() {
         <h1 id="vs-records" className="vs-title">
           Records
         </h1>
-        <p className="vs-lede">Add agendas, minutes, reports and other documents. Whatever you add can be searched and opened on the portal right away.</p>
+        <p className="vs-lede">Add agendas, minutes, reports and other documents. Each one shows Processing until its text is read, then Searchable and in the chat.</p>
       </div>
 
       {added && (
