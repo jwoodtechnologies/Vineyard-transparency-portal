@@ -58,7 +58,8 @@ const MAX_DEPTH = 4;
 const RDA_HINT = /redevelopment|\/rda|\brda\b/i;
 
 let ensured = false;
-async function ensureTables(env: Env): Promise<void> {
+/** The page version tables (page_snapshots, page_watch, site_pages). */
+export async function ensureTables(env: Env): Promise<void> {
   if (ensured) return;
   await env.CATALOG_DB.batch([
     env.CATALOG_DB.prepare(
@@ -109,14 +110,19 @@ export async function fetchCityPage(env: Env, url: string, etag?: string | null,
   return { status: res.status, html, finalUrl: res.url || url, etag: res.headers.get('etag'), lastModified: res.headers.get('last-modified') };
 }
 
-/** Queues every document a page links (PDF, Word, Excel...). Returns how many links were offered. */
-async function queueLinkedDocuments(env: Env, page: HtmlExtraction, pageUrl: string, priority: number, budget: Budget, sourceId = CITY_SOURCE): Promise<number> {
+/**
+ * Queues every document a page links (PDF, Word, Excel...). Returns how many links were offered. City pages
+ * use the city's own rules (categorize); a watched website passes `docExt`, which names a link's file type or
+ * says it is not a document, and `max`.
+ */
+export async function queueLinkedDocuments(env: Env, page: HtmlExtraction, pageUrl: string, priority: number, budget: Budget, sourceId = CITY_SOURCE, docExt?: (url: string) => string | null, max = Infinity): Promise<number> {
   const items: Record<string, unknown>[] = [];
   const seen = new Set<string>();
   for (const link of page.links) {
+    if (items.length >= max) break;
     const url = normalizeUrl(link.url);
     if (!url) continue;
-    const cat = categorize(url);
+    const cat = docExt ? { category: docExt(url) ? 'document' : 'other', ext: docExt(url) ?? '' } : categorize(url);
     if (cat.category !== 'document') continue;
     const key = await urlKey(url);
     if (seen.has(key)) continue;
@@ -153,7 +159,7 @@ async function queueLinkedDocuments(env: Env, page: HtmlExtraction, pageUrl: str
 }
 
 /** Indexes a page's own text as a record (a new version when its text changed). */
-async function indexPage(env: Env, url: string, page: HtmlExtraction, sha: string, sourceId: string, label: string | null, budget: Budget): Promise<string | null> {
+export async function indexPage(env: Env, url: string, page: HtmlExtraction, sha: string, sourceId: string, label: string | null, budget: Budget): Promise<string | null> {
   if (page.text.length < 80) return null;
   const r = await indexRecord(
     env,
