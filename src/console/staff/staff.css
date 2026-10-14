@@ -1455,3 +1455,19 @@
 @media (prefers-reduced-motion: reduce) { .vs-tour-hole, .vs-tour-card { transition: none; } }
 .vs-home-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
 .vs-help { border: 0; padding: 0; background: none; font: inherit; font-size: var(--vc-fs-sm); cursor: pointer; }
+
+/* Schedules: a table on wider screens, one card per row on phones (each cell named by its column). */
+.vs-table { width: 100%; border-collapse: collapse; font-size: var(--vc-fs-sm); }
+.vs-table th, .vs-table td { padding: 8px 10px 8px 0; text-align: left; vertical-align: top; border-top: 1px solid var(--vc-line); }
+.vs-table thead th { border-top: 0; color: var(--vc-muted); font-size: var(--vc-fs-xs); font-weight: 650; }
+.vs-table tbody th { font-weight: 650; }
+.vs-table-read { display: block; overflow-wrap: anywhere; }
+.vs-table-detail { display: block; margin-top: 4px; color: var(--vc-muted); font-size: var(--vc-fs-xs); }
+@media (max-width: 720px) {
+  .vs-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .vs-table, .vs-table tbody, .vs-table tr, .vs-table th, .vs-table td { display: block; }
+  .vs-table tr { padding: 10px 0; border-top: 1px solid var(--vc-line); }
+  .vs-table tbody th, .vs-table td { border: 0; padding: 2px 0; }
+  .vs-table td { display: grid; grid-template-columns: 7.5rem 1fr; gap: 8px; }
+  .vs-table td::before { content: attr(data-label); color: var(--vc-muted); }
+}

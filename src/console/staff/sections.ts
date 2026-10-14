@@ -109,6 +109,8 @@ export const SECTIONS: Section[] = [
   { path: 'insights', label: 'Insights', blurb: 'How many people use the portal, what they ask, and how the answers are rated.', managers: true, tile: true, Component: lazy(() => import('./Insights')) },
   { path: 'coverage', label: 'Coverage', blurb: 'Missing ordinance and resolution numbers, meeting files, dates and text.', managers: true, tile: true, Component: lazy(() => import('./Coverage')) },
   { path: 'health', label: 'Health', blurb: 'Whether the scheduled jobs and city sources are working.', managers: true, tile: true, Component: lazy(() => import('./Health')) },
+  { path: 'schedules', label: 'Schedules', blurb: 'Every scheduled job and source: how often it runs, when it last worked, when it runs next.', managers: true, tile: true, Component: lazy(() => import('./Schedules')) },
+  { path: 'watch', label: 'Watched websites', blurb: 'Add a web page for the portal to check for changes and new files.', managers: true, tile: true, Component: lazy(() => import('./Watch')) },
   { path: 'activity', label: 'Activity', blurb: 'See every change and undo a mistake.', tile: true, managersTile: true, Component: lazy(() => import('./Activity')) },
 ];
 
