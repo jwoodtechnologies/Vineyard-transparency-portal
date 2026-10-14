@@ -16,6 +16,21 @@ The portal then shows a one-time sign-in link, valid for 7 days. The link carrie
 
 "Single use" accounts are limited ones: an editor with one area (the social media preset) can post notices, events and updates and cannot see or change anything else, and their sign-in link can be used only once.
 
+## New staff tour
+
+The first time someone signs in after joining from their invite link, a short tour starts by itself (`src/console/staff/Tour.tsx`, steps in `tourSteps.ts`). Each step is a small card with Back, Next and Skip that spotlights the real control on its screen, scrolled into view, with the card kept clear of it on phones and desktops. Escape closes it, focus stays in the card, and each step's title and text are read out by screen readers.
+
+The steps, only for the areas the account includes:
+
+1. **Welcome**: what the portal is and which areas the account can change (every area for owners and administrators).
+2. **Add a record** (records): choose the file, type and date, then Add; it becomes searchable and the public chat can answer from it within a few minutes.
+3. **Add a note** (records): plain text for search and the chat, such as new office hours or a changed contact.
+4. **Tell us what changed** (records, map or notices): the staff assistant proposes the change and waits for Publish.
+5. **Fix records** (records): correct a title or date, or hide a record.
+6. **Activity**: every change is logged and can be undone.
+
+Whether the tour was finished or skipped is kept on the account (`staff_users.tour`: `done` or `skipped`, set by `POST /api/staff/me/tour`), so it starts by itself once per account on any device. Accounts already in use when the tour arrived were marked `before` and do not see it by themselves. Anyone can take it again from **Take the tour** in the account menu or **Help: take the tour** on the staff home.
+
 ## First owner
 
 While no staff owner exists, `/staff/setup` accepts the email and password of the existing private owner panel. That proves the person is the portal owner and opens the same account setup as any invited person. After the first owner exists, setup closes for good.
@@ -50,6 +65,8 @@ Every change is written to `staff_audit` with the person, the area, a sentence, 
 Anyone with the records area adds agendas, minutes, reports and other documents at `/staff/records`: a file (PDF, picture, text or CSV, up to 25 MB), a note, or a link. A file gets a type, a date, an optional meeting and a short description; the type is suggested from the file name. Whatever is added is stored, indexed for search and chat, and shown on the public site at once. Minutes are also read for votes by the same cron that reads the city's own minutes, so the Votes page follows within about ten minutes.
 
 Choosing or dropping several files at once (up to 30) opens a list: the type (or a guess from each file name), date, meeting and description are set once for all of them, and each file gets its own title from its name. The files are sent one at a time to the same route as a single file, so every server limit applies (25 MB, 1 MB for text and CSV, 40 uploads a minute per person). Each shows Ready, Adding, Added or why it did not go in, with a summary line and Retry failed (`src/console/staff/bulkLib.ts`).
+
+After an add, the confirmation and the record's row show its status: **Processing** while its text is still being read (a large PDF waits for the five-minute queue), then **Searchable and in the chat** once it is indexed (`uploads.index_status`). While anything is still processing, the list is read again every 15 seconds, for up to 20 minutes. A scan with no text shows **Saved, no text to search**.
 
 Staff can change the details of anything added (including items added from the owner panel) and remove it. A change or an add can be undone from Activity; a removal cannot, because the stored file is deleted. The server side is `worker/staff/records.ts`, which reuses the storage, indexing and size rules of `worker/contrib/staff.ts`. Uploads reach it as a form, which the router passes to the module unread (`worker/staff/routes.ts`).
 

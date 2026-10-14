@@ -63,16 +63,8 @@ export async function staffUpload<T>(path: string, form: FormData): Promise<T> {
   return data as T;
 }
 
-export type Role = 'owner' | 'admin' | 'editor';
-
-export interface Me {
-  id: string;
-  email: string;
-  name: string;
-  department: string | null;
-  role: Role;
-  areas: string[];
-}
+export type { Me, Role } from './account';
+import type { Me, Role } from './account';
 
 export interface AreaInfo {
   key: string;
@@ -87,8 +79,7 @@ export interface StaffState {
 
 export const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', admin: 'Administrator', editor: 'Editor' };
 
-export const canEditArea = (user: Me, area: string): boolean => user.role !== 'editor' || user.areas.includes(area);
-export const canManageUsers = (user: Me): boolean => user.role !== 'editor';
+export { canEditArea, canManageUsers } from './account';
 
 /** "Today 2:14 PM", "Yesterday 9:02 AM" or "Oct 3, 2:14 PM". */
 export function when(iso: string | null | undefined): string {
@@ -115,14 +106,4 @@ export interface AuditItem {
   undoable: boolean;
 }
 
-export const AREA_NAME: Record<string, string> = {
-  records: 'Records and meetings',
-  votes: 'Votes',
-  people: 'People and boards',
-  map: 'Map and projects',
-  budget: 'Budget',
-  notices: 'Events and notices',
-  site: 'Site pages and links',
-  submissions: 'Resident submissions',
-  accounts: 'Accounts',
-};
+export { AREA_NAME } from './account';

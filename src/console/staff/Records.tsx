@@ -6,7 +6,7 @@ import { Alert, Field } from './ui';
 import RecordAdd, { type Added } from './RecordAdd';
 import { MeetingSelect, TypeSelect } from './RecordFields';
 import { useMeetings } from './useMeetings';
-import { KIND_LABEL, day, meetingLabel, sizeLabel, statusNote, type MeetingOption, type RecordItem, type RecordType } from './recordsLib';
+import { KIND_LABEL, day, indexState, meetingLabel, sizeLabel, statusNote, type MeetingOption, type RecordItem, type RecordType } from './recordsLib';
 import { useStaffData } from './useStaff';
 
 function EditForm({ item, types, meetings, onSaved, onCancel }: { item: RecordItem; types: RecordType[]; meetings: MeetingOption[]; onSaved: () => void; onCancel: () => void }) {
@@ -62,6 +62,22 @@ function EditForm({ item, types, meetings, onSaved, onCancel }: { item: RecordIt
   );
 }
 
+/** Processing, then Searchable and in the chat (recordsLib indexState). */
+function IndexBadge({ status }: { status: string | null | undefined }) {
+  const s = indexState(status);
+  return (
+    <p className="vs-row-sub">
+      <span className="vs-badge" data-tone={s.tone === 'ok' ? undefined : s.tone}>
+        {s.label}
+      </span>
+    </p>
+  );
+}
+
+/** While anything added is still being read, the list is fetched again now and then (every 15 seconds, for up to 20 minutes). */
+const POLL_MS = 15_000;
+const POLL_FOR_MS = 20 * 60_000;
+
 function Row({ item, types, meetings, onChanged, onError }: { item: RecordItem; types: RecordType[]; meetings: MeetingOption[]; onChanged: () => void; onError: (m: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -92,6 +108,7 @@ function Row({ item, types, meetings, onChanged, onError }: { item: RecordItem; 
             Added {when(item.created_at)}
             {item.added_by ? ` by ${item.added_by}` : ''}
           </p>
+          {item.kind !== 'project' && <IndexBadge status={item.index_status} />}
           {note && <p className="vs-row-sub">{note}</p>}
         </div>
       </div>
@@ -154,6 +171,21 @@ export default function Records() {
     if (added) banner.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [added]);
   const types = data?.types ?? [];
+  // The just added record's status follows the list once it is there.
+  const addedRow = added?.id ? data?.items.find((i) => i.id === added.id) : undefined;
+  const addedStatus = addedRow?.index_status ?? added?.status;
+  const waiting = Boolean((added && !indexState(addedStatus).settled) || data?.items.some((i) => i.kind !== 'project' && !indexState(i.index_status).settled));
+  const pollStart = useRef(0);
+  useEffect(() => {
+    if (!waiting) {
+      pollStart.current = 0;
+      return;
+    }
+    pollStart.current ||= Date.now();
+    if (Date.now() - pollStart.current > POLL_FOR_MS) return;
+    const t = window.setTimeout(reload, POLL_MS);
+    return () => window.clearTimeout(t);
+  }, [waiting, data, reload]);
 
   return (
     <section className="vs-stack" aria-labelledby="vs-records">
@@ -166,7 +198,7 @@ export default function Records() {
 
       {added && (
         <p className="vs-ok" role="status" ref={banner}>
-          Added “{added.title}”. It is on the portal now.
+          Added “{added.title}”. <span className="vs-badge" data-tone={indexState(addedStatus).tone === 'ok' ? undefined : indexState(addedStatus).tone}>{indexState(addedStatus).label}</span>
           {added.documentId && (
             <>
               {' '}

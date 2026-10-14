@@ -219,7 +219,7 @@ export default function Assistant() {
   const set = (k: string, v: string) => setPlan((p) => (p ? { ...p, fields: { ...p.fields, [k]: v } } : p));
 
   return (
-    <div className="vs-card vs-stack vs-assist">
+    <div className="vs-card vs-stack vs-assist" data-tour="assistant">
       <form className="vs-stack" onSubmit={prepare} noValidate aria-label="Tell us what changed">
         <Field
           label="Tell us what changed"

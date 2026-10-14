@@ -367,7 +367,7 @@ export default function Archive() {
           Meetings
         </button>
       </div>
-      <div className="vs-search">
+      <div className="vs-search" data-tour="fix">
         <Search size={16} aria-hidden="true" />
         <input
           type="search"

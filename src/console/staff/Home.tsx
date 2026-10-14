@@ -5,6 +5,7 @@ import { ROLE_LABEL, canEditArea, canManageUsers, staff, when, type AuditItem, t
 import { visibleSections } from './sections';
 import { useStaffCtx } from './useStaff';
 import Assistant from './Assistant';
+import { useTour } from './Tour';
 
 /** What each area lets a person do, in the words they would use. */
 const DOES: Record<string, string> = {
@@ -25,6 +26,7 @@ function sentence(parts: string[]): string {
 
 export default function Home() {
   const { user } = useStaffCtx();
+  const tour = useTour();
   const me = user as Me;
   const tiles = visibleSections(me).filter((s) => s.tile && (!s.managersTile || canManageUsers(me)));
   const [recent, setRecent] = useState<AuditItem[] | null>(null);
@@ -42,9 +44,14 @@ export default function Home() {
   return (
     <section className="vs-stack" aria-labelledby="vs-home">
       <div>
-        <h1 id="vs-home" className="vs-title">
-          Welcome, {me.name.split(' ')[0]}
-        </h1>
+        <div className="vs-home-head">
+          <h1 id="vs-home" className="vs-title" data-tour="home">
+            Welcome, {me.name.split(' ')[0]}
+          </h1>
+          <button type="button" className="vs-link vs-help" onClick={tour.start}>
+            Help: take the tour
+          </button>
+        </div>
         <p className="vs-lede">
           {ROLE_LABEL[me.role]}
           {me.department ? `, ${me.department}` : ''}. {me.role === 'editor' ? `You can ${sentence(me.areas.map((a) => DOES[a]).filter(Boolean))}.` : 'You can edit every part of the portal.'}

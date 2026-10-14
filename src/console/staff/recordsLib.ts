@@ -93,6 +93,18 @@ export function titleFromFile(fileName: string): string {
 
 export const KIND_LABEL: Record<RecordItem['kind'], string> = { file: 'File', note: 'Note', link: 'Link', project: 'Project' };
 
+/**
+ * Where a record added by staff stands: Processing while its text is still being read (the queue), then
+ * Searchable and in the chat once it is indexed. A scan with no text, or one that could not be read, is saved
+ * but not searchable.
+ */
+export function indexState(status: string | null | undefined): { label: string; tone: 'wait' | 'ok' | 'off'; settled: boolean } {
+  if (status === 'done') return { label: 'Searchable and in the chat', tone: 'ok', settled: true };
+  if (status === 'no_text') return { label: 'Saved, no text to search', tone: 'off', settled: true };
+  if (status === 'failed') return { label: 'Saved, the text could not be read', tone: 'off', settled: true };
+  return { label: 'Processing', tone: 'wait', settled: false };
+}
+
 export function statusNote(status: string): string {
   if (status === 'queued') return 'The text of this file is being read and will be searchable shortly.';
   if (status === 'no_text') return 'This file is a scan with no text to search. It is saved and can be opened.';

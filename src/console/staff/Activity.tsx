@@ -58,7 +58,7 @@ export default function Activity() {
 
   return (
     <section className="vs-stack" aria-labelledby="vs-activity">
-      <div className="vs-head">
+      <div className="vs-head" data-tour="activity">
         <h1 id="vs-activity" className="vs-title">
           Activity
         </h1>

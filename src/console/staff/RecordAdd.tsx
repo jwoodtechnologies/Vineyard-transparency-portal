@@ -9,9 +9,13 @@ import { MAX_BATCH, STATUS_WORD, bulkItems, bulkSummary, sendAll, type BulkItem 
 
 type Mode = 'file' | 'note' | 'link';
 export interface Added {
+  /** The staff upload's id, to follow its indexing. */
+  id: string | null;
   title: string;
   documentId: string | null;
   minutes: boolean;
+  /** Indexing: done, queued, no_text or failed (recordsLib indexState). */
+  status: string;
 }
 
 interface Props {
@@ -89,8 +93,8 @@ function FileForm({ types, meetings, onAdded, onBatch }: Props) {
     if (meetingId) form.append('meetingId', meetingId);
     if (body.trim()) form.append('body', body.trim());
     try {
-      const r = await staffUpload<{ documentId: string | null }>('/records/file', form);
-      onAdded({ title: finalTitle || file.name, documentId: r.documentId, minutes: type === 'minutes' });
+      const r = await staffUpload<{ id: string; documentId: string | null; status: string }>('/records/file', form);
+      onAdded({ id: r.id, title: finalTitle || file.name, documentId: r.documentId, minutes: type === 'minutes', status: r.status });
       setFile(null);
       setTitle('');
       setType('other');
@@ -323,8 +327,8 @@ function NoteForm({ onAdded }: Props) {
     setBusy(true);
     setError('');
     try {
-      const r = await staff<{ documentId: string | null }>('/records/note', { body: { title, text } });
-      onAdded({ title: title.trim() || text.trim().split('\n')[0].slice(0, 80), documentId: r.documentId, minutes: false });
+      const r = await staff<{ id: string; documentId: string | null; status: string }>('/records/note', { body: { title, text } });
+      onAdded({ id: r.id, title: title.trim() || text.trim().split('\n')[0].slice(0, 80), documentId: r.documentId, minutes: false, status: r.status });
       setTitle('');
       setText('');
     } catch (err) {
@@ -358,8 +362,8 @@ function LinkForm({ onAdded }: Props) {
     setBusy(true);
     setError('');
     try {
-      const r = await staff<{ documentId: string | null }>('/records/link', { body: { url, title, description: body } });
-      onAdded({ title: title.trim() || url, documentId: r.documentId, minutes: false });
+      const r = await staff<{ id: string; documentId: string | null; status: string }>('/records/link', { body: { url, title, description: body } });
+      onAdded({ id: r.id, title: title.trim() || url, documentId: r.documentId, minutes: false, status: r.status });
       setUrl('');
       setTitle('');
       setBody('');
@@ -388,11 +392,11 @@ function LinkForm({ onAdded }: Props) {
 export default function RecordAdd(props: Props) {
   const [mode, setMode] = useState<Mode>('file');
   return (
-    <div className="vs-card">
+    <div className="vs-card" data-tour="add-record">
       <h2 className="vs-h2">Add to the portal</h2>
       <div className="vs-seg" role="group" aria-label="What to add">
         {MODES.map(({ key, label, Icon }) => (
-          <button key={key} type="button" aria-pressed={mode === key} onClick={() => setMode(key)}>
+          <button key={key} type="button" aria-pressed={mode === key} onClick={() => setMode(key)} data-tour={key === 'note' ? 'add-note' : undefined}>
             <Icon size={16} aria-hidden="true" /> {label}
           </button>
         ))}
