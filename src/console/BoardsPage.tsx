@@ -27,6 +27,10 @@ interface Board {
   about?: string;
   schedule?: string;
   applyUrl?: string;
+  /** Set when the city renamed the body: the name its older meetings were held under. */
+  formerName?: string;
+  /** The city cleared its membership; no one serves now. */
+  vacant?: boolean;
   members: Array<{ slug: string; name: string; role: string; term: string | null; photo: string | null }>;
 }
 
@@ -84,13 +88,14 @@ function BoardCard({ b, open, onToggle }: { b: Board; open: boolean; onToggle: (
               ))}
             </ul>
           ) : (
-            <p className="vc-board-none">The city website does not list current members for this {b.kind === 'staff committee' ? 'committee' : 'body'}.</p>
+            <p className="vc-board-none">{b.vacant ? 'No members are serving right now.' : `The city website does not list current members for this ${b.kind === 'staff committee' ? 'committee' : 'body'}.`}</p>
           )}
           {b.hiddenExpired > 0 && (
             <p className="vc-board-none">
               {b.hiddenExpired === 1 ? 'One person' : `${b.hiddenExpired} people`} the city website still lists here {b.hiddenExpired === 1 ? 'has a term' : 'have terms'} that ended before this year and {b.hiddenExpired === 1 ? 'does' : 'do'} not appear in this year&apos;s minutes, so {b.hiddenExpired === 1 ? 'is' : 'are'} not shown.
             </p>
           )}
+          {b.formerName && <p className="vc-board-none">Formerly the {b.formerName}.</p>}
           {b.meetingName.toLowerCase() !== b.name.toLowerCase() && !b.meetingName.toLowerCase().includes(b.name.toLowerCase()) && <p className="vc-board-none">The city website still lists this body as the {b.meetingName}.</p>}
           <div className="vc-board-links">
             {b.applyUrl && (
