@@ -128,6 +128,28 @@ Every web address is checked when saved and again when read: only `https://` or 
 
 Anyone with the resident submissions area opens `/staff/submissions`. It lists what residents sent from the public Submit a record page (`/add`): pending items to approve (made public, labelled "Resident submitted. Not a city record.") or reject (the item and its file are deleted), and approved items to hide, put back or remove for good, with how many residents reported each. Submissions can be paused and opened again, and the resident log is under Log. The rules and storage are the owner panel's (`worker/contrib/resident.ts`); `worker/staff/submissions.ts` adds the area check, the activity log and the public refresh, and the resident log names the staff person. Hide, put back and pause can be undone from Activity; reject and remove delete the file, so they cannot.
 
+## Schedules
+
+Owners and administrators. One table of every scheduled job and source: what it reads (with a link), how often, last run, last success, next expected run and status. Groups: checks the Worker runs, jobs on GitHub, sources, watched websites.
+
+The how often column is read from the cron settings in `wrangler.jsonc` and `.github/workflows/*.yml`, and from the intervals in `worker/sync/run.ts` (`EVERY_MIN`). It is not typed by hand. After changing a cron in wrangler.jsonc or a workflow, run `node scripts/gen-schedules.mjs` and commit `worker/lib/schedules.generated.ts`. A test fails if the generated file does not match the live settings.
+
+Last run and last success come from the sync log, the sources table and each watched page. Times are shown in the viewer's time zone; cron times are UTC.
+
+## Watched websites
+
+Owners and administrators can add a public web page for the portal to check: a label, the address, and how often (every 10 minutes, hourly, every 6 hours, daily, weekly). On each check the Worker keeps a snapshot when the page changed, indexes its text, and adds newly linked PDF, Word and Excel files to the record queue, the same way the watched city pages work. Those files then become searchable and reach the chat.
+
+Pause, edit and delete are on each page. Every change is in the activity log under Records, and can be undone there. Delete hides the page; undo brings it back.
+
+Limits and safety:
+
+- Addresses must start with http:// or https://, use a public host name with a real domain ending, and use the normal port. IP addresses, localhost, private and internal names, and the portal's own hosts are refused. Redirects are checked the same way.
+- robots.txt is respected and requests send the portal's user agent.
+- Up to 25 watched pages. At most 3 are checked every five minutes, longest overdue first.
+- Each page is read up to 2 MB. At most 20 new files are queued per check.
+- Checks stop for the day once 90% of the daily D1 row budget is used. The screen shows today's checks, the rows they wrote and the share of the budget used.
+
 ## Insights, Coverage and Health
 
 Owners and administrators also see three read-only screens. **Insights** (`/staff/insights`): people, page views, questions and the share rated helpful for today, 7 days, 30 days or all time, the most asked questions, the latest questions, the ones marked not helpful, and today's assistant use. **Coverage** (`/staff/coverage`): missing ordinance and resolution numbers, meetings missing an agenda, packet or minutes, and records with no date or no text, with Check now. **Health** (`/staff/health`): each scheduled job and city source, failures in a row and the last error, and why the assistant fell back to a simpler answer today. The server side is `worker/staff/insights.ts`, which calls the same functions as the owner panel (`summary`, `recentQuestions`, `recentFeedback` and `healthReport` in `worker/panel/routes.ts`, `coverage` and `refreshCoverage` in `worker/lib/coverage.ts`, `neuronUsage` in `worker/ai/meter.ts`). Visitor addresses are not sent to the staff portal. Editors get "Only owners and administrators can see this."
