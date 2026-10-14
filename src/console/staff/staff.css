@@ -1470,4 +1470,5 @@
   .vs-table tbody th, .vs-table td { border: 0; padding: 2px 0; }
   .vs-table td { display: grid; grid-template-columns: 7.5rem 1fr; gap: 8px; }
   .vs-table td::before { content: attr(data-label); color: var(--vc-muted); }
+  .vs-table td > * { min-width: 0; }
 }
