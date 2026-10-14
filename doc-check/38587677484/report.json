@@ -1,0 +1,1227 @@
+{
+  "base": "https://vineyardportal.org",
+  "seed": 6,
+  "at": "2026-10-14T15:22:39.492Z",
+  "links": {
+    "pages": [
+      {
+        "page": "/api/pages/construction",
+        "status": 200
+      },
+      {
+        "page": "/api/construction",
+        "status": 200
+      },
+      {
+        "page": "/api/budget",
+        "status": 200
+      },
+      {
+        "page": "/api/budget/archive",
+        "status": 200
+      },
+      {
+        "page": "/api/records/ordinances",
+        "status": 200
+      },
+      {
+        "page": "/api/records/resolutions",
+        "status": 200
+      },
+      {
+        "page": "/api/records/rda-resolutions",
+        "status": 200
+      },
+      {
+        "page": "/api/latest",
+        "status": 200
+      },
+      {
+        "page": "/api/coverage/summary",
+        "status": 200
+      }
+    ],
+    "checked": 400,
+    "dead": [],
+    "moved": []
+  },
+  "records": [
+    {
+      "id": "doc_34f12e849459f2b8",
+      "title": "945a-ARCH Meeting 8.21.2023",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04085561497326203,
+            "ink": 0.0687106357694593,
+            "samples": 84150
+          },
+          "text": "ARCH Commission   –   Agenda REGULAR MEETING OF THE VINEYARD ARCH COMMISSION, Monday, August 21st, 2023, 6:00 p.m. PUBLIC NOTICE is hereby given that the Vineyard City ARCH Commission will hold a regularly scheduled meeting at City Hall, 125 South Main Street, Vineyard, Utah. REGULAR SESSION 1.   CALL TO ORDER 2.   ELECTION OF CHAIR AND VICE-CHAIR City Special Event Manager Anna Nelson will call for the Commission to elect the chair and Vice Chair of the Commission. 3.   STAFF, COMMISSION, AND COMMITTEE REPORTS 4.1   Anna Nelson 4.   BUSINESS ITEMS 5.2 DISCUSSION AND ACTION   –   DATE AND TIME OF THE ARCH COMMISSION MEETINGS City Special Event Manager Anna Nelson will present options for the quarterly ARCH Commission meeting set meeting dates. The ARCH Commission will take appropriate action. 5.1   DISCUSSION AND ACTION   –   WATER TANK MURAL ARTWORK Mural Artist Aljay Fuimaono will present potential artwork for the water tank project. The ARCH Commission will take appropriate action. Aljay who is also a commission member will Recuse himself from the voting process regarding this project. 5.   WORK SESSION 6.1 BYLAWS City Special Event Manager Anna Nelson will present and lead a discussion on the draft of the bylaws for the ARCH Commission. No action will be taken 6.2 UPCOMING EVENTS City Special Event Manager Anna Nelson will lead a discussion on the upcoming event for the City. Including the 9/11 Patriot Day Event and the BOO-A-Palooza Event. No action will be taken 6.   ADJOURNMENT The Public is invited to participate in all ARCH Commission meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this public",
+          "shot": "doc-check-shots/doc_34f12e849459f2b8-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.038390440351224665,
+            "ink": 0.08480227107678089,
+            "samples": 30294
+          },
+          "text": "ARCH Commission   –   Agenda REGULAR MEETING OF THE VINEYARD ARCH COMMISSION, Monday, August 21st, 2023, 6:00 p.m. PUBLIC NOTICE is hereby given that the Vineyard City ARCH Commission will hold a regularly scheduled meeting at City Hall, 125 South Main Street, Vineyard, Utah. REGULAR SESSION 1.   CALL TO ORDER 2.   ELECTION OF CHAIR AND VICE-CHAIR City Special Event Manager Anna Nelson will call for the Commission to elect the chair and Vice Chair of the Commission. 3.   STAFF, COMMISSION, AND COMMITTEE REPORTS 4.1   Anna Nelson 4.   BUSINESS ITEMS 5.2 DISCUSSION AND ACTION   –   DATE AND TIME OF THE ARCH COMMISSION MEETINGS City Special Event Manager Anna Nelson will present options for the quarterly ARCH Commission meeting set meeting dates. The ARCH Commission will take appropriate action. 5.1   DISCUSSION AND ACTION   –   WATER TANK MURAL ARTWORK Mural Artist Aljay Fuimaono will present potential artwork for the water tank project. The ARCH Commission will take appropriate action. Aljay who is also a commission member will Recuse himself from the voting process regarding this project. 5.   WORK SESSION 6.1 BYLAWS City Special Event Manager Anna Nelson will present and lead a discussion on the draft of the bylaws for the ARCH Commission. No action will be taken 6.2 UPCOMING EVENTS City Special Event Manager Anna Nelson will lead a discussion on the upcoming event for the City. Including the 9/11 Patriot Day Event and the BOO-A-Palooza Event. No action will be taken 6.   ADJOURNMENT The Public is invited to participate in all ARCH Commission meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this public",
+          "shot": "doc-check-shots/doc_34f12e849459f2b8-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_957020877f6d2188",
+      "title": "DRAFT - DISPOSAL OF SURPLUS PROPERTY (City Council Meeting, 2024-09-25, item 1)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04419489007724302,
+            "ink": 0.08677361853832442,
+            "samples": 84150
+          },
+          "text": "DISPOSITION OF SURPLUS PROPERTY POLICY AMENDMENT DISPOSAL OF SURPLUS PROPERTY: Definitions: Fixed Asset:   Fixed Assets: Assets acquired for use in operations not for resale or investment purposes, which have a useful life greater than one year and cost five thousand dollars ($5,000) or more Real Property:   \"Real property\" or \"real estate\" means any right, title, estate, or interest in land, including all non-extracted minerals located in, on, or under the land, all buildings, fixtures, and improvements on the land, and all water rights, rights-of-way, easements, rents, issues, profits, income, tenements, hereditaments, possessory rights, claims, including mining claims, privileges, and appurtenances belonging to, used, or enjoyed with the land or any part of the land. Personal Property:   movable assets owned by a government entity that are not classified as real estate or infrastructure. These assets include, but are not limited to, items such as vehicles, equipment, furniture, and tools. Public property : real or personal property that is owned, held, or managed by a public entity after the real or personal property is transferred by the public entity to an independent contractor of the public entity. City Procurement Officer:   The Finance Director is also the City Procurement Officer. A.   Real Property. 1.   The City Council may authorize by resolution the disposal, including by sale, lease, or other lawful manner, of real property for the benefit of the City as provided by Utah Code Ann. 10-8-2, as amended. A significant parcel of real property is a parcel greater than one acre or that has a reasonable value of more than one hundred thousand dollars ($100,000). 2.   The City Procurement Officer (Procurement Officer) shall make an initial determination that real property is surplus. Surplus real property may include real property that is not needed for City infrastructure; property whose cost to maintain outweighs its value to the City; property that is part of a trade that will benefit the City, the sale of which will realize significant financial benefits to the City; or the disposal of which is otherwise in the public interest. 3.   Before the City may dispose of a significant parcel of real property, the City shall provide notice and hold a public meeting at which the City Council shall accept public comment on the proposed disposition. 4.   All disposal, leases, or subleases of such real property of the City other than a significant parcel of real property, shall be made, as nearly as possible, under the same conditions and",
+          "shot": "doc-check-shots/doc_957020877f6d2188-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05070310952663894,
+            "ink": 0.11975968838713937,
+            "samples": 30294
+          },
+          "text": "DISPOSITION OF SURPLUS PROPERTY POLICY AMENDMENT DISPOSAL OF SURPLUS PROPERTY: Definitions: Fixed Asset:   Fixed Assets: Assets acquired for use in operations not for resale or investment purposes, which have a useful life greater than one year and cost five thousand dollars ($5,000) or more Real Property:   \"Real property\" or \"real estate\" means any right, title, estate, or interest in land, including all non-extracted minerals located in, on, or under the land, all buildings, fixtures, and improvements on the land, and all water rights, rights-of-way, easements, rents, issues, profits, income, tenements, hereditaments, possessory rights, claims, including mining claims, privileges, and appurtenances belonging to, used, or enjoyed with the land or any part of the land. Personal Property:   movable assets owned by a government entity that are not classified as real estate or infrastructure. These assets include, but are not limited to, items such as vehicles, equipment, furniture, and tools. Public property : real or personal property that is owned, held, or managed by a public entity after the real or personal property is transferred by the public entity to an independent contractor of the public entity. City Procurement Officer:   The Finance Director is also the City Procurement Officer. A.   Real Property. 1.   The City Council may authorize by resolution the disposal, including by sale, lease, or other lawful manner, of real property for the benefit of the City as provided by Utah Code Ann. 10-8-2, as amended. A significant parcel of real property is a parcel greater than one acre or that has a reasonable value of more than one hundred thousand dollars ($100,000). 2.   The City Procurement Officer (Procurement Officer) shall make an initial determination that real property is surplus. Surplus real property may include real property that is not needed for City infrastructure; property whose cost to maintain outweighs its value to the City; property that is part of a trade that will benefit the City, the sale of which will realize significant financial benefits to the City; or the disposal of which is otherwise in the public interest. 3.   Before the City may dispose of a significant parcel of real property, the City shall provide notice and hold a public meeting at which the City Council shall accept public comment on the proposed disposition. 4.   All disposal, leases, or subleases of such real property of the City other than a significant parcel of real property, shall be made, as nearly as possible, under the same conditions and",
+          "shot": "doc-check-shots/doc_957020877f6d2188-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_9b59eca6153ebb83",
+      "title": "Approved Budget 2025, Vineyard City (filed with the State Auditor)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05334521687462864,
+            "ink": 0.08849673202614379,
+            "samples": 84150
+          },
+          "text": "Vineyard City State Budget Report 10 General Fund - 07/01/2024 to 06/30/2025 100.00% of the fiscal year has expired INTENDED FOR MANAGEMENT USE ONLY   Page 1   8/30/2024 09:26 AM Change In Net Position Revenue: Taxes 1801.3001 Property Tax   3,261,171   3,687,209   3,953,636 1801.3004 Sales Tax   3,150,801   3,285,246   3,450,000 1801.3007 RAP Tax   208,953   215,000   220,000 1801.3008 Transportation Tax   296,945   305,000   310,000 1801.3051 Franchise Tax   892,696   765,000   800,000 Total Taxes   7,810,565   8,257,455   8,733,636 Licenses and permits 0801.3102 Building Permits   265,675   715,000   900,000 1801.3101 Business Licenses & Permits   15,460   20,000   15,000 Total Licenses and permits   281,135   735,000   915,000 Intergovernmental revenue 1801.3152 CLASS B&C Road Funds   515,957   525,000   495,000 1801.3205 Grant Revenue   9,995   142,500   - Total Intergovernmental revenue   525,952   667,500   495,000 Charges for services 0701.3351 Development Fees   219,311   260,000   327,300 0801.3301 Fire Inspection & Plan Review Fees   8,420   15,000   15,000 1101.3401 Library Fees   5   -   - 1301.3254 Inspection Fees   120,323   445,000   200,000 1401.3604 Sanitation Fees   559,156   580,000   590,000 1601.3401 Recreation Fees   162,334   202,000   198,000 Total Charges for services   1,069,549   1,502,000   1,330,300 Fines and forfeitures 1801.3457 Fines & Forfeitures   -   1,000   1,000 Total Fines and forfeitures   -   1,000   1,000 Interest 1801.3501 Interest Earnings   166,048   150,000   150,000 Total Interest   166,048   150,000   150,000 Miscellaneous revenue 1501.3355 Rents   20,838   35,000   20,000 1701.3844 Sponsorships   30,550   35,000   35,000 1801.3455 Credit Card Fees   7,026   8,000   5,000 1801.3851 Miscellaneous Revenues   27,689   18,596   9,972 1801.3853 Donations   1,000   -   - Total Miscellaneous revenue   87,102   96,596   69,972 Contributions and transfers 1801.5025 Transfer from RDA Fund   330,138   477,051   437,500 1801.5049 Transfer from Capital Projects Fund   -   -   837,823 3699 EXCESS BEG. FUND APPROPRIATION   -   897,871   779,949 Total Contributions and transfers   330,138   1,374,922   2,055,272 Total Revenue:   10,270,489   12,784,473   13,750,180 Expenditures: General government Administrative 0101.4001 Mayor & Council - Full Time Regular   -   -   93,572 2023 Actual 2024 Budget 2025 Budget",
+          "shot": "doc-check-shots/doc_9b59eca6153ebb83-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05100019805902159,
+            "ink": 0.1086683831781871,
+            "samples": 30294
+          },
+          "text": "Vineyard City State Budget Report 10 General Fund - 07/01/2024 to 06/30/2025 100.00% of the fiscal year has expired INTENDED FOR MANAGEMENT USE ONLY   Page 1   8/30/2024 09:26 AM Change In Net Position Revenue: Taxes 1801.3001 Property Tax   3,261,171   3,687,209   3,953,636 1801.3004 Sales Tax   3,150,801   3,285,246   3,450,000 1801.3007 RAP Tax   208,953   215,000   220,000 1801.3008 Transportation Tax   296,945   305,000   310,000 1801.3051 Franchise Tax   892,696   765,000   800,000 Total Taxes   7,810,565   8,257,455   8,733,636 Licenses and permits 0801.3102 Building Permits   265,675   715,000   900,000 1801.3101 Business Licenses & Permits   15,460   20,000   15,000 Total Licenses and permits   281,135   735,000   915,000 Intergovernmental revenue 1801.3152 CLASS B&C Road Funds   515,957   525,000   495,000 1801.3205 Grant Revenue   9,995   142,500   - Total Intergovernmental revenue   525,952   667,500   495,000 Charges for services 0701.3351 Development Fees   219,311   260,000   327,300 0801.3301 Fire Inspection & Plan Review Fees   8,420   15,000   15,000 1101.3401 Library Fees   5   -   - 1301.3254 Inspection Fees   120,323   445,000   200,000 1401.3604 Sanitation Fees   559,156   580,000   590,000 1601.3401 Recreation Fees   162,334   202,000   198,000 Total Charges for services   1,069,549   1,502,000   1,330,300 Fines and forfeitures 1801.3457 Fines & Forfeitures   -   1,000   1,000 Total Fines and forfeitures   -   1,000   1,000 Interest 1801.3501 Interest Earnings   166,048   150,000   150,000 Total Interest   166,048   150,000   150,000 Miscellaneous revenue 1501.3355 Rents   20,838   35,000   20,000 1701.3844 Sponsorships   30,550   35,000   35,000 1801.3455 Credit Card Fees   7,026   8,000   5,000 1801.3851 Miscellaneous Revenues   27,689   18,596   9,972 1801.3853 Donations   1,000   -   - Total Miscellaneous revenue   87,102   96,596   69,972 Contributions and transfers 1801.5025 Transfer from RDA Fund   330,138   477,051   437,500 1801.5049 Transfer from Capital Projects Fund   -   -   837,823 3699 EXCESS BEG. FUND APPROPRIATION   -   897,871   779,949 Total Contributions and transfers   330,138   1,374,922   2,055,272 Total Revenue:   10,270,489   12,784,473   13,750,180 Expenditures: General government Administrative 0101.4001 Mayor & Council - Full Time Regular   -   -   93,572 2023 Actual 2024 Budget 2025 Budget",
+          "shot": "doc-check-shots/doc_9b59eca6153ebb83-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_573b72fa4eace5e2",
+      "title": "Holdaway Fields LDS Church Site Plan (Planning Commission, 2024-10-02, item 5)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.059400230680507496,
+            "ink": 0.11093425605536332,
+            "samples": 43350
+          },
+          "text": "G101 COVER SHEET Vineyard 10 & 57 East 400 South A New Meetinghouse for: Vineyard, Utah   11576 south state street, suite 103b, draper, utah 84020 phone 801-553-8272   fax 801-553-8273 evans + associates architecture Project for: Revisions Mark   Date   Description Sheet Sheet Title Project Number Plan Series Property Number Heritage 23-1 Vineyard UT Stake 501-6747-23010101 23-85 Stamp Date May 1, 2023 A New Meetinghouse for: Vineyard 10 & Vineyard UT Stake   Vicinity Map SITE E-mail Contact Address chad@studio-ea.com 11576 South State Street #103B   Chad Spencer Phone Consultant   Fax Evans & Associates Architecture Architect:   (801) 553-8272   (801) 553-8273 Consultant Name (801) 534-1080 (801) 534-1130 Scott Kingery Envision Engineering Architect: Electrical Engineer: Landscape skingery@envisioneng.com David Peterson   david@excelcivil.com Civil   Excel Engineering, Inc. Engineer:   (801) 756-4504   (801) 756-4511 Draper, Utah 84020 American Fork, Utah 84003 12 West 100 North #201 240 East Morris Avenue, Suite 200   Salt Lake City, Utah 84115 17 North 470 West   American Fork, Utah 84003   (801) 756-5279 (801) 756-5043   darren@isdgllc.com Darren Wilson In Site Design Group DRAWING INDEX",
+          "shot": "doc-check-shots/doc_573b72fa4eace5e2-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.059633491950997264,
+            "ink": 0.10691505517869798,
+            "samples": 39508
+          },
+          "text": "G101 COVER SHEET Vineyard 10 & 57 East 400 South A New Meetinghouse for: Vineyard, Utah   11576 south state street, suite 103b, draper, utah 84020 phone 801-553-8272   fax 801-553-8273 evans + associates architecture Project for: Revisions Mark   Date   Description Sheet Sheet Title Project Number Plan Series Property Number Heritage 23-1 Vineyard UT Stake 501-6747-23010101 23-85 Stamp Date May 1, 2023 A New Meetinghouse for: Vineyard 10 & Vineyard UT Stake   Vicinity Map SITE E-mail Contact Address chad@studio-ea.com 11576 South State Street #103B   Chad Spencer Phone Consultant   Fax Evans & Associates Architecture Architect:   (801) 553-8272   (801) 553-8273 Consultant Name (801) 534-1080 (801) 534-1130 Scott Kingery Envision Engineering Architect: Electrical Engineer: Landscape skingery@envisioneng.com David Peterson   david@excelcivil.com Civil   Excel Engineering, Inc. Engineer:   (801) 756-4504   (801) 756-4511 Draper, Utah 84020 American Fork, Utah 84003 12 West 100 North #201 240 East Morris Avenue, Suite 200   Salt Lake City, Utah 84115 17 North 470 West   American Fork, Utah 84003   (801) 756-5279 (801) 756-5043   darren@isdgllc.com Darren Wilson In Site Design Group DRAWING INDEX",
+          "shot": "doc-check-shots/doc_573b72fa4eace5e2-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_0cf1cfe81f031d04",
+      "title": "Ordinance 2023-17 ZC Amendment - Sign Code For Wall Art",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04213903743315508,
+            "ink": 0.08105763517528224,
+            "samples": 84150
+          },
+          "text": "VINEYARD ORDINANCE 2023-17 AN ORDINANCE OF THE CITY OF VINEYARD UTAH TO MAKE AMENDMENTS TO THE ZONING CODE TO REMOVE THE SIGN STANDARD WAIVER, MAKE CHANGES TO THE SIGN STANDARD TABLE, CREATE TWO NEW ADDITIONAL SIGN TYPES; DEVELOPMENT PROMOTION AND DIRECTION AND WALL ART AND BUILDING MURAL. WHEREAS,   in compliance with the Utah State Municipal Land Use, Development, and Management Act (LUDMA), the City established an amendment to the Vineyard Zoning Code Section 15.48 Signs, WHEREAS,   the Vineyard City Zoning Code Amendment provides modifications to the sign standard table, removes the sign standard waiver, and creates additional sign types, WHEREAS,   the Planning Commission held a public hearing on April 18, 2023, and after fully considering public comment and staff recommendation, recommended approval to the City Council, and, WHEREAS,   the City Council reviewed the amended language within the Vineyard Zoning Code Amendment and held a public hearing on April 26, 2023, and after fully considering public comment, staff and Planning Commission's recommendations, NOW THEREFORE,   be it ordained by the Council of the Vineyard, in the State of Utah, as follows: SECTION 1:   AMENDMENT   “15.48.010 Purpose And Intent” of the Vineyard Zoning Code is hereby   amended   as follows: A M E N D M E N T 15.48.010 Purpose And Intent The purpose of this sign ordinance is to preserve and protect the health, safety, and general welfare of city residents and businesses by regulating the design, materials, size, number and location of signs. The purpose of this section is to achieve the following: and: 1. To Rreduce potential hazards to motorists and pedestrians by providing adequate signage in order to identify a business or facility while eliminating excessive, obtrusive, and confusing sign displays, and excessive illumination. 2. To Ppreserve and improve the aesthetic appearance of the Ccity by reducing or prohibiting signage that is overbearing, creates visual clutter or excessive illumination. 3. To encourage well-designed signs that contribute in a positive way to the city’s visual environment and help maintain an image of quality for the city.",
+          "shot": "doc-check-shots/doc_0cf1cfe81f031d04-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04423318148808345,
+            "ink": 0.11140819964349376,
+            "samples": 30294
+          },
+          "text": "VINEYARD ORDINANCE 2023-17 AN ORDINANCE OF THE CITY OF VINEYARD UTAH TO MAKE AMENDMENTS TO THE ZONING CODE TO REMOVE THE SIGN STANDARD WAIVER, MAKE CHANGES TO THE SIGN STANDARD TABLE, CREATE TWO NEW ADDITIONAL SIGN TYPES; DEVELOPMENT PROMOTION AND DIRECTION AND WALL ART AND BUILDING MURAL. WHEREAS,   in compliance with the Utah State Municipal Land Use, Development, and Management Act (LUDMA), the City established an amendment to the Vineyard Zoning Code Section 15.48 Signs, WHEREAS,   the Vineyard City Zoning Code Amendment provides modifications to the sign standard table, removes the sign standard waiver, and creates additional sign types, WHEREAS,   the Planning Commission held a public hearing on April 18, 2023, and after fully considering public comment and staff recommendation, recommended approval to the City Council, and, WHEREAS,   the City Council reviewed the amended language within the Vineyard Zoning Code Amendment and held a public hearing on April 26, 2023, and after fully considering public comment, staff and Planning Commission's recommendations, NOW THEREFORE,   be it ordained by the Council of the Vineyard, in the State of Utah, as follows: SECTION 1:   AMENDMENT   “15.48.010 Purpose And Intent” of the Vineyard Zoning Code is hereby   amended   as follows: A M E N D M E N T 15.48.010 Purpose And Intent The purpose of this sign ordinance is to preserve and protect the health, safety, and general welfare of city residents and businesses by regulating the design, materials, size, number and location of signs. The purpose of this section is to achieve the following: and: 1. To Rreduce potential hazards to motorists and pedestrians by providing adequate signage in order to identify a business or facility while eliminating excessive, obtrusive, and confusing sign displays, and excessive illumination. 2. To Ppreserve and improve the aesthetic appearance of the Ccity by reducing or prohibiting signage that is overbearing, creates visual clutter or excessive illumination. 3. To encourage well-designed signs that contribute in a positive way to the city’s visual environment and help maintain an image of quality for the city.",
+          "shot": "doc-check-shots/doc_0cf1cfe81f031d04-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_45e0f580f5b318b2",
+      "title": "5.21.2025 Planning Commission Meeting Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04066547831253713,
+            "ink": 0.06451574569221628,
+            "samples": 84150
+          },
+          "text": "Page 1 of 8; May 21, 2025, Planning Commission Final Minutes MINUTES OF A REGULAR PLANNING COMMISSION MEETING Vineyard City Council Chambers 125 South Main Street, Vineyard, Utah May 21, 2025, at 6:00 PM ________________ ATTENDANCE: COMMISSIONERRS PRESENT:   Chair Nathan Steele, Natalie Harbin, Graden Ostler STAFF PRESENT:   Cache Hancey, Senior Planner; Anthony Fletcher, Planner; Patrick James, Assistant City Engineer; Naseem Ghandour, Public Works Director and City Engineer; Madison Reed, Planning Technician OTHERS PRESENT:   Daria Evans, Bronson Tatton, David Lauret, Ridley Griggs, and Mike Davey 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE Chair Nathan Steele called the meeting to order at 6:19pm. Commissioner Natalie Harbin led the invocation and the pledge. 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS There were no comments. 3.   PUBLIC COMMENTS PC The were no comments. 4.   CONSENT ITEMS 4.1.   Approval of the May 7th, 2025 Planning Commission Meeting Minutes Motion:   COMMISSIONER HARBIN MOTIONED TO APPROVE THE MAY 7 TH , 2025 PLANNING COMMISSION MEETING MINUTES AT 6:21PM. COMMISSION GRADEN OSTLER SECONDED. ALL IN FAVOR VOTED YES: HARBIN, STEELE, AND OSTLER. THE MOTION PASSED UNANIMOUSLY.",
+          "shot": "doc-check-shots/doc_45e0f580f5b318b2-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.045817653660790915,
+            "ink": 0.08678286129266521,
+            "samples": 30294
+          },
+          "text": "Page 1 of 8; May 21, 2025, Planning Commission Final Minutes MINUTES OF A REGULAR PLANNING COMMISSION MEETING Vineyard City Council Chambers 125 South Main Street, Vineyard, Utah May 21, 2025, at 6:00 PM ________________ ATTENDANCE: COMMISSIONERRS PRESENT:   Chair Nathan Steele, Natalie Harbin, Graden Ostler STAFF PRESENT:   Cache Hancey, Senior Planner; Anthony Fletcher, Planner; Patrick James, Assistant City Engineer; Naseem Ghandour, Public Works Director and City Engineer; Madison Reed, Planning Technician OTHERS PRESENT:   Daria Evans, Bronson Tatton, David Lauret, Ridley Griggs, and Mike Davey 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE Chair Nathan Steele called the meeting to order at 6:19pm. Commissioner Natalie Harbin led the invocation and the pledge. 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS There were no comments. 3.   PUBLIC COMMENTS PC The were no comments. 4.   CONSENT ITEMS 4.1.   Approval of the May 7th, 2025 Planning Commission Meeting Minutes Motion:   COMMISSIONER HARBIN MOTIONED TO APPROVE THE MAY 7 TH , 2025 PLANNING COMMISSION MEETING MINUTES AT 6:21PM. COMMISSION GRADEN OSTLER SECONDED. ALL IN FAVOR VOTED YES: HARBIN, STEELE, AND OSTLER. THE MOTION PASSED UNANIMOUSLY.",
+          "shot": "doc-check-shots/doc_45e0f580f5b318b2-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_11521fd9ba854d8d",
+      "title": "Hernandez - Pledge of Fair Campaign Practices",
+      "archived": true,
+      "file": {
+        "ok": false,
+        "status": 416,
+        "type": null,
+        "frame": "DENY",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "card",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": null,
+          "text": "",
+          "shot": "doc-check-shots/doc_11521fd9ba854d8d-390.png",
+          "problems": [
+            "shows \"Open the PDF\" although the portal can serve the file"
+          ]
+        },
+        "desktop": {
+          "error": null,
+          "state": "card",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": null,
+          "text": "",
+          "shot": "doc-check-shots/doc_11521fd9ba854d8d-1440.png",
+          "problems": [
+            "shows \"Open the PDF\" although the portal can serve the file"
+          ]
+        }
+      },
+      "problems": [
+        "file route did not return the PDF (416)",
+        "phone: shows \"Open the PDF\" although the portal can serve the file",
+        "desktop: shows \"Open the PDF\" although the portal can serve the file"
+      ]
+    },
+    {
+      "id": "doc_d3257ce47fb2fd01",
+      "title": "Racquet Club Combined Plans (Planning Commission Meeting, 2025-05-21, item 7)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03334521687462864,
+            "ink": 0.04773618538324421,
+            "samples": 84150
+          },
+          "text": "Utah City Racquet Club Block 4 Site April 1, 2025 Vineyard City Staff, Planning Commission - This application narrative outlines a new proposed racquet club in Utah City. The Utah City Racquet Club is located on the north two sub-blocks of Block 4, just north of the grocery store. The main goal of the racquet club is to activate the area with recreation, entertainment, and food and beverage. Development of these sub-blocks will create attractive edges to the grocery store and Greenline. The club amenities include the following: 1.   Pickleball Courts (6) 2.   Padel Courts (6) 3.   Tennis Courts (2) 4.   Clubhouse 5.   Restrooms (4) 6.   Food truck / Concessions area 7.   Social Gathering Space 8.   Entry / Check-in Plaza 9.   Benches 10.   Raised Planters 11.   Shade 12.   Landscaping 13.   Lighting 14.   Off-Street Parking This will be a privately owned and maintained facility. We are in coordination with an operator who is an expert in racquet sports in particular the up and coming sport of padel. We are excited with their operations team and the unique programming they bring. Best, Bronson Tatton Utah City Director of Planning and Design",
+          "shot": "doc-check-shots/doc_d3257ce47fb2fd01-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03046807948768733,
+            "ink": 0.06271869016967056,
+            "samples": 30294
+          },
+          "text": "Utah City Racquet Club Block 4 Site April 1, 2025 Vineyard City Staff, Planning Commission - This application narrative outlines a new proposed racquet club in Utah City. The Utah City Racquet Club is located on the north two sub-blocks of Block 4, just north of the grocery store. The main goal of the racquet club is to activate the area with recreation, entertainment, and food and beverage. Development of these sub-blocks will create attractive edges to the grocery store and Greenline. The club amenities include the following: 1.   Pickleball Courts (6) 2.   Padel Courts (6) 3.   Tennis Courts (2) 4.   Clubhouse 5.   Restrooms (4) 6.   Food truck / Concessions area 7.   Social Gathering Space 8.   Entry / Check-in Plaza 9.   Benches 10.   Raised Planters 11.   Shade 12.   Landscaping 13.   Lighting 14.   Off-Street Parking This will be a privately owned and maintained facility. We are in coordination with an operator who is an expert in racquet sports in particular the up and coming sport of padel. We are excited with their operations team and the unique programming they bring. Best, Bronson Tatton Utah City Director of Planning and Design",
+          "shot": "doc-check-shots/doc_d3257ce47fb2fd01-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_734f84d45c2bd8f8",
+      "title": "2024-09-25 Purchase Card Policy (clean) (City Council Meeting, 2024-09-25, item 1)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04729649435531789,
+            "ink": 0.07238265002970885,
+            "samples": 84150
+          },
+          "text": "Vineyard City Purchase Card Policy 1.   Purpose This Credit Card Policy governs the issuance and use of Purchase Cards (“P-Cards”) for employees of Vineyard City. This policy conveys requirements and procedures for the issuance, application, use, safeguarding, payment and termination of any P-Card issued to a Vineyard City employee. Cardholders and their supervisors are responsible for ensuring that they adhere to this Policy, thereby taking appropriate measures to minimize the risk of fraud, waste, or abuse. 2.   Scope This policy applies to all Vineyard City employees issued a Purchase Card. All employees must use the card solely for official city business in accordance with this policy. 3.   Authorized Use P-Cards may be used ONLY for official city business expenditures for which the cardholder has authority. The use of Purchase Cards for personal purchases is prohibited. Purchase Cards may be used only for the following expenses: •   Purchases of goods and services necessary for city operations. •   Travel-related expenses (e.g., airfare, car rental, lodging, meals) when conducting official city business; and •   Emergency purchases where prior authorization is not feasible. 4.   Prohibited Use The following are prohibited uses of Purchase Cards: •   Personal or non-work-related expenses; •   Cash advances; •   Items or services not directly related to city operations; •   Items or services directly related to city operations, but for which the P-Card holder does not have, or has not yet received, authority to make the purchase; and •   Splitting purchases to circumvent single transaction limits.",
+          "shot": "doc-check-shots/doc_734f84d45c2bd8f8-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04997689311414802,
+            "ink": 0.096124645144253,
+            "samples": 30294
+          },
+          "text": "Vineyard City Purchase Card Policy 1.   Purpose This Credit Card Policy governs the issuance and use of Purchase Cards (“P-Cards”) for employees of Vineyard City. This policy conveys requirements and procedures for the issuance, application, use, safeguarding, payment and termination of any P-Card issued to a Vineyard City employee. Cardholders and their supervisors are responsible for ensuring that they adhere to this Policy, thereby taking appropriate measures to minimize the risk of fraud, waste, or abuse. 2.   Scope This policy applies to all Vineyard City employees issued a Purchase Card. All employees must use the card solely for official city business in accordance with this policy. 3.   Authorized Use P-Cards may be used ONLY for official city business expenditures for which the cardholder has authority. The use of Purchase Cards for personal purchases is prohibited. Purchase Cards may be used only for the following expenses: •   Purchases of goods and services necessary for city operations. •   Travel-related expenses (e.g., airfare, car rental, lodging, meals) when conducting official city business; and •   Emergency purchases where prior authorization is not feasible. 4.   Prohibited Use The following are prohibited uses of Purchase Cards: •   Personal or non-work-related expenses; •   Cash advances; •   Items or services not directly related to city operations; •   Items or services directly related to city operations, but for which the P-Card holder does not have, or has not yet received, authority to make the purchase; and •   Splitting purchases to circumvent single transaction limits.",
+          "shot": "doc-check-shots/doc_734f84d45c2bd8f8-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_dccff6638d31d33f",
+      "title": "PROC 2024-06 Constitutuion Week Proclamation (City Council Meeting, 2024-08-28, item 1)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.026428995840760548,
+            "ink": 0.044598930481283425,
+            "samples": 84150
+          },
+          "text": "PROCLAMATION 2024-06 CONSTITUTION WEEK WHEREAS,   September 17, 2024 marks the two hundred thirty-seventh anniversary of the drafting of the constitution of the United States of America by the Constitutional Convention; and WHEREAS,   every anniversary of the Constitution provides an historic opportunity for all Americans to learn about and to reflect upon the rights and privileges of citizenship and its responsibilities; and WHEREAS,   it is fitting and proper to accord official recognition to this magnificent document and its memorable anniversary, and to the patriotic celebrations which will commemorate the occasion; and NOW, THEREFORE,   I, Julie Fullmer, Mayor of the City of Vineyard, Utah hereby proclaim the month of September 2024 as Constitution Month and urge all citizens to study the Constitution and reflect on the privilege of being an American with all the rights and responsibilities which that privilege involves. Dated this 28 th   day of August 2024. ____________________________________________________ Mayor Julie Fullmer Attest: City Recorder Pamela Spencer",
+          "shot": "doc-check-shots/doc_dccff6638d31d33f-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.030897207367795602,
+            "ink": 0.06222354261569948,
+            "samples": 30294
+          },
+          "text": "PROCLAMATION 2024-06 CONSTITUTION WEEK WHEREAS,   September 17, 2024 marks the two hundred thirty-seventh anniversary of the drafting of the constitution of the United States of America by the Constitutional Convention; and WHEREAS,   every anniversary of the Constitution provides an historic opportunity for all Americans to learn about and to reflect upon the rights and privileges of citizenship and its responsibilities; and WHEREAS,   it is fitting and proper to accord official recognition to this magnificent document and its memorable anniversary, and to the patriotic celebrations which will commemorate the occasion; and NOW, THEREFORE,   I, Julie Fullmer, Mayor of the City of Vineyard, Utah hereby proclaim the month of September 2024 as Constitution Month and urge all citizens to study the Constitution and reflect on the privilege of being an American with all the rights and responsibilities which that privilege involves. Dated this 28 th   day of August 2024. ____________________________________________________ Mayor Julie Fullmer Attest: City Recorder Pamela Spencer",
+          "shot": "doc-check-shots/doc_dccff6638d31d33f-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_e713c49ff7d2a4ef",
+      "title": "980a-11.16.23 Agenda with Attachments",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03961972667855021,
+            "ink": 0.06566844919786097,
+            "samples": 84150
+          },
+          "text": "ARCH Commission Meeting   –   Agenda REGULAR MEETING OF THE VINEYARD ARCH COMMISSION Thursday, November 16 th , 2023, 6:00 p.m. PUBLIC NOTICE is hereby given that the Vineyard City ARCH Commission will hold a regularly scheduled meeting at City Hall, 125 South Main Street, Vineyard, Utah. REGULAR SESSION 1.   CALL TO ORDER 2.   STAFF, COMMISSION, AND COMMITTEE REPORTS 2.1.   Anna Nelson 3.   CONSENT ITEMS 3.1.   Approval of August 17, 2023 Meeting minutes 3.2.   Approval of August 21, 2023 Meeting Minutes 3.3.   Approval of September 21, 2023 Meeting Minutes 4.   BUSINESS ITEMS 4.1 DISCUSSION AND ACTION   –   SHADE TENT DESIGN Parks and Recreation Director Brian Vawdrey will present options for shade structures at Grove Park and Penny Springs Park. The ARCH Commission will take appropriate action. 5.   WORK SESSION 5.1 LAKEFRONT PROJECT ARCH Commissioner Bronson Tatton will present potential plans for the lakefront in hopes of gaining feedback from the ARCH Commission. No action will be taken 5.2 PREVIOUS AND UPCOMING EVENTS City Special Event Manager Anna Nelson will lead a discussion on BOO-A-PALOOZA, the Tree Lighting Ceremony and Vineyard Days. A committee will be requested for Vineyard Days. No action will be taken 6.   ADJOURNMENT The Public is invited to participate in all ARCH Commission meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this public meeting should notify Anna Nelson, Special Event Manager, at least 24 hours prior to the meeting by calling (801) 226-1929 or email at   annan@vineyardutah.org .",
+          "shot": "doc-check-shots/doc_e713c49ff7d2a4ef-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03776325344952796,
+            "ink": 0.08325080874100482,
+            "samples": 30294
+          },
+          "text": "ARCH Commission Meeting   –   Agenda REGULAR MEETING OF THE VINEYARD ARCH COMMISSION Thursday, November 16 th , 2023, 6:00 p.m. PUBLIC NOTICE is hereby given that the Vineyard City ARCH Commission will hold a regularly scheduled meeting at City Hall, 125 South Main Street, Vineyard, Utah. REGULAR SESSION 1.   CALL TO ORDER 2.   STAFF, COMMISSION, AND COMMITTEE REPORTS 2.1.   Anna Nelson 3.   CONSENT ITEMS 3.1.   Approval of August 17, 2023 Meeting minutes 3.2.   Approval of August 21, 2023 Meeting Minutes 3.3.   Approval of September 21, 2023 Meeting Minutes 4.   BUSINESS ITEMS 4.1 DISCUSSION AND ACTION   –   SHADE TENT DESIGN Parks and Recreation Director Brian Vawdrey will present options for shade structures at Grove Park and Penny Springs Park. The ARCH Commission will take appropriate action. 5.   WORK SESSION 5.1 LAKEFRONT PROJECT ARCH Commissioner Bronson Tatton will present potential plans for the lakefront in hopes of gaining feedback from the ARCH Commission. No action will be taken 5.2 PREVIOUS AND UPCOMING EVENTS City Special Event Manager Anna Nelson will lead a discussion on BOO-A-PALOOZA, the Tree Lighting Ceremony and Vineyard Days. A committee will be requested for Vineyard Days. No action will be taken 6.   ADJOURNMENT The Public is invited to participate in all ARCH Commission meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this public meeting should notify Anna Nelson, Special Event Manager, at least 24 hours prior to the meeting by calling (801) 226-1929 or email at   annan@vineyardutah.org .",
+          "shot": "doc-check-shots/doc_e713c49ff7d2a4ef-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_3339fbc2f313f60a",
+      "title": "969a-Homesteads Development Agreement Amendment PN",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.028104575163398694,
+            "ink": 0.04480095068330362,
+            "samples": 84150
+          },
+          "text": "October 20, 2023 Attention:   Public Hearing Notice Contact Person:   Cache Hancey, Planner 707 E Mill Road Unit 202 Vineyard, UT 84059 (801) 226-1929 NOTICE   is hereby given regarding a public hearing for the following: Homesteads Development Agreement Amendment Applicant initiated amendment to the Homesteads Development Agreement. This amendment would allow for live-work units within POD 1 of the development as well as enhancing the nearby road to create better pedestrian crossings, bicycle infrastructure, and street parking. The development agreement also includes provisions for a dog park and infrastructure for a future community garden. The hearing will be held at the Vineyard Planning Commission on November 1, 2023, at 6pm and City Council on November 8, 2023, at 6pm. The hearing will be located at 125 S. Main Street, Vineyard, Utah 84059. Public comments, questions, and requests for copies of application materials are encouraged to be emailed to Cache Hancey at   cacheh@vinyardutah.org   prior to the meeting. I, the undersigned, hereby certify that the foregoing Public Hearing Notice will be posted at the Vineyard City Offices, Vineyard City Hall and on the Vineyard City website, posted on the Utah Public Notice website, and delivered to surrounding entities. /s/ Cache Hancey, Planner",
+          "shot": "doc-check-shots/doc_3339fbc2f313f60a-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.029246715521225326,
+            "ink": 0.06209150326797386,
+            "samples": 30294
+          },
+          "text": "October 20, 2023 Attention:   Public Hearing Notice Contact Person:   Cache Hancey, Planner 707 E Mill Road Unit 202 Vineyard, UT 84059 (801) 226-1929 NOTICE   is hereby given regarding a public hearing for the following: Homesteads Development Agreement Amendment Applicant initiated amendment to the Homesteads Development Agreement. This amendment would allow for live-work units within POD 1 of the development as well as enhancing the nearby road to create better pedestrian crossings, bicycle infrastructure, and street parking. The development agreement also includes provisions for a dog park and infrastructure for a future community garden. The hearing will be held at the Vineyard Planning Commission on November 1, 2023, at 6pm and City Council on November 8, 2023, at 6pm. The hearing will be located at 125 S. Main Street, Vineyard, Utah 84059. Public comments, questions, and requests for copies of application materials are encouraged to be emailed to Cache Hancey at   cacheh@vinyardutah.org   prior to the meeting. I, the undersigned, hereby certify that the foregoing Public Hearing Notice will be posted at the Vineyard City Offices, Vineyard City Hall and on the Vineyard City website, posted on the Utah Public Notice website, and delivered to surrounding entities. /s/ Cache Hancey, Planner",
+          "shot": "doc-check-shots/doc_3339fbc2f313f60a-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_3cfd9d5e272eb611",
+      "title": "946a-8.17.2023 ARCH Commission Agenda",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03332144979203803,
+            "ink": 0.05706476530005942,
+            "samples": 84150
+          },
+          "text": "A WORK SESSION OF THE VINEYARD ARCH COMMISSION August 17, 2023, 7:30 p.m. PUBLIC NOTICE is hereby given that the Vineyard City ARCH Commission will hold a work session on Thursday, August 17, 2023 at 7:30 PM, at City Hall, 125 South Main Street, Vineyard, Utah. 1.   CALL TO ORDER 2.   WORK SESSION DISCUSSION   –   WATER TANK MURAL ARTWORK City Planner Cache Hancey will introduce the Water Tank Mural project and give a brief background. Following Cache, the mural artist Aljay Fuimaono will present potential artwork options for the water tank project and receive feedback from the ARCH Commission. No action will be taken. 3.   ADJOURNMENT The Public is invited to participate in all ARCH Commission meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this public meeting should notify Anna Nelson, Special Event Manager, at least 24 hours prior to the meeting by calling (801) 226-1929 or email at   annan@vineyardutah.org . The foregoing notice and agenda were posted on the Utah Public Notice Website and Vineyard Website, posted at the Vineyard City Offices and City Hall, delivered electronically to city staff and each member of the ARCH Commission. AGENDA NOTICING COMPLETED ON:   August 16, 2023 NOTICED BY:   /s/ Anna Nelson Anna Nelson, Special Event Manager",
+          "shot": "doc-check-shots/doc_3cfd9d5e272eb611-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.031557404106423714,
+            "ink": 0.07427213309566251,
+            "samples": 30294
+          },
+          "text": "A WORK SESSION OF THE VINEYARD ARCH COMMISSION August 17, 2023, 7:30 p.m. PUBLIC NOTICE is hereby given that the Vineyard City ARCH Commission will hold a work session on Thursday, August 17, 2023 at 7:30 PM, at City Hall, 125 South Main Street, Vineyard, Utah. 1.   CALL TO ORDER 2.   WORK SESSION DISCUSSION   –   WATER TANK MURAL ARTWORK City Planner Cache Hancey will introduce the Water Tank Mural project and give a brief background. Following Cache, the mural artist Aljay Fuimaono will present potential artwork options for the water tank project and receive feedback from the ARCH Commission. No action will be taken. 3.   ADJOURNMENT The Public is invited to participate in all ARCH Commission meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this public meeting should notify Anna Nelson, Special Event Manager, at least 24 hours prior to the meeting by calling (801) 226-1929 or email at   annan@vineyardutah.org . The foregoing notice and agenda were posted on the Utah Public Notice Website and Vineyard Website, posted at the Vineyard City Offices and City Hall, delivered electronically to city staff and each member of the ARCH Commission. AGENDA NOTICING COMPLETED ON:   August 16, 2023 NOTICED BY:   /s/ Anna Nelson Anna Nelson, Special Event Manager",
+          "shot": "doc-check-shots/doc_3cfd9d5e272eb611-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_c5b37f65500d073b",
+      "title": "November 15, 2023 Planning Commission Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04683303624480095,
+            "ink": 0.07553178847296495,
+            "samples": 84150
+          },
+          "text": "Planning Commission Regular Meeting   –   Final Minutes MINUTES OF A REGULAR MEETING OF THE VINEYARD PLANNING COMMISSION City Council Chambers 125 South Main Street, Vineyard, Utah Wednesday November 15, 2023, 6:00 p.m. Attendance: Planning Commissioners : Chair Bryce Brady, Vice-Chair Tay Gudmundson, Anthony Jenkins, Bradley Fagg, and Graden Ostler Staff : Cache Hancey, Anthony Fletcher, Planners; Morgan Brim, Community Development Director; Patrick James, Engineer; and Naseem Ghandour, Public Works Director Others Present : Daria Evans, Resident; Darrin Perkes with Dominion Engineering CALL TO ORDER 1.   INVOCATION/INSPIRATIONAL THOUGHTS/PLEDGE OF ALLEGIANCE Chair Brady opened the meeting with the Pledge of Allegiance and an invocation. 2.   OPEN SESSION - Resident Daria Evans expressed concern regarding the Jiffy Lube sign location. She continued with more concerns regarding access to the McDonalds site from Geneva Road and light pole length. She made comments regarding the windows of the live/work units. Motion to close public comments Tay. seconded by Brad. 3.   BUSINESS ITEMS 3.1   PUBLIC HEARING   CONTINUED   –   Homestead at Vineyard City, Utah Pod 1 Live-Work Units Development Agreement Amendment Motion:   Vice-Chair Gudmundson motioned to continue the public hearing to the December 6 th , 2023, Planning Commission meeting. Commissioner Jenkins seconded the motion. Roll went as follows: Chair Bryce Brady, Vice-Chair Tay Gudmundson, Anthony Jenkins, Bradley Fagg, and Graden Ostler voted Aye. Motion carried unanimously. Community Development Director Morgan Brim gave a brief explanation on why the item was requested to be moved to the December 6 th   meeting. 3.2   Sign Standard Waiver   –   Jiffy Lube Planner Cache Hancey presented a sign standard waiver application from Jiffy Lube, explaining the reason that Jiffy Lube is requesting it. He addressed the concerns from the public comment earlier and stated that the design of the sign could be included as a condition of approval.",
+          "shot": "doc-check-shots/doc_c5b37f65500d073b-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.044464250346603285,
+            "ink": 0.09761008780616624,
+            "samples": 30294
+          },
+          "text": "Planning Commission Regular Meeting   –   Final Minutes MINUTES OF A REGULAR MEETING OF THE VINEYARD PLANNING COMMISSION City Council Chambers 125 South Main Street, Vineyard, Utah Wednesday November 15, 2023, 6:00 p.m. Attendance: Planning Commissioners : Chair Bryce Brady, Vice-Chair Tay Gudmundson, Anthony Jenkins, Bradley Fagg, and Graden Ostler Staff : Cache Hancey, Anthony Fletcher, Planners; Morgan Brim, Community Development Director; Patrick James, Engineer; and Naseem Ghandour, Public Works Director Others Present : Daria Evans, Resident; Darrin Perkes with Dominion Engineering CALL TO ORDER 1.   INVOCATION/INSPIRATIONAL THOUGHTS/PLEDGE OF ALLEGIANCE Chair Brady opened the meeting with the Pledge of Allegiance and an invocation. 2.   OPEN SESSION - Resident Daria Evans expressed concern regarding the Jiffy Lube sign location. She continued with more concerns regarding access to the McDonalds site from Geneva Road and light pole length. She made comments regarding the windows of the live/work units. Motion to close public comments Tay. seconded by Brad. 3.   BUSINESS ITEMS 3.1   PUBLIC HEARING   CONTINUED   –   Homestead at Vineyard City, Utah Pod 1 Live-Work Units Development Agreement Amendment Motion:   Vice-Chair Gudmundson motioned to continue the public hearing to the December 6 th , 2023, Planning Commission meeting. Commissioner Jenkins seconded the motion. Roll went as follows: Chair Bryce Brady, Vice-Chair Tay Gudmundson, Anthony Jenkins, Bradley Fagg, and Graden Ostler voted Aye. Motion carried unanimously. Community Development Director Morgan Brim gave a brief explanation on why the item was requested to be moved to the December 6 th   meeting. 3.2   Sign Standard Waiver   –   Jiffy Lube Planner Cache Hancey presented a sign standard waiver application from Jiffy Lube, explaining the reason that Jiffy Lube is requesting it. He addressed the concerns from the public comment earlier and stated that the design of the sign could be included as a condition of approval.",
+          "shot": "doc-check-shots/doc_c5b37f65500d073b-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_6669f357e7c3e72e",
+      "title": "10/2/2024 Planning Commission Agenda",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04727272727272727,
+            "ink": 0.07310754604872252,
+            "samples": 84150
+          },
+          "text": "Page 1 of 2; October 2, 2024, Planning Commission Agenda NOTICE OF A REGULAR PLANNING COMMISSION MEETING October 2, 2024, at 6:00 PM ________________ PUBLIC NOTICE is hereby given that the Vineyard Planning Commission will hold a regularly scheduled Planning Commission meeting on Wednesday, October 2, 2024, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 3.   PUBLIC COMMENTS PC Time dedicated for public comment. Comments will be limited to three (3) minutes. No actions may be taken by the Planning Commission due to the need for proper public noticing. 4.   CONSENT ITEMS 4.1.   Approval of the August 7th, 2024 Planning Commission Meeting Draft Minutes 4.2.   Approval of the August 21st, 2024 Planning Commission Draft Minutes. 5.   BUSINESS ITEMS 5.3.   2024 Planning Commission Chair & Vice-Chair Re-Election 5.4.   Minor Site Plan Amendment & Conditional Use Permit Application - Enigma 3, 197 E 1600 N 5.5.   LDS Church Site Plan and Conditional Use Permit - Holdaway Fields 5.6.   Public Hearing: Zoning Text Amendment to allow for pharmacy drive-thrus within the Downtown Vineyard (Town Center) Special Purpose Zoning Code 5.7.   Site Plan: Utah City Block 13c 5.8.   Sign Standard Waiver - Wendy's 5.9.   Public Hearing: Rezone of Lot 6545 (New Fire Station Lot) in the Cottonwoods Neighborhood from R-1-8 to Public Facilities",
+          "shot": "doc-check-shots/doc_6669f357e7c3e72e-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.056974978543605996,
+            "ink": 0.09945863867432495,
+            "samples": 30294
+          },
+          "text": "Page 1 of 2; October 2, 2024, Planning Commission Agenda NOTICE OF A REGULAR PLANNING COMMISSION MEETING October 2, 2024, at 6:00 PM ________________ PUBLIC NOTICE is hereby given that the Vineyard Planning Commission will hold a regularly scheduled Planning Commission meeting on Wednesday, October 2, 2024, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 3.   PUBLIC COMMENTS PC Time dedicated for public comment. Comments will be limited to three (3) minutes. No actions may be taken by the Planning Commission due to the need for proper public noticing. 4.   CONSENT ITEMS 4.1.   Approval of the August 7th, 2024 Planning Commission Meeting Draft Minutes 4.2.   Approval of the August 21st, 2024 Planning Commission Draft Minutes. 5.   BUSINESS ITEMS 5.3.   2024 Planning Commission Chair & Vice-Chair Re-Election 5.4.   Minor Site Plan Amendment & Conditional Use Permit Application - Enigma 3, 197 E 1600 N 5.5.   LDS Church Site Plan and Conditional Use Permit - Holdaway Fields 5.6.   Public Hearing: Zoning Text Amendment to allow for pharmacy drive-thrus within the Downtown Vineyard (Town Center) Special Purpose Zoning Code 5.7.   Site Plan: Utah City Block 13c 5.8.   Sign Standard Waiver - Wendy's 5.9.   Public Hearing: Rezone of Lot 6545 (New Fire Station Lot) in the Cottonwoods Neighborhood from R-1-8 to Public Facilities",
+          "shot": "doc-check-shots/doc_6669f357e7c3e72e-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_4fd128105dc70f91",
+      "title": "114m-June 15, 2016 Minutes (PDF)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04767676767676768,
+            "ink": 0.08560903149138444,
+            "samples": 84150
+          },
+          "text": "Page 1 of 5; June 15, 2016, Planning Commission Meeting Minutes MINUTES OF THE VINEYARD TOWN PLANNING COMMISSION MEETING Vineyard Town Hall, 240 East Gammon Road, Vineyard, Utah June 15, 2016 PRESENT   –   ABSENT - Commission Chair Chris Judd   Commissioner Daniel Pace Commissioner Tim Blackburn Commissioner Wayne Holdaway Commissioner Angela Kohl Commissioner (Alternate) Anthony Jenkins Commissioner (Alternate) Cristy Welsh STAFF PRESENT   –   Storm Water Manager Sam Bell, Town Planner Morgan Brim, Deputy Recorder Kinsli McDermott, Sheriff Deputy Josh Chaplain OTHERS PRESENT   – Vineyard Resident Jim Brinton, Kelly Godbold, Brent Griffin, Sean Fernandez, Allison Carlisle, Ryan McCarthy, Anthony Jenkins, Theron Anderson, Bessilyn Fernandez, Jan Blackburn, and Kiersty Collier; Orem Resident Cameron Larsen The Vineyard Town Planning Commission held a regular meeting and public hearing on Wednesday, June 15, 2016, starting at 7:02 PM in the Vineyard Town hall. The invocation was offered by Commissioner Holdaway. REGULAR SESSION : The meeting was called to order at 7:02 PM OPEN SESSION Chairman Judd asked for public comment. Resident Jim Brinton stressed the importance of the bug abatement program and said it needed to be a priority because of the swarms of bugs. Chairman Judd introduced Mr. Brim as Vineyard's new planner and economic development director. Mr. Brim reviewed his background and said he was happy to be working with Vineyard. MINUTES REVIEW AND APPROVAL Commissioner Welsh asked to review past minutes regarding landscaping plan approvals for the Dairy Queen property. Mr. Brim said he would bring the approved site plan to the next meeting for review and offered to do research regarding minimum landscaping standards in Vineyard. Motion:   COMMISSIONER BLACKBURN MOVED TO APPROVE THE MINUTES FROM THE APRIL 20, 2016 AND MAY 4, 2016 PLANNING COMMISSION MEETINGS. COMMISSIONER HOLDAWAY SECONDED THE MOTION. ALL PRESENT WERE IN FAVOR. NONE WERE OPPOSED. THE MOTION CARRIED.",
+          "shot": "doc-check-shots/doc_4fd128105dc70f91-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.046147752030104974,
+            "ink": 0.11272859312074998,
+            "samples": 30294
+          },
+          "text": "Page 1 of 5; June 15, 2016, Planning Commission Meeting Minutes MINUTES OF THE VINEYARD TOWN PLANNING COMMISSION MEETING Vineyard Town Hall, 240 East Gammon Road, Vineyard, Utah June 15, 2016 PRESENT   –   ABSENT - Commission Chair Chris Judd   Commissioner Daniel Pace Commissioner Tim Blackburn Commissioner Wayne Holdaway Commissioner Angela Kohl Commissioner (Alternate) Anthony Jenkins Commissioner (Alternate) Cristy Welsh STAFF PRESENT   –   Storm Water Manager Sam Bell, Town Planner Morgan Brim, Deputy Recorder Kinsli McDermott, Sheriff Deputy Josh Chaplain OTHERS PRESENT   – Vineyard Resident Jim Brinton, Kelly Godbold, Brent Griffin, Sean Fernandez, Allison Carlisle, Ryan McCarthy, Anthony Jenkins, Theron Anderson, Bessilyn Fernandez, Jan Blackburn, and Kiersty Collier; Orem Resident Cameron Larsen The Vineyard Town Planning Commission held a regular meeting and public hearing on Wednesday, June 15, 2016, starting at 7:02 PM in the Vineyard Town hall. The invocation was offered by Commissioner Holdaway. REGULAR SESSION : The meeting was called to order at 7:02 PM OPEN SESSION Chairman Judd asked for public comment. Resident Jim Brinton stressed the importance of the bug abatement program and said it needed to be a priority because of the swarms of bugs. Chairman Judd introduced Mr. Brim as Vineyard's new planner and economic development director. Mr. Brim reviewed his background and said he was happy to be working with Vineyard. MINUTES REVIEW AND APPROVAL Commissioner Welsh asked to review past minutes regarding landscaping plan approvals for the Dairy Queen property. Mr. Brim said he would bring the approved site plan to the next meeting for review and offered to do research regarding minimum landscaping standards in Vineyard. Motion:   COMMISSIONER BLACKBURN MOVED TO APPROVE THE MINUTES FROM THE APRIL 20, 2016 AND MAY 4, 2016 PLANNING COMMISSION MEETINGS. COMMISSIONER HOLDAWAY SECONDED THE MOTION. ALL PRESENT WERE IN FAVOR. NONE WERE OPPOSED. THE MOTION CARRIED.",
+          "shot": "doc-check-shots/doc_4fd128105dc70f91-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_ece3cc5f6d9df39c",
+      "title": "Interlocal in Support of the Unsheltered AC 5-7-25 (City Council Meeting, 2025-05-14, item 4)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04404040404040404,
+            "ink": 0.08212715389185977,
+            "samples": 84150
+          },
+          "text": "Page 1 of 5 UC Agreement No. 2025 -   _____ INTERLOCAL COOPERATION AGREEMENT Between UTAH COUNTY AND Vineyard   (CITY) For an effort to aid the homeless THIS AGREEMENT,   made and entered into this   day of   2025, by and between UTAH COUNTY, a body corporate and politic of the State of Utah, (hereinafter “County”) and   ,   a   political   subdivision   of   the   State   of   Utah, (hereinafter “City”). WHEREAS,   the Utah Interlocal Cooperation Act, Utah Code Title 11, Chapter 13, permits local governmental units including cities, counties and political subdivisions of the State of Utah to make the most efficient use of their powers by enabling them to cooperate with other public entities on the basis of mutual advantage and to exercise joint cooperative action for the benefit of their respective citizens; and WHEREAS ,   City   and   County   are   local   governmental   units   under   the   Interlocal Cooperation Act; and WHEREAS ,   City   and   County   recognize   that   homelessness   is   a   problem   in   our communities and that each can play a role in   alleviating   suffering and other effects   of homelessness; and WHEREAS , City and County desire to support the Utah County Winter Response Task Force and its 2024-2025 Winter Response Plan and future Plans which plans include an ecosystem of services to serve Utah County’s unsheltered population during the cold season; and which plan has been and will continue to be approved by the Utah Office of Homeless Services; and WHEREAS , City agrees to contribute funds in support of the Utah County Winter Response Task Force and its Winter Response Plans, which contributions contribute to the safety, health, prosperity, moral well-being, peace, order, comfort, or convenience of City and County residents. NOW THEREFORE , in consideration of the covenants and agreements contained herein and other valuable consideration, the sufficiency of which is hereby acknowledged, City and County hereby agree as follows: Section 1.   PURPOSES. This Agreement has been established and entered into between the County and the City for the purpose of providing aid and relief to the homeless and in support of the Utah County Winter Response Task Force and its Winter Response Plans.",
+          "shot": "doc-check-shots/doc_ece3cc5f6d9df39c-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03967782399154948,
+            "ink": 0.10678682247309698,
+            "samples": 30294
+          },
+          "text": "Page 1 of 5 UC Agreement No. 2025 -   _____ INTERLOCAL COOPERATION AGREEMENT Between UTAH COUNTY AND Vineyard   (CITY) For an effort to aid the homeless THIS AGREEMENT,   made and entered into this   day of   2025, by and between UTAH COUNTY, a body corporate and politic of the State of Utah, (hereinafter “County”) and   ,   a   political   subdivision   of   the   State   of   Utah, (hereinafter “City”). WHEREAS,   the Utah Interlocal Cooperation Act, Utah Code Title 11, Chapter 13, permits local governmental units including cities, counties and political subdivisions of the State of Utah to make the most efficient use of their powers by enabling them to cooperate with other public entities on the basis of mutual advantage and to exercise joint cooperative action for the benefit of their respective citizens; and WHEREAS ,   City   and   County   are   local   governmental   units   under   the   Interlocal Cooperation Act; and WHEREAS ,   City   and   County   recognize   that   homelessness   is   a   problem   in   our communities and that each can play a role in   alleviating   suffering and other effects   of homelessness; and WHEREAS , City and County desire to support the Utah County Winter Response Task Force and its 2024-2025 Winter Response Plan and future Plans which plans include an ecosystem of services to serve Utah County’s unsheltered population during the cold season; and which plan has been and will continue to be approved by the Utah Office of Homeless Services; and WHEREAS , City agrees to contribute funds in support of the Utah County Winter Response Task Force and its Winter Response Plans, which contributions contribute to the safety, health, prosperity, moral well-being, peace, order, comfort, or convenience of City and County residents. NOW THEREFORE , in consideration of the covenants and agreements contained herein and other valuable consideration, the sufficiency of which is hereby acknowledged, City and County hereby agree as follows: Section 1.   PURPOSES. This Agreement has been established and entered into between the County and the City for the purpose of providing aid and relief to the homeless and in support of the Utah County Winter Response Task Force and its Winter Response Plans.",
+          "shot": "doc-check-shots/doc_ece3cc5f6d9df39c-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_0210630a206a7043",
+      "title": "IMPORTANT DATES TO REMEMBER",
+      "archived": true,
+      "file": {
+        "ok": false,
+        "status": 416,
+        "type": null,
+        "frame": "DENY",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "card",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": null,
+          "text": "",
+          "shot": "doc-check-shots/doc_0210630a206a7043-390.png",
+          "problems": [
+            "shows \"Open the PDF\" although the portal can serve the file"
+          ]
+        },
+        "desktop": {
+          "error": null,
+          "state": "card",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": null,
+          "text": "",
+          "shot": "doc-check-shots/doc_0210630a206a7043-1440.png",
+          "problems": [
+            "shows \"Open the PDF\" although the portal can serve the file"
+          ]
+        }
+      },
+      "problems": [
+        "file route did not return the PDF (416)",
+        "phone: shows \"Open the PDF\" although the portal can serve the file",
+        "desktop: shows \"Open the PDF\" although the portal can serve the file",
+        "desktop: no PDF frame"
+      ]
+    },
+    {
+      "id": "doc_18a18a322b08e1d1",
+      "title": "113m-June 1, 2016 Minutes (PDF)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.035555555555555556,
+            "ink": 0.06452762923351159,
+            "samples": 84150
+          },
+          "text": "Page 1 of 4; June 1, 2016 Planning Commission Meeting Minutes MINUTES OF THE VINEYARD TOWN PLANNING COMMISSION MEETING Vineyard Town Hall, 240 East Gammon Road, Vineyard, Utah June 1, 2016 PRESENT   –   ABSENT   – Commission Chair Chris Judd Commissioner Tim Blackburn Commissioner Wayne Holdaway Commissioner Angela Kohl Commissioner Daniel Pace Commissioner (Alternate) Anthony Jenkins Commissioner (Alternate) Cristy Welsh STAFF PRESENT –   Public Works/Town Engineer Don Overson, Planner Aric Jensen, Deputy Recorder Kinsli McDermott OTHERS PRESENT –   Resident   Tyce Flake The Vineyard Town Planning Commission held a regular meeting and public hearing on Wednesday, June 1, 2016, starting at 7:00 PM in the Vineyard Town hall. The invocation was offered by Commissioner Pace. REGULAR SESSION : The meeting was called to order at 7:00 PM. OPEN SESSION Commissioner Jenkins asked about the Tiger Grant for the train station. Mr. Overson explained that the town decided to wait because they did not have all the information needed by the application deadline. He said staff was working with UDOT (Utah Department of Transportation), MAG (Mountainland Association of Governments), and UTA (Utah Transit Authority) to be able to submit a complete application next July. MINUTES REVIEW AND APPROVAL Motion : COMMISSIONER TIM BLACKBURN MOVED TO ACCEPT THE MINUTES FROM MARCH 16, 2016. COMMISSIONER PACE SECONDED THE MOTION. ALL WERE IN FAVOR. THE MOTION CARRIED UNANIMOUSLY.",
+          "shot": "doc-check-shots/doc_18a18a322b08e1d1-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.031557404106423714,
+            "ink": 0.08160031689443455,
+            "samples": 30294
+          },
+          "text": "Page 1 of 4; June 1, 2016 Planning Commission Meeting Minutes MINUTES OF THE VINEYARD TOWN PLANNING COMMISSION MEETING Vineyard Town Hall, 240 East Gammon Road, Vineyard, Utah June 1, 2016 PRESENT   –   ABSENT   – Commission Chair Chris Judd Commissioner Tim Blackburn Commissioner Wayne Holdaway Commissioner Angela Kohl Commissioner Daniel Pace Commissioner (Alternate) Anthony Jenkins Commissioner (Alternate) Cristy Welsh STAFF PRESENT –   Public Works/Town Engineer Don Overson, Planner Aric Jensen, Deputy Recorder Kinsli McDermott OTHERS PRESENT –   Resident   Tyce Flake The Vineyard Town Planning Commission held a regular meeting and public hearing on Wednesday, June 1, 2016, starting at 7:00 PM in the Vineyard Town hall. The invocation was offered by Commissioner Pace. REGULAR SESSION : The meeting was called to order at 7:00 PM. OPEN SESSION Commissioner Jenkins asked about the Tiger Grant for the train station. Mr. Overson explained that the town decided to wait because they did not have all the information needed by the application deadline. He said staff was working with UDOT (Utah Department of Transportation), MAG (Mountainland Association of Governments), and UTA (Utah Transit Authority) to be able to submit a complete application next July. MINUTES REVIEW AND APPROVAL Motion : COMMISSIONER TIM BLACKBURN MOVED TO ACCEPT THE MINUTES FROM MARCH 16, 2016. COMMISSIONER PACE SECONDED THE MOTION. ALL WERE IN FAVOR. THE MOTION CARRIED UNANIMOUSLY.",
+          "shot": "doc-check-shots/doc_18a18a322b08e1d1-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_28b537aec5520a9d",
+      "title": "965a-10.18.23 PC Meeting Packet reduced file size",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.040522875816993466,
+            "ink": 0.0663458110516934,
+            "samples": 84150
+          },
+          "text": "Planning Commission Regular Meeting   –   Agenda REGULAR MEETING OF THE VINEYARD PLANNING COMMISSION, Wednesday October 18, 2023, 6:00 p.m. PUBLIC NOTICE is hereby given that the Vineyard City Planning Commission will hold a regularly scheduled meeting at City Hall, 125 South Main Street, Vineyard, Utah. You can also view the meeting on our   live stream channel. REGULAR SESSION CALL TO ORDER 1.   INVOCATION/INSPIRATIONAL THOUGHTS/PLEDGE OF ALLEGIANCE 2.   OPEN SESSION -   Time dedicated for public comment. Comments will be limited to three (3) minutes. No actions may be taken by the Planning Commission due to the need for proper public noticing. 3.   WORK SESSION 3.1   Site Plan   –   Downtown Blocks 8 & 14 Flagbouough LLC has applied for two site plan applications in Downtown Vineyard. Both site plans are for multi-family buildings, which in an allowed use in the Downtown Zone. Bronson Tatton, representing the owner, will present the site plan application to the Planning Commission. The Planning Commission will take appropriate action. 4.   COMMISSION MEMBERS’ REPORTS AND EX PARTE DISCUSSION   DISCLOSURE 5.   ADJOURNMENT The Public is invited to participate in all Planning Commission meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this public meeting should notify Rachel Stevens, Planner, at least 24 hours prior to the meeting by calling (801) 226-1929 or email at rachels@vineyardutah.org . The foregoing notice and agenda were posted on the Utah Public Notice Website and Vineyard Website, posted at the Vineyard City Offices and City Hall, delivered electronically to city staff and each member of the Planning Commission. AGENDA NOTICING COMPLETED ON:   October 16, 2023 NOTICED BY:   /s/ Rachel Stevens Rachel Stevens, Planner",
+          "shot": "doc-check-shots/doc_28b537aec5520a9d-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.040998217468805706,
+            "ink": 0.08377896613190731,
+            "samples": 30294
+          },
+          "text": "Planning Commission Regular Meeting   –   Agenda REGULAR MEETING OF THE VINEYARD PLANNING COMMISSION, Wednesday October 18, 2023, 6:00 p.m. PUBLIC NOTICE is hereby given that the Vineyard City Planning Commission will hold a regularly scheduled meeting at City Hall, 125 South Main Street, Vineyard, Utah. You can also view the meeting on our   live stream channel. REGULAR SESSION CALL TO ORDER 1.   INVOCATION/INSPIRATIONAL THOUGHTS/PLEDGE OF ALLEGIANCE 2.   OPEN SESSION -   Time dedicated for public comment. Comments will be limited to three (3) minutes. No actions may be taken by the Planning Commission due to the need for proper public noticing. 3.   WORK SESSION 3.1   Site Plan   –   Downtown Blocks 8 & 14 Flagbouough LLC has applied for two site plan applications in Downtown Vineyard. Both site plans are for multi-family buildings, which in an allowed use in the Downtown Zone. Bronson Tatton, representing the owner, will present the site plan application to the Planning Commission. The Planning Commission will take appropriate action. 4.   COMMISSION MEMBERS’ REPORTS AND EX PARTE DISCUSSION   DISCLOSURE 5.   ADJOURNMENT The Public is invited to participate in all Planning Commission meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this public meeting should notify Rachel Stevens, Planner, at least 24 hours prior to the meeting by calling (801) 226-1929 or email at rachels@vineyardutah.org . The foregoing notice and agenda were posted on the Utah Public Notice Website and Vineyard Website, posted at the Vineyard City Offices and City Hall, delivered electronically to city staff and each member of the Planning Commission. AGENDA NOTICING COMPLETED ON:   October 16, 2023 NOTICED BY:   /s/ Rachel Stevens Rachel Stevens, Planner",
+          "shot": "doc-check-shots/doc_28b537aec5520a9d-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_9ad7fab8d99108dc",
+      "title": "November 1, 2023 Planning Commission Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.056363636363636366,
+            "ink": 0.09473559120617944,
+            "samples": 84150
+          },
+          "text": "Planning Commission Regular Meeting   –   Minutes MINUTES OF A REGULAR VINEYARD PLANNING COMMISSION MEETING City Council Chambers 125 South Main Street, Vineyard, Utah Wednesday November 1, 2023, 6:00 p.m. Attendance: Planning commissioners:   Bryce Brady, Brad Fagg, Chris Bramwell, Tay Gudmundson, and Anthony Jenkins, Those Excused:   Steve Anderson and Graden Oster Staff present:   Patrick James, Staff Engineer; Naseem Ghandour, Public Works Director; Anthony Jenkins, Cache Hancey, Planners; Morgan Brim, Community Development Director REGULAR SESSION CALL TO ORDER 1.   INVOCATION/INSPIRATIONAL THOUGHTS/PLEDGE OF ALLEGIANCE Brad Fagg offered an invocation and led the pledge of allegiance. 2.   OPEN SESSION -   Time dedicated for public comment. Comments will be limited to three (3) minutes. No actions may be taken by the Planning Commission due to the need for proper public noticing. Daria Evans asked if the work session would be open for public comments. She made a comment concerning the location of a fire station. 3.   BUSINESS ITEMS 3.1   PUBLIC HEARING   –   Homestead at Vineyard City, Utah Pod 1 Live-Work Units Development Agreement Amendment The Planning Commission will continue the public hearing for an amendment to the Development Agreement from Mike Olsen with Home Center Construction, to the Homestead at Vineyard City, Utah, Pod 1, Live-Work Units to the December 6, 2023 Planning Commission Meeting. MOTION:   Anthony Jenkins made a motion to continue the public hearing to November 15, 2023. Chris Bramwell seconded the motion. The motion passed unanimously. 4.   WORK SESSION 4.1   Homestead at Vineyard City, Utah Pod 1 Live-Work Units - Development Agreement Amendment Morgan Brim introduced the project and its general benefit to the city. Live-work units allow for a living space to be constructed over a formal office. He gave an overview of the parking, street layout, and open space. Mike Olsen introduced himself and the history of the project. He provided examples of how the concept has worked in West Valley, Kearns, and Salt Lake City. Mike Olson discussed amendments he has made to the development agreement including parking, the dog park, and land uses. Tay Gudmundson requested the dog park have shade and grass. She is also excited about having a community garden. A discussion about dog parks and dog ownership was discussed. A discussion about dog parks and dog ownership ensued. Anthony Jenkins inquired about ownership. All the units will be leased. A discussion concerning ownership ensued.",
+          "shot": "doc-check-shots/doc_9ad7fab8d99108dc-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05430118175216214,
+            "ink": 0.11847230474681456,
+            "samples": 30294
+          },
+          "text": "Planning Commission Regular Meeting   –   Minutes MINUTES OF A REGULAR VINEYARD PLANNING COMMISSION MEETING City Council Chambers 125 South Main Street, Vineyard, Utah Wednesday November 1, 2023, 6:00 p.m. Attendance: Planning commissioners:   Bryce Brady, Brad Fagg, Chris Bramwell, Tay Gudmundson, and Anthony Jenkins, Those Excused:   Steve Anderson and Graden Oster Staff present:   Patrick James, Staff Engineer; Naseem Ghandour, Public Works Director; Anthony Jenkins, Cache Hancey, Planners; Morgan Brim, Community Development Director REGULAR SESSION CALL TO ORDER 1.   INVOCATION/INSPIRATIONAL THOUGHTS/PLEDGE OF ALLEGIANCE Brad Fagg offered an invocation and led the pledge of allegiance. 2.   OPEN SESSION -   Time dedicated for public comment. Comments will be limited to three (3) minutes. No actions may be taken by the Planning Commission due to the need for proper public noticing. Daria Evans asked if the work session would be open for public comments. She made a comment concerning the location of a fire station. 3.   BUSINESS ITEMS 3.1   PUBLIC HEARING   –   Homestead at Vineyard City, Utah Pod 1 Live-Work Units Development Agreement Amendment The Planning Commission will continue the public hearing for an amendment to the Development Agreement from Mike Olsen with Home Center Construction, to the Homestead at Vineyard City, Utah, Pod 1, Live-Work Units to the December 6, 2023 Planning Commission Meeting. MOTION:   Anthony Jenkins made a motion to continue the public hearing to November 15, 2023. Chris Bramwell seconded the motion. The motion passed unanimously. 4.   WORK SESSION 4.1   Homestead at Vineyard City, Utah Pod 1 Live-Work Units - Development Agreement Amendment Morgan Brim introduced the project and its general benefit to the city. Live-work units allow for a living space to be constructed over a formal office. He gave an overview of the parking, street layout, and open space. Mike Olsen introduced himself and the history of the project. He provided examples of how the concept has worked in West Valley, Kearns, and Salt Lake City. Mike Olson discussed amendments he has made to the development agreement including parking, the dog park, and land uses. Tay Gudmundson requested the dog park have shade and grass. She is also excited about having a community garden. A discussion about dog parks and dog ownership was discussed. A discussion about dog parks and dog ownership ensued. Anthony Jenkins inquired about ownership. All the units will be leased. A discussion concerning ownership ensued.",
+          "shot": "doc-check-shots/doc_9ad7fab8d99108dc-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_9651745083d5313f",
+      "title": "Landscape plan (Development Review Committee, 2025-05-15, item 2)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.11876750700280111,
+            "ink": 0.22904546433958198,
+            "samples": 46410
+          },
+          "text": "TURF   TURF TURF TURF . . X   X   X   X X   X   X   X   X   X   X   X   X   X X   X   X   X   X   X   X   X   X   X   X X X   X   X   X X   X   X   X   X X   X   X   X X   X   X   X   X X X   X X   X   X X   X   X   X   X   X X   X   X   X   X X   X   X   X   X   X X   X   X   X   X X   X X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X X   X   X   X X   X   X   X   X   X X   X   X   X   X   X   X   X   X X   X MOW CURB, TYP. MOW CURB, TYP. MOW CURB, TYP. RM RM RM RM NO MOW CURB BETWEEN DIFFERENT ROCK TYPES, TYP. SEE SHEET LS101 SEE SHEET LS102 BROADLEAF DECIDUOUS LEGEND SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 3 30 10 13 7 12 2\" CAL. 2\" CAL. 2\" CAL. 2\" CAL. 2\" CAL. 2\" CAL. ACER MIYABEI 'MORTON' STATE STREET STATE STREET MAPLE CARPINUS CAROLINIANA 'RISING FIRE' RISING FIRE AMERICAN HORNBEAM CERCIS CANADENSIS EASTERN REDBUD* GINGKO BILOBA 'GOLDEN COLONNADE' GOLDEN COLONNADE MAIDENHAIR* GLEDITSIA TRIACANTHOS 'IMPERIAL' IMPERIAL HONEYLOCUST ZELKOVA SERRATA 'GREEN VASE' GREEN VASE ZELKOVA* CONIFER / EVERGREEN LEGEND PICEA OMORIKA SERBIAN SPRUCE* PINUS NIGRA 'OREGON GREEN' OREGON GREEN PINE* SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 11 24 6-7' TALL 6-7' TALL CALAMAGROSTIS ACUTIFLORA 'KARL FOERSTER' FEATHER REED GRASS* HELICTOTRICHON SEMPERVIRENS 'SAPPHIRE' BLUE OAT AVENA GRASS* ARCTOSTAPHYLOS UVA URSI 'MASSACHUSETTS' MASSACHUSETTS KINNIKINNICK BUDDLEIA X 'FLUTTERBY PETITE' DWARF BUTTERFLY BUSH* CERCOCARPUS INTRICATUS LITTLELEAF MOUNTAIN MAHOGANY* FORSYTHIA X 'COURTASOL' GOLD TIDE FORSYTHIA HIBISCUS SYRIACUS 'ANTONG TWO' LIL' KIM ROSE OF SHARON PHYSOCARPUS OPULIFOLIUS 'LITTLE DEVIL' LITTLE DEVIL NINEBARK* PINUS MUGO 'SLOWMOUND' SLOWMOUND MUGO PINE* PRUNUS BESSEYI 'PAWNEE BUTTES' PAWNEE BUTTES SAND CHERRY* RHUS AROMATICA 'GRO-LOW' GRO LOW SUMAC* ROSA X 'WEKSCHNEEKOPPE' SNOW PAVEMENT RUGOSA SHRUB ROSES* RIBES ALPINUM 'GREEN MOUND' GREEN MOUND CURRANT SPIRAEA JAPONICA 'MAGIC CARPET' MAGIC CARPET SPIREA SYMPHORICARPOS X CHENAULTII 'HANCOCK' HANCOCK CORALBERRY* (LOW-SPREADING) ROCK MULCH TO BE 3/4\" - 1\" SIZE 'SOUTHTOWN' CRUSHED ROCK FROM UTAH LANDSCAPE ROCK IN NEPHI, UTAH. IMPLEMENT IN AREA SHOWN AT A 3\" DEPTH OVER WEED BARRIER FABRIC. ROCK MULCH TO BE 2\" - 4\" SIZE 'OAK CREEK PLUM' COBBLE ROCK FROM UTAH LANDSCAPE ROCK IN NEPHI, UTAH. IMPLEMENT IN AREA SHOWN AT A 6\" DEPTH OVER WEED BARRIER FABRIC. DESERT SAGE BLUEGRASS FROM CHANSHARE SOD FARMS. INSTALL PER SOD LAYING NOTES DECORATIVE LANDSCAPE BOULDERS SIZE:   2', 3' AND 4' BOULDERS (MATCH/COMPLIMENT DECORATIVE ROCK MULCH IN PLANTING AREAS) PER PLAN PER PLAN SOD ROLLS PER PLAN PER PLAN PER PLAN SOD ROLLS PER PLAN SHRUB LEGEND SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 43 166 27 21 13 56 42 80 31 56 41 20 11 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. GRASS LEGEND SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 32 44 1 GAL. 1 GAL. GROUNDCOVERS LEGEND SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE PERENNIAL LEGEND HEMEROCALLIS 'STELLA D'ORO'' STELLA D'ORO DAYLILY* HEMEROCALLIS X 'ROSY RETURNS' ROSY RETURNS DAYLILY* SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 30 113 1 GAL. 1 GAL. RM 10.1 NORTHERN COLD DESERT U.S. HARDINESS ZONE 5 VINEYARD CITY NA NA SEE GRADING PLAN SOUTH PREVAILING NA NA NA 28% OF TOTAL LANDSCAPE (26,820 SQ. FT.) NA AUTOMATED SYSTEM WITH SMART CONTROLLER ECO-REGION CLIMATE ZONING ORDINANCE WATER AVAILABILITY SOIL TYPE SLOPES WIND SETBACKS/EASEMENTS MICROCLIMATES SOIL PH LAWN AREA UNDEVELOPED PROPERTY IRRIGATION SYSTEM TOTAL SITE AREA TOTAL LANDSCAPE AREA PLANTER AREA LAWN AREA TREES ON SITE 415,178 SQ.FT.* 95,126 SQ.FT.* 68,306 SQ.FT. 26,820 SQ.FT. 176** TOTAL REQ'D = NA DECIDUOUS REQ'D = NA EVERGREEN REQ'D = NA SHRUBS REQ'D = NA DROUGHT TOLERANT REQ'D = NA DROUGHT TOLERANT PROVIDED = 1,306 (80%) ADDITIONAL INFO   NA 9.5 ACRES 23% 72% 28% PROVIDED = 176 PROVIDED = 129 PROVIDED = 47 PROVIDED = 1,455 * PARK STRIP LANDSCAPE OF 7,536 SQ.FT. NOT INCLUDED IN THIS TOTAL ** TREE/PLANTING COUNT INCLUDES SPRINGWATER BUILDING SECTION OF SITE DESIGN CRITERIA LANDSCAPE DATA PLANT COVERAGE TABLE 1.   STOCKPILED, SCREENED TOPSOIL TO BE IMPLEMENTED IN ALL PLANTING AREAS AT THE FOLLOWING DEPTHS: 12\" IN ALL SHRUB BEDS, 5\" IN ALL LAWN AREAS. 2.   LAWN TO BE A DESERT SAGE BLUEGRASS BLEND (FROM CHANSHARE SOD) AND BE IMPLEMENTED AS SOD. REFER TO SOD LAYING NOTES FOR MORE INFORMATION. 3.   6\" CONCRETE MOWCURB TO BE IMPLEMENTED BETWEEN ALL SHRUB BED AND LAWN AREAS AS SHOWN ON PLAN. 4.   ROCK MULCH TO BE IMPLEMENTED IN ALL PLANTER BEDS AT DEPTHS NOTED IN LEGEND. ROCK MULCH TO BE CLEAN AND FREE OF DIRT AND DEBRIS, PLACED AT A UNIFORM DEPTH AND RAKED SMOOTH. INSTALL WEED BARRIER FABRIC UNDER ALL ROCK MULCH. 5.   ALL TREES TO BE STAKED AT TIME OF PLANTING. SEE DETAILS FOR SPECIFICS. REMOVE STAKING WITHIN FIRST YEAR OR WHEN TREE IS ESTABLISHED. 6.   PLANTS LOCATED WITHIN REQUIRED SIGHT VISIBILITY TRIANGLES SHALL BE PRUNED REGULARLY TO PERMIT UNOBSTRUCTED VISION. PLANT MATERIAL SHALL BE MAINTAINED TO BE LOWER THAN 3' (SHRUBS) OR TALLER THAN 7' (BOTTOM OF TREE CANOPY.) 7.   MATERIAL QUANTITIES AND COUNTS ON LEGENDS AND NOTES ARE FOR CONVENIENCE ONLY. LANDSCAPE CONTRACTOR RESPONSIBLE TO VERIFY ALL COUNTS AND QUANTITIES ON PLANS. 1.   LAY SOD WITHIN 24 HOURS OF BEING LIFTED. 2.   LAY SOD IN ROWS WITH JOINTS STAGGERED. BUTT SECTIONS CLOSELY WITHOUT OVERLAPPING OR LEAVING GAPS BETWEEN SECTIONS. CUT OUT IRREGULAR OR THIN SECTIONS WITH A SHARP KNIFE. 3.   LAY SOD FLUSH WITH ADJOINING EXISTING SODDED OR PAVED SURFACES. 4.   AFTER SODDING HAS BEEN COMPLETED, ROLL HORIZONTAL SURFACE AREAS IN TWO DIRECTIONS PERPENDICULAR TO EACH OTHER WITH A 150 POUND SOD ROLLER. REPAIR AND RE-ROLL AREAS WITH DEPRESSIONS, LUMPS OR OTHER IRREGULARITIES. HEAVY ROLLING TO CORRECT IRREGULARITIES IN GRADE IS NOT PERMITTED. 5.   WATER ALL SODDED AREAS IMMEDIATELY AFTER SOD LAYING TO OBTAIN MOISTURE PENETRATION THROUGH SOD INTO TOP 4\" OF TOPSOIL. 6.   PROVIDE ADEQUATE PROTECTION OF SODDED AREAS AGAINST TRESPASSING, EROSION AND DAMAGE OF ANY KIND. REMOVE THIS PROTECTION AFTER SODDED AREAS HAVE BEEN ACCEPTED BY THE OWNER. 7.   REPLACE DAMAGED AREAS AT NO ADDITIONAL COST TO OWNER. SOD LAYING NOTES LANDSCAPE NOTES STREET FRONTAGE PRIMARY ENTRIES BUILDING PERIMETER PERIMETER SIDES PERIMETER REAR SHRUB MATURE COVERAGE 25-50% 30-50% 25-45% 5-15% 5-15% ACTUAL % COVERAGE 28% 47% 27% 12% 13% TREE COVERAGE INTENT FRAME BUILDING FRAME ENTRY ACCENT BUILDING SCREEN LOT SCREEN LOT TREE COUNT 0 4 8 29 14 PLANT COVERAGE TABLE SCALE: 0 1\"=20'-0\" ON 30X42 SHEET 20' 20'   40'   60' Printed:   7 Apr 2025   5:23 PM Drawing Issue and Revision Schedule #   Date   Description   Orem YSA 3rd 10 Ward Building Orem UT YSA 3rd Stake Date: 15 Aug 2024 BHD #: 2344 County Parcel: 39:228:0001 Plan Series: 2024 10 Ward SC Owner #: 590-1876 Approx. 1700 West 575 South Vineyard, Utah 84059 T S E T A   O H A F T U C E T I H C R A E P A C S   D N A L D E S N E C I L T Cory B. Whiting # 4884514 8-15-2024 1   15 Aug 2024   Bid Documents 2   27 Aug 2024   Addendum #1 3   14 OCT 2024   Addendum #2 4   12 MAR 2025   ASI LS101 LANDSCAPE PLAN 17 North 470 West American Fork, Utah 84003 801.756.5043   www.in-sitedesigngroup.com",
+          "shot": "doc-check-shots/doc_9651745083d5313f-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.13075232220095015,
+            "ink": 0.24091800798884397,
+            "samples": 42309
+          },
+          "text": "TURF   TURF TURF TURF . . X   X   X   X X   X   X   X   X   X   X   X   X   X X   X   X   X   X   X   X   X   X   X   X X X   X   X   X X   X   X   X   X X   X   X   X X   X   X   X   X X X   X X   X   X X   X   X   X   X   X X   X   X   X   X X   X   X   X   X   X X   X   X   X   X X   X X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X   X X   X   X   X X   X   X   X   X   X X   X   X   X   X   X   X   X   X X   X MOW CURB, TYP. MOW CURB, TYP. MOW CURB, TYP. RM RM RM RM NO MOW CURB BETWEEN DIFFERENT ROCK TYPES, TYP. SEE SHEET LS101 SEE SHEET LS102 BROADLEAF DECIDUOUS LEGEND SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 3 30 10 13 7 12 2\" CAL. 2\" CAL. 2\" CAL. 2\" CAL. 2\" CAL. 2\" CAL. ACER MIYABEI 'MORTON' STATE STREET STATE STREET MAPLE CARPINUS CAROLINIANA 'RISING FIRE' RISING FIRE AMERICAN HORNBEAM CERCIS CANADENSIS EASTERN REDBUD* GINGKO BILOBA 'GOLDEN COLONNADE' GOLDEN COLONNADE MAIDENHAIR* GLEDITSIA TRIACANTHOS 'IMPERIAL' IMPERIAL HONEYLOCUST ZELKOVA SERRATA 'GREEN VASE' GREEN VASE ZELKOVA* CONIFER / EVERGREEN LEGEND PICEA OMORIKA SERBIAN SPRUCE* PINUS NIGRA 'OREGON GREEN' OREGON GREEN PINE* SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 11 24 6-7' TALL 6-7' TALL CALAMAGROSTIS ACUTIFLORA 'KARL FOERSTER' FEATHER REED GRASS* HELICTOTRICHON SEMPERVIRENS 'SAPPHIRE' BLUE OAT AVENA GRASS* ARCTOSTAPHYLOS UVA URSI 'MASSACHUSETTS' MASSACHUSETTS KINNIKINNICK BUDDLEIA X 'FLUTTERBY PETITE' DWARF BUTTERFLY BUSH* CERCOCARPUS INTRICATUS LITTLELEAF MOUNTAIN MAHOGANY* FORSYTHIA X 'COURTASOL' GOLD TIDE FORSYTHIA HIBISCUS SYRIACUS 'ANTONG TWO' LIL' KIM ROSE OF SHARON PHYSOCARPUS OPULIFOLIUS 'LITTLE DEVIL' LITTLE DEVIL NINEBARK* PINUS MUGO 'SLOWMOUND' SLOWMOUND MUGO PINE* PRUNUS BESSEYI 'PAWNEE BUTTES' PAWNEE BUTTES SAND CHERRY* RHUS AROMATICA 'GRO-LOW' GRO LOW SUMAC* ROSA X 'WEKSCHNEEKOPPE' SNOW PAVEMENT RUGOSA SHRUB ROSES* RIBES ALPINUM 'GREEN MOUND' GREEN MOUND CURRANT SPIRAEA JAPONICA 'MAGIC CARPET' MAGIC CARPET SPIREA SYMPHORICARPOS X CHENAULTII 'HANCOCK' HANCOCK CORALBERRY* (LOW-SPREADING) ROCK MULCH TO BE 3/4\" - 1\" SIZE 'SOUTHTOWN' CRUSHED ROCK FROM UTAH LANDSCAPE ROCK IN NEPHI, UTAH. IMPLEMENT IN AREA SHOWN AT A 3\" DEPTH OVER WEED BARRIER FABRIC. ROCK MULCH TO BE 2\" - 4\" SIZE 'OAK CREEK PLUM' COBBLE ROCK FROM UTAH LANDSCAPE ROCK IN NEPHI, UTAH. IMPLEMENT IN AREA SHOWN AT A 6\" DEPTH OVER WEED BARRIER FABRIC. DESERT SAGE BLUEGRASS FROM CHANSHARE SOD FARMS. INSTALL PER SOD LAYING NOTES DECORATIVE LANDSCAPE BOULDERS SIZE:   2', 3' AND 4' BOULDERS (MATCH/COMPLIMENT DECORATIVE ROCK MULCH IN PLANTING AREAS) PER PLAN PER PLAN SOD ROLLS PER PLAN PER PLAN PER PLAN SOD ROLLS PER PLAN SHRUB LEGEND SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 43 166 27 21 13 56 42 80 31 56 41 20 11 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. 5 GAL. GRASS LEGEND SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 32 44 1 GAL. 1 GAL. GROUNDCOVERS LEGEND SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE PERENNIAL LEGEND HEMEROCALLIS 'STELLA D'ORO'' STELLA D'ORO DAYLILY* HEMEROCALLIS X 'ROSY RETURNS' ROSY RETURNS DAYLILY* SYMBOL   BOTANICAL NAME/COMMON NAME   QTY   SIZE 30 113 1 GAL. 1 GAL. RM 10.1 NORTHERN COLD DESERT U.S. HARDINESS ZONE 5 VINEYARD CITY NA NA SEE GRADING PLAN SOUTH PREVAILING NA NA NA 28% OF TOTAL LANDSCAPE (26,820 SQ. FT.) NA AUTOMATED SYSTEM WITH SMART CONTROLLER ECO-REGION CLIMATE ZONING ORDINANCE WATER AVAILABILITY SOIL TYPE SLOPES WIND SETBACKS/EASEMENTS MICROCLIMATES SOIL PH LAWN AREA UNDEVELOPED PROPERTY IRRIGATION SYSTEM TOTAL SITE AREA TOTAL LANDSCAPE AREA PLANTER AREA LAWN AREA TREES ON SITE 415,178 SQ.FT.* 95,126 SQ.FT.* 68,306 SQ.FT. 26,820 SQ.FT. 176** TOTAL REQ'D = NA DECIDUOUS REQ'D = NA EVERGREEN REQ'D = NA SHRUBS REQ'D = NA DROUGHT TOLERANT REQ'D = NA DROUGHT TOLERANT PROVIDED = 1,306 (80%) ADDITIONAL INFO   NA 9.5 ACRES 23% 72% 28% PROVIDED = 176 PROVIDED = 129 PROVIDED = 47 PROVIDED = 1,455 * PARK STRIP LANDSCAPE OF 7,536 SQ.FT. NOT INCLUDED IN THIS TOTAL ** TREE/PLANTING COUNT INCLUDES SPRINGWATER BUILDING SECTION OF SITE DESIGN CRITERIA LANDSCAPE DATA PLANT COVERAGE TABLE 1.   STOCKPILED, SCREENED TOPSOIL TO BE IMPLEMENTED IN ALL PLANTING AREAS AT THE FOLLOWING DEPTHS: 12\" IN ALL SHRUB BEDS, 5\" IN ALL LAWN AREAS. 2.   LAWN TO BE A DESERT SAGE BLUEGRASS BLEND (FROM CHANSHARE SOD) AND BE IMPLEMENTED AS SOD. REFER TO SOD LAYING NOTES FOR MORE INFORMATION. 3.   6\" CONCRETE MOWCURB TO BE IMPLEMENTED BETWEEN ALL SHRUB BED AND LAWN AREAS AS SHOWN ON PLAN. 4.   ROCK MULCH TO BE IMPLEMENTED IN ALL PLANTER BEDS AT DEPTHS NOTED IN LEGEND. ROCK MULCH TO BE CLEAN AND FREE OF DIRT AND DEBRIS, PLACED AT A UNIFORM DEPTH AND RAKED SMOOTH. INSTALL WEED BARRIER FABRIC UNDER ALL ROCK MULCH. 5.   ALL TREES TO BE STAKED AT TIME OF PLANTING. SEE DETAILS FOR SPECIFICS. REMOVE STAKING WITHIN FIRST YEAR OR WHEN TREE IS ESTABLISHED. 6.   PLANTS LOCATED WITHIN REQUIRED SIGHT VISIBILITY TRIANGLES SHALL BE PRUNED REGULARLY TO PERMIT UNOBSTRUCTED VISION. PLANT MATERIAL SHALL BE MAINTAINED TO BE LOWER THAN 3' (SHRUBS) OR TALLER THAN 7' (BOTTOM OF TREE CANOPY.) 7.   MATERIAL QUANTITIES AND COUNTS ON LEGENDS AND NOTES ARE FOR CONVENIENCE ONLY. LANDSCAPE CONTRACTOR RESPONSIBLE TO VERIFY ALL COUNTS AND QUANTITIES ON PLANS. 1.   LAY SOD WITHIN 24 HOURS OF BEING LIFTED. 2.   LAY SOD IN ROWS WITH JOINTS STAGGERED. BUTT SECTIONS CLOSELY WITHOUT OVERLAPPING OR LEAVING GAPS BETWEEN SECTIONS. CUT OUT IRREGULAR OR THIN SECTIONS WITH A SHARP KNIFE. 3.   LAY SOD FLUSH WITH ADJOINING EXISTING SODDED OR PAVED SURFACES. 4.   AFTER SODDING HAS BEEN COMPLETED, ROLL HORIZONTAL SURFACE AREAS IN TWO DIRECTIONS PERPENDICULAR TO EACH OTHER WITH A 150 POUND SOD ROLLER. REPAIR AND RE-ROLL AREAS WITH DEPRESSIONS, LUMPS OR OTHER IRREGULARITIES. HEAVY ROLLING TO CORRECT IRREGULARITIES IN GRADE IS NOT PERMITTED. 5.   WATER ALL SODDED AREAS IMMEDIATELY AFTER SOD LAYING TO OBTAIN MOISTURE PENETRATION THROUGH SOD INTO TOP 4\" OF TOPSOIL. 6.   PROVIDE ADEQUATE PROTECTION OF SODDED AREAS AGAINST TRESPASSING, EROSION AND DAMAGE OF ANY KIND. REMOVE THIS PROTECTION AFTER SODDED AREAS HAVE BEEN ACCEPTED BY THE OWNER. 7.   REPLACE DAMAGED AREAS AT NO ADDITIONAL COST TO OWNER. SOD LAYING NOTES LANDSCAPE NOTES STREET FRONTAGE PRIMARY ENTRIES BUILDING PERIMETER PERIMETER SIDES PERIMETER REAR SHRUB MATURE COVERAGE 25-50% 30-50% 25-45% 5-15% 5-15% ACTUAL % COVERAGE 28% 47% 27% 12% 13% TREE COVERAGE INTENT FRAME BUILDING FRAME ENTRY ACCENT BUILDING SCREEN LOT SCREEN LOT TREE COUNT 0 4 8 29 14 PLANT COVERAGE TABLE SCALE: 0 1\"=20'-0\" ON 30X42 SHEET 20' 20'   40'   60' Printed:   7 Apr 2025   5:23 PM Drawing Issue and Revision Schedule #   Date   Description   Orem YSA 3rd 10 Ward Building Orem UT YSA 3rd Stake Date: 15 Aug 2024 BHD #: 2344 County Parcel: 39:228:0001 Plan Series: 2024 10 Ward SC Owner #: 590-1876 Approx. 1700 West 575 South Vineyard, Utah 84059 T S E T A   O H A F T U C E T I H C R A E P A C S   D N A L D E S N E C I L T Cory B. Whiting # 4884514 8-15-2024 1   15 Aug 2024   Bid Documents 2   27 Aug 2024   Addendum #1 3   14 OCT 2024   Addendum #2 4   12 MAR 2025   ASI LS101 LANDSCAPE PLAN 17 North 470 West American Fork, Utah 84003 801.756.5043   www.in-sitedesigngroup.com",
+          "shot": "doc-check-shots/doc_9651745083d5313f-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_fd85ec029fda3345",
+      "title": "1200N Overpass Project Area Map (City Council Meeting, 2024-09-25, item 3)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04144025918103714,
+            "ink": 0.24552482109536797,
+            "samples": 48769
+          },
+          "text": "From the VINEYARD CITY TRANSPORTATION MASTER PLAN (DRAFT) Presented to City Council on March 5, 2024 Project Area 1200 North: Vineyard Connector to Geneva Road MAP SHOWING Transportation Capital Projects presented in the Transportation Master Plan (DRAFT)",
+          "shot": "doc-check-shots/doc_fd85ec029fda3345-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.0361169243232296,
+            "ink": 0.24246720223227344,
+            "samples": 44439
+          },
+          "text": "From the VINEYARD CITY TRANSPORTATION MASTER PLAN (DRAFT) Presented to City Council on March 5, 2024 Project Area 1200 North: Vineyard Connector to Geneva Road MAP SHOWING Transportation Capital Projects presented in the Transportation Master Plan (DRAFT)",
+          "shot": "doc-check-shots/doc_fd85ec029fda3345-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_20cf790522c48f2c",
+      "title": "Utah City Racquet Scope of Work (Development Review Committee, 2025-05-15, item 3)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03334521687462864,
+            "ink": 0.04773618538324421,
+            "samples": 84150
+          },
+          "text": "Utah City Racquet Club Block 4 Site April 1, 2025 Vineyard City Staff, Planning Commission - This application narrative outlines a new proposed racquet club in Utah City. The Utah City Racquet Club is located on the north two sub-blocks of Block 4, just north of the grocery store. The main goal of the racquet club is to activate the area with recreation, entertainment, and food and beverage. Development of these sub-blocks will create attractive edges to the grocery store and Greenline. The club amenities include the following: 1.   Pickleball Courts (6) 2.   Padel Courts (6) 3.   Tennis Courts (2) 4.   Clubhouse 5.   Restrooms (4) 6.   Food truck / Concessions area 7.   Social Gathering Space 8.   Entry / Check-in Plaza 9.   Benches 10.   Raised Planters 11.   Shade 12.   Landscaping 13.   Lighting 14.   Off-Street Parking This will be a privately owned and maintained facility. We are in coordination with an operator who is an expert in racquet sports in particular the up and coming sport of padel. We are excited with their operations team and the unique programming they bring. Best, Bronson Tatton Utah City Director of Planning and Design",
+          "shot": "doc-check-shots/doc_20cf790522c48f2c-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03046807948768733,
+            "ink": 0.06271869016967056,
+            "samples": 30294
+          },
+          "text": "Utah City Racquet Club Block 4 Site April 1, 2025 Vineyard City Staff, Planning Commission - This application narrative outlines a new proposed racquet club in Utah City. The Utah City Racquet Club is located on the north two sub-blocks of Block 4, just north of the grocery store. The main goal of the racquet club is to activate the area with recreation, entertainment, and food and beverage. Development of these sub-blocks will create attractive edges to the grocery store and Greenline. The club amenities include the following: 1.   Pickleball Courts (6) 2.   Padel Courts (6) 3.   Tennis Courts (2) 4.   Clubhouse 5.   Restrooms (4) 6.   Food truck / Concessions area 7.   Social Gathering Space 8.   Entry / Check-in Plaza 9.   Benches 10.   Raised Planters 11.   Shade 12.   Landscaping 13.   Lighting 14.   Off-Street Parking This will be a privately owned and maintained facility. We are in coordination with an operator who is an expert in racquet sports in particular the up and coming sport of padel. We are excited with their operations team and the unique programming they bring. Best, Bronson Tatton Utah City Director of Planning and Design",
+          "shot": "doc-check-shots/doc_20cf790522c48f2c-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_41b94d2f73a99fa8",
+      "title": "366832ed552954_Vineyard_Block_13C_-_CIVIL (Planning Commission, 2024-10-02, item 7)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05785391079508727,
+            "ink": 0.21706528765352295,
+            "samples": 46410
+          },
+          "text": "CHARLES STREET 3RD AVENUE LOT 13B LOT 8A LOT 10B 3RD AVENUE 2ND AVENUE 18'-1 1/2\"   18'-0\" 18'-1\" 18'-1\"   18'-0\" LOT 14D 6 A   B   C   D 5 4 3 2 1 VAN VAN LOT 18C LOT 10A LOT 13A CIVIC STREET VINEYARD CONNECTOR (UDOT ROW) N 88°43'52\" E 372.28' UP UP UP DN S 5°25'57\" E 242.18' S 88°43'52\" W 381.37' N 1°16'08\" W 177.84' Δ=12°38'18\" R=232.63' L=51.31' CB=N 7°34'41\" W CL=51.21' N 13°53'50\" W 13.13' LOT 13C SCALE: 1\" = NORTH 40' 0   20'   40'   80'   120' Project No. Drawings and written material appearing herein constitute original and unpublished work of the architect and may not be duplicated, used, or disclosed without written consent of the architect. Date Revisions © 2024 NELSEN PARTNERS, INC. 24005-13C Vineyard Station - Block 13 Bldg 13C Woodbury Corporation & Flagship Homes Vineyard, UT 26 JUNE 2024 8610 SOUTH SANDY PARKWAY, SUITE 200 SANDY, UTAH 84070 (801) 255-7700 mcneilengineering.com L I C E N S E D P R O F E S S I O N A L E N G I N E E R S T A T E O   F U T A H No. 280090 THEODORE J. DIDAS 07/01/2024 C0.00 CIVIL COVER SHEET VINEYARD STATION - BLOCK 13 BLDG 13C 100% DESIGN DEVELOPMENT PLANS VINEYARD, UTAH VICINITY MAP SITE N.T.S. VINEYARD LINDON OREM UTAH LAKE VINEYARD CONNECTOR RAILROAD TRACKS MAIN ST. GENEVA ROAD 1600 NORTH INTERSTATE 15 THE CONTRACTOR SHALL BE RESPONSIBLE FOR THE LOCATION, PROTECTION, AND RESTORATION OF ALL BURIED OR ABOVE GROUND UTILITIES, SHOWN OR NOT SHOWN ON THE PLANS. NOTICE! DRAWING INDEX SHEET   DESCRIPTION C0.00   CIVIL COVER SHEET C0.01   GENERAL NOTES, LEGEND AND ABBREVIATIONS C1.01   OVERALL CIVIL SITE PLAN C1.02   CIVIL SITE PLAN C2.01   GRADING AND DRAINAGE PLAN C4.01   SITE UTILITY PLAN C5.01   CIVIL DETAILS C5.02   CIVIL DETAILS ALL WORK AND MATERIALS MUST CONFORM TO APWA STANDARDS AND SPECIFICATIONS ALL WORK AND MATERIALS FOR SEWER MUST CONFORM TO VINEYARD CITY STANDARDS AND SPECIFICATIONS ALL WORK AND MATERIALS FOR WATER MUST CONFORM TO VINEYARD CITY STANDARDS AND SPECIFICATIONS",
+          "shot": "doc-check-shots/doc_41b94d2f73a99fa8-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.056489163062232624,
+            "ink": 0.214824269068047,
+            "samples": 42309
+          },
+          "text": "CHARLES STREET 3RD AVENUE LOT 13B LOT 8A LOT 10B 3RD AVENUE 2ND AVENUE 18'-1 1/2\"   18'-0\" 18'-1\" 18'-1\"   18'-0\" LOT 14D 6 A   B   C   D 5 4 3 2 1 VAN VAN LOT 18C LOT 10A LOT 13A CIVIC STREET VINEYARD CONNECTOR (UDOT ROW) N 88°43'52\" E 372.28' UP UP UP DN S 5°25'57\" E 242.18' S 88°43'52\" W 381.37' N 1°16'08\" W 177.84' Δ=12°38'18\" R=232.63' L=51.31' CB=N 7°34'41\" W CL=51.21' N 13°53'50\" W 13.13' LOT 13C SCALE: 1\" = NORTH 40' 0   20'   40'   80'   120' Project No. Drawings and written material appearing herein constitute original and unpublished work of the architect and may not be duplicated, used, or disclosed without written consent of the architect. Date Revisions © 2024 NELSEN PARTNERS, INC. 24005-13C Vineyard Station - Block 13 Bldg 13C Woodbury Corporation & Flagship Homes Vineyard, UT 26 JUNE 2024 8610 SOUTH SANDY PARKWAY, SUITE 200 SANDY, UTAH 84070 (801) 255-7700 mcneilengineering.com L I C E N S E D P R O F E S S I O N A L E N G I N E E R S T A T E O   F U T A H No. 280090 THEODORE J. DIDAS 07/01/2024 C0.00 CIVIL COVER SHEET VINEYARD STATION - BLOCK 13 BLDG 13C 100% DESIGN DEVELOPMENT PLANS VINEYARD, UTAH VICINITY MAP SITE N.T.S. VINEYARD LINDON OREM UTAH LAKE VINEYARD CONNECTOR RAILROAD TRACKS MAIN ST. GENEVA ROAD 1600 NORTH INTERSTATE 15 THE CONTRACTOR SHALL BE RESPONSIBLE FOR THE LOCATION, PROTECTION, AND RESTORATION OF ALL BURIED OR ABOVE GROUND UTILITIES, SHOWN OR NOT SHOWN ON THE PLANS. NOTICE! DRAWING INDEX SHEET   DESCRIPTION C0.00   CIVIL COVER SHEET C0.01   GENERAL NOTES, LEGEND AND ABBREVIATIONS C1.01   OVERALL CIVIL SITE PLAN C1.02   CIVIL SITE PLAN C2.01   GRADING AND DRAINAGE PLAN C4.01   SITE UTILITY PLAN C5.01   CIVIL DETAILS C5.02   CIVIL DETAILS ALL WORK AND MATERIALS MUST CONFORM TO APWA STANDARDS AND SPECIFICATIONS ALL WORK AND MATERIALS FOR SEWER MUST CONFORM TO VINEYARD CITY STANDARDS AND SPECIFICATIONS ALL WORK AND MATERIALS FOR WATER MUST CONFORM TO VINEYARD CITY STANDARDS AND SPECIFICATIONS",
+          "shot": "doc-check-shots/doc_41b94d2f73a99fa8-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    }
+  ],
+  "failed": 2
+}
