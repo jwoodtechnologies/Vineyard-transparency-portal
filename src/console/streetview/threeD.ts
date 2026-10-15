@@ -22,6 +22,13 @@ const OFM = 'https://tiles.openfreemap.org/planet';
 
 /** Elevation tiles (Terrarium encoding, about 30 m apart at zoom 12) on s3.amazonaws.com, already in the CSP. */
 const DEM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+/**
+ * The deepest elevation tiles asked for. The eye level street view draws at map zoom 21 to 22; with tiles
+ * only to zoom 12 each was stretched about 650 times, more than some GPUs' coordinate precision holds, and
+ * the snow and shading could read wrong heights there (a white view). Zoom 15 tiles exist and bring the
+ * stretch back to about 80 times; they are asked for only near the camera.
+ */
+const DEM_MAX_Z = 15;
 const DEM_ATTR = 'Terrain: <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">AWS Terrain Tiles</a> (USGS 3DEP and others)';
 const DEM = 'vtp-sv-dem';
 const SHADE_SRC = 'vtp-sv-dem-shade';
@@ -58,10 +65,10 @@ const firstAboveGround = (map: maplibregl.Map) => map.getStyle().layers.find((l)
 /** Adds the terrain, hillshade and raised buildings (again after the map is remade). */
 export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   map.setSky(SKY);
-  if (!map.getSource(DEM)) map.addSource(DEM, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 12, attribution: DEM_ATTR });
+  if (!map.getSource(DEM)) map.addSource(DEM, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: DEM_MAX_Z, attribution: DEM_ATTR });
   // The shading reads its own copy of the tiles, as MapLibre advises when terrain uses the same data. Shadows
   // only, with a faint highlight: a white highlight washed every slope pale, so the snow no longer stood out.
-  if (!map.getSource(SHADE_SRC)) map.addSource(SHADE_SRC, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 12 });
+  if (!map.getSource(SHADE_SRC)) map.addSource(SHADE_SRC, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: DEM_MAX_Z });
   if (!map.getLayer(SHADE))
     map.addLayer({ id: SHADE, type: 'hillshade', source: SHADE_SRC, paint: { 'hillshade-exaggeration': 0.5, 'hillshade-shadow-color': 'rgba(0, 0, 0, 0.4)', 'hillshade-highlight-color': 'rgba(255, 255, 255, 0.12)', 'hillshade-accent-color': 'rgba(0, 0, 0, 0.2)' } }, firstAboveGround(map));
   if (!map.getTerrain()) map.setTerrain({ source: DEM, exaggeration: 1 });
@@ -96,9 +103,10 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   });
   if (!map.getSource(H_SRC)) map.addSource(H_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   // Homes are walls with a smaller, darker roof block on top (heights.ts withHeights: r 1 is the roof).
-  const roof = dark ? '#4a4c54' : '#8d8780';
+  // Homes in Vineyard: shingle roofs in brown greys over stucco and siding in warm light tans.
+  const roof = dark ? '#4e4540' : '#6e5f56';
   // Four close wall tones (heights.ts toneOf), so a row of homes reads as separate houses.
-  const tones = dark ? ['#6a6c75', '#73757e', '#62646c', '#6e6a70'] : ['#dcd8d0', '#d1ccc2', '#e4e0d8', '#cfd0cb'];
+  const tones = dark ? ['#76706a', '#7d746a', '#6e6862', '#7a7268'] : ['#e6dccd', '#dccdb8', '#ece4d6', '#d6c8b4'];
   const wallColor: maplibregl.ExpressionSpecification = ['match', ['get', 'k'], 1, tones[1], 2, tones[2], 3, tones[3], tones[0]];
   map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': ['case', ['==', ['get', 'r'], 1], roof, wallColor], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true } });
   heights.get(map)?.stop();
