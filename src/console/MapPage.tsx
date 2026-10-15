@@ -730,6 +730,9 @@ export default function MapPage() {
       if (cancelled || !box.current) return;
       const point = pointRef.current;
       const m = new maplibregl.Map({ container: box.current, style, maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 21, minZoom: 10,
+        // Tiles seen in the last few minutes stay in memory (more tiles and more zoom levels than the default),
+        // so panning or turning back never reloads them, and terrain does not reload when the view returns.
+        maxTileCacheSize: 1500, maxTileCacheZoomLevels: 10, refreshExpiredTiles: false,
         // Simple movement: one finger pans, pinch and double tap zoom, the wheel zooms; nothing rotates or tilts by accident.
         dragRotate: false, touchPitch: false, pitchWithRotate: false, cooperativeGestures: false });
       m.touchZoomRotate.disableRotation();

@@ -9,7 +9,7 @@ import type { Pos } from './geo';
 import type { MultiPolygon, Polygon } from 'geojson';
 import { getJson } from '../api';
 import { buildingHeight, StoryIndex, tilesAround, withHeights } from './heights';
-import { addScenery, removeScenery } from './scenery';
+import { addScenery, SNOW_LAYER, WATER_EDGE, WATER_LAYER } from './scenery';
 
 const LAYER = 'vtp-sv-buildings';
 /** The same buildings redrawn with the assessor's floors (heights.ts), over the plain ones once ready. */
@@ -66,7 +66,13 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   const src = streets ? 'openmaptiles' : OWN_SRC;
   if (src === OWN_SRC && !map.getSource(OWN_SRC)) map.addSource(OWN_SRC, { type: 'vector', url: OFM });
   if (scenery()) addScenery(map, SHADE_SRC, streets ? null : src, SHADE);
-  if (map.getLayer(LAYER)) return;
+  showBuildings(map);
+  prefetchTerrain(map.getCenter());
+  if (map.getLayer(LAYER)) {
+    // Back in 3D with the layers kept: only the recorded heights need watching again.
+    if (map.getSource(H_SRC) && !heights.has(map)) heights.set(map, recordedHeights(map, src));
+    return;
+  }
   const color = dark ? '#6a6c75' : '#dcd8d0';
   map.addLayer({
     id: LAYER,
@@ -86,6 +92,40 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': color, 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true } });
   heights.get(map)?.stop();
   heights.set(map, recordedHeights(map, src));
+}
+
+/** The Wasatch from Timpanogos to Nebo, Utah Lake and the mountains west of it: what 3D shows at the horizon. */
+const VALLEY = { west: -112.05, south: 39.75, east: -111.45, north: 40.55 };
+let prefetched = false;
+
+/** Elevation tile numbers covering a box at a zoom. */
+function demTiles(b: { west: number; south: number; east: number; north: number }, z: number): Array<[number, number, number]> {
+  const n = 2 ** z;
+  const tx = (lng: number) => Math.floor(((lng + 180) / 360) * n);
+  const ty = (lat: number) => Math.floor(((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * n);
+  const out: Array<[number, number, number]> = [];
+  for (let x = tx(b.west); x <= tx(b.east); x++) for (let y = ty(b.north); y <= ty(b.south); y++) out.push([z, x, y]);
+  return out;
+}
+
+/**
+ * In the browser's spare time, once a visit: the elevation tiles the 3D view uses for the far mountains and
+ * the lake (zoom 9 to 11 over the valley) and the near ground (zoom 12 within about 6 km), so turning and
+ * stepping never wait for terrain. They land in the browser's and the service worker's caches (sw.js).
+ */
+function prefetchTerrain(c: { lng: number; lat: number }): void {
+  if (prefetched || typeof window === 'undefined') return;
+  prefetched = true;
+  const near = { west: c.lng - 0.07, east: c.lng + 0.07, south: c.lat - 0.055, north: c.lat + 0.055 };
+  const list = [9, 10, 11].flatMap((z) => demTiles(VALLEY, z)).concat(demTiles(near, 12));
+  const run = () => {
+    const next = list.splice(0, 6);
+    if (!next.length) return;
+    Promise.all(next.map(([z, x, y]) => fetch(DEM_TILES.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y)), { mode: 'cors' }).catch(() => undefined))).then(() => later());
+  };
+  const ric = (window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  const later = () => (ric ? ric(run, { timeout: 4000 }) : window.setTimeout(run, 300));
+  later();
 }
 
 /** How far from the view's center buildings are redrawn with recorded heights, in degrees of latitude. */
@@ -154,17 +194,23 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void }
   };
 }
 
+/** Every layer the 3D view adds. */
+const LAYERS_3D = [SHADE, SNOW_LAYER, WATER_LAYER, WATER_EDGE, LAYER, H_LAYER];
+
+/**
+ * Leaving 3D hides the terrain, shading, scenery and buildings instead of removing them: their sources and
+ * tiles stay loaded, so going back into 3D shows the mountains at once with no new downloads. (A new base
+ * map style drops them anyway.)
+ */
 export function removeBuildings(map: maplibregl.Map): void {
   heights.get(map)?.stop();
   heights.delete(map);
-  if (map.getLayer(H_LAYER)) map.removeLayer(H_LAYER);
-  if (map.getSource(H_SRC)) map.removeSource(H_SRC);
-  if (map.getLayer(LAYER)) map.removeLayer(LAYER);
-  removeScenery(map);
-  if (map.getSource(OWN_SRC)) map.removeSource(OWN_SRC);
+  for (const id of LAYERS_3D) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
   if (map.getTerrain()) map.setTerrain(null);
-  if (map.getLayer(SHADE)) map.removeLayer(SHADE);
-  for (const s of [SHADE_SRC, DEM]) if (map.getSource(s)) map.removeSource(s);
+}
+
+function showBuildings(map: maplibregl.Map): void {
+  for (const id of LAYERS_3D) if (map.getLayer(id) && map.getLayoutProperty(id, 'visibility') === 'none') map.setLayoutProperty(id, 'visibility', 'visible');
 }
 
 /** Scenery is on unless turned off for a timing comparison (localStorage vtp:scenery = off). */

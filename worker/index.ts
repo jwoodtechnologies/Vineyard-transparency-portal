@@ -233,8 +233,9 @@ const refreshing = new Map<string, Promise<void>>();
 /** The copy handed to the reader: a short browser cache time, the standing headers back, 304 on a matching ETag. */
 function serveStored(request: Request, hit: Response, stale: boolean): Response {
   const headers = new Headers(hit.headers);
-  // A phone never keeps showing a list or count that has since changed for more than a minute.
-  headers.set('cache-control', 'public, max-age=60');
+  // A phone never keeps showing a list or count that has since changed for more than a minute. Map tiles
+  // (parcel outlines by zoom 16 tile) change rarely: the browser keeps them a day, so panning back never refetches.
+  headers.set('cache-control', /^\/api\/map\/parcels\/16\//.test(new URL(request.url).pathname) ? 'public, max-age=86400, stale-while-revalidate=604800' : 'public, max-age=60');
   headers.delete('cf-cache-status');
   headers.delete('expires');
   headers.delete('x-stored-at');
