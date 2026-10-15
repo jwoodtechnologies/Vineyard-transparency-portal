@@ -185,7 +185,9 @@ jobs:
           mv diag "$RUNNER_TEMP/diag"
           if git fetch -q origin diagnostics; then git checkout -q -B diagnostics origin/diagnostics; else git checkout -q --orphan diagnostics && git rm -rq --cached . && git clean -fdq; fi
           mkdir -p diag && cp -r "$RUNNER_TEMP/diag/." diag/
-          git add diag && git commit -qm "Diagnostics ${TASK} ${GITHUB_RUN_ID}" && git push -q origin diagnostics
+          git add diag && git commit -qm "Diagnostics ${TASK} ${GITHUB_RUN_ID}"
+          # Other workflows write to this branch too: on a race, take theirs and try again.
+          for i in 1 2 3 4 5; do git push -q origin diagnostics && break; sleep $((i * 3)); git pull -q --rebase origin diagnostics; done
       # map-shots: the run fails when any two map controls overlap in any state (scripts/shots/layout.mjs).
       - name: Map layout check
         if: inputs.task == 'map-shots'
