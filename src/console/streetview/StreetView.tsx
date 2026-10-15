@@ -61,6 +61,9 @@ interface Props {
   loadProjects: () => Promise<FC>;
   /** A click on a zone or project: the map's details card for it. */
   onPick: (layer: string, name: string, at: Pos) => void;
+  /** Opens or closes the map's Layers panel (Zoning, Projects and the rest), from the bar. */
+  onLayers: () => void;
+  layersOpen: boolean;
   onClose: () => void;
 }
 
@@ -124,7 +127,7 @@ const ZONING_FILL = 'vtp-zoning-fill';
 const coarseQuery = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(pointer: coarse)').matches);
 const wideQuery = () => typeof window !== 'undefined' && window.innerWidth > 820;
 
-export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null, loadZoning, showMapZoning, zoningOn, projectsOn, loadProjects, onPick, onClose }: Props) {
+export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null, loadZoning, showMapZoning, zoningOn, projectsOn, loadProjects, onPick, onLayers, layersOpen, onClose }: Props) {
   const [pin, setPin] = useState<Pos | null>(start);
   const [phase, setPhase] = useState<Phase>(start ? 'search' : 'pick');
   const [photo, setPhoto] = useState<Photo | null>(null);
@@ -136,8 +139,8 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   const [districts, setDistricts] = useState<District[]>([]);
   const [parcel, setParcel] = useState<Pos[] | null>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
-  // Zoning shows only after a tap on Zoning, each time street view opens.
-  const [showZoning, setShowZoning] = useState(false);
+  // Zoning shows while the map's Zoning layer is on (Layers in the bar or in Tools).
+  const showZoning = zoningOn;
   const [wide, setWide] = useState(wideQuery);
   const [coarse] = useState(coarseQuery);
   // The 3D buttons join the map's own control stack at the bottom right (above full screen and zoom), so
@@ -160,7 +163,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   const panelRef = useRef<HTMLDivElement>(null);
   const phaseRef = useRef(phase);
   // With Zoning or Projects on, a click on one opens its details and a double click moves (clickRoute.ts).
-  const layersOn = projectsOn || showZoning || (phase !== 'photo' && zoningOn);
+  const layersOn = projectsOn || zoningOn;
   const routeRef = useRef({ layersOn, onPick });
   useEffect(() => {
     phaseRef.current = phase;
@@ -170,7 +173,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   // What can be clicked for details on the map: zoning while it is shown, projects while that layer is on.
   const groundRef = useRef<District[]>([]);
   useEffect(() => {
-    groundRef.current = [...(zoningOn || showZoning ? districts : []), ...(projectsOn ? projects : [])];
+    groundRef.current = [...(zoningOn ? districts : []), ...(projectsOn ? projects : [])];
   });
   useEffect(() => {
     if (!projectsOn) return;
@@ -533,10 +536,10 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       <span>Google</span>
     </a>
   ) : null;
-  const zoningToggle = (
-    <button type="button" className="vc-sv-bar-btn" aria-pressed={showZoning} onClick={() => setShowZoning(!showZoning)} title={showZoning ? 'Hide zoning' : 'Show zoning'}>
+  const layersButton = (
+    <button type="button" className="vc-sv-bar-btn" aria-pressed={layersOpen} onClick={onLayers} title="Layers: zoning, projects and more">
       <Layers size={17} strokeWidth={1.9} aria-hidden="true" />
-      <span>Zoning</span>
+      <span>Layers</span>
     </button>
   );
   // What a click does here, in one line.
@@ -548,8 +551,9 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     </p>
   );
   const close = (
-    <button type="button" className="vc-sv-bar-btn" data-icon-only="true" onClick={onClose} aria-label="Close street view" title="Close (Escape)">
-      <X size={18} strokeWidth={2} />
+    <button type="button" className="vc-sv-bar-btn" onClick={onClose} aria-label="Close street view" title="Close (Escape)">
+      <X size={18} strokeWidth={2} aria-hidden="true" />
+      <span>Close</span>
     </button>
   );
 
@@ -559,7 +563,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
         <div className="vc-sv-bar">
           {close}
           <p className="vc-sv-title">Street view</p>
-          {zoningToggle}
+          {layersButton}
           {google}
         </div>
         {hintLine}
@@ -586,7 +590,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
           <p className="vc-sv-title">
             {phase === 'pick' ? (coarse ? 'Tap a street' : 'Click a street') : phase === 'search' ? 'Looking for a street photo near this spot.' : ''}
           </p>
-          {phase === '3d' && zoningToggle}
+          {phase === '3d' && layersButton}
           {phase === '3d' && google}
         </div>
         {phase === '3d' && hintLine}

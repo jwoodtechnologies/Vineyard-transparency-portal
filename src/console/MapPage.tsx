@@ -1322,6 +1322,8 @@ export default function MapPage() {
       });
       if (!f) return;
       setPicked({ layer, label: labelsRef.current.get(layer) ?? info?.label ?? '', name: nameOf(layer, f.properties ?? {}), props: f.properties ?? {}, shape: f.geometry, tap: at, fromSv: true });
+      // On a phone the card takes the bottom of the screen, where the Layers sheet was.
+      if (window.innerWidth <= 820) setPanel(false);
     },
     [catalog],
   );
@@ -1348,7 +1350,7 @@ export default function MapPage() {
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
       <div className="vc-map-shell" data-projects={projectsShown ? (wide ? 'side' : 'sheet') : undefined}>
-      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked) && !measuring && !sv} data-measure={measuring || undefined} data-sv={sv ? 'on' : undefined}>
+      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked) && !measuring && !sv} data-measure={measuring || undefined} data-sv={sv ? 'on' : undefined} data-tools={toolsOpen || undefined}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
         {!painted && (
           <div className="vc-map-loading" role="status">
@@ -1521,7 +1523,7 @@ export default function MapPage() {
           </Suspense>
         )}
 
-        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} startPhoto={sv.photo} loadZoning={loadZoning} showMapZoning={showMapZoning} zoningOn={on.has('zoning')} projectsOn={projectsOn} loadProjects={loadProjects} onPick={pickFromStreetView} onClose={closeStreetView} />}
+        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} startPhoto={sv.photo} loadZoning={loadZoning} showMapZoning={showMapZoning} zoningOn={on.has('zoning')} projectsOn={projectsOn} loadProjects={loadProjects} onPick={pickFromStreetView} onLayers={() => setPanel((p) => !p)} layersOpen={panel} onClose={closeStreetView} />}
 
         {picked && !measuring && (!sv || picked.fromSv) && (
           <aside className="vc-map-card" aria-label="Details" data-over-sv={picked.fromSv || undefined}>
