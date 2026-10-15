@@ -98,3 +98,23 @@ export function groundRing(map: maplibregl.Map): { show: (at: Pos, tapped?: bool
     remove: () => m.remove(),
   };
 }
+
+const HOVER_SRC = 'vtp-sv-hover';
+/** The zone or project under the pointer in street view, brightened: a stronger fill and a white edge. */
+export function setHoverShape(map: maplibregl.Map, shape: Geometry | null, color = '#ffffff'): void {
+  const fc: FC = { type: 'FeatureCollection', features: shape ? [{ type: 'Feature', properties: { c: color }, geometry: shape }] : [] };
+  const src = map.getSource(HOVER_SRC) as GeoJSONSource | undefined;
+  if (src) {
+    src.setData(fc);
+    return;
+  }
+  if (!shape) return;
+  map.addSource(HOVER_SRC, { type: 'geojson', data: fc });
+  map.addLayer({ id: 'vtp-sv-hover-fill', type: 'fill', source: HOVER_SRC, paint: { 'fill-color': ['get', 'c'], 'fill-opacity': 0.38 } });
+  map.addLayer({ id: 'vtp-sv-hover-line', type: 'line', source: HOVER_SRC, paint: { 'line-color': '#ffffff', 'line-width': 3, 'line-opacity': 0.95 } });
+}
+
+export function removeHoverShape(map: maplibregl.Map): void {
+  for (const id of ['vtp-sv-hover-line', 'vtp-sv-hover-fill']) if (map.getLayer(id)) map.removeLayer(id);
+  if (map.getSource(HOVER_SRC)) map.removeSource(HOVER_SRC);
+}

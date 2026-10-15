@@ -9,10 +9,13 @@ import earcut from 'earcut';
 import { enuToGeodetic, geodeticToEnu, RenderPass, type ICustomRenderer, type IViewer, type LngLatAlt } from 'mapillary-js';
 import { distance } from '../measure/geo';
 import { ringToLocal, type Pos } from './geo';
+import { inRing } from './clickRoute';
 
 export interface District {
   zone: string;
   color: string;
+  /** 'zoning' (the default) or 'projects'. */
+  layer?: string;
   /** Outer rings, each closed or not. */
   rings: Pos[][];
 }
@@ -33,6 +36,8 @@ void main() { gl_FragColor = u_color; }`;
 type GL = WebGLRenderingContext | WebGL2RenderingContext;
 
 interface Mesh {
+  /** The district or project it belongs to, for the hover highlight. */
+  key?: string;
   color: [number, number, number];
   fill: WebGLBuffer;
   fillCount: number;
@@ -113,6 +118,20 @@ export class ZoningRenderer implements ICustomRenderer {
     this.rebuild();
   }
 
+  /** The zoning districts and projects drawn (changed when Zoning or Projects is turned on or off). */
+  setDistricts(d: District[]): void {
+    this.districts = d;
+    this.rebuild();
+  }
+
+  private highlight: string | null = null;
+  /** Brightens one district or project (the one under the pointer), or none. */
+  setHighlight(key: string | null): void {
+    if (key === this.highlight) return;
+    this.highlight = key;
+    this.viewer?.triggerRerender();
+  }
+
   setVisible(v: boolean): void {
     this.visible = v;
     this.viewer?.triggerRerender();
@@ -170,7 +189,7 @@ export class ZoningRenderer implements ICustomRenderer {
       for (const ring of d.rings) {
         if (!ring.some((p) => distance(p, cam) < REACH_M) && !inRing(cam, ring)) continue;
         const m = this.mesh(gl, ring, d.color, ground, true);
-        if (m) this.meshes.push(m);
+        if (m) this.meshes.push({ ...m, key: `${d.layer ?? 'zoning'}:${d.zone}` });
       }
     if (this.parcel) this.parcelMesh = this.mesh(gl, this.parcel, '#ffffff', ground + 0.05, false);
     this.viewer?.triggerRerender();
@@ -265,8 +284,10 @@ export class ZoningRenderer implements ICustomRenderer {
     };
     if (this.visible)
       for (const m of this.meshes) {
-        draw(m.fill, gl.TRIANGLES, m.fillCount, m.color, 0.12);
-        draw(m.line, gl.TRIANGLES, m.lineCount, m.color, 0.85);
+        const hi = m.key != null && m.key === this.highlight;
+        draw(m.fill, gl.TRIANGLES, m.fillCount, m.color, hi ? 0.32 : 0.12);
+        draw(m.line, gl.TRIANGLES, m.lineCount, m.color, hi ? 1 : 0.85);
+        if (hi) draw(m.line, gl.TRIANGLES, m.lineCount, [1, 1, 1], 0.45);
       }
     if (this.parcelMesh) draw(this.parcelMesh.line, gl.TRIANGLES, this.parcelMesh.lineCount, [1, 1, 1], 0.95);
     if (this.cursorMesh && this.cursor) {
@@ -275,14 +296,6 @@ export class ZoningRenderer implements ICustomRenderer {
     }
     gl.disableVertexAttribArray(p.pos);
   }
-}
-
-function inRing(p: Pos, r: Pos[]): boolean {
-  let inside = false;
-  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
-    if (r[i][1] > p[1] !== r[j][1] > p[1] && p[0] < ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) inside = !inside;
-  }
-  return inside;
 }
 
 export { inRing };

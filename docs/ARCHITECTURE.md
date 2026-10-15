@@ -93,7 +93,12 @@ Routes live in `src/app/router.tsx`; every screen is in `src/console/`.
   in between; the click that ends a drag never counts. This holds in the photo viewer, the 3D view, the small
   map and pin dropping. While street view is open, a long press or right click no longer drops a new pin (a
   finger held still before a look-around drag, or a right button drag, would have moved it). A ring on the ground under the mouse shows where a click would go (hidden while
-  dragging); on touch the tapped spot lights up just before the move. Arrows and keys also move.
+  dragging); on touch the tapped spot lights up just before the move. Arrows and keys also move. With Zoning or Projects on, hovering a zone or project brightens it with
+  its name and a pointer cursor; a click or tap opens the map's details card for it (over the photo, or as the
+  bottom sheet on phones) and never moves or turns the view; a double click or double tap moves
+  (`clickRoute.ts`, which waits out the double click window before opening the card). A click on a raised
+  building counts as its footprint's zone. The district chips in the photos open the same card. The map's own
+  double click zoom is off while street view is open.
 * **Google Street View mode** (`src/console/streetview/GoogleView.tsx`, Tools menu): Google's terms allow its
   Street View only beside a Google map, so this mode replaces our map with a Google map (Maps JavaScript API)
   carrying our zoning, the parcel lines and the pin with its heading cone, beside a Google panorama. A click on

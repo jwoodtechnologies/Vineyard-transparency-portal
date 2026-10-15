@@ -359,6 +359,8 @@ interface Picked {
   /** Its shape, and where it was tapped: where Open in Street View opens. */
   shape?: Geometry | null;
   tap?: Pos;
+  /** Opened from street view: shown over it, and closing it returns to it. */
+  fromSv?: boolean;
 }
 
 /** Bumped when a layer's source or fields change, so cached copies are not reused. */
@@ -1278,6 +1280,25 @@ export default function MapPage() {
     const info = catalog?.find((l) => l.key === 'zoning');
     return info ? loadLayer(info) : Promise.reject(new Error('no zoning layer'));
   }, [catalog]);
+  const loadProjects = useCallback(() => {
+    const info = catalog?.find((l) => l.key === 'projects');
+    return info ? loadLayer(info) : Promise.reject(new Error('no projects layer'));
+  }, [catalog]);
+  // A zone or project clicked in street view: the same details card the map uses, over street view. Closing
+  // it leaves street view where it was.
+  const pickFromStreetView = useCallback(
+    async (layer: string, name: string, at: Pos) => {
+      const info = catalog?.find((l) => l.key === layer);
+      const fc = dataRef.current[layer] ?? (info ? await loadLayer(info).catch(() => null) : null);
+      const f = fc?.features.find((x) => {
+        const p = x.properties ?? {};
+        return nameOf(layer, p) === name || p.ZONE === name || p.Project_Name === name;
+      });
+      if (!f) return;
+      setPicked({ layer, label: labelsRef.current.get(layer) ?? info?.label ?? '', name: nameOf(layer, f.properties ?? {}), props: f.properties ?? {}, shape: f.geometry, tap: at, fromSv: true });
+    },
+    [catalog],
+  );
   // Street view's 3D mode shows zoning on the ground; it is put back as it was when that ends.
   const showMapZoning = useCallback(() => {
     let added = false;
@@ -1466,10 +1487,10 @@ export default function MapPage() {
           </Suspense>
         )}
 
-        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} startPhoto={sv.photo} loadZoning={loadZoning} showMapZoning={showMapZoning} onClose={closeStreetView} />}
+        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} startPhoto={sv.photo} loadZoning={loadZoning} showMapZoning={showMapZoning} zoningOn={on.has('zoning')} projectsOn={projectsOn} loadProjects={loadProjects} onPick={pickFromStreetView} onClose={closeStreetView} />}
 
-        {picked && !measuring && !sv && (
-          <aside className="vc-map-card" aria-label="Details">
+        {picked && !measuring && (!sv || picked.fromSv) && (
+          <aside className="vc-map-card" aria-label="Details" data-over-sv={picked.fromSv || undefined}>
             <div className="vc-map-card-head">
               <span className="vc-map-kind">
                 <span className="vc-map-swatch" style={{ background: (picked.layer === 'alerts' && typeof picked.props.__c === 'string' ? picked.props.__c : null) ?? lookOf(picked.layer, dark)?.color }} /> {picked.label}

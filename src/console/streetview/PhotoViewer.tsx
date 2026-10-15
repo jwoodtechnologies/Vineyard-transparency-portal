@@ -4,7 +4,7 @@
  * the pin on the ground (zoningRenderer.ts) with a small label chip per district, and reports where the
  * camera is and which way it looks so the map's camera cone follows.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavigationDirection, Viewer, type Image as MlyImage, type ViewerMouseEvent } from 'mapillary-js';
 import 'mapillary-js/dist/mapillary.css';
 import { destination, distance } from '../measure/geo';
@@ -15,14 +15,19 @@ import { MiniMap } from './MiniMap';
 import { AHEAD_DEG, aheadTo, datesAt, nearestTo, photosAround, type DateChoice } from './nearby';
 import { bearing } from '../measure/geo';
 import { watchTaps } from './watchTaps';
+import { ClickRouter, DOUBLE_MS, featureAt } from './clickRoute';
 
 interface Props {
   token: string;
   photo: Photo;
   pin: Pos;
   districts: District[];
+  /** Capital projects on the ground, while the map's Projects layer is on. */
+  projects: District[];
   parcel: Pos[] | null;
   showZoning: boolean;
+  /** A click on a zone or project (or a district chip): its details card. */
+  onPickFeature: (layer: string, name: string, at: Pos) => void;
   onCamera: (c: Camera) => void;
   onError: () => void;
   dark: boolean;
@@ -33,6 +38,7 @@ interface Props {
 interface Chip {
   zone: string;
   color: string;
+  at: Pos;
   x: number;
   y: number;
 }
@@ -63,14 +69,18 @@ function chipPoint(ring: Pos[], pin: Pos): Pos {
   return c;
 }
 
-export default function PhotoViewer({ token, photo, pin, districts, parcel, showZoning, onCamera, onError, dark, wide }: Props) {
+export default function PhotoViewer({ token, photo, pin, districts, projects, parcel, showZoning, onPickFeature, onCamera, onError, dark, wide }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const rendererRef = useRef<ZoningRenderer | null>(null);
   const [chips, setChips] = useState<Chip[]>([]);
   // Where the pin is in the photo, in pixels, or null when it is out of frame.
   const [pinAt, setPinAt] = useState<[number, number] | null>(null);
-  const cbs = useRef({ onCamera, onError });
+  const cbs = useRef({ onCamera, onError, onPickFeature });
+  // What is drawn on the ground and can be clicked for details (zoning while Zoning is on, projects while Projects is).
+  const ground = useMemo(() => [...(showZoning ? districts : []), ...projects], [showZoning, districts, projects]);
+  const groundRef = useRef(ground);
+  const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
   const cam = useRef<Pos>(photo.pos);
   const look = useRef(0);
   const shownId = useRef<string | null>(null);
@@ -82,7 +92,8 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
   const [shown, setShown] = useState(photo.id);
   const [dates, setDates] = useState<DateChoice[]>([]);
   useEffect(() => {
-    cbs.current = { onCamera, onError };
+    cbs.current = { onCamera, onError, onPickFeature };
+    groundRef.current = ground;
   });
 
   /** Moves to a photo by id; a photo that cannot be reached from here is left alone. */
@@ -127,7 +138,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       component: { cover: false, marker: false, attribution: true, direction: { minWidth: 300, maxWidth: 560 }, sequence: true, keyboard: true, zoom: true },
     });
     viewerRef.current = viewer;
-    const renderer = new ZoningRenderer(districts, parcel);
+    const renderer = new ZoningRenderer(groundRef.current, parcel);
     viewer.addCustomRenderer(renderer);
     rendererRef.current = renderer;
     let first = true;
@@ -156,7 +167,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
         // Off the photo (a flat photo shows only what is in front of it): no chip.
         if (!px || seen.has(x.d.zone)) continue;
         seen.add(x.d.zone);
-        out.push({ zone: x.d.zone, color: x.d.color, x: px[0], y: px[1] });
+        out.push({ zone: x.d.zone, color: x.d.color, at: x.at, x: px[0], y: px[1] });
       }
       setChips(out);
     };
@@ -222,36 +233,77 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     // on the road moves to the photo nearest that spot, and a second click right after steps forward. A drag
     // to look around never moves (tapGuard.ts). On touch the circle shows at the tapped spot just before moving.
     let cursorFrame = 0;
+    const asFeatures = () => groundRef.current.map((d: District) => ({ layer: d.layer ?? 'zoning', name: d.zone, rings: d.rings }));
+    const hitAt = (x: number, y: number) => {
+      const g = renderer.unprojectGround(x, y, el.clientWidth, el.clientHeight);
+      return { g, hit: g ? featureAt(asFeatures(), g) : null };
+    };
+    // Hover: a zone or project under the pointer is brightened with its name and a pointer cursor; elsewhere the
+    // ground circle shows where a click (or, with Zoning or Projects on, a double click) would move.
     viewer.on('mousemove', (e: ViewerMouseEvent) => {
       cancelAnimationFrame(cursorFrame);
       const pressed = e.originalEvent instanceof MouseEvent && e.originalEvent.buttons !== 0;
-      cursorFrame = requestAnimationFrame(() => renderer.setCursor(pressed ? null : renderer.unprojectGround(e.pixelPoint[0], e.pixelPoint[1], el.clientWidth, el.clientHeight)));
+      const [x, y] = e.pixelPoint;
+      cursorFrame = requestAnimationFrame(() => {
+        if (pressed) {
+          renderer.setCursor(null);
+          return;
+        }
+        const { g, hit } = hitAt(x, y);
+        renderer.setHighlight(hit ? `${hit.layer}:${hit.name}` : null);
+        renderer.setCursor(hit ? null : g);
+        el.style.cursor = hit ? 'pointer' : '';
+        setHover(hit ? { name: hit.name, x, y } : null);
+      });
     });
-    viewer.on('mouseout', () => renderer.setCursor(null));
+    viewer.on('mouseout', () => {
+      renderer.setCursor(null);
+      renderer.setHighlight(null);
+      setHover(null);
+    });
     let tapTimer = 0;
+    let cardTimer = 0;
     let lastTap = 0;
+    const router = new ClickRouter();
+    const moveTo = (target: Pos, touch: boolean) => {
+      renderer.setCursor(target);
+      // A mouse click goes at once; a tap shows the spot for a moment first.
+      if (touch)
+        tapTimer = window.setTimeout(() => {
+          goToward(target);
+          renderer.setCursor(null);
+        }, 220);
+      else goToward(target);
+    };
     const stopTaps = watchTaps(
       el,
       ({ x, y, touch }) => {
         clearTimeout(tapTimer);
-        if (Date.now() - lastTap < 320) {
-          lastTap = 0;
-          void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined);
+        clearTimeout(cardTimer);
+        const { g, hit } = hitAt(x, y);
+        const layersOn = groundRef.current.length > 0;
+        if (!layersOn) {
+          // As before: a click moves, and a second quick click steps forward along the street.
+          if (Date.now() - lastTap < DOUBLE_MS) {
+            lastTap = 0;
+            void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined);
+            return;
+          }
+          lastTap = Date.now();
+          if (g) moveTo(g, touch);
           return;
         }
-        lastTap = Date.now();
-        const target = renderer.unprojectGround(x, y, el.clientWidth, el.clientHeight);
-        if (!target) return;
-        renderer.setCursor(target);
-        // A mouse click goes at once; a tap waits a moment, to show where and to hear a second tap.
-        if (touch)
-          tapTimer = window.setTimeout(() => {
-            goToward(target);
-            renderer.setCursor(null);
-          }, 320);
-        else goToward(target);
+        const r = router.click(x, y, Date.now(), true, hit != null);
+        if (r.now.kind === 'move' && g) moveTo(g, touch);
+        if (r.later?.kind === 'card' && hit && g) {
+          if (touch) renderer.setHighlight(`${hit.layer}:${hit.name}`);
+          cardTimer = window.setTimeout(() => cbs.current.onPickFeature(hit.layer, hit.name, g), DOUBLE_MS);
+        }
       },
-      () => renderer.setCursor(null),
+      () => {
+        renderer.setCursor(null);
+        setHover(null);
+      },
     );
     viewer.on('position', report);
     viewer.on('pov', report);
@@ -272,6 +324,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       cancelAnimationFrame(frame);
       cancelAnimationFrame(cursorFrame);
       clearTimeout(tapTimer);
+      clearTimeout(cardTimer);
       stopTaps();
       ro.disconnect();
       viewer.remove();
@@ -282,7 +335,8 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, photo.id]);
 
-  useEffect(() => rendererRef.current?.setVisible(showZoning), [showZoning]);
+  // Zoning while its toggle is on, projects while the map's Projects layer is on.
+  useEffect(() => rendererRef.current?.setDistricts(ground), [ground]);
 
   // Keys: W or the up arrow forward, S or down back, A and D turn (the arrows inside the photo are the viewer's own).
   useEffect(() => {
@@ -333,14 +387,19 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
         </div>
       )}
       {showZoning && (
-        <div className="vc-svp-chips" aria-hidden="true">
+        <div className="vc-svp-chips">
           {chips.map((c) => (
-            <span key={c.zone} className="vc-svp-chip" style={{ left: c.x, top: c.y }}>
-              <i style={{ background: c.color }} />
+            <button key={c.zone} type="button" className="vc-svp-chip" style={{ left: c.x, top: c.y }} onClick={() => onPickFeature('zoning', c.zone, c.at)} aria-label={`Zoning ${c.zone}: details`}>
+              <i style={{ background: c.color }} aria-hidden="true" />
               {c.zone}
-            </span>
+            </button>
           ))}
         </div>
+      )}
+      {hover && (
+        <span className="vc-sv-hover-label" style={{ left: hover.x, top: hover.y }} aria-hidden="true">
+          {hover.name}
+        </span>
       )}
     </div>
   );
