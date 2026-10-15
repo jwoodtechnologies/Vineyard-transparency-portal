@@ -5737,3 +5737,7 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
 .vc-map-wrap[data-card='true'] .vc-drive-inset { display: none; }
 @media (max-width: 820px) { .vc-map-wrap[data-panel='true'] .vc-drive-inset { display: none; } }
 .vc-drive-reset:disabled { opacity: 0.5; cursor: default; }
+/* Tools open while driving: the turn arrows step aside under the menu. */
+.vc-map-wrap[data-tools] .vc-drive-turns { visibility: hidden; }
+/* A card while driving on a wider screen: above the Drive bar at the bottom. */
+@media (min-width: 821px) { .vc-map-wrap:has(.vc-drive-hud) .vc-map-card[data-over-sv] { bottom: 5.6rem; max-height: calc(100% - 6.4rem); } }

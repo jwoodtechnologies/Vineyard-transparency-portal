@@ -805,7 +805,9 @@ export default function MapPage() {
         setPicked({ layer: key, label: labelsRef.current.get(key) ?? '', name, props: f.properties ?? {}, shape: whole ?? f.geometry, tap: [e.lngLat.lng, e.lngLat.lat] });
         highlight(m, f);
       });
-      m.on('zoomend', () => setZoom(m.getZoom()));
+      // In quarter steps (rounded down, so 'zoom in' hints stay right): Drive mode moves the camera every
+      // frame, and a new zoom each frame would redraw this whole page each frame.
+      m.on('zoomend', () => setZoom(Math.floor(m.getZoom() * 4) / 4));
       mapRef.current = m;
       // For the live screenshot checks only (localStorage vtp:debug): the map, to read its layers.
       try {

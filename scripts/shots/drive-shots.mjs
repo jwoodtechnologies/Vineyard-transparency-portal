@@ -132,18 +132,20 @@ for (const prof of [
     const c2 = await camera();
     await shot('4-overview');
     run.zoomOut = { after: c2, speed: await speed() };
-    // Reset view: back behind the car.
-    await tapEl('.vc-drive-reset');
-    await page.waitForTimeout(3000);
-    run.reset = { after: await camera(), resetDisabled: (await page.locator('.vc-drive-reset[disabled]').count()) === 1 };
-    await shot('5-reset');
-
-    // Layers while driving: Tools, Layers, Zoning on, Done; then a tap on the ground opens the zone's card,
-    // the car keeps driving and the camera stays where it was.
+    // Layers while driving, from the high view (zoned ground all around, not just the road, which has no
+    // zone): Tools, Layers, Zoning on, Done; then a tap on the ground opens the zone's card, the car keeps
+    // driving and the camera stays where it was.
     await tapEl('.vc-map-tools > button');
     await page.waitForTimeout(800);
     await shot('6-tools-open');
-    run.toolsOpenOverlaps = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
+    // The menu opens over the Drive bar on purpose (it is on top); anything else is a problem.
+    const ov = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
+    run.toolsOpen = { overlaps: ov, problems: ov.filter((o) => !/\.vc-map-tools-menu x \.vc-drive-bar|\.vc-drive-bar x \.vc-map-tools-menu/.test(o)), menuOnTop: await page.evaluate(() => {
+      const el = document.querySelector('.vc-map-tools-menu [role^="menuitem"]');
+      const r = el?.getBoundingClientRect();
+      const top = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return Boolean(top && el.contains(top));
+    }) };
     await tapEl('.vc-map-tools-menu [role^="menuitem"]');
     await page.waitForSelector('.vc-map-panel .vc-map-layer', { timeout: 30000 });
     const row = page.locator('.vc-map-panel .vc-map-layer', { hasText: 'Zoning' }).first();
@@ -157,7 +159,7 @@ for (const prof of [
     await page.waitForTimeout(4000);
     const cBefore = await camera();
     const vBefore = await speed();
-    await tap(m.x + m.width * 0.25, m.y + m.height * 0.8);
+    await tap(m.x + m.width * 0.3, m.y + m.height * 0.72);
     await page.waitForTimeout(2500);
     const card = page.locator('.vc-map-card[data-over-sv]');
     await page.waitForTimeout(2000);
@@ -174,6 +176,12 @@ for (const prof of [
     };
     await shot('8-zone-card');
     if (run.zoneTap.card) await tapEl('button[aria-label="Close details"]').catch(() => undefined);
+
+    // Reset view: back behind the car.
+    await tapEl('.vc-drive-reset');
+    await page.waitForTimeout(3000);
+    run.reset = { after: await camera(), resetDisabled: (await page.locator('.vc-drive-reset[disabled]').count()) === 1 };
+    await shot('5-reset');
 
     run.arrows = await page.waitForSelector('.vc-drive-turns', { timeout: 60000 }).then(() => true, () => false);
     run.turnOptions = await page.locator('.vc-drive-turn').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));

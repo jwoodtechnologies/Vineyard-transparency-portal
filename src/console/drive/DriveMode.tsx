@@ -303,13 +303,15 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
     };
     const tick = (now: number) => {
       frame = requestAnimationFrame(tick);
-      const dt = Math.min(0.1, (now - last) / 1000);
+      // Real time, in steps of at most a tenth of a second, so a slow frame does not slow the car (a long
+      // gap, such as a hidden tab, counts as half a second at most).
+      const dt = Math.min(0.5, (now - last) / 1000);
       if (debug) {
         stats.frames.push(now - last);
         if (stats.frames.length > 600) stats.frames.shift();
       }
       last = now;
-      car.step(dt);
+      for (let left = dt; left > 1e-6; left -= 0.1) car.step(Math.min(0.1, left));
       const { at, heading } = car.pose();
       // The ground height eases too: the elevation tiles change detail as the car moves, and a raw read
       // would make the car and camera hop.
