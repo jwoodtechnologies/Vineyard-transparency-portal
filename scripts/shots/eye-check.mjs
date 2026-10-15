@@ -17,6 +17,8 @@ const BASE = (args.base ?? 'https://vineyardportal.org').replace(/\/+$/, '');
 const OUT = args.out ?? 'shots';
 mkdirSync(OUT, { recursive: true });
 const SPOTS = [
+  // The reviewer's desktop draws at twice the pixel density: the same spot at 2x first.
+  { name: 'waters-edge-road-2x', at: [-111.7451, 40.3036], dpr: 2 },
   { name: 'waters-edge-road', at: [-111.7451, 40.3036] },
   { name: 'center-main', at: [-111.7357, 40.2976] },
   { name: 'geneva-road', at: [-111.7452, 40.3155] },
@@ -48,7 +50,7 @@ const flatShare = (page, png) =>
 for (const spot of SPOTS) {
   const run = { name: spot.name, at: spot.at };
   log.runs.push(run);
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: spot.dpr ?? 1 });
   await ctx.addInitScript(() => {
     try {
       localStorage.setItem('vtp:mapbase', 'satellite');
@@ -85,6 +87,22 @@ for (const spot of SPOTS) {
     await page.waitForTimeout(20000);
     const b = await page.screenshot({ path: `${OUT}/${spot.name}-2-turned.png`, timeout: 120000 });
     run.flat2 = await flatShare(page, b);
+    // The same view without the snow layer, then without the hillshade: is either what turns it white?
+    if (spot.dpr) {
+      run.layers = await page.evaluate(() => {
+        const m = window.__vtpMap;
+        const pick = (id) => (m.getLayer(id) ? { vis: m.getLayoutProperty(id, 'visibility') ?? 'visible', src: m.getLayer(id).source } : null);
+        return { snow: pick('vtp-sv-snow'), shade: pick('vtp-sv-hillshade'), county: pick('sat-county'), usgs: pick('sat-usgs'), zoom: m.getZoom(), fog: JSON.stringify(m.getSky()).slice(0, 200) };
+      });
+      await page.evaluate(() => window.__vtpMap.setLayoutProperty('vtp-sv-snow', 'visibility', 'none'));
+      await page.waitForTimeout(15000);
+      const c2 = await page.screenshot({ path: `${OUT}/${spot.name}-3-no-snow.png`, timeout: 120000 });
+      run.flatNoSnow = await flatShare(page, c2);
+      await page.evaluate(() => window.__vtpMap.setLayoutProperty('vtp-sv-hillshade', 'visibility', 'none'));
+      await page.waitForTimeout(15000);
+      const c3 = await page.screenshot({ path: `${OUT}/${spot.name}-4-no-snow-no-shade.png`, timeout: 120000 });
+      run.flatNoShade = await flatShare(page, c3);
+    }
   } catch (e) {
     run.error = String(e).slice(0, 300);
     await page.screenshot({ path: `${OUT}/${spot.name}-failed.png` }).catch(() => undefined);
