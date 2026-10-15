@@ -174,6 +174,9 @@ try {
     if (project) {
       const r = project.ring;
       const cands = [project.at, ...r.flatMap((v, i) => [3, 7, 11].map((k) => [(v[0] + r[(i + k) % r.length][0]) / 2, (v[1] + r[(i + k) % r.length][1]) / 2]))].filter((q) => inRing(q, r));
+      // Deepest inside first: farthest from the outline's corners (an edge tap could read as outside).
+      const depth = (q) => Math.min(...r.map((v) => Math.hypot((v[0] - q[0]) * 85000, (v[1] - q[1]) * 111000)));
+      cands.sort((a, b) => depth(b) - depth(a));
       const pts = await page.evaluate((list) => {
         const m = window.__vtpMap;
         if (!m) return [];
