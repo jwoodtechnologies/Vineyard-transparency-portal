@@ -51,15 +51,17 @@ try {
   log.data = await page.evaluate(() => {
     const m = window.__vtpMap;
     if (!m) return null;
-    const c = m.getCenter();
+    // Around the street view pin (the camera stands there; the map's center is far ahead at this tilt).
+    const at = (document.querySelector('.vc-sv-pin')?.getAttribute('data-at') ?? '').split(',').map(Number);
+    const c = at.length === 2 && at.every(Number.isFinite) ? { lng: at[0], lat: at[1] } : m.getCenter();
     const kx = 111320 * Math.cos((c.lat * Math.PI) / 180);
     const area = (ring) => {
       let a = 0;
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += (ring[j][0] * kx + ring[i][0] * kx) * (ring[j][1] * 110540 - ring[i][1] * 110540);
       return Math.abs(a / 2);
     };
-    const near = (ring) => ring.some(([x, y]) => Math.abs(x - c.lng) * kx < 150 && Math.abs(y - c.lat) * 110540 < 150);
-    const out = { zoom: m.getZoom(), center: [c.lng, c.lat], layers: {} };
+    const near = (ring) => ring.some(([x, y]) => Math.abs(x - c.lng) * kx < 80 && Math.abs(y - c.lat) * 110540 < 80);
+    const out = { zoom: m.getZoom(), pin: [c.lng, c.lat], layers: {} };
     for (const id of ['vtp-sv-buildings', 'vtp-sv-buildings-h']) {
       const l = m.getLayer(id);
       if (!l) continue;
@@ -68,7 +70,11 @@ try {
       for (const f of feats) {
         const g = f.geometry;
         const rings = g.type === 'Polygon' ? [g.coordinates[0]] : g.type === 'MultiPolygon' ? g.coordinates.map((p) => p[0]) : [];
-        for (const r of rings) if (near(r)) rows.push({ z: f._z ?? null, x: f._x ?? null, y: f._y ?? null, m2: Math.round(area(r)), pts: r.length, h: f.properties?.h ?? f.properties?.render_height ?? null });
+        for (const r of rings)
+          if (near(r)) {
+            const xs = r.map((p) => p[0] * kx), ys = r.map((p) => p[1] * 110540);
+            rows.push({ z: f._z ?? null, m2: Math.round(area(r)), w: Math.round(Math.max(...xs) - Math.min(...xs)), l: Math.round(Math.max(...ys) - Math.min(...ys)), pts: r.length, h: f.properties?.h ?? f.properties?.render_height ?? null, id: f.id ?? null });
+          }
       }
       rows.sort((a, b) => b.m2 - a.m2);
       const zs = {};
@@ -77,6 +83,16 @@ try {
     }
     return out;
   });
+  // Straight down over the pin: the footprints against the roofs in the aerial photo.
+  await page.evaluate(() => {
+    const m = window.__vtpMap;
+    const at = (document.querySelector('.vc-sv-pin')?.getAttribute('data-at') ?? '').split(',').map(Number);
+    if (at.length === 2) m.jumpTo({ center: at, zoom: 18.6, pitch: 0, bearing: 0 });
+    if (m.getLayer('vtp-sv-buildings-h')) m.setPaintProperty('vtp-sv-buildings-h', 'fill-extrusion-opacity', 0.45);
+  });
+  await page.waitForTimeout(15000);
+  await page.screenshot({ path: `${OUT}/bld-0-top-down.png`, timeout: 120000 }).catch(() => undefined);
+  await page.evaluate(() => window.__vtpMap.setPaintProperty('vtp-sv-buildings-h', 'fill-extrusion-opacity', 0.92));
   // Only the map's own buildings (OpenFreeMap's shapes, plain heights), then only the raised layer.
   await page.evaluate(() => {
     const m = window.__vtpMap;
