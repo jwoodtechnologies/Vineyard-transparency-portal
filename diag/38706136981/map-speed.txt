@@ -1,0 +1,151 @@
+{
+  "base": "https://vineyardportal.org",
+  "at": "2026-10-15T08:30:54.011Z",
+  "runs": [
+    {
+      "tag": "phone-2d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1818,
+      "pendingAtPaint": [],
+      "settleOpenMs": 703,
+      "panSettleMs": 4371,
+      "panBackSettleMs": 3635,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 20,
+      "fromSw": 0
+    },
+    {
+      "tag": "phone-3d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1273,
+      "pendingAtPaint": [],
+      "settleOpenMs": 601,
+      "threeDOpenMs": 4924,
+      "threeDSettleMs": 1217,
+      "turnSettleMs": 704,
+      "turnBackSettleMs": 301,
+      "tilesOnTurnOut": 227,
+      "tilesOnTurnBack": 21,
+      "tilesOnTurnBackFromSw": 11,
+      "swControlled": true,
+      "tileRequests": 335,
+      "fromSw": 138
+    },
+    {
+      "tag": "phone-2d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1297,
+      "pendingAtPaint": [],
+      "settleOpenMs": 702,
+      "panSettleMs": 4071,
+      "panBackSettleMs": 3405,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 20,
+      "fromSw": 0
+    },
+    {
+      "tag": "phone-3d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1252,
+      "pendingAtPaint": [],
+      "settleOpenMs": 704,
+      "threeDOpenMs": 3275,
+      "threeDSettleMs": 1109,
+      "turnSettleMs": 607,
+      "turnBackSettleMs": 301,
+      "tilesOnTurnOut": 231,
+      "tilesOnTurnBack": 23,
+      "tilesOnTurnBackFromSw": 5,
+      "swControlled": true,
+      "tileRequests": 335,
+      "fromSw": 136
+    },
+    {
+      "tag": "desktop-2d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1409,
+      "pendingAtPaint": [],
+      "settleOpenMs": 702,
+      "panSettleMs": 8965,
+      "panBackSettleMs": 8240,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 36,
+      "fromSw": 0
+    },
+    {
+      "tag": "desktop-3d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 850,
+      "pendingAtPaint": [],
+      "settleOpenMs": 707,
+      "threeDOpenMs": 9881,
+      "threeDSettleMs": 804,
+      "failed": [
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I"
+      ],
+      "turnSettleMs": 300,
+      "turnBackSettleMs": 299,
+      "tilesOnTurnOut": 131,
+      "tilesOnTurnBack": 0,
+      "tilesOnTurnBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 215,
+      "fromSw": 72
+    },
+    {
+      "tag": "desktop-2d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 917,
+      "pendingAtPaint": [],
+      "settleOpenMs": 704,
+      "panSettleMs": 9058,
+      "panBackSettleMs": 8698,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 36,
+      "fromSw": 0
+    },
+    {
+      "tag": "desktop-3d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 886,
+      "pendingAtPaint": [],
+      "settleOpenMs": 703,
+      "threeDOpenMs": 10525,
+      "threeDSettleMs": 804,
+      "failed": [
+        "net::ERR_ABORTED https://s3.amazonaws.com/elevation-tiles-prod/terrarium/12/776/1544.png",
+        "net::ERR_ABORTED https://s3.amazonaws.com/elevation-tiles-prod/terrarium/12/776/1544.png"
+      ],
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button[aria-label=\"Turn right\"]')\n    - locator resolved to <button type=\"button\" class=\"vc-sv-3d-btn\" title=\"Turn right (D)\" aria-label=\"Turn right\">…</button>\n  - attempting click action\n    - scrolling into view if needed\n    - done scrolling\n    - forcing action\n    - performing click action\n"
+    }
+  ]
+}
