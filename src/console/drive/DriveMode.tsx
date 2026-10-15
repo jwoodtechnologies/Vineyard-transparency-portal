@@ -20,6 +20,7 @@ import { addBuildings, enter3d, removeBuildings, type Saved } from '../streetvie
 import { Sky } from '../streetview/Sky';
 import { TapGuard } from '../streetview/tapGuard';
 import { featureAt } from '../streetview/clickRoute';
+import { groundUnder } from '../streetview/pickGround';
 import { districtsOf, projectsOf } from '../streetview/ground';
 import type { District } from '../streetview/zoningRenderer';
 import { watchTaps } from '../streetview/watchTaps';
@@ -242,7 +243,8 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
       const t = guard.up(e.pointerId, p.x, p.y, e.timeStamp);
       spread = pts.size === 2 ? pinch() : 0;
       if (!t) return;
-      const ll = map.unproject([t.x, t.y]);
+      // On a building, the zone or project under that building (pickGround.ts).
+      const ll = groundUnder(map, t.x, t.y);
       const hit = featureAt(groundRef.current.map((g) => ({ ...g, layer: g.layer ?? 'zoning', name: g.zone })), [ll.lng, ll.lat]);
       if (hit) pickRef.current(hit.layer, hit.name, [ll.lng, ll.lat]);
     };

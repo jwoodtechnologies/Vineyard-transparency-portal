@@ -23,6 +23,7 @@ import { Sky } from './Sky';
 import { createPortal } from 'react-dom';
 import type { District } from './zoningRenderer';
 import { districtsOf, projectsOf } from './ground';
+import { groundUnder } from './pickGround';
 
 const PhotoViewer = lazy(() => import('./PhotoViewer'));
 
@@ -69,31 +70,6 @@ interface Props {
 }
 
 type Phase = 'pick' | 'search' | 'photo' | '3d';
-
-/** The raised buildings of the 3D view (threeD.ts): the recorded heights over the plain ones. */
-const BUILDINGS = ['vtp-sv-buildings-h', 'vtp-sv-buildings'];
-
-/**
- * The ground spot a click or tap means: on a raised building, the middle of that building's footprint (so
- * its zone or project is the one under it, not the ground behind it); elsewhere the ground at that point.
- */
-function groundUnder(map: maplibregl.Map, x: number, y: number): maplibregl.LngLat {
-  const layers = BUILDINGS.filter((id) => map.getLayer(id));
-  const b = layers.length ? map.queryRenderedFeatures([x, y], { layers })[0] : undefined;
-  const g = b?.geometry;
-  const ring = g?.type === 'Polygon' ? (g.coordinates[0] as Pos[]) : g?.type === 'MultiPolygon' ? (g.coordinates[0]?.[0] as Pos[]) : null;
-  if (ring?.length) {
-    let lng = 0,
-      lat = 0;
-    for (const [a, c] of ring) {
-      lng += a;
-      lat += c;
-    }
-    const ll = map.unproject([x, y]);
-    return new (ll.constructor as typeof maplibregl.LngLat)(lng / ring.length, lat / ring.length);
-  }
-  return map.unproject([x, y]);
-}
 
 /** The map page's zoning fill layer. */
 const ZONING_FILL = 'vtp-zoning-fill';
