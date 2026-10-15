@@ -286,7 +286,7 @@ for (const prof of PROFILES) {
         await page.waitForTimeout(2500);
         const at1 = await pinAt();
         run.drag200 = { pinBefore: at0, pinAfterDrag: at1, pinSame: at0 != null && at0 === at1, pinMoves: moves.n, ringAfterDrag: await page.locator('.vc-sv-ring:not(.is-tap)').count() };
-        if (prof.ctx.hasTouch) await touchTap(ctx, page, m.x + m.width / 2, m.y + m.height * 0.8);
+        if (prof.ctx.hasTouch) await touchTap(ctx, page, m.x + m.width / 2, m.y + m.height * 0.62);
         else await page.mouse.click(m.x + m.width / 2, m.y + m.height * 0.8);
         await page.waitForTimeout(2500);
         run.drag200.tapMoves = moves.n;

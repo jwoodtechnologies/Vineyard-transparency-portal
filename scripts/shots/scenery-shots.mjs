@@ -83,7 +83,7 @@ async function open(prof, scenery) {
     const m = r.url().match(/elevation-tiles-prod\/terrarium\/(\d+)\/(\d+)\/(\d+)\.png/);
     if (m) dem.push(m.slice(1).map(Number));
   });
-  page.on('console', (m) => /Content Security Policy|Refused to|Error/.test(m.text()) && notes.push(redact(m.text()).slice(0, 300)));
+  page.on('console', (m) => (m.type() === 'error' || /Content Security Policy|Refused to|Error/.test(m.text())) && notes.push(redact(m.text()).slice(0, 300)));
   page.on('pageerror', (e) => notes.push(redact('pageerror: ' + e.message)));
   if (prof.cpu > 1) await (await ctx.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: prof.cpu });
   await page.goto(`${BASE}/map?lat=${spot[1]}&lng=${spot[0]}&z=17`, { waitUntil: 'domcontentloaded' });
@@ -150,6 +150,20 @@ for (const prof of PROFILES) {
     run.notes = notes;
     try {
       run.startFacing = await facing(page);
+      // Which build is live: the scripts the page loaded, searched for the scenery and Google code.
+      if (!log.bundle)
+        log.bundle = await page.evaluate(async () => {
+          const urls = performance.getEntriesByType('resource').map((e) => e.name).filter((u) => /\/assets\/.*\.js$/.test(u));
+          const has = { snow: false, sun: false, google: false, scripts: urls.length };
+          for (const u of urls) {
+            const t = await (await fetch(u)).text();
+            has.snow ||= t.includes('vtp-sv-snow');
+            has.sun ||= t.includes('vc-sv-sun');
+            has.google ||= t.includes('vc-google-sv');
+          }
+          return has;
+        });
+      run.layers = await page.evaluate(() => [...document.querySelectorAll('.vc-sv-sun')].length);
       if (scenery) {
         for (const [name, deg] of [['west', 270], ['south', 180], ['east', 90], ['sun', log.sun.azimuth]]) {
           await face(page, deg);
@@ -158,7 +172,6 @@ for (const prof of PROFILES) {
           run[`facing_${name}`] = await facing(page);
         }
         run.sunShown = await page.locator('.vc-sv-sun:not([hidden])').count();
-        run.layers = await page.evaluate(() => [...document.querySelectorAll('.vc-sv-sun')].length);
       }
       await face(page, 270);
       await page.waitForTimeout(3000);
