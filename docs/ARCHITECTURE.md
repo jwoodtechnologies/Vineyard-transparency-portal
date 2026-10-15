@@ -92,7 +92,17 @@ Routes live in `src/app/router.tsx`; every screen is in `src/console/`.
   tap moves anyone (`tapGuard.ts`): one pointer, down and up within 6 px and 350 ms, no drag, wheel or pinch
   in between; the click that ends a drag never counts. This holds in the photo viewer, the 3D view, the small
   map and pin dropping. A ring on the ground under the mouse shows where a click would go (hidden while
-  dragging); on touch the tapped spot lights up just before the move. Arrows and keys also move. A build step
+  dragging); on touch the tapped spot lights up just before the move. Arrows and keys also move.
+* **Google Street View mode** (`src/console/streetview/GoogleView.tsx`, Tools menu): Google's terms allow its
+  Street View only beside a Google map, so this mode replaces our map with a Google map (Maps JavaScript API)
+  carrying our zoning, the parcel lines and the pin with its heading cone, beside a Google panorama. A click on
+  the Google map or a drop of Google's person moves the panorama; walking or turning in it moves the pin and
+  cone, and the map follows when the pin nears an edge. Side by side with a draggable divider on wider screens;
+  stacked on phones (panorama on top) with a handle. Close returns to our map at the same place and zoom
+  (Google zoom minus one). The mode shows only while `GET /api/streetview/config` answers `google: true`: the
+  Worker variable `GOOGLE_MAPS_KEY` is set and today's opens are under `GOOGLE_SV_DAILY_CAP` (default 150).
+  `POST /api/streetview/google/open` counts the open in D1 (`google_sv_usage`) and hands out the key, or answers
+  429 at the cap (`worker/lib/googleSv.ts`). Google's script loads only then. Sync math: `googleSync.ts`. A build step
   (`mapillaryNoEval` in `vite.config.ts`) removes MapillaryJS's one use of `new Function`, so the CSP needs no
   `'unsafe-eval'`.
 

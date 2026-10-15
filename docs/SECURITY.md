@@ -49,8 +49,8 @@ excerpts, link texts, even file names — is **untrusted**:
   pass `isEvalSupported: false`. The viewer (`src/components/documents/PdfViewer.tsx`) sets `enableXfa: false` and
   `withCredentials: false`.
   The pdf.js worker is served from the portal origin (CSP `worker-src 'self' blob:`).
-- **Content-Security-Policy** (`public/_headers`): `default-src 'self'`, `script-src 'self'` (no
-  inline or remote scripts), `object-src 'none'`, `frame-src 'none'`, `frame-ancestors 'none'`,
+- **Content-Security-Policy** (`public/_headers`): `default-src 'self'`, `script-src 'self'` (no inline scripts; remote scripts only from
+  Google's Maps hosts, below), `object-src 'none'`, `frame-src 'none'`, `frame-ancestors 'none'`,
   `base-uri 'self'`, `form-action 'self'`, `connect-src 'self'`, plus `nosniff`, `X-Frame-Options:
   DENY`, HSTS, COOP and a restrictive `Permissions-Policy`. `style-src` allows `'unsafe-inline'`
   (styles only). Details in [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md#security-headers-public_headers).
@@ -59,6 +59,15 @@ excerpts, link texts, even file names — is **untrusted**:
   `https://*.xx.fbcdn.net` (Mapillary's image and mesh files), and `img-src https://*.xx.fbcdn.net`. Its token
   is a Mapillary client token read from the Worker variable `MAPILLARY_TOKEN` (`GET /api/streetview/config`),
   never stored in the repository.
+  The map's Google Street View mode (`src/console/streetview/GoogleView.tsx`) loads Google's Maps JavaScript
+  API only when someone opens it, so the CSP lists Google's hosts: `script-src https://maps.googleapis.com
+  https://maps.gstatic.com`, `img-src https://*.googleapis.com https://*.gstatic.com https://*.google.com
+  https://*.ggpht.com`, `connect-src https://*.googleapis.com https://maps.gstatic.com`, `style-src
+  https://fonts.googleapis.com` and `font-src https://fonts.gstatic.com`. The browser key is read from the Worker
+  variable `GOOGLE_MAPS_KEY` and handed out only by `POST /api/streetview/google/open`, which counts each open
+  in D1 and refuses after `GOOGLE_SV_DAILY_CAP` opens a day (default 150), so use stays inside Google's free
+  monthly amount. The key should also be restricted to the portal's web addresses and to the Maps JavaScript
+  API in the Google Cloud console.
 
 ## Crawler and ingest safety
 
@@ -151,8 +160,8 @@ Defences, detailed in [RAG_DESIGN.md](RAG_DESIGN.md):
     gets the same sentence for every parcel (`worker/ai/place.ts`). Owner names are not indexed.
   - Check: Diagnostics workflow, task `owner-filter`, writes counts by reason and 30 random shown names
     to `diag/<run id>/owner-filter.json`; withheld names are never printed or written.
-- No third-party analytics, fonts or scripts are loaded (fonts are self-hosted via `@fontsource`;
-  CSP forbids remote scripts).
+- No third-party analytics, fonts or scripts are loaded (fonts are self-hosted via `@fontsource`), except
+  Google's Maps script and its font, and only after someone opens Google Street View on the map.
 
 ## Rate limiting and cost control for AI
 

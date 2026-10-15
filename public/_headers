@@ -6,6 +6,10 @@
 # decoders (scanned pages, JBIG2 and JPEG 2000; it allows WebAssembly only, never JavaScript eval); the two
 # CivicClerk hosts let a phone read a meeting file the portal holds no copy of (CivicClerk refuses Cloudflare);
 # frame-src 'self' shows a PDF in the browser's own viewer from the portal's file route.
+# Google Street View mode on the map (src/console/streetview/GoogleView.tsx, loaded only when opened): the
+# Maps JavaScript API script (maps.googleapis.com, maps.gstatic.com), its map and panorama images
+# (*.googleapis.com, *.gstatic.com, *.google.com, *.ggpht.com), its data requests (*.googleapis.com,
+# maps.gstatic.com), and Google's Roboto font (fonts.googleapis.com, fonts.gstatic.com).
 /*
   Strict-Transport-Security: max-age=15552000
   X-Content-Type-Options: nosniff
@@ -13,7 +17,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.xx.fbcdn.net; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://basemap.nationalmap.gov https://gisaerials.utahcounty.gov https://vineyardut.api.civicclerk.com https://civicclerk.blob.core.windows.net https://graph.mapillary.com https://tiles.mapillary.com https://*.xx.fbcdn.net; worker-src 'self' blob:; frame-src 'self' https://www.facebook.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.xx.fbcdn.net https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.ggpht.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://basemap.nationalmap.gov https://gisaerials.utahcounty.gov https://vineyardut.api.civicclerk.com https://civicclerk.blob.core.windows.net https://graph.mapillary.com https://tiles.mapillary.com https://*.xx.fbcdn.net https://*.googleapis.com https://maps.gstatic.com; worker-src 'self' blob:; frame-src 'self' https://www.facebook.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Cache-Control: no-cache, max-age=0, must-revalidate
 
 # Staff sign-in pages are never indexed (the pages also carry a noindex tag).
