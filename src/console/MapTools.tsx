@@ -1,11 +1,11 @@
 /**
  * The map's Tools button beside the search bar: one button that opens a small menu of Layers, My location,
- * Measure, Street view and (when set up) Google Street View, so the search bar keeps the room. Each item is 44 px tall with its icon. The
+ * Measure, Street view, Drive and (when set up) Google Street View, so the search bar keeps the room. Each item is 44 px tall with its icon. The
  * menu works from the keyboard (arrows, Home, End, Escape) and closes on a pick, a tap outside, or Tab.
  * Street view can also be dragged out of the menu onto the map (pegman.ts), as from Google's person.
  */
 import { forwardRef, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { ChevronDown, Crosshair, Eye, Layers, PersonStanding, Ruler, Wrench } from 'lucide-react';
+import { CarFront, ChevronDown, Crosshair, Eye, Layers, PersonStanding, Ruler, Wrench } from 'lucide-react';
 
 interface Props {
   layersOn: boolean;
@@ -19,6 +19,8 @@ interface Props {
   onStreetView: () => void;
   /** Google Street View mode, when it can be opened. */
   onGoogle?: () => void;
+  driving: boolean;
+  onDrive: () => void;
   /** The Street view item, for dragging the person onto the map. */
   personRef: RefObject<HTMLButtonElement | null>;
   /** The click that ends a drag of the person is not a pick. */
@@ -26,7 +28,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-export const MapTools = forwardRef<HTMLButtonElement, Props>(function MapTools({ layersOn, measuring, streetView, ready, onLayers, onLocate, onMeasure, onStreetView, onGoogle, personRef, personDragged, onOpenChange }, buttonRef) {
+export const MapTools = forwardRef<HTMLButtonElement, Props>(function MapTools({ layersOn, measuring, streetView, ready, onLayers, onLocate, onMeasure, onStreetView, onGoogle, driving, onDrive, personRef, personDragged, onOpenChange }, buttonRef) {
   const [open, setOpenState] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -72,7 +74,7 @@ export const MapTools = forwardRef<HTMLButtonElement, Props>(function MapTools({
     setOpen(false);
     run();
   };
-  const active = layersOn || measuring || streetView;
+  const active = layersOn || measuring || streetView || driving;
 
   return (
     <div ref={box} className="vc-map-tools">
@@ -119,6 +121,9 @@ export const MapTools = forwardRef<HTMLButtonElement, Props>(function MapTools({
             }}
           >
             Street view
+          </Item>
+          <Item className="vc-drive-item" icon={<CarFront size={18} strokeWidth={1.9} />} checked={driving} disabled={!ready && !driving} onClick={pick(onDrive)}>
+            Drive
           </Item>
           {onGoogle && (
             <Item className="vc-google-sv" icon={<Eye size={18} strokeWidth={1.9} />} disabled={!ready} onClick={pick(onGoogle)}>
