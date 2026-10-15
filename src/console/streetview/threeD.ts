@@ -9,6 +9,7 @@ import type { Pos } from './geo';
 import type { MultiPolygon, Polygon } from 'geojson';
 import { getJson } from '../api';
 import { buildingHeight, StoryIndex, tilesAround, withHeights } from './heights';
+import { addScenery, removeScenery } from './scenery';
 
 const LAYER = 'vtp-sv-buildings';
 /** The same buildings redrawn with the assessor's floors (heights.ts), over the plain ones once ready. */
@@ -25,14 +26,17 @@ const DEM = 'vtp-sv-dem';
 const SHADE_SRC = 'vtp-sv-dem-shade';
 const SHADE = 'vtp-sv-hillshade';
 
-/** The sky: light blue overhead, paler at a soft horizon, distant ground fading into it. */
+/**
+ * The sky: a clear light blue overhead going pale at the horizon. Haze starts about two thirds of the way
+ * to the horizon, so the Lake Mountains, West Mountain and Nebo show softened by distance, not cut off.
+ */
 export const SKY: maplibregl.SkySpecification = {
-  'sky-color': '#7fb8e6',
-  'horizon-color': '#dceaf6',
-  'fog-color': '#e4edf5',
-  'sky-horizon-blend': 0.7,
-  'horizon-fog-blend': 0.6,
-  'fog-ground-blend': 0.85,
+  'sky-color': '#6eaee6',
+  'horizon-color': '#e4eef7',
+  'fog-color': '#dfe8f0',
+  'sky-horizon-blend': 0.65,
+  'horizon-fog-blend': 0.5,
+  'fog-ground-blend': 0.7,
   'atmosphere-blend': 0,
 };
 
@@ -57,10 +61,12 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   if (!map.getLayer(SHADE))
     map.addLayer({ id: SHADE, type: 'hillshade', source: SHADE_SRC, paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#2b2b33', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#3a3a40' } }, firstAboveGround(map));
   if (!map.getTerrain()) map.setTerrain({ source: DEM, exaggeration: 1 });
-  if (map.getLayer(LAYER)) return;
-  // The streets map already has OpenFreeMap's source; satellite and plain maps get their own.
-  const src = map.getSource('openmaptiles') ? 'openmaptiles' : OWN_SRC;
+  // The streets map already has OpenFreeMap's source (and draws water blue); satellite and plain maps get their own.
+  const streets = Boolean(map.getSource('openmaptiles'));
+  const src = streets ? 'openmaptiles' : OWN_SRC;
   if (src === OWN_SRC && !map.getSource(OWN_SRC)) map.addSource(OWN_SRC, { type: 'vector', url: OFM });
+  if (scenery()) addScenery(map, SHADE_SRC, streets ? null : src, SHADE);
+  if (map.getLayer(LAYER)) return;
   const color = dark ? '#6a6c75' : '#dcd8d0';
   map.addLayer({
     id: LAYER,
@@ -154,11 +160,21 @@ export function removeBuildings(map: maplibregl.Map): void {
   if (map.getLayer(H_LAYER)) map.removeLayer(H_LAYER);
   if (map.getSource(H_SRC)) map.removeSource(H_SRC);
   if (map.getLayer(LAYER)) map.removeLayer(LAYER);
+  removeScenery(map);
   if (map.getSource(OWN_SRC)) map.removeSource(OWN_SRC);
   if (map.getTerrain()) map.setTerrain(null);
   if (map.getLayer(SHADE)) map.removeLayer(SHADE);
   for (const s of [SHADE_SRC, DEM]) if (map.getSource(s)) map.removeSource(s);
 }
+
+/** Scenery is on unless turned off for a timing comparison (localStorage vtp:scenery = off). */
+export const scenery = () => {
+  try {
+    return localStorage.getItem('vtp:scenery') !== 'off';
+  } catch {
+    return true;
+  }
+};
 
 const still = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 

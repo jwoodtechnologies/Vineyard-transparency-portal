@@ -5595,7 +5595,13 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
 .vc-sv-credit a { color: #fff; }
 .vc-sv-loading { margin: auto; color: #c9c9cf; font-size: var(--vc-fs-ui); }
 /* The 3D view's sky: light clouds above the horizon (Sky.tsx), moved by transforms only. */
-.vc-sv-sky { position: absolute; left: 0; right: 0; top: 0; height: var(--sky-h, 0px); overflow: hidden; pointer-events: none; z-index: 1; -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%); mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%); }
+.vc-sv-sky { position: absolute; left: 0; right: 0; top: 0; height: var(--sky-h, 0px); overflow: hidden; pointer-events: none; z-index: 1; }
+.vc-sv-sky-mask { position: absolute; inset: 0; -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%); mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%); }
+/* The sun: a small bright core in a wide, faint warm haze. */
+.vc-sv-sun-clip { position: absolute; inset: 0; overflow: hidden; }
+.vc-sv-sun { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+.vc-sv-sun[hidden] { display: none; }
+.vc-sv-sun::before { content: ""; position: absolute; left: -170px; top: -170px; width: 340px; height: 340px; border-radius: 50%; background: radial-gradient(circle, rgb(255 253 240 / 0.95) 0%, rgb(255 250 225 / 0.85) 5%, rgb(255 244 210 / 0.38) 14%, rgb(255 240 205 / 0.14) 34%, rgb(255 240 205 / 0) 70%); }
 .vc-sv-sky-turn { position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + 1800px); transform: translate3d(var(--sky-x, 0px), 0, 0); will-change: transform; }
 .vc-sv-clouds {
   position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + 900px); will-change: transform;
