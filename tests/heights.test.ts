@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { centerOf, CLASS_M, heightFor, OMT_UNKNOWN_M, ROOF_M, ROOF_SCALE, STORY_M, StoryIndex, tilesAround, UNKNOWN_M, WALL_SHARE, withHeights } from '../src/console/streetview/heights';
+import { centerOf, CLASS_M, heightFor, mergedBlocks, OMT_UNKNOWN_M, ROOF_M, ROOF_SCALE, STORY_M, StoryIndex, tilesAround, UNKNOWN_M, WALL_SHARE, withHeights } from '../src/console/streetview/heights';
 import type { Polygon } from 'geojson';
 
 const square = (x: number, y: number, d: number): Polygon => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
@@ -46,6 +46,17 @@ describe('building heights in 3D', () => {
     const big = withHeights([{ geometry: square(-111.75, 40.3, 0.001), properties: {} }], index);
     expect(big.features).toHaveLength(1);
     expect(withHeights([{ geometry: square(-111.7499, 40.3001, 0.0001), properties: { render_height: 12 } }], index).features).toHaveLength(1);
+  });
+
+  it('leaves out a block of houses merged into one long shape, keeping the houses and a lone large building', () => {
+    const rect = (x: number, y: number, w: number, h: number): Polygon => ({ type: 'Polygon', coordinates: [[[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x, y]]] });
+    const houses = [0, 1, 2].map((i) => ({ geometry: rect(-111.75 + i * 0.0003, 40.3, 0.0002, 0.0002), properties: {} }));
+    const block = { geometry: rect(-111.7501, 40.29995, 0.0009, 0.0003), properties: {} };
+    const school = { geometry: rect(-111.74, 40.3, 0.001, 0.001), properties: {} };
+    expect([...mergedBlocks([...houses, block, school])]).toEqual([3]);
+    const fc = withHeights([...houses, block, school], new StoryIndex());
+    // Three homes (walls and roof each) and the school; no block.
+    expect(fc.features).toHaveLength(7);
   });
 
   it('lists the zoom 16 tiles around a point', () => {

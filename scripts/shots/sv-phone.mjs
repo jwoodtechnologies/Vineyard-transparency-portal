@@ -279,13 +279,16 @@ try {
   const zc = page.locator('.vc-map-card[data-over-sv]');
   const before = await pinAt();
   const mtries = [];
+  const gx = mb.x + mb.width * 0.3,
+    gy = mb.y + mb.height * 0.82;
+  const gPage = await page.evaluate(([x, y]) => window.__vtpSv?.at(x, y) ?? null, [gx - mb.x, gy - mb.y]);
   for (let i = 0; i < 3 && before === (await pinAt()); i++) {
     mtries.push(await frameMs());
-    await tap(mb.x + mb.width * 0.3, mb.y + mb.height * 0.82);
+    await tap(gx, gy);
     await page.waitForTimeout(6000);
     if (await zc.count()) break;
   }
-  log.groundTap = { tries: mtries.length, frameMsBeforeTries: mtries, before, after: await pinAt(), moved: before !== (await pinAt()), card: await zc.count(), photo: await page.locator('.vc-svp').count() };
+  log.groundTap = { page: gPage, tries: mtries.length, frameMsBeforeTries: mtries, before, after: await pinAt(), moved: before !== (await pinAt()), card: await zc.count(), photo: await page.locator('.vc-svp').count() };
   await shot('5-moved');
   if (log.groundTap.card) await tapEl('button[aria-label="Close details"]').catch(() => undefined);
   // The zone chip opens the zone's card, and the pin stays.

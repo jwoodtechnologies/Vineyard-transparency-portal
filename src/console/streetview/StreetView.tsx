@@ -238,8 +238,8 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
         (window as Window & { __vtpSv?: unknown }).__vtpSv = {
           ground: () => groundRef.current.map((g) => ({ layer: g.layer ?? 'zoning', name: g.zone, rings: g.rings.length })),
           at: (x: number, y: number) => {
-            const ll = groundUnder(map, x, y);
-            return { ground: [ll.lng, ll.lat], plain: map.unproject([x, y]).toArray(), card: cardAt(ll, map.unproject([x, y]))?.name ?? null };
+            const g = pickGround(map, x, y);
+            return { ground: g.at.toArray(), stand: g.stand.toArray(), plain: g.plain.toArray(), card: cardAt(g.at, g.plain)?.name ?? null, phase: phaseRef.current };
           },
         };
     } catch {

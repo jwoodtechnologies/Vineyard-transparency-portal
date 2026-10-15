@@ -151,6 +151,54 @@ function shrink(g: Polygon | MultiPolygon, c: Position, k: number): Polygon | Mu
 }
 
 /**
+ * The buildings that are a block of others merged into one shape (lower zoom map tiles merge a street's
+ * houses into one long outline): a footprint holding the middles of two or more other buildings. Drawn
+ * as well, they stood as long grey blocks along the street, taller than the houses.
+ */
+export function mergedBlocks(buildings: Array<{ geometry: Polygon | MultiPolygon }>): Set<number> {
+  const cell = (p: Position) => `${Math.floor(p[0] / 0.0005)},${Math.floor(p[1] / 0.0005)}`;
+  const mids: Array<Position | null> = buildings.map((b) => centerOf(b.geometry));
+  const grid = new Map<string, number[]>();
+  mids.forEach((m, i) => {
+    if (!m) return;
+    const k = cell(m);
+    const list = grid.get(k);
+    if (list) list.push(i);
+    else grid.set(k, [i]);
+  });
+  const out = new Set<number>();
+  buildings.forEach((b, i) => {
+    const ring = b.geometry.type === 'Polygon' ? b.geometry.coordinates[0] : b.geometry.coordinates[0]?.[0];
+    if (!ring || ringM2(ring) < 250) return;
+    let w = Infinity,
+      s = Infinity,
+      e = -Infinity,
+      n = -Infinity;
+    for (const [x, y] of ring) {
+      w = Math.min(w, x);
+      e = Math.max(e, x);
+      s = Math.min(s, y);
+      n = Math.max(n, y);
+    }
+    let inside = 0;
+    const own = mids[i];
+    for (let cx = Math.floor(w / 0.0005); cx <= Math.floor(e / 0.0005); cx++)
+      for (let cy = Math.floor(s / 0.0005); cy <= Math.floor(n / 0.0005); cy++)
+        for (const j of grid.get(`${cx},${cy}`) ?? []) {
+          const m = mids[j];
+          if (j === i || !m || (own && Math.abs(m[0] - own[0]) < 1e-6 && Math.abs(m[1] - own[1]) < 1e-6)) continue;
+          const other = buildings[j].geometry;
+          const oRing = other.type === 'Polygon' ? other.coordinates[0] : other.coordinates[0]?.[0];
+          // Only smaller buildings count (the same shape again from another tile does not).
+          if (!oRing || ringM2(oRing) > ringM2(ring) * 0.6) continue;
+          if (inRing(m, ring)) inside++;
+        }
+    if (inside >= 2) out.add(i);
+  });
+  return out;
+}
+
+/**
  * Buildings as GeoJSON with their chosen height (h) and base (b), once each (the same building comes from
  * every tile it touches). A home (small, no recorded height) is walls (r 0) to WALL_SHARE of its height and a
  * smaller roof block (r 1) above, so from the street it reads as a house, not a flat slab.
@@ -158,7 +206,9 @@ function shrink(g: Polygon | MultiPolygon, c: Position, k: number): Polygon | Mu
 export function withHeights(buildings: Array<{ geometry: Polygon | MultiPolygon; properties: Record<string, unknown> | null }>, index: StoryIndex): FeatureCollection<Polygon | MultiPolygon, { h: number; b: number; r: number; k: number }> {
   const features: Array<Feature<Polygon | MultiPolygon, { h: number; b: number; r: number; k: number }>> = [];
   const seen = new Set<string>();
-  for (const f of buildings) {
+  const merged = mergedBlocks(buildings);
+  for (const [i, f] of buildings.entries()) {
+    if (merged.has(i)) continue;
     const c = centerOf(f.geometry);
     if (!c) continue;
     const ring = f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : f.geometry.coordinates[0]?.[0];
