@@ -61,7 +61,8 @@ const covers = (z, x, y, [lng, lat]) => {
 };
 const PEAKS = { lakeMountains: [-111.935, 40.235], westMountain: [-111.80, 40.09], nebo: [-111.76, 39.82], timpanogos: [-111.6457, 40.3908] };
 
-const browser = await chromium.launch();
+// SwiftShader through ANGLE's GL backend: the runner's default Vulkan backend left the 3D view blank.
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const PROFILES = [
   { name: 'phone', ctx: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 }, cpu: 4 },
   { name: 'desktop', ctx: { viewport: { width: 1440, height: 900 } }, cpu: 1 },
@@ -171,7 +172,7 @@ for (const prof of PROFILES) {
       if (scenery) {
         for (const [name, deg] of [['west', 270], ['south', 180], ['east', 90], ['sun', log.sun.azimuth]]) {
           await face(page, deg);
-          await page.waitForTimeout(9000);
+          await page.waitForTimeout(20000);
           await page.screenshot({ path: `${OUT}/${prof.name}-${name}.png` });
           run[`facing_${name}`] = await facing(page);
         }
