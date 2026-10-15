@@ -16,7 +16,7 @@ import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 maplibregl.setWorkerUrl(workerUrl);
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronDown, MessageSquare, Search, X } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
@@ -37,8 +37,11 @@ import { MeasureTool } from './measure/MeasureTool';
 import { MapTools } from './MapTools';
 import { decodeShape } from './measure/shape';
 import { StreetView } from './streetview/StreetView';
+
+/** Google Street View mode (its own chunk; Google's script loads only when it opens). */
+const GoogleView = lazy(() => import('./streetview/GoogleView'));
 import { useLongPress } from './streetview/longPress';
-import { lineNear, photoNear, useCoverage } from './streetview/coverage';
+import { lineNear, photoNear, streetviewConfig, useCoverage } from './streetview/coverage';
 import { usePersonDrag } from './streetview/pegman';
 import type { Photo } from './streetview/geo';
 import { setHead } from '@/lib/head';
@@ -1246,6 +1249,29 @@ export default function MapPage() {
   });
   useLongPress(getMap, mapGen, ready, !measuring, (at) => startStreetView(at));
   const closeStreetView = useCallback(() => setSv(null), []);
+  // Google Street View mode: offered only while the Worker has a key and today's opens are under the cap.
+  const [googleOk, setGoogleOk] = useState(false);
+  const [gsv, setGsv] = useState<{ start: Pos; zoom: number; key: number } | null>(null);
+  useEffect(() => {
+    let stale = false;
+    void streetviewConfig().then((c) => !stale && setGoogleOk(c.google));
+    return () => {
+      stale = true;
+    };
+  }, []);
+  const startGoogle = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const c = map.getCenter();
+    if (measuring) closeMeasure();
+    setSv(null);
+    setPicked(null);
+    setGsv({ start: [c.lng, c.lat], zoom: map.getZoom(), key: Date.now() });
+  };
+  const closeGoogle = useCallback((at: Pos, zoom: number) => {
+    setGsv(null);
+    mapRef.current?.jumpTo({ center: at, zoom });
+  }, []);
   const loadZoning = useCallback(() => {
     const info = catalog?.find((l) => l.key === 'zoning');
     return info ? loadLayer(info) : Promise.reject(new Error('no zoning layer'));
@@ -1315,6 +1341,7 @@ export default function MapPage() {
             onLocate={locate}
             onMeasure={() => (measuring ? closeMeasure() : startMeasure())}
             onStreetView={() => (sv ? closeStreetView() : startStreetView(null))}
+            onGoogle={googleOk ? startGoogle : undefined}
             personRef={svButton}
             personDragged={() => personDragged()}
             onOpenChange={setToolsOpen}
@@ -1430,6 +1457,12 @@ export default function MapPage() {
         })()}
 
         {measuring && <MeasureTool getMap={getMap} gen={mapGen} ready={ready} initial={measureInit} snapData={measureSnap} onClose={closeMeasure} />}
+
+        {gsv && (
+          <Suspense fallback={null}>
+            <GoogleView key={gsv.key} start={gsv.start} zoom={gsv.zoom} loadZoning={loadZoning} onClose={closeGoogle} onCapped={() => setGoogleOk(false)} />
+          </Suspense>
+        )}
 
         {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} startPhoto={sv.photo} loadZoning={loadZoning} showMapZoning={showMapZoning} onClose={closeStreetView} />}
 

@@ -16,18 +16,21 @@ const LINE_HI = 'vtp-mly-seq-hi';
 const DOTS = 'vtp-mly-img';
 export const COVERAGE_BLUE = '#1a73e8';
 
-let tokenPromise: Promise<string | null> | null = null;
-/** The Mapillary client token from GET /api/streetview/config (asked once a visit), or null when not set. */
-export function mapillaryToken(): Promise<string | null> {
-  tokenPromise ??= getJson<{ token: string | null }>('/api/streetview/config').then(
-    (r) => (typeof r.token === 'string' && r.token ? r.token : null),
+let configPromise: Promise<{ token: string | null; google: boolean }> | null = null;
+/** GET /api/streetview/config (asked once a visit): the Mapillary client token, and whether Google Street View can be opened. */
+export function streetviewConfig(): Promise<{ token: string | null; google: boolean }> {
+  configPromise ??= getJson<{ token: string | null; google?: boolean }>('/api/streetview/config').then(
+    (r) => ({ token: typeof r.token === 'string' && r.token ? r.token : null, google: r.google === true }),
     () => {
-      tokenPromise = null;
-      return null;
+      configPromise = null;
+      return { token: null, google: false };
     },
   );
-  return tokenPromise;
+  return configPromise;
 }
+
+/** The Mapillary client token, or null when not set. */
+export const mapillaryToken = (): Promise<string | null> => streetviewConfig().then((c) => c.token);
 
 export const tilesUrl = (token: string) => `https://tiles.mapillary.com/maps/vtp/mly1_public/2/{z}/{x}/{y}?access_token=${encodeURIComponent(token)}`;
 
