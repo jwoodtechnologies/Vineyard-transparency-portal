@@ -6,7 +6,7 @@
  */
 import type * as maplibregl from 'maplibre-gl';
 import { OMT_UNKNOWN_M, UNKNOWN_M } from './heights';
-import { firstHit, middle, type Box } from './rayPick';
+import { firstHitAt, middle, type Box } from './rayPick';
 
 type Pos = [number, number];
 
@@ -65,16 +65,25 @@ export function cameraAt(map: maplibregl.Map): [number, number, number] {
 }
 
 export function groundUnder(map: maplibregl.Map, x: number, y: number): maplibregl.LngLat {
+  return pickGround(map, x, y).at;
+}
+
+/**
+ * What a click there lands on: `at`, the middle of the building it is on (for the zone or project under
+ * it) or the ground; `stand`, where to move to (the street side just in front of that building, never inside
+ * it); `plain`, the ground under the pointer.
+ */
+export function pickGround(map: maplibregl.Map, x: number, y: number): { at: maplibregl.LngLat; stand: maplibregl.LngLat; plain: maplibregl.LngLat } {
   const ll = map.unproject([x, y]);
+  const make = (p: Pos) => new (ll.constructor as typeof maplibregl.LngLat)(p[0], p[1]);
   try {
     const eye = cameraAt(map);
     const alt = map.queryTerrainElevation(ll) ?? 0;
     const boxes = boxesNear(map, [eye[0], eye[1]], [ll.lng, ll.lat]);
-    const hit = firstHit(eye, [ll.lng, ll.lat, alt], boxes);
-    if (!hit) return ll;
-    const [lng, lat] = middle(hit.ring);
-    return new (ll.constructor as typeof maplibregl.LngLat)(lng, lat);
+    const hit = firstHitAt(eye, [ll.lng, ll.lat, alt], boxes);
+    if (!hit) return { at: ll, stand: ll, plain: ll };
+    return { at: make(middle(hit.box.ring)), stand: make(hit.before), plain: ll };
   } catch {
-    return ll;
+    return { at: ll, stand: ll, plain: ll };
   }
 }

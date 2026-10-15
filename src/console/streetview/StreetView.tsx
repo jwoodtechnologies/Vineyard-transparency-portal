@@ -23,7 +23,7 @@ import { Sky } from './Sky';
 import { createPortal } from 'react-dom';
 import type { District } from './zoningRenderer';
 import { districtsOf, linesOf, nearLine, projectsOf, type GroundLine } from './ground';
-import { groundUnder } from './pickGround';
+import { groundUnder, pickGround } from './pickGround';
 
 const PhotoViewer = lazy(() => import('./PhotoViewer'));
 
@@ -263,14 +263,15 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       ({ x, y, touch }) => {
         if (phaseRef.current === 'photo' && !wideQuery()) return;
         clearTimeout(tapTimer);
-        const point = groundUnder(map, x, y);
-        const card = cardAt(point, map.unproject([x, y]));
+        const g = pickGround(map, x, y);
+        const card = cardAt(g.at, g.plain);
         if (card) {
           ring.hide();
-          routeRef.current.onPick(card.layer, card.name, [point.lng, point.lat]);
+          // Go here on the card moves to the street side of what was tapped, never into a building.
+          routeRef.current.onPick(card.layer, card.name, [g.stand.lng, g.stand.lat]);
           return;
         }
-        moveAt({ x, y }, point, touch);
+        moveAt({ x, y }, g.stand, touch);
       },
       () => ring.hide(),
     );
@@ -289,8 +290,8 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       const x = e.clientX - r.left,
         y = e.clientY - r.top;
       hoverFrame = requestAnimationFrame(() => {
-        const point = groundUnder(map, x, y);
-        const card = routeRef.current.layersOn ? cardAt(point, map.unproject([x, y])) : null;
+        const g = pickGround(map, x, y);
+        const card = routeRef.current.layersOn ? cardAt(g.at, g.plain) : null;
         const hit = card ?? (routeRef.current.layersOn ? hitAt(x, y) : null);
         const key = hit ? `${hit.layer}:${hit.name}` : '';
         if (key !== hovered) setHoverShape(map, hit?.shape ?? null, hit?.color);
@@ -307,7 +308,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
           return;
         }
         map.getCanvas().style.cursor = 'crosshair';
-        ring.show([point.lng, point.lat]);
+        ring.show([g.stand.lng, g.stand.lat]);
       });
     };
     const leave = () => {

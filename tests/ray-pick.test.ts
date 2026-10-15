@@ -33,3 +33,18 @@ describe('which building a tap in the 3D view lands on', () => {
     expect(y).toBeCloseTo(1);
   });
 });
+
+import { firstHitAt } from '../src/console/streetview/rayPick';
+
+describe('where a tap on a building moves to', () => {
+  const house: Box = { ring: sq(-111.7400, 40.3000), base: 0, top: 8 };
+  it('stands on the street side in front of the building, not inside it', () => {
+    const hit = firstHitAt([-111.7420, 40.30005, G + 3], [-111.7380, 40.30005, G], [house])!;
+    expect(hit.box).toBe(house);
+    expect(hit.before[0]).toBeLessThan(-111.7400);
+    expect(hit.before[0]).toBeGreaterThan(-111.7402);
+  });
+  it('passes over the building the camera stands in', () => {
+    expect(firstHitAt([-111.73995, 40.30005, G + 3], [-111.7380, 40.30005, G], [house])).toBeNull();
+  });
+});

@@ -25,6 +25,15 @@ const STEPS = 160;
  * sea level]; `groundAlt` is the ground's height under the boxes (the valley floor is flat enough for one).
  */
 export function firstHit(eye: [number, number, number], ground: [number, number, number], boxes: Box[], groundAlt = ground[2]): Box | null {
+  return firstHitAt(eye, ground, boxes, groundAlt)?.box ?? null;
+}
+
+/**
+ * The first box the line of sight enters, and the ground spot just before it (where to stand to be in front
+ * of that building). A building the eye stands inside is passed over.
+ */
+export function firstHitAt(eye: [number, number, number], ground: [number, number, number], boxes: Box[], groundAlt = ground[2]): { box: Box; before: Pos } | null {
+  boxes = boxes.filter((b) => !inRing([eye[0], eye[1]], b.ring));
   if (!boxes.length) return null;
   // Footprint extents once, so most boxes are passed over cheaply at each step.
   const ext = boxes.map((b) => {
@@ -40,6 +49,7 @@ export function firstHit(eye: [number, number, number], ground: [number, number,
     }
     return { b, w, s, e, n };
   });
+  let prev: Pos = [eye[0], eye[1]];
   for (let i = 1; i <= STEPS; i++) {
     const t = i / STEPS;
     const p: Pos = [eye[0] + (ground[0] - eye[0]) * t, eye[1] + (ground[1] - eye[1]) * t];
@@ -47,8 +57,9 @@ export function firstHit(eye: [number, number, number], ground: [number, number,
     for (const x of ext) {
       if (p[0] < x.w || p[0] > x.e || p[1] < x.s || p[1] > x.n) continue;
       if (h < x.b.base - 0.5 || h > x.b.top + 0.5) continue;
-      if (inRing(p, x.b.ring)) return x.b;
+      if (inRing(p, x.b.ring)) return { box: x.b, before: prev };
     }
+    prev = p;
   }
   return null;
 }
