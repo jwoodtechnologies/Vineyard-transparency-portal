@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- route table, not a component module */
-import { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, createBrowserRouter, useSearchParams } from 'react-router-dom';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
+import { Navigate, createBrowserRouter, useRouteError, useSearchParams } from 'react-router-dom';
+import { isChunkError, reloadOnce } from '@/lib/chunkReload';
 /**
  * Every screen is its own chunk, loaded with its route. Each importer is listed once so a route's chunk can
  * also be fetched ahead of a tap (preloadRoute: link hover, touchstart or focus), and index.html preloads the
@@ -95,6 +96,12 @@ const quiet = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
 /** If a screen ever fails, offer a clean way back instead of a raw error page. */
 function RouteError() {
+  const error = useRouteError();
+  // The screen's code could not be loaded (a deploy changed it): reload once for the current version.
+  const chunk = isChunkError(error);
+  useEffect(() => {
+    if (chunk) reloadOnce();
+  }, [chunk]);
   return (
     <div className="vc" data-state="page" style={{ display: 'grid', placeItems: 'center', minHeight: '100dvh', padding: '2rem', textAlign: 'center' }}>
       <div>

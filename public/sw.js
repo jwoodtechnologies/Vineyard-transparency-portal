@@ -3,8 +3,9 @@
  * (AWS Terrain Tiles) and OpenFreeMap's versioned vector tiles. After the first view they come from here, so
  * panning back, going back into 3D or the next visit draws them without the network.
  *
- * Everything else passes straight through untouched (no respondWith at all): pages, the app's own files,
- * every /api request, and the aerial photos. Responses are kept exactly as the network gave them, never
+ * Everything else passes straight through untouched (no respondWith at all): pages, the app's own files
+ * (/assets/*, never cached or answered here), every /api request, and the aerial photos. An HTML answer is
+ * never kept, whatever the address. Responses are kept exactly as the network gave them, never
  * rebuilt. If anything here fails, the request goes to the network as if this file did not exist.
  *
  * At most MAX_ENTRIES tiles are kept; the oldest go first. A new CACHE name drops every older cache when this
@@ -51,13 +52,13 @@ async function cached(url) {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || !TILE_HOSTS.some((r) => r.test(req.url))) return;
+  if (req.method !== 'GET' || new URL(req.url).pathname.startsWith('/assets/') || !TILE_HOSTS.some((r) => r.test(req.url))) return;
   e.respondWith(
     (async () => {
       const hit = await cached(req.url);
       if (hit) return hit;
       const res = await fetch(req);
-      if (res.ok && res.type === 'cors') e.waitUntil(keep(req.url, res.clone()));
+      if (res.ok && res.type === 'cors' && !/text\/html/i.test(res.headers.get('content-type') ?? '')) e.waitUntil(keep(req.url, res.clone()));
       return res;
     })().catch(() => fetch(req)),
   );

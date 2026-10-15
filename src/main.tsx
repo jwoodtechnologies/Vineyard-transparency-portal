@@ -4,6 +4,10 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from '@/app/router';
 import PullToRefresh from '@/console/PullToRefresh';
 import { applyRouteHead } from '@/lib/head';
+import { watchChunkLoads } from '@/lib/chunkReload';
+
+// A page whose code cannot be loaded (mid-deploy, or a bad kept copy) reloads once (lib/chunkReload.ts).
+watchChunkLoads();
 
 /** The shell leaves in the same frame the first screen arrives (a .vc frame in the root), so nothing flashes in between. */
 function dropShellWhenDrawn(root: HTMLElement): void {
