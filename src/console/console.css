@@ -5703,11 +5703,7 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
 .vc-drive-hud > * { pointer-events: auto; }
 .vc-drive-bar { position: absolute; top: 4.4rem; left: 0.8rem; right: 0.8rem; max-width: 34rem; flex-wrap: wrap; }
 @media (min-width: 821px) { .vc-drive-bar { top: auto; bottom: 1.4rem; left: 0; right: 0; margin: 0 auto; width: max-content; } }
-.vc-drive-speed { margin: 0 6px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 4.4em; }
-.vc-drive-speed span { font-size: 1.25rem; }
-.vc-drive-modes { display: inline-flex; border: 1px solid var(--vc-line); border-radius: 999px; overflow: hidden; }
-.vc-drive-modes button { min-height: 36px; padding: 0 10px; border: 0; background: transparent; color: inherit; font: inherit; font-size: 0.85rem; cursor: pointer; }
-.vc-drive-modes button[aria-checked='true'] { background: var(--vc-ink); color: var(--vc-bg); }
+.vc-drive-speed { font-weight: 700; font-variant-numeric: tabular-nums; }
 /* The turn arrows sit high in the view, clear of the car (which the chase camera keeps low in the middle). */
 .vc-drive-turns { position: absolute; left: 50%; transform: translateX(-50%); top: 12.5rem; display: flex; gap: 14px; }
 @media (min-width: 821px) { .vc-drive-turns { top: 5.6rem; } }
@@ -5741,3 +5737,39 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
 .vc-map-wrap[data-tools] .vc-drive-turns { visibility: hidden; }
 /* A card while driving on a wider screen: above the Drive bar at the bottom. */
 @media (min-width: 821px) { .vc-map-wrap:has(.vc-drive-hud) .vc-map-card[data-over-sv] { bottom: 5.6rem; max-height: calc(100% - 6.4rem); } }
+/* Drive mode, far out: the car as a marker with its heading, the same size at any zoom. */
+.vc-drive-marker { width: 32px; height: 32px; pointer-events: none; filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.45)); }
+.vc-drive-marker[hidden] { display: none; }
+.vc-drive-marker circle { fill: #c62828; stroke: #fff; stroke-width: 3; }
+.vc-drive-marker path { fill: #fff; }
+/* Drive bar buttons: icon and label. The speed button shows the speed and the speed setting. */
+.vc-drive-btn b { font-variant-numeric: tabular-nums; }
+.vc-drive-mode { color: var(--vc-muted); font-weight: 500; }
+/* Continue (Drive) and Go here (street view) at the top of a card. */
+.vc-map-card-go { display: flex; gap: 8px; margin: 6px 0 8px; }
+/* The zone under the street view pin, by the bar: tapping it opens the zone's card. */
+.vc-sv-zone {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin: 0 0 6px; padding: 0 12px; box-sizing: border-box;
+  border: 1px solid var(--vc-line); border-radius: 999px; background: var(--vc-bg); color: var(--vc-ink); box-shadow: var(--vc-shadow);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.vc-sv-note .vc-sv-zone { display: flex; width: max-content; }
+.vc-svp .vc-sv-zone { margin: 0 8px 6px; }
+@media (max-width: 820px) {
+  /* Drive on phones: Tools steps aside (Layers is in the Drive bar), the bar sits at the bottom. */
+  .vc-map-wrap[data-driving] .vc-map-tools { display: none; }
+  .vc-drive-bar { top: auto; bottom: calc(0.6rem + env(safe-area-inset-bottom)); left: 0.6rem; right: 0.6rem; max-width: none; flex-wrap: nowrap; gap: 4px; }
+  .vc-drive-btn { flex: 1 1 0; flex-direction: column; gap: 2px; min-width: 0; width: auto; height: 54px; padding: 4px 2px; border-radius: 14px; font-size: 11.5px; line-height: 1.15; }
+  .vc-drive-btn span { display: block; white-space: nowrap; }
+  .vc-drive-speedbtn svg { display: none; }
+  .vc-drive-speedbtn .vc-drive-speed b { font-size: 15px; }
+  .vc-drive-turns { top: 4.6rem; }
+  .vc-drive-inset { bottom: calc(0.6rem + 54px + 8px + 0.6rem + env(safe-area-inset-bottom)); }
+  .vc-map-wrap[data-driving] .vc-map .maplibregl-ctrl-bottom-right,
+  .vc-map-wrap[data-driving] .vc-map .maplibregl-ctrl-bottom-left { bottom: calc(0.6rem + 54px + 8px + env(safe-area-inset-bottom)); }
+  /* A card or the Layers sheet takes the bottom while open: the bar, arrows and small map wait under it. */
+  .vc-map-wrap[data-driving][data-card='true'] .vc-drive-bar,
+  .vc-map-wrap[data-driving][data-panel='true'] .vc-drive-bar,
+  .vc-map-wrap[data-driving][data-card='true'] .vc-drive-turns,
+  .vc-map-wrap[data-driving][data-panel='true'] .vc-drive-turns { display: none; }
+}

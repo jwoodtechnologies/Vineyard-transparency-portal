@@ -5,7 +5,9 @@
  * a high view over the town; Reset view eases back to the chase view (camera.ts). Near an intersection,
  * arrows show the ways on; with no choice it goes straight or follows the road, and turns around at a dead
  * end. Stop and Go, three speeds, a small map of where it is, and Exit back to the map at the car's spot.
- * With Zoning or Capital projects on (Tools, Layers), a tap on one opens its card while the car drives on.
+ * A tap on anything of a layer that is on (a parcel, project, zone, school...) stops the car and opens its
+ * card; Continue (on the card or in the bar) drives on. From far out the car shows as a marker with its
+ * heading, the same size on screen at any zoom.
  * Keys: left and right arrows (up for straight), space to stop or go, Escape to exit. Pauses while the tab
  * is hidden. Each frame moves the car and eases the camera, and writes to the page only what changed.
  *
@@ -13,16 +15,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type * as maplibregl from 'maplibre-gl';
-import { ArrowLeft, ArrowRight, ArrowUp, LocateFixed, Pause, Play, X } from 'lucide-react';
-import type { FeatureCollection } from 'geojson';
+import { ArrowLeft, ArrowRight, ArrowUp, Gauge, Layers, LocateFixed, Pause, Play, X } from 'lucide-react';
+import * as mlgl from 'maplibre-gl';
 import { destination } from '../measure/geo';
 import { addBuildings, enter3d, removeBuildings, type Saved } from '../streetview/threeD';
 import { Sky } from '../streetview/Sky';
 import { TapGuard } from '../streetview/tapGuard';
-import { featureAt } from '../streetview/clickRoute';
 import { groundUnder } from '../streetview/pickGround';
-import { districtsOf, projectsOf } from '../streetview/ground';
-import type { District } from '../streetview/zoningRenderer';
 import { watchTaps } from '../streetview/watchTaps';
 import { CHASE, dragged, ease, easeAngle, isChase, lead, zoomed, type View } from './camera';
 import { createPortal } from 'react-dom';
@@ -37,6 +36,9 @@ const LAYER_ID = 'vtp-drive-car';
 
 type Phase = 'road' | 'drive';
 
+const NEXT_MODE: Record<SpeedMode, SpeedMode> = { slow: 'normal', normal: 'fast', fast: 'slow' };
+const MODE_LABEL: Record<SpeedMode, string> = { slow: 'Slow', normal: 'Normal', fast: 'Fast' };
+
 /** The one car: a red sedan. */
 const KIND = 'sedan';
 const COLOR = '#c62828';
@@ -46,13 +48,14 @@ interface Props {
   ready: boolean;
   dark: boolean;
   onExit: () => void;
-  /** The map's Zoning and Capital projects layers: on, and their shapes, for taps while driving. */
-  zoningOn: boolean;
-  projectsOn: boolean;
-  loadZoning: () => Promise<FeatureCollection>;
-  loadProjects: () => Promise<FeatureCollection>;
-  /** A tap on a zone or project: the map's card for it (a sheet on phones). */
-  onPick: (layer: string, name: string, at: Pos) => void;
+  /** A tap on the map while driving: the map opens the card of what is there, if anything. */
+  onTapMap: (at: Pos) => void;
+  /** Held by an open card: the car waits until Continue. */
+  hold: boolean;
+  onContinue: () => void;
+  /** Opens or closes the Layers panel. */
+  onLayers: () => void;
+  layersOpen: boolean;
 }
 
 let graphPromise: Promise<Graph> | null = null;
@@ -77,15 +80,11 @@ function loadGraph(): Promise<Graph> {
   return graphPromise;
 }
 
-export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, projectsOn, loadZoning, loadProjects, onPick }: Props) {
+export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold, onContinue, onLayers, layersOpen }: Props) {
   const [phase, setPhase] = useState<Phase>('road');
   // The camera: where it is asked to be (drags, pinches, Reset view); the frame loop eases toward it.
   const viewRef = useRef<View>(CHASE);
   const [chase, setChase] = useState(true);
-  // Zones and projects on the ground, for taps while driving.
-  const groundRef = useRef<District[]>([]);
-  const [zones, setZones] = useState<District[]>([]);
-  const [projects, setProjects] = useState<District[]>([]);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stopped, setStopped] = useState(false);
@@ -93,7 +92,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
   const [turns, setTurns] = useState<{ left: boolean; straight: boolean; right: boolean; chosen: Choice | null; auto: Choice | 'uturn' | null; locked: boolean } | null>(null);
   const carRef = useRef<Car | null>(null);
   const layerRef = useRef<CarLayer | null>(null);
-  const speedRef = useRef<HTMLSpanElement>(null);
+  const speedRef = useRef<HTMLElement>(null);
   const insetRef = useRef<SVGGElement>(null);
   const insetCar = useRef<SVGGElement>(null);
   const coarse = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(pointer: coarse)').matches);
@@ -150,35 +149,9 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
     };
   }, [getMap, ready, phase, start]);
 
-  // Zones and projects for taps, loaded while their layer is on.
+  const tapRef = useRef(onTapMap);
   useEffect(() => {
-    if (!zoningOn) return;
-    let stale = false;
-    loadZoning().then(
-      (fc) => !stale && setZones(districtsOf(fc)),
-      () => undefined,
-    );
-    return () => {
-      stale = true;
-    };
-  }, [zoningOn, loadZoning]);
-  useEffect(() => {
-    if (!projectsOn) return;
-    let stale = false;
-    loadProjects().then(
-      (fc) => !stale && setProjects(projectsOf(fc)),
-      () => undefined,
-    );
-    return () => {
-      stale = true;
-    };
-  }, [projectsOn, loadProjects]);
-  useEffect(() => {
-    groundRef.current = [...(zoningOn ? zones : []), ...(projectsOn ? projects : [])];
-  }, [zoningOn, projectsOn, zones, projects]);
-  const pickRef = useRef(onPick);
-  useEffect(() => {
-    pickRef.current = onPick;
+    tapRef.current = onTapMap;
   });
 
   // Driving: 3D on, the car layer, the camera, one step a frame.
@@ -196,6 +169,13 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
     const layer = carLayer(LAYER_ID, KIND, COLOR);
     layerRef.current = layer;
     if (!map.getLayer(LAYER_ID)) map.addLayer(layer);
+    // From far out the car is a marker with its heading, the same size on screen at any zoom.
+    const dot = document.createElement('div');
+    dot.className = 'vc-drive-marker';
+    dot.innerHTML = '<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><circle cx="16" cy="16" r="13" /><path d="M16 5 L23 22 L16 18 L9 22 Z" /></svg>';
+    dot.hidden = true;
+    const marker = new mlgl.Marker({ element: dot, rotationAlignment: 'map', pitchAlignment: 'viewport' }).setLngLat(first.at).addTo(map);
+    let dotShown = false;
 
     // The camera's own gestures on the map: one finger or the mouse turns and tilts it around the car, two
     // fingers pinch, the wheel zooms; a tap (TapGuard) opens what is under it.
@@ -246,8 +226,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
       if (!t) return;
       // On a building, the zone or project under that building (pickGround.ts).
       const ll = groundUnder(map, t.x, t.y);
-      const hit = featureAt(groundRef.current.map((g) => ({ ...g, layer: g.layer ?? 'zoning', name: g.zone })), [ll.lng, ll.lat]);
-      if (hit) pickRef.current(hit.layer, hit.name, [ll.lng, ll.lat]);
+      tapRef.current([ll.lng, ll.lat]);
     };
     const cancel = (e: PointerEvent) => {
       pts.delete(e.pointerId);
@@ -283,6 +262,19 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
     })();
     const stats = { frames: [] as number[], work: [] as number[] };
     if (debug) (window as unknown as { __vtpDrive?: typeof stats }).__vtpDrive = stats;
+    const extents = (graph?.edges ?? []).map((e) => {
+      let w = Infinity,
+        east = -Infinity,
+        so = Infinity,
+        n = -Infinity;
+      for (const p of e.coords) {
+        w = Math.min(w, p[0]);
+        east = Math.max(east, p[0]);
+        so = Math.min(so, p[1]);
+        n = Math.max(n, p[1]);
+      }
+      return [w, so, east, n];
+    });
     const drawInset = (at: Pos) => {
       const g = insetRef.current;
       if (!g || !graph) return;
@@ -291,15 +283,10 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
       const k = 70 / 500;
       const kx = 111320 * Math.cos((at[1] * Math.PI) / 180);
       const px = (p: Pos) => `${(((p[0] - at[0]) * kx * k) + 70).toFixed(1)},${(70 - (p[1] - at[1]) * 110540 * k).toFixed(1)}`;
-      // Roads whose extent overlaps the inset's window (a long straight road may have no point inside it).
-      const near = graph.edges.filter((e) => {
-        let w = Infinity, east = -Infinity, so = Infinity, n = -Infinity;
-        for (const p of e.coords) {
-          w = Math.min(w, p[0]);
-          east = Math.max(east, p[0]);
-          so = Math.min(so, p[1]);
-          n = Math.max(n, p[1]);
-        }
+      // Roads whose extent overlaps the inset's window (a long straight road may have no point inside it);
+      // the extents are worked out once per drive.
+      const near = graph.edges.filter((_e, i) => {
+        const [w, so, east, n] = extents[i];
         return (east - at[0]) * kx > -700 && (w - at[0]) * kx < 700 && (n - at[1]) * 110540 > -700 && (so - at[1]) * 110540 < 700;
       });
       g.innerHTML = near.map((e) => `<polyline points="${e.coords.map(px).join(' ')}" />`).join('');
@@ -321,6 +308,12 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
       const ground = map.queryTerrainElevation({ lng: at[0], lat: at[1] });
       if (ground != null) elevation += (ground - elevation) * (1 - Math.exp(-dt * 6));
       layer.place(at, heading, elevation);
+      const far = cam.zoom < 17.5;
+      if (far !== dotShown) {
+        dotShown = far;
+        dot.hidden = !far;
+      }
+      if (far) marker.setLngLat(at).setRotation(heading);
       // The camera eases toward the asked for view, and its heading follows the car's a little behind.
       carHeading = easeAngle(carHeading, heading, dt, 2.5);
       cam = ease(cam, viewRef.current, dt);
@@ -372,6 +365,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
       el.removeEventListener('wheel', wheel);
       el.style.touchAction = touchWas;
       layerRef.current = null;
+      marker.remove();
       try {
         if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
         removeBuildings(map);
@@ -388,11 +382,23 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getMap, phase]);
   useEffect(() => {
-    if (carRef.current) carRef.current.stopped = stopped;
-  }, [stopped]);
+    if (carRef.current) carRef.current.stopped = stopped || hold;
+  }, [stopped, hold]);
   useEffect(() => {
     if (carRef.current) carRef.current.mode = mode;
   }, [mode]);
+
+  const goLabel = hold ? 'Continue' : stopped ? 'Go' : 'Stop';
+  const go = useCallback(() => {
+    if (hold) {
+      setStopped(false);
+      onContinue();
+    } else setStopped((s) => !s);
+  }, [hold, onContinue]);
+  const goRef = useRef(go);
+  useEffect(() => {
+    goRef.current = go;
+  });
 
   const choose = useCallback((c: Choice) => {
     const car = carRef.current;
@@ -409,7 +415,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
       else if (e.key === 'ArrowLeft') choose('left');
       else if (e.key === 'ArrowRight') choose('right');
       else if (e.key === 'ArrowUp') choose('straight');
-      else if (e.key === ' ') setStopped((s) => !s);
+      else if (e.key === ' ') goRef.current();
       else return;
       e.preventDefault();
     };
@@ -446,18 +452,22 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
     <>
       {map && createPortal(<Sky getMap={getMap} />, map.getContainer())}
       <div className="vc-drive-hud">
-        <div className="vc-sv-bar vc-drive-bar">
-          {exit}
-          <p className="vc-drive-speed" aria-live="off">
-            <span ref={speedRef}>0</span> mph
-          </p>
-          <button type="button" className="vc-sv-bar-btn" onClick={() => setStopped((s) => !s)} aria-label={stopped ? 'Go' : 'Stop'} title={stopped ? 'Go (space)' : 'Stop (space)'}>
-            {stopped ? <Play size={17} strokeWidth={2} aria-hidden="true" /> : <Pause size={17} strokeWidth={2} aria-hidden="true" />}
-            <span>{stopped ? 'Go' : 'Stop'}</span>
+        <div className="vc-sv-bar vc-drive-bar" data-layers={layersOpen || undefined}>
+          <button type="button" className="vc-sv-bar-btn vc-drive-btn" onClick={onExit} aria-label="Exit drive mode" title="Exit (Escape)">
+            <X size={18} strokeWidth={2} aria-hidden="true" />
+            <span>Exit</span>
+          </button>
+          <button type="button" className="vc-sv-bar-btn vc-drive-btn" onClick={go} aria-label={goLabel} title={`${goLabel} (space)`}>
+            {hold || stopped ? <Play size={17} strokeWidth={2} aria-hidden="true" /> : <Pause size={17} strokeWidth={2} aria-hidden="true" />}
+            <span>{goLabel}</span>
+          </button>
+          <button type="button" className="vc-sv-bar-btn vc-drive-btn" onClick={onLayers} aria-pressed={layersOpen} title="Layers: tap anything of a layer for its card">
+            <Layers size={17} strokeWidth={2} aria-hidden="true" />
+            <span>Layers</span>
           </button>
           <button
             type="button"
-            className="vc-sv-bar-btn vc-drive-reset"
+            className="vc-sv-bar-btn vc-drive-btn vc-drive-reset"
             onClick={() => {
               viewRef.current = CHASE;
               setChase(true);
@@ -469,13 +479,13 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
             <LocateFixed size={17} strokeWidth={2} aria-hidden="true" />
             <span>Reset view</span>
           </button>
-          <div className="vc-drive-modes" role="radiogroup" aria-label="Speed">
-            {(['slow', 'normal', 'fast'] as SpeedMode[]).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)}>
-                {m === 'slow' ? 'Slow' : m === 'normal' ? 'Normal' : 'Fast'}
-              </button>
-            ))}
-          </div>
+          <button type="button" className="vc-sv-bar-btn vc-drive-btn vc-drive-speedbtn" onClick={() => setMode(NEXT_MODE[mode])} aria-label={`Speed: ${MODE_LABEL[mode]}. Change speed`} title="Speed: Slow, Normal or Fast">
+            <Gauge size={17} strokeWidth={2} aria-hidden="true" />
+            <span className="vc-drive-speed" aria-live="off">
+              <b ref={speedRef}>0</b> mph
+            </span>
+            <span className="vc-drive-mode">{MODE_LABEL[mode]}</span>
+          </button>
         </div>
         {turns && (
           <div className="vc-drive-turns" role="group" aria-label={turns.auto === 'uturn' ? 'Dead end ahead: turning around' : 'Turn at the next intersection'}>

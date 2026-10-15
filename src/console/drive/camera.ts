@@ -10,14 +10,14 @@ export interface View {
   yaw: number;
   /** Degrees from looking straight down (0) toward the horizon (90). */
   pitch: number;
-  /** Map zoom: about 20.3 is close behind the car, 15 a view over the town. */
+  /** Map zoom: about 20.3 is close behind the car, 12 the whole city from high above. */
   zoom: number;
 }
 
 export const CHASE: View = { yaw: 0, pitch: 66, zoom: 20.3 };
 export const PITCH_MIN = 25;
 export const PITCH_MAX = 80;
-export const ZOOM_MIN = 15;
+export const ZOOM_MIN = 12;
 export const ZOOM_MAX = 20.8;
 
 /** Degrees turned per pixel dragged sideways, and tilted per pixel dragged up or down. */

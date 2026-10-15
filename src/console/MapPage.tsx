@@ -18,7 +18,8 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 maplibregl.setWorkerUrl(workerUrl);
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, MessageSquare, Search, X } from 'lucide-react';
+import { ChevronDown, MapPin, MessageSquare, Play, Search, X } from 'lucide-react';
+import { metersPerPx, pickAt } from './pickAt';
 import { useTheme } from '@/hooks/useTheme';
 import { TopBar } from './Chrome';
 import { getJson, type MapLayerInfo } from './api';
@@ -587,6 +588,10 @@ export default function MapPage() {
   const svButton = useRef<HTMLButtonElement>(null);
   // Drive mode (Tools, Drive) is open.
   const [driving, setDriving] = useState(false);
+  // While driving, any open card holds the car until Continue (on the card or in the Drive bar).
+  const [driveHold, setDriveHold] = useState(false);
+  // Go here on a project's card in street view: where to move (n changes each press).
+  const [svGo, setSvGo] = useState<{ at: Pos; n: number } | null>(null);
   const measuringRef = useRef(measuring);
   useEffect(() => {
     measuringRef.current = measuring || Boolean(sv) || driving;
@@ -1290,7 +1295,38 @@ export default function MapPage() {
     if (window.innerWidth <= 820) setPanel(false);
     setDriving(true);
   };
-  const stopDrive = useCallback(() => setDriving(false), []);
+  const stopDrive = useCallback(() => {
+    setDriving(false);
+    setDriveHold(false);
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a card opened while driving stops the car
+    if (driving && picked) setDriveHold(true);
+  }, [driving, picked]);
+  const continueDrive = useCallback(() => {
+    setDriveHold(false);
+    setPicked(null);
+    clearHighlight(mapRef.current);
+  }, []);
+  // A tap while driving: the card of what is there, from the layers' own data (pickAt.ts), else the parcel.
+  const pickForDrive = useCallback(
+    (at: Pos) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const layers = [...DRAW_ORDER]
+        .reverse()
+        .filter((k) => on.has(k) && k !== 'boundary' && k !== 'plines' && dataRef.current[k])
+        .map((k) => ({ key: k, fc: dataRef.current[k] as FC }));
+      const hit = pickAt(layers, at, metersPerPx(at[1], map.getZoom()) * 22);
+      if (hit) {
+        const props = (hit.feature.properties ?? {}) as Record<string, unknown>;
+        setPicked({ layer: hit.key, label: labelsRef.current.get(hit.key) ?? '', name: nameOf(hit.key, props), props, shape: hit.feature.geometry, tap: at, fromSv: true });
+        return;
+      }
+      if (on.has('parcels')) pickParcelRef.current(map, new maplibregl.LngLat(at[0], at[1]), {});
+    },
+    [on],
+  );
   const startGoogle = () => {
     const map = mapRef.current;
     if (!map) return;
@@ -1307,6 +1343,10 @@ export default function MapPage() {
   const loadZoning = useCallback(() => {
     const info = catalog?.find((l) => l.key === 'zoning');
     return info ? loadLayer(info) : Promise.reject(new Error('no zoning layer'));
+  }, [catalog]);
+  const loadUdot = useCallback(() => {
+    const info = catalog?.find((l) => l.key === 'udot');
+    return info ? loadLayer(info) : Promise.reject(new Error('no udot layer'));
   }, [catalog]);
   const loadProjects = useCallback(() => {
     const info = catalog?.find((l) => l.key === 'projects');
@@ -1352,7 +1392,7 @@ export default function MapPage() {
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
       <div className="vc-map-shell" data-projects={projectsShown ? (wide ? 'side' : 'sheet') : undefined}>
-      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked) && !measuring && !sv} data-measure={measuring || undefined} data-sv={sv ? 'on' : undefined} data-tools={toolsOpen || undefined}>
+      <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked) && !measuring && !sv} data-measure={measuring || undefined} data-sv={sv ? 'on' : undefined} data-tools={toolsOpen || undefined} data-driving={driving || undefined}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
         {!painted && (
           <div className="vc-map-loading" role="status">
@@ -1515,7 +1555,7 @@ export default function MapPage() {
 
         {driving && (
           <Suspense fallback={null}>
-            <DriveMode getMap={getMap} ready={ready} dark={dark} onExit={stopDrive} zoningOn={on.has('zoning')} projectsOn={projectsOn} loadZoning={loadZoning} loadProjects={loadProjects} onPick={pickFromStreetView} />
+            <DriveMode getMap={getMap} ready={ready} dark={dark} onExit={stopDrive} onTapMap={pickForDrive} hold={driveHold} onContinue={continueDrive} onLayers={() => setPanel((p) => !p)} layersOpen={panel} />
           </Suspense>
         )}
 
@@ -1525,10 +1565,10 @@ export default function MapPage() {
           </Suspense>
         )}
 
-        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} startPhoto={sv.photo} loadZoning={loadZoning} showMapZoning={showMapZoning} zoningOn={on.has('zoning')} projectsOn={projectsOn} loadProjects={loadProjects} onPick={pickFromStreetView} onLayers={() => setPanel((p) => !p)} layersOpen={panel} onClose={closeStreetView} />}
+        {sv && <StreetView key={sv.key} getMap={getMap} gen={mapGen} ready={ready} dark={dark} start={sv.start} startPhoto={sv.photo} loadZoning={loadZoning} showMapZoning={showMapZoning} zoningOn={on.has('zoning')} projectsOn={projectsOn} loadProjects={loadProjects} udotOn={on.has('udot')} loadUdot={loadUdot} goTo={svGo} onPick={pickFromStreetView} onLayers={() => setPanel((p) => !p)} layersOpen={panel} onClose={closeStreetView} />}
 
         {picked && !measuring && (!sv || picked.fromSv) && (
-          <aside className="vc-map-card" aria-label="Details" data-over-sv={picked.fromSv || undefined}>
+          <aside className="vc-map-card" aria-label="Details" data-over-sv={picked.fromSv || driving || undefined}>
             <div className="vc-map-card-head">
               <span className="vc-map-kind">
                 <span className="vc-map-swatch" style={{ background: (picked.layer === 'alerts' && typeof picked.props.__c === 'string' ? picked.props.__c : null) ?? lookOf(picked.layer, dark)?.color }} /> {picked.label}
@@ -1538,6 +1578,29 @@ export default function MapPage() {
               </button>
             </div>
             <h2 className="vc-map-card-title">{picked.name}</h2>
+            {driving && (
+              <div className="vc-map-card-go">
+                <button type="button" className="vc-primary" onClick={continueDrive}>
+                  <Play size={15} strokeWidth={2} aria-hidden="true" /> Continue
+                </button>
+              </div>
+            )}
+            {sv && picked.fromSv && picked.layer !== 'zoning' && picked.tap && (
+              <div className="vc-map-card-go">
+                <button
+                  type="button"
+                  className="vc-primary"
+                  onClick={() => {
+                    const at = picked.tap!;
+                    setSvGo((g) => ({ at, n: (g?.n ?? 0) + 1 }));
+                    setPicked(null);
+                    clearHighlight(mapRef.current);
+                  }}
+                >
+                  <MapPin size={15} strokeWidth={2} aria-hidden="true" /> Go here
+                </button>
+              </div>
+            )}
             <dl className="vc-map-facts">
               {Object.entries(picked.props)
                 .filter(([k]) => !HIDE.has(k) && !(NAME_FIELD[picked.layer] ?? []).slice(0, 1).includes(k))
