@@ -60,15 +60,21 @@ export interface GroundFeature {
   rings: Pos[][];
 }
 
-/** The feature under a ground point: projects before zoning, then the smallest shape. */
+/** A project counts as this share of its area against zones, so a street project wins over the zone it is in. */
+export const PROJECT_WEIGHT = 0.25;
+
+/**
+ * The feature under a ground point: the smallest shape there, with projects weighted (PROJECT_WEIGHT) so a
+ * project wins over the zone around it, but a project drawn over the whole city (a water rights purchase)
+ * does not hide every zone.
+ */
 export function featureAt<T extends GroundFeature>(list: T[], at: Pos): T | null {
-  let best: { f: T; rank: number; area: number } | null = null;
+  let best: { f: T; score: number } | null = null;
   for (const f of list)
     for (const r of f.rings) {
       if (!inRing(at, r)) continue;
-      const rank = f.layer === 'projects' ? 0 : 1;
-      const area = ringArea(r);
-      if (!best || rank < best.rank || (rank === best.rank && area < best.area)) best = { f, rank, area };
+      const score = ringArea(r) * (f.layer === 'projects' ? PROJECT_WEIGHT : 1);
+      if (!best || score < best.score) best = { f, score };
     }
   return best?.f ?? null;
 }

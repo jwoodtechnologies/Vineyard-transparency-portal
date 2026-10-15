@@ -51,8 +51,13 @@ describe('feature under a ground point', () => {
   const small = { layer: 'zoning', name: 'C-2', rings: [square(2, 2, 2)] };
   const project = { layer: 'projects', name: 'Main Street', rings: [square(1, 1, 8)] };
 
-  it('picks projects first, then the smallest zone', () => {
-    expect(featureAt([zone, small, project], [3, 3])?.name).toBe('Main Street');
+  const citywide = { layer: 'projects', name: 'Water Shares Purchase', rings: [square(-50, -50, 100)] };
+
+  it('picks a project over the zone around it, else the smallest zone; a city wide project never hides the zones', () => {
+    expect(featureAt([zone, small, project], [6, 6])?.name).toBe('Main Street');
+    expect(featureAt([zone, small, project], [3, 3])?.name).toBe('C-2');
+    expect(featureAt([zone, small, citywide], [8, 8])?.name).toBe('R-1-10');
+    expect(featureAt([citywide], [30, 30])?.name).toBe('Water Shares Purchase');
     expect(featureAt([zone, small], [3, 3])?.name).toBe('C-2');
     expect(featureAt([zone, small], [8, 8])?.name).toBe('R-1-10');
     expect(featureAt([zone], [20, 20])).toBeNull();

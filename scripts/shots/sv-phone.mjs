@@ -42,7 +42,11 @@ try {
     for (const poly of polys) rings.push({ ring: poly[0], name: f.properties?.Project_Name ?? '' });
   }
   const area = (r) => Math.abs(r.reduce((a, [x, y], i) => a + x * r[(i + 1) % r.length][1] - r[(i + 1) % r.length][0] * y, 0));
-  rings.sort((a, b) => area(b.ring) - area(a.ring));
+  // The largest project that is a place, not a city wide shape (under about 0.5 square km).
+  const KM2 = 1 / (111.32 * 85.1);
+  const local = rings.filter((r) => area(r.ring) / 2 < 0.5 * KM2);
+  rings.length = 0;
+  rings.push(...local.sort((a, b) => area(b.ring) - area(a.ring)));
   for (const { ring, name } of rings) {
     const c = [ring.reduce((a, p) => a + p[0], 0) / ring.length, ring.reduce((a, p) => a + p[1], 0) / ring.length];
     const pt = inRing(c, ring) ? c : ring.map((v, i) => [(v[0] + ring[(i + 2) % ring.length][0]) / 2, (v[1] + ring[(i + 2) % ring.length][1]) / 2]).find((m) => inRing(m, ring));
@@ -163,19 +167,26 @@ try {
   const tapProject = async (tag) => {
     const before = { pin: await pinAt(), facing: await facing() };
     let point = null;
-    if (project)
-      point = await page.evaluate(([lng, lat]) => {
-        const m = window.__vtpMap;
-        if (!m) return null;
-        const p = m.project({ lng, lat });
-        const c = m.getContainer().getBoundingClientRect();
-        return { x: c.left + p.x, y: c.top + p.y, inView: p.x > 10 && p.y > 120 && p.x < c.width - 70 && p.y < c.height - 60 };
-      }, project.at);
-    const mb = await page.locator('.vc-map').boundingBox();
-    // Never on the pin itself (it would take the tap): clear of it by 60 px.
+    // Points inside the project (its middle, then midpoints across it), on screen and clear of the pin by 60 px
+    // (the pin would take the tap).
     const pin = await page.locator('.vc-sv-pin').boundingBox().catch(() => null);
     const clear = (p) => !pin || Math.hypot(p.x - (pin.x + pin.width / 2), p.y - (pin.y + pin.height / 2)) > 60;
-    const tp = point?.inView && clear(point) ? point : { x: mb.x + mb.width / 2, y: mb.y + mb.height * 0.78 };
+    if (project) {
+      const r = project.ring;
+      const cands = [project.at, ...r.flatMap((v, i) => [3, 7, 11].map((k) => [(v[0] + r[(i + k) % r.length][0]) / 2, (v[1] + r[(i + k) % r.length][1]) / 2]))].filter((q) => inRing(q, r));
+      const pts = await page.evaluate((list) => {
+        const m = window.__vtpMap;
+        if (!m) return [];
+        const c = m.getContainer().getBoundingClientRect();
+        return list.map(([lng, lat]) => {
+          const p = m.project({ lng, lat });
+          return { x: c.left + p.x, y: c.top + p.y, inView: p.x > 20 && p.y > 230 && p.x < c.width - 80 && p.y < c.height - 80 };
+        });
+      }, cands.slice(0, 400));
+      point = pts.find((p) => p.inView && clear(p)) ?? null;
+    }
+    const mb = await page.locator('.vc-map').boundingBox();
+    const tp = point ?? { x: mb.x + mb.width * 0.3, y: mb.y + mb.height * 0.7 };
     // Where that tap lands on the ground, and whether it is inside the project's outline.
     const ground = await page.evaluate(([x, y]) => {
       const m = window.__vtpMap;
@@ -193,7 +204,7 @@ try {
     const r = {
       tappedAt: [Math.round(tp.x), Math.round(tp.y)],
       where,
-      projected: Boolean(point?.inView),
+      projected: Boolean(point),
       card: await card.count(),
       title: (await card.locator('.vc-map-card-title').textContent().catch(() => null))?.trim() ?? null,
       kind: (await card.locator('.vc-map-kind').textContent().catch(() => null))?.trim() ?? null,
