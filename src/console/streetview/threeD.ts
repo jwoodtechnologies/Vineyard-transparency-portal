@@ -59,7 +59,7 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   // The shading reads its own copy of the tiles, as MapLibre advises when terrain uses the same data.
   if (!map.getSource(SHADE_SRC)) map.addSource(SHADE_SRC, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 12 });
   if (!map.getLayer(SHADE))
-    map.addLayer({ id: SHADE, type: 'hillshade', source: SHADE_SRC, paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#2b2b33', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#3a3a40' } }, firstAboveGround(map));
+    map.addLayer({ id: SHADE, type: 'hillshade', source: SHADE_SRC, paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#303030', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#3c3c3c' } }, firstAboveGround(map));
   if (!map.getTerrain()) map.setTerrain({ source: DEM, exaggeration: 1 });
   // The streets map already has OpenFreeMap's source (and draws water blue); satellite and plain maps get their own.
   const streets = Boolean(map.getSource('openmaptiles'));
@@ -239,8 +239,12 @@ export function enter3d(map: maplibregl.Map, pin: Pos): Saved {
   return saved;
 }
 
-/** The 3D view's first tilt: about 10 degrees short of level, which leaves a band of sky above the horizon. */
-export const START_PITCH = 80;
+/**
+ * The 3D view's first tilt: 7 degrees short of level. The view then reaches about 11 degrees above the
+ * horizon, enough to show the tops of Timpanogos and the high Wasatch (about 8 degrees up from Vineyard)
+ * with a band of sky over them.
+ */
+export const START_PITCH = 83;
 const MAX_PITCH = 85;
 
 export function leave3d(map: maplibregl.Map, saved: Saved): void {

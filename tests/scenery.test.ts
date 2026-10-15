@@ -2,17 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { snowColor, SNOW_FULL, SNOW_START, WATER_FILTER } from '../src/console/streetview/scenery';
 
 describe('3D scenery', () => {
-  it('starts the snow clear just under 2,900 m and is never solid white', () => {
+  it('is clear below about 2,700 m, patchy above, solid bright white from about 3,000 m, never grey or blue', () => {
     const stops = snowColor().slice(3) as Array<number | string>;
-    const pairs = [];
-    for (let i = 0; i < stops.length; i += 2) pairs.push([stops[i] as number, Number(String(stops[i + 1]).match(/([\d.]+)\)$/)![1])]);
-    expect(SNOW_START).toBeLessThan(2900);
-    expect(pairs[0]).toEqual([SNOW_START, 0]);
-    expect(pairs.find(([m]) => m === 2900)![1]).toBeGreaterThan(0);
-    expect(pairs.at(-1)![0]).toBe(SNOW_FULL);
-    expect(Math.max(...pairs.map(([, a]) => a))).toBeLessThan(0.85);
-    // Rising with height.
-    for (let i = 1; i < pairs.length; i++) expect(pairs[i][1]).toBeGreaterThan(pairs[i - 1][1]);
+    const pairs: Array<[number, number, string]> = [];
+    for (let i = 0; i < stops.length; i += 2) {
+      const m = String(stops[i + 1]).match(/rgba\((\d+), (\d+), (\d+), ([\d.]+)\)/)!;
+      pairs.push([stops[i] as number, Number(m[4]), `${m[1]},${m[2]},${m[3]}`]);
+    }
+    expect(SNOW_START).toBe(2700);
+    expect(SNOW_FULL).toBe(3000);
+    expect(pairs[0]).toEqual([2700, 0, '255,255,255']);
+    for (const [, , rgb] of pairs) expect(rgb).toBe('255,255,255');
+    const at = (m: number) => pairs.find(([e]) => e === m)![1];
+    expect(at(3000)).toBeGreaterThanOrEqual(0.95);
+    expect(pairs.at(-1)![1]).toBe(1);
+    // Patchy between: not one smooth rise.
+    const mid = pairs.filter(([e]) => e > 2700 && e < 3000).map(([, a]) => a);
+    expect(mid.some((a, i) => i > 0 && a < mid[i - 1])).toBe(true);
+    expect(Math.max(...mid)).toBeLessThan(0.8);
   });
 
   it('tints lakes and harbors, not swimming pools', () => {
