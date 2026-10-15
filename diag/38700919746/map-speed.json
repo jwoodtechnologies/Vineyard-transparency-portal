@@ -1,0 +1,217 @@
+{
+  "base": "https://vineyardportal.org",
+  "at": "2026-10-15T07:46:03.072Z",
+  "runs": [
+    {
+      "tag": "phone-2d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439667.731242724,4909703.2008134425,-12439056.235016",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439667.731242724,4910314.697039723,-12439056.2350164",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12440279.227469005,4909703.2008134425,-12439667.731242",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12440279.227469005,4910314.697039723,-12439667.7312427",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439056.235016443,4909703.2008134425,-12438444.738790"
+      ],
+      "failed": [
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I"
+      ],
+      "firstPaintMs": 1686,
+      "pendingAtPaint": [],
+      "settleOpenMs": 301,
+      "panSettleMs": 3358,
+      "panBackSettleMs": 3135,
+      "tilesOnPanOut": 0,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 0,
+      "fromSw": 0
+    },
+    {
+      "tag": "phone-3d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439667.731242724,4909703.2008134425,-12439056.235016",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439667.731242724,4910314.697039723,-12439056.2350164",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12440279.227469005,4909703.2008134425,-12439667.731242",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12440279.227469005,4910314.697039723,-12439667.7312427",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439056.235016443,4909703.2008134425,-12438444.738790"
+      ],
+      "failed": [
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I"
+      ],
+      "firstPaintMs": 15806,
+      "pendingAtPaint": [],
+      "settleOpenMs": 300,
+      "threeDOpenMs": 2810,
+      "threeDSettleMs": 301,
+      "turnSettleMs": 1103,
+      "turnBackSettleMs": 301,
+      "tilesOnTurnOut": 117,
+      "tilesOnTurnBack": 0,
+      "tilesOnTurnBackFromSw": 5,
+      "swControlled": true,
+      "tileRequests": 146,
+      "fromSw": 136
+    },
+    {
+      "tag": "phone-2d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439667.731242724,4909703.2008134425,-12439056.235016",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439667.731242724,4910314.697039723,-12439056.2350164",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12440279.227469005,4909703.2008134425,-12439667.731242",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12440279.227469005,4910314.697039723,-12439667.7312427",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439056.235016443,4909703.2008134425,-12438444.738790"
+      ],
+      "failed": [
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I"
+      ],
+      "firstPaintMs": 15811,
+      "pendingAtPaint": [],
+      "settleOpenMs": 300,
+      "panSettleMs": 3142,
+      "panBackSettleMs": 2912,
+      "tilesOnPanOut": 0,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 0,
+      "fromSw": 0
+    },
+    {
+      "tag": "phone-3d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439667.731242724,4909703.2008134425,-12439056.235016",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439667.731242724,4910314.697039723,-12439056.2350164",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12440279.227469005,4909703.2008134425,-12439667.731242",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12440279.227469005,4910314.697039723,-12439667.7312427",
+        "Refused to load the image 'https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/ImageServer/exportImage?bbox=-12439056.235016443,4909703.2008134425,-12438444.738790"
+      ],
+      "failed": [
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "csp https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I"
+      ],
+      "firstPaintMs": 15775,
+      "pendingAtPaint": [],
+      "settleOpenMs": 300,
+      "threeDOpenMs": 2754,
+      "threeDSettleMs": 1106,
+      "turnSettleMs": 603,
+      "turnBackSettleMs": 300,
+      "tilesOnTurnOut": 109,
+      "tilesOnTurnBack": 0,
+      "tilesOnTurnBackFromSw": 3,
+      "swControlled": true,
+      "tileRequests": 143,
+      "fromSw": 133
+    },
+    {
+      "tag": "desktop-2d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 12572,
+      "pendingAtPaint": [],
+      "settleOpenMs": 600,
+      "panSettleMs": 9026,
+      "panBackSettleMs": 8706,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 36,
+      "fromSw": 36
+    },
+    {
+      "tag": "desktop-3d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc",
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "firstPaintMs": 1696,
+      "pendingAtPaint": [],
+      "settleOpenMs": 601,
+      "threeDOpenMs": 8487,
+      "threeDSettleMs": 1007,
+      "failed": [
+        "net::ERR_FAILED https://s3.amazonaws.com/elevation-tiles-prod/terrarium/11/386/774.png",
+        "net::ERR_ABORTED https://s3.amazonaws.com/elevation-tiles-prod/terrarium/12/777/1545.png",
+        "net::ERR_ABORTED https://s3.amazonaws.com/elevation-tiles-prod/terrarium/12/777/1545.png",
+        "net::ERR_FAILED https://s3.amazonaws.com/elevation-tiles-prod/terrarium/11/388/776.png",
+        "net::ERR_FAILED https://s3.amazonaws.com/elevation-tiles-prod/terrarium/11/388/777.png"
+      ],
+      "turnSettleMs": 1101,
+      "turnBackSettleMs": 300,
+      "tilesOnTurnOut": 103,
+      "tilesOnTurnBack": 0,
+      "tilesOnTurnBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 169,
+      "fromSw": 159
+    },
+    {
+      "tag": "desktop-2d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1857,
+      "pendingAtPaint": [],
+      "settleOpenMs": 299,
+      "panSettleMs": 9043,
+      "panBackSettleMs": 8651,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 36,
+      "fromSw": 36
+    },
+    {
+      "tag": "desktop-3d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1865,
+      "pendingAtPaint": [],
+      "settleOpenMs": 301,
+      "threeDOpenMs": 9556,
+      "threeDSettleMs": 301,
+      "failed": [
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I"
+      ],
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button[aria-label=\"Turn right\"]')\n    - locator resolved to <button type=\"button\" class=\"vc-sv-3d-btn\" title=\"Turn right (D)\" aria-label=\"Turn right\">…</button>\n"
+    }
+  ]
+}
