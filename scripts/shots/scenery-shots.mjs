@@ -75,6 +75,7 @@ async function open(prof, scenery) {
       localStorage.setItem('vtp:mapbase', 'satellite');
       localStorage.setItem('vtp:scenery', sc ? 'on' : 'off');
       localStorage.setItem('vtp:sun-at', at);
+      localStorage.setItem('vtp:debug', '1');
     } catch {}
   }, [scenery, sunAt]);
   const page = await ctx.newPage();
@@ -170,13 +171,32 @@ for (const prof of PROFILES) {
         });
       run.layers = await page.evaluate(() => [...document.querySelectorAll('.vc-sv-sun')].length);
       if (scenery) {
-        for (const [name, deg] of [['west', 270], ['south', 180], ['east', 90], ['sun', log.sun.azimuth]]) {
+        for (const [name, deg] of [['west', 270], ['south', 180], ['east', 90], ['timpanogos', 30], ['sun', log.sun.azimuth]]) {
           await face(page, deg);
           await page.waitForTimeout(20000);
           await page.screenshot({ path: `${OUT}/${prof.name}-${name}.png` });
           run[`facing_${name}`] = await facing(page);
         }
         run.sunShown = await page.locator('.vc-sv-sun:not([hidden])').count();
+        // What the map holds: the 3D layers in drawing order, the snow ramp, the terrain height at Timpanogos.
+        run.mapState = await page.evaluate(() => {
+          const m = window.__vtpMap;
+          if (!m) return null;
+          const ids = m.getStyle().layers.map((l) => l.id);
+          const pick = (id) => ({ id, at: ids.indexOf(id), vis: m.getLayer(id) ? m.getLayoutProperty(id, 'visibility') ?? 'visible' : 'missing' });
+          return {
+            order: ['sat-county', 'sat-usgs', 'vtp-sv-water', 'vtp-sv-snow', 'vtp-sv-hillshade', 'vtp-sv-buildings'].map(pick),
+            layers: ids.length,
+            snowPaint: m.getLayer('vtp-sv-snow') ? JSON.stringify(m.getPaintProperty('vtp-sv-snow', 'color-relief-color')).slice(0, 200) : null,
+            timpanogos: m.queryTerrainElevation({ lng: -111.6457, lat: 40.3908 }),
+            exaggeration: m.getTerrain()?.exaggeration ?? null,
+            fog: JSON.stringify(m.getSky()).slice(0, 300),
+          };
+        });
+        // The same view with the snow drawn red: where the snow layer draws at all.
+        await page.evaluate(() => window.__vtpMap?.getLayer('vtp-sv-snow') && window.__vtpMap.setPaintProperty('vtp-sv-snow', 'color-relief-color', ['interpolate', ['linear'], ['elevation'], 2650, 'rgba(255,0,0,0)', 2950, 'rgba(255,0,0,1)']));
+        await page.waitForTimeout(4000);
+        await page.screenshot({ path: `${OUT}/${prof.name}-sun-snow-red.png` });
       }
       await face(page, 270);
       await page.waitForTimeout(3000);
