@@ -103,12 +103,13 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   });
   if (!map.getSource(H_SRC)) map.addSource(H_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   // Homes are walls with a smaller, darker roof block on top (heights.ts withHeights: r 1 is the roof).
-  // Homes in Vineyard: shingle roofs in brown greys over stucco and siding in warm light tans.
+  // Homes in Vineyard: shingle roofs in brown greys over stucco and siding in warm light tans (no darkening
+  // toward the ground, which turned the tans a dark brown at eye level).
   const roof = dark ? '#4e4540' : '#6e5f56';
   // Four close wall tones (heights.ts toneOf), so a row of homes reads as separate houses.
   const tones = dark ? ['#76706a', '#7d746a', '#6e6862', '#7a7268'] : ['#e6dccd', '#dccdb8', '#ece4d6', '#d6c8b4'];
   const wallColor: maplibregl.ExpressionSpecification = ['match', ['get', 'k'], 1, tones[1], 2, tones[2], 3, tones[3], tones[0]];
-  map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': ['case', ['==', ['get', 'r'], 1], roof, wallColor], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true } });
+  map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': ['case', ['==', ['get', 'r'], 1], roof, wallColor], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': false } });
   heights.get(map)?.stop();
   heights.set(map, recordedHeights(map, src));
 }
