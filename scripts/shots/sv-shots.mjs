@@ -109,6 +109,16 @@ const blackEdge = (page, png, whole = false) =>
     const w = Math.max(1, Math.floor(img.width / 10));
     return { left: side(0, w), right: side(img.width - w, img.width) };
   }, [png.toString('base64'), whole]);
+/** A map layer on or off from street view: the bar's Layers button, the layer's switch, then Done. */
+export async function setLayer(page, label, on) {
+  await page.click('.vc-sv-bar-btn[aria-pressed]', { force: true });
+  await page.waitForSelector('.vc-map-panel .vc-map-layer', { timeout: 20000 });
+  const row = page.locator('.vc-map-panel .vc-map-layer', { hasText: label }).first();
+  const box = row.locator('input[type=checkbox]');
+  if ((await box.isChecked()) !== on) await box.click({ force: true });
+  await page.click('.vc-map-panel button[aria-label="Close layers"]', { force: true });
+  await page.waitForTimeout(500);
+}
 /** Street view from the Tools menu (waiting for it to be ready). */
 const streetViewOn = async (page) => {
   await page.click('.vc-map-tools > button');
@@ -189,7 +199,7 @@ for (const prof of PROFILES) {
         }
         if (!dark) {
           // Zoning on in the photo: a district chip opens the zone's card, and the photo stays where it is.
-          await page.click('.vc-svp .vc-sv-bar-btn[aria-pressed]', { force: true });
+          await setLayer(page, 'Zoning', true);
           await page.waitForTimeout(3000);
           const before = await attribution(page);
           const chip = page.locator('button.vc-svp-chip').first();
@@ -204,7 +214,7 @@ for (const prof of PROFILES) {
             await page.waitForTimeout(800);
           }
           run.photoZoning.samePhoto = before === (await attribution(page));
-          await page.click('.vc-svp .vc-sv-bar-btn[aria-pressed]', { force: true });
+          await setLayer(page, 'Zoning', false);
           await page.waitForTimeout(800);
         }
         run.date = (await page.textContent('.vc-svp-when').catch(() => ''))?.trim();
@@ -212,7 +222,7 @@ for (const prof of PROFILES) {
         run.chips = await page.locator('.vc-svp-chip').allTextContents();
         run.miniMap = await page.locator('.vc-svp-mini canvas').count();
         run.miniMapInfo = await page.locator('.vc-svp-mini .maplibregl-ctrl-attrib').count();
-        run.zoningPressed = await page.getAttribute('.vc-svp .vc-sv-bar-btn[aria-pressed]', 'aria-pressed').catch(() => null);
+        run.barLabels = (await page.locator('.vc-svp .vc-sv-bar-btn').allTextContents().catch(() => [])).map((t) => t.trim());
         if (!dark) {
           // Look as far left as a drag allows: a flat photo must not show black past its edge.
           const v = await page.locator('.vc-svp-canvas').boundingBox();
@@ -317,7 +327,7 @@ for (const prof of PROFILES) {
         run.drag200.ok = run.drag200.pinSame && run.drag200.pinAfterTap !== at1;
         // Zoning on: a click (on the ground, or on a building) opens the zone's card and never moves the pin
         // or turns the view; closing the card leaves the view; a double click moves.
-        await page.click('.vc-sv-bar-btn[aria-pressed]', { force: true });
+        await setLayer(page, 'Zoning', true);
         await page.waitForTimeout(4000);
         const z = { hint: (await page.textContent('.vc-sv-hint').catch(() => ''))?.trim(), clicks: [] };
         for (const fy of [0.62, 0.78]) {
@@ -347,7 +357,7 @@ for (const prof of PROFILES) {
         run.zoning = z;
         await page.screenshot({ path: `${OUT}/${prof.name}-9b-zone-moved.png` });
         // Back off for the steps below.
-        await page.click('.vc-sv-bar-btn[aria-pressed]', { force: true });
+        await setLayer(page, 'Zoning', false);
         await page.waitForTimeout(1000);
       }
       // Looking around: a drag turns the view, the buttons turn and step, the compass faces north again.
@@ -419,7 +429,7 @@ for (const prof of PROFILES) {
       await page.waitForTimeout(9000);
       run.look.east = await facing();
       run.look.sky = await page.evaluate(() => getComputedStyle(document.querySelector('.vc-sv-sky') ?? document.body).height);
-      run.look.zoningPressed = await page.getAttribute('.vc-sv-bar-btn[aria-pressed]', 'aria-pressed').catch(() => null);
+      run.look.barLabels = (await page.locator('.vc-sv-note .vc-sv-bar-btn').allTextContents().catch(() => [])).map((t) => t.trim());
       run.look.title = (await page.textContent('.vc-sv-title').catch(() => ''))?.trim();
       await page.screenshot({ path: `${OUT}/${prof.name}-8-3d-east.png` });
       run.look.noteSame = note0 === (await page.textContent('.vc-sv-note'));
