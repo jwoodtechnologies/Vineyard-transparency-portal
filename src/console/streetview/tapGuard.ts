@@ -27,6 +27,9 @@ export class TapGuard {
   private press: Press | null = null;
   private pointers = new Set<number>();
 
+  /** `maxMs`: how long a press may last and still be a tap (Drive mode, where holding still means nothing else, allows any). */
+  constructor(private maxMs = TAP_MS) {}
+
   /** A pointer went down; `button` is the mouse button (0 for touch and pens). */
   down(id: number, x: number, y: number, t: number, touch: boolean, button = 0): void {
     this.pointers.add(id);
@@ -61,7 +64,7 @@ export class TapGuard {
     this.press = null;
     if (this.pointers.size) return null;
     this.move(id, x, y);
-    const ok = !p.spoiled && Math.hypot(x - p.x, y - p.y) <= TAP_SLOP_PX && t - p.t <= TAP_MS;
+    const ok = !p.spoiled && Math.hypot(x - p.x, y - p.y) <= TAP_SLOP_PX && t - p.t <= this.maxMs;
     return ok ? { x, y, touch: p.touch } : null;
   }
 

@@ -202,7 +202,8 @@ export default function DriveMode({ getMap, ready, dark, onExit, zoningOn, proje
     const el = map.getCanvasContainer();
     const touchWas = el.style.touchAction;
     el.style.touchAction = 'none';
-    const guard = new TapGuard();
+    // A press that stays put is a tap however long it lasts: nothing else is done by holding still here.
+    const guard = new TapGuard(Infinity);
     const pts = new Map<number, { x: number; y: number }>();
     let spread = 0;
     const setView = (v: View) => {

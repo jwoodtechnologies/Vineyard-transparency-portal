@@ -70,4 +70,13 @@ describe('click versus drag', () => {
     g.down(1, 0, 0, 20, false);
     expect(g.up(1, 0, 0, 40)).not.toBeNull();
   });
+
+  it('can allow a long still press as a tap (Drive mode)', () => {
+    const g = new TapGuard(Infinity);
+    g.down(1, 100, 100, 0, true);
+    expect(g.up(1, 102, 101, 2000)).toEqual({ x: 102, y: 101, touch: true });
+    const strict = new TapGuard();
+    strict.down(1, 100, 100, 0, true);
+    expect(strict.up(1, 100, 100, 2000)).toBeNull();
+  });
 });
