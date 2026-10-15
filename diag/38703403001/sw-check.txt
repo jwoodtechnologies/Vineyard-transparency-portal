@@ -1,0 +1,308 @@
+{
+  "config": {
+    "google": false,
+    "token": true
+  },
+  "runs": [
+    {
+      "tag": "desktop-fresh-1",
+      "county": {
+        "ok": 18,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 18
+        }
+      },
+      "paintedMs": 1790,
+      "darkShare": 0.03,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v4",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "desktop-fresh-2",
+      "county": {
+        "ok": 18,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 18
+        }
+      },
+      "paintedMs": 1295,
+      "darkShare": 0.03,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v4",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "desktop-old-1",
+      "county": {
+        "ok": 18,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 18
+        }
+      },
+      "paintedMs": 1829,
+      "darkShare": 0.03,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v3",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "desktop-old-2",
+      "county": {
+        "ok": 18,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 18
+        }
+      },
+      "paintedMs": 1798,
+      "darkShare": 0.03,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v3",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "desktop-updated-1",
+      "county": {
+        "ok": 18,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 18
+        }
+      },
+      "paintedMs": 1299,
+      "darkShare": 0.03,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v4",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "desktop-updated-2",
+      "county": {
+        "ok": 18,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 18
+        }
+      },
+      "paintedMs": 1287,
+      "darkShare": 0.03,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v4",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "phone-fresh-1",
+      "county": {
+        "ok": 12,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 12
+        }
+      },
+      "paintedMs": 1829,
+      "darkShare": 0.02,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v4",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "phone-fresh-2",
+      "county": {
+        "ok": 12,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 12
+        }
+      },
+      "paintedMs": 1162,
+      "darkShare": 0.02,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v4",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "phone-old-1",
+      "county": {
+        "ok": 12,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 12
+        }
+      },
+      "paintedMs": 1963,
+      "darkShare": 0.02,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v3",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "phone-old-2",
+      "county": {
+        "ok": 12,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 12
+        }
+      },
+      "paintedMs": 1929,
+      "darkShare": 0.02,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v3",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "phone-updated-1",
+      "county": {
+        "ok": 12,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 12
+        }
+      },
+      "paintedMs": 964,
+      "darkShare": 0.02,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v4",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    },
+    {
+      "tag": "phone-updated-2",
+      "county": {
+        "ok": 12,
+        "bad": 0,
+        "fromSw": 0,
+        "statuses": {
+          "200": 12
+        }
+      },
+      "paintedMs": 1149,
+      "darkShare": 0.02,
+      "worker": {
+        "controlled": true,
+        "cacheName": "vtp-tiles-v4",
+        "caches": []
+      },
+      "tools": [
+        "Layers",
+        "My location",
+        "Measure",
+        "Street view",
+        "Drive"
+      ]
+    }
+  ]
+}
