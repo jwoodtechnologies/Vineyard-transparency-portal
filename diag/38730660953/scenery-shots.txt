@@ -1,0 +1,309 @@
+{
+  "runs": [
+    {
+      "tag": "desktop-scenery",
+      "cpuSlowdown": 1,
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com\". Note that "
+      ],
+      "startFacing": 0,
+      "layers": 1,
+      "facing_east": 30,
+      "probe": [
+        "sat-bg:background:visible",
+        "sat-usgs:raster:none",
+        "sat-county:raster:visible",
+        "vtp-subdivisions-fill:fill:none",
+        "vtp-sv-water:fill:visible",
+        "vtp-sv-hillshade:hillshade:visible",
+        "vtp-sv-snow:color-relief:visible",
+        "vtp-subdivisions-line:line:none"
+      ],
+      "facing_timpanogos": 60,
+      "facing_west": 339,
+      "facing_south": 77,
+      "facing_sun": 329,
+      "sunShown": 0,
+      "mapState": {
+        "order": [
+          {
+            "id": "sat-county",
+            "at": 2,
+            "vis": "visible"
+          },
+          {
+            "id": "sat-usgs",
+            "at": 1,
+            "vis": "none"
+          },
+          {
+            "id": "vtp-sv-water",
+            "at": 4,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-snow",
+            "at": 6,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-hillshade",
+            "at": 5,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-buildings",
+            "at": 31,
+            "vis": "visible"
+          }
+        ],
+        "layers": 33,
+        "snowPaint": "[\"interpolate\",[\"linear\"],[\"elevation\"],2400,\"rgba(255, 255, 255, 0)\",2460,\"rgba(255, 255, 255, 0.4)\",2510,\"rgba(255, 255, 255, 0.25)\",2580,\"rgba(255, 255, 255, 0.75)\",2640,\"rgba(255, 255, 255, 0.6)\",",
+        "timpanogos": 3569.0994369862547,
+        "exaggeration": 1,
+        "fog": "{\"sky-color\":\"#6eaee6\",\"horizon-color\":\"#e4eef7\",\"fog-color\":\"#dfe8f0\",\"sky-horizon-blend\":0.65,\"horizon-fog-blend\":0.5,\"fog-ground-blend\":0.82,\"atmosphere-blend\":0}"
+      },
+      "turning": {
+        "fps": 0.4,
+        "p95FrameMs": 5283
+      },
+      "idle": 0.2,
+      "demTiles": 138,
+      "demAnswers": {
+        "200 sw": 138
+      },
+      "farthestDemKm": 2045,
+      "peaksLoaded": {
+        "lakeMountains": true,
+        "westMountain": true,
+        "nebo": true,
+        "timpanogos": true
+      }
+    },
+    {
+      "tag": "desktop-plain",
+      "cpuSlowdown": 1,
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com\". Note that "
+      ],
+      "startFacing": 0,
+      "layers": 1,
+      "turning": {
+        "fps": 0.1,
+        "p95FrameMs": 7514
+      },
+      "idle": 0.3,
+      "demTiles": 74,
+      "demAnswers": {
+        "200 sw": 74
+      },
+      "farthestDemKm": 2045,
+      "peaksLoaded": {
+        "lakeMountains": true,
+        "westMountain": true,
+        "nebo": true,
+        "timpanogos": true
+      }
+    },
+    {
+      "tag": "desktop-nosw-scenery",
+      "cpuSlowdown": 1,
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com\". Note that "
+      ],
+      "startFacing": 0,
+      "layers": 1,
+      "facing_east": 30,
+      "probe": [
+        "sat-bg:background:visible",
+        "sat-usgs:raster:none",
+        "sat-county:raster:visible",
+        "vtp-subdivisions-fill:fill:none",
+        "vtp-sv-water:fill:visible",
+        "vtp-sv-hillshade:hillshade:visible",
+        "vtp-sv-snow:color-relief:visible",
+        "vtp-subdivisions-line:line:none"
+      ],
+      "facing_timpanogos": 60,
+      "facing_west": 300,
+      "facing_south": 26,
+      "facing_sun": 327,
+      "sunShown": 0,
+      "mapState": {
+        "order": [
+          {
+            "id": "sat-county",
+            "at": 2,
+            "vis": "visible"
+          },
+          {
+            "id": "sat-usgs",
+            "at": 1,
+            "vis": "none"
+          },
+          {
+            "id": "vtp-sv-water",
+            "at": 4,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-snow",
+            "at": 6,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-hillshade",
+            "at": 5,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-buildings",
+            "at": 31,
+            "vis": "visible"
+          }
+        ],
+        "layers": 33,
+        "snowPaint": "[\"interpolate\",[\"linear\"],[\"elevation\"],2400,\"rgba(255, 255, 255, 0)\",2460,\"rgba(255, 255, 255, 0.4)\",2510,\"rgba(255, 255, 255, 0.25)\",2580,\"rgba(255, 255, 255, 0.75)\",2640,\"rgba(255, 255, 255, 0.6)\",",
+        "timpanogos": 3569.0994369862547,
+        "exaggeration": 1,
+        "fog": "{\"sky-color\":\"#6eaee6\",\"horizon-color\":\"#e4eef7\",\"fog-color\":\"#dfe8f0\",\"sky-horizon-blend\":0.65,\"horizon-fog-blend\":0.5,\"fog-ground-blend\":0.82,\"atmosphere-blend\":0}"
+      },
+      "turning": {
+        "fps": 0.4,
+        "p95FrameMs": 5333
+      },
+      "idle": 0.2,
+      "demTiles": 144,
+      "demAnswers": {
+        "200": 144
+      },
+      "farthestDemKm": 2045,
+      "peaksLoaded": {
+        "lakeMountains": true,
+        "westMountain": true,
+        "nebo": true,
+        "timpanogos": true
+      }
+    },
+    {
+      "tag": "phone-scenery",
+      "cpuSlowdown": 4,
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com\". Note that "
+      ],
+      "startFacing": 0,
+      "layers": 1,
+      "facing_east": 30,
+      "probe": [
+        "sat-bg:background:visible",
+        "sat-usgs:raster:none",
+        "sat-county:raster:visible",
+        "vtp-subdivisions-fill:fill:none",
+        "vtp-sv-water:fill:visible",
+        "vtp-sv-hillshade:hillshade:visible",
+        "vtp-sv-snow:color-relief:visible",
+        "vtp-subdivisions-line:line:none"
+      ],
+      "facing_timpanogos": 60,
+      "facing_west": 330,
+      "facing_south": 57,
+      "facing_sun": 330,
+      "sunShown": 0,
+      "mapState": {
+        "order": [
+          {
+            "id": "sat-county",
+            "at": 2,
+            "vis": "visible"
+          },
+          {
+            "id": "sat-usgs",
+            "at": 1,
+            "vis": "none"
+          },
+          {
+            "id": "vtp-sv-water",
+            "at": 4,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-snow",
+            "at": 6,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-hillshade",
+            "at": 5,
+            "vis": "visible"
+          },
+          {
+            "id": "vtp-sv-buildings",
+            "at": 31,
+            "vis": "visible"
+          }
+        ],
+        "layers": 33,
+        "snowPaint": "[\"interpolate\",[\"linear\"],[\"elevation\"],2400,\"rgba(255, 255, 255, 0)\",2460,\"rgba(255, 255, 255, 0.4)\",2510,\"rgba(255, 255, 255, 0.25)\",2580,\"rgba(255, 255, 255, 0.75)\",2640,\"rgba(255, 255, 255, 0.6)\",",
+        "timpanogos": 3569.0994369862547,
+        "exaggeration": 1,
+        "fog": "{\"sky-color\":\"#6eaee6\",\"horizon-color\":\"#e4eef7\",\"fog-color\":\"#dfe8f0\",\"sky-horizon-blend\":0.65,\"horizon-fog-blend\":0.5,\"fog-ground-blend\":0.82,\"atmosphere-blend\":0}"
+      },
+      "turning": {
+        "fps": 0.5,
+        "p95FrameMs": 4500
+      },
+      "idle": 0.2,
+      "demTiles": 128,
+      "demAnswers": {
+        "200 sw": 128
+      },
+      "farthestDemKm": 2045,
+      "peaksLoaded": {
+        "lakeMountains": true,
+        "westMountain": true,
+        "nebo": true,
+        "timpanogos": true
+      }
+    },
+    {
+      "tag": "phone-plain",
+      "cpuSlowdown": 4,
+      "notes": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"script-src 'self' 'wasm-unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com\". Note that "
+      ],
+      "startFacing": 0,
+      "layers": 1,
+      "turning": {
+        "fps": 0.6,
+        "p95FrameMs": 3850
+      },
+      "idle": 0.2,
+      "demTiles": 64,
+      "demAnswers": {
+        "200 sw": 64
+      },
+      "farthestDemKm": 1723,
+      "peaksLoaded": {
+        "lakeMountains": true,
+        "westMountain": true,
+        "nebo": true,
+        "timpanogos": true
+      }
+    }
+  ],
+  "spot": [
+    -111.7695,
+    40.3045
+  ],
+  "sunAt": "2026-10-16T00:00:00Z",
+  "sun": {
+    "azimuth": 251.38538703829676,
+    "altitude": 7.824763177113388
+  },
+  "bundle": {
+    "snow": true,
+    "sun": true,
+    "google": true,
+    "scripts": 48
+  }
+}
