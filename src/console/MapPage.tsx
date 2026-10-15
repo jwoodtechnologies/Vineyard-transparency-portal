@@ -1457,8 +1457,8 @@ export default function MapPage() {
           </aside>
         )}
 
-        {!panel && !picked && (() => {
-          // Every layer on the map, in drawing order: one swatch, or one per value for color-coded layers.
+        {!panel && !picked && !driving && (() => {
+          // Every layer on the map, in drawing order (not while driving: the small map takes that corner): one swatch, or one per value for color-coded layers.
           const shown = DRAW_ORDER.filter((k) => on.has(k) && (data[k] || catalog?.some((l) => l.key === k && l.tiles))).reverse();
           if (!shown.length) return null;
           const name = (k: string) => catalog?.find((l) => l.key === k)?.label ?? k;

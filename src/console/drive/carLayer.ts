@@ -43,12 +43,21 @@ export function carBoxes(kind: CarKind, color: string): Box[] {
     hatch: { w: 1.75, l: 3.9, bodyH: 0.75, cabW: 1.58, cabL: 2.2, cabH: 0.6, cabY: -0.45 },
   }[kind];
   const lift = 0.32;
+  const roof = shade(color, 0.72);
   const boxes: Box[] = [
-    { x: 0, y: 0, z: lift, w: s.w, l: s.l, h: s.bodyH, c: color },
+    // Body, a darker lower band (bumpers and sills), the glass cabin and a roof darker than the body.
+    { x: 0, y: 0, z: lift + 0.18, w: s.w, l: s.l, h: s.bodyH - 0.18, c: color },
+    { x: 0, y: 0, z: lift, w: s.w + 0.02, l: s.l + 0.04, h: 0.2, c: '#2a2a2c' },
     { x: 0, y: s.cabY, z: lift + s.bodyH, w: s.cabW, l: s.cabL, h: s.cabH, c: GLASS },
-    { x: 0, y: s.cabY, z: lift + s.bodyH + s.cabH, w: s.cabW - 0.06, l: s.cabL - 0.25, h: 0.06, c: color },
+    { x: 0, y: s.cabY, z: lift + s.bodyH + s.cabH, w: s.cabW - 0.04, l: s.cabL - 0.2, h: 0.07, c: roof },
+    // Tail lights and headlights.
+    { x: -(s.w / 2 - 0.3), y: -s.l / 2 - 0.01, z: lift + s.bodyH - 0.3, w: 0.42, l: 0.04, h: 0.16, c: '#d01414' },
+    { x: s.w / 2 - 0.3, y: -s.l / 2 - 0.01, z: lift + s.bodyH - 0.3, w: 0.42, l: 0.04, h: 0.16, c: '#d01414' },
+    { x: -(s.w / 2 - 0.3), y: s.l / 2 + 0.01, z: lift + s.bodyH - 0.3, w: 0.38, l: 0.04, h: 0.14, c: '#f2efe2' },
+    { x: s.w / 2 - 0.3, y: s.l / 2 + 0.01, z: lift + s.bodyH - 0.3, w: 0.38, l: 0.04, h: 0.14, c: '#f2efe2' },
   ];
-  const wx = s.w / 2 - 0.12,
+  // Wheels stand just outside the body, so they show from behind and from the side.
+  const wx = s.w / 2 - 0.08,
     wy = s.l / 2 - 0.85;
   for (const [x, y] of [
     [-wx, wy],
@@ -56,8 +65,15 @@ export function carBoxes(kind: CarKind, color: string): Box[] {
     [-wx, -wy],
     [wx, -wy],
   ])
-    boxes.push({ x, y, z: 0, w: 0.28, l: 0.68, h: 0.66, c: TIRE });
+    boxes.push({ x, y, z: 0, w: 0.3, l: 0.68, h: 0.66, c: TIRE });
   return boxes;
+}
+
+/** A color darker (k below 1) or lighter. */
+function shade(hex: string, k: number): string {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => c(v).toString(16).padStart(2, '0')).join('')}`;
 }
 
 function rgb(hex: string): [number, number, number] {
@@ -81,7 +97,7 @@ function mesh(boxes: Box[]): Float32Array {
     };
     quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], 1); // top
     quad([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], 0.9); // front
-    quad([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], 0.62); // back
+    quad([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], 0.72); // back
     quad([x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1], 0.78); // right
     quad([x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x0, y0, z1], 0.7); // left
   }

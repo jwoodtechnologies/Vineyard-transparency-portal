@@ -187,8 +187,8 @@ export default function DriveMode({ getMap, ready, dark, onExit }: Props) {
       // The camera follows smoothly, a little behind the car's turns.
       const d = ((heading - camHeading + 540) % 360) - 180;
       camHeading += d * Math.min(1, dt * 2.5);
-      // Close behind and above: the car fills about a sixth of the screen's width.
-      map.jumpTo({ center: destination(at, camHeading, 7), bearing: camHeading, pitch: 72, zoom: 20.3 });
+      // Close behind and above, low enough to see the car's back (lights, wheels): about a sixth of the screen's width.
+      map.jumpTo({ center: destination(at, camHeading, 7), bearing: camHeading, pitch: 66, zoom: 20.3 });
       if (speedRef.current) speedRef.current.textContent = String(Math.round(car.v / 0.44704));
       const o = car.options();
       const auto = o ? (o.deadEnd ? 'uturn' : o.auto === o.straight ? 'straight' : o.auto === o.left ? 'left' : o.auto === o.right ? 'right' : 'straight') : null;
