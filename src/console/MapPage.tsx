@@ -1513,7 +1513,7 @@ export default function MapPage() {
 
         {driving && (
           <Suspense fallback={null}>
-            <DriveMode getMap={getMap} ready={ready} dark={dark} onExit={stopDrive} />
+            <DriveMode getMap={getMap} ready={ready} dark={dark} onExit={stopDrive} zoningOn={on.has('zoning')} projectsOn={projectsOn} loadZoning={loadZoning} loadProjects={loadProjects} onPick={pickFromStreetView} />
           </Suspense>
         )}
 

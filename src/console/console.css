@@ -5699,16 +5699,6 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
 .vc-sv-note .vc-sv-hint { margin: 6px 0 0; max-width: min(26rem, calc(100vw - 1.6rem)); white-space: normal; }
 
 /* Drive mode (drive/DriveMode.tsx): the car picker, the driving controls, the turn arrows, the small map. */
-.vc-drive-pick { position: absolute; z-index: 8; left: 0.8rem; right: 0.8rem; bottom: calc(0.8rem + env(safe-area-inset-bottom)); max-width: 26rem; margin: 0 auto; padding: 14px; border: 1px solid var(--vc-line); border-radius: 20px; background: var(--vc-bg); box-shadow: var(--vc-shadow); color: var(--vc-ink); animation: vc-rise 0.3s var(--vc-ease) both; }
-.vc-drive-pick-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.vc-drive-title { margin: 0; font-weight: 700; font-size: 1.05rem; }
-.vc-drive-cars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
-.vc-drive-car { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 76px; padding: 8px 4px; border: 1.5px solid var(--vc-line); border-radius: 14px; background: transparent; color: inherit; font: inherit; font-size: 0.85rem; cursor: pointer; }
-.vc-drive-car[aria-checked='true'] { border-color: var(--vc-accent, #8a1c4a); box-shadow: 0 0 0 2px color-mix(in srgb, var(--vc-accent, #8a1c4a) 25%, transparent); }
-.vc-drive-colors { display: flex; gap: 10px; margin-bottom: 14px; }
-.vc-drive-color { width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgb(0 0 0 / 0.2); cursor: pointer; }
-.vc-drive-color[aria-checked='true'] { outline: 3px solid var(--vc-accent, #8a1c4a); outline-offset: 2px; }
-.vc-drive-go { width: 100%; min-height: 46px; border: 0; border-radius: 999px; background: var(--vc-ink); color: var(--vc-bg); font: inherit; font-weight: 650; cursor: pointer; }
 .vc-drive-hud { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
 .vc-drive-hud > * { pointer-events: auto; }
 .vc-drive-bar { position: absolute; top: 4.4rem; left: 0.8rem; right: 0.8rem; max-width: 34rem; flex-wrap: wrap; }
@@ -5743,3 +5733,7 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
   .vc-map-wrap[data-sv] .vc-map-panel { position: fixed; z-index: 1002; bottom: calc(0.6rem + env(safe-area-inset-bottom)); max-height: 60vh; }
   .vc-map-wrap[data-sv][data-panel='true'] .vc-sv-hint { visibility: hidden; }
 }
+/* Drive mode: the small map steps aside while a card or (on phones) the Layers sheet takes the bottom of the screen. */
+.vc-map-wrap[data-card='true'] .vc-drive-inset { display: none; }
+@media (max-width: 820px) { .vc-map-wrap[data-panel='true'] .vc-drive-inset { display: none; } }
+.vc-drive-reset:disabled { opacity: 0.5; cursor: default; }
