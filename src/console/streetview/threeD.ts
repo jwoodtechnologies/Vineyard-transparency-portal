@@ -93,7 +93,9 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
     },
   });
   if (!map.getSource(H_SRC)) map.addSource(H_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-  map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': color, 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true } });
+  // Homes are walls with a smaller, darker roof block on top (heights.ts withHeights: r 1 is the roof).
+  const roof = dark ? '#4a4c54' : '#8d8780';
+  map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': ['case', ['==', ['get', 'r'], 1], roof, color], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true } });
   heights.get(map)?.stop();
   heights.set(map, recordedHeights(map, src));
 }
@@ -142,11 +144,6 @@ const heights = new WeakMap<maplibregl.Map, { stop: () => void }>();
  * the zoom 16 tiles around it (once each), reads OpenFreeMap's buildings in view, and redraws them with the
  * chosen heights. The plain layer stays underneath, invisible, so its tiles keep loading.
  */
-/** OpenFreeMap's buildings come one by one from tile zoom 14; below it, blocks are merged. */
-export const FULL_DETAIL_Z = 14;
-/** The zoom of the tile a queried feature came from (MapLibre keeps it on the feature, unlisted). */
-export const tileZoom = (f: unknown) => Number((f as { _z?: number })._z ?? FULL_DETAIL_Z);
-
 function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void } {
   const index = new StoryIndex();
   const asked = new Set<string>();
@@ -157,9 +154,6 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void }
     // Only the buildings within NEAR_DEG of the view (about 1.2 km), which is what street level shows close up.
     const c = map.getCenter();
     const feats = map.querySourceFeatures(src, { sourceLayer: 'building' }).filter((f) => {
-      // Only buildings from full detail tiles: farther off, a tilted view loads lower zoom tiles, where
-      // OpenMapTiles merges a block's houses into one shape, which drew as one huge slab.
-      if (tileZoom(f) < FULL_DETAIL_Z) return false;
       const g = f.geometry;
       const p = g.type === 'Polygon' ? g.coordinates[0]?.[0] : g.type === 'MultiPolygon' ? g.coordinates[0]?.[0]?.[0] : null;
       return p != null && Math.abs(p[0] - c.lng) < NEAR_DEG * 1.3 && Math.abs(p[1] - c.lat) < NEAR_DEG;

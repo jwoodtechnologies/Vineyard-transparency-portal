@@ -7,7 +7,6 @@
 import type * as maplibregl from 'maplibre-gl';
 import { OMT_UNKNOWN_M, UNKNOWN_M } from './heights';
 import { firstHit, middle, type Box } from './rayPick';
-import { FULL_DETAIL_Z, tileZoom } from './threeD';
 
 type Pos = [number, number];
 
@@ -30,7 +29,6 @@ function boxesNear(map: maplibregl.Map, a: Pos, b: Pos): Box[] {
     const recorded = id.endsWith('-h');
     const feats = map.querySourceFeatures(layer.source, layer.sourceLayer ? { sourceLayer: layer.sourceLayer } : undefined);
     for (const f of feats) {
-      if (!recorded && tileZoom(f) < FULL_DETAIL_Z) continue;
       const g = f.geometry;
       const rings = g.type === 'Polygon' ? [g.coordinates[0]] : g.type === 'MultiPolygon' ? g.coordinates.map((p) => p[0]) : [];
       const p = f.properties ?? {};

@@ -124,15 +124,53 @@ export function centerOf(g: Polygon | MultiPolygon): Position | null {
   return [x / n, y / n];
 }
 
-/** Buildings as GeoJSON with their chosen height (h) and base (b). */
-export function withHeights(buildings: Array<{ geometry: Polygon | MultiPolygon; properties: Record<string, unknown> | null }>, index: StoryIndex): FeatureCollection<Polygon | MultiPolygon, { h: number; b: number }> {
-  const features: Array<Feature<Polygon | MultiPolygon, { h: number; b: number }>> = [];
+/** A home's walls rise to this share of its height; above them a smaller block reads as the roof. */
+export const WALL_SHARE = 0.68;
+/** How much of the footprint the roof block covers (scaled toward the middle). */
+export const ROOF_SCALE = 0.6;
+/** Larger than this (square meters), or with a height OpenStreetMap records, a building stays a plain box. */
+export const HOME_MAX_M2 = 600;
+
+function ringM2(ring: Position[]): number {
+  const k = 111320 * Math.cos(((ring[0]?.[1] ?? 0) * Math.PI) / 180);
+  let a = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += (ring[j][0] * k + ring[i][0] * k) * (ring[j][1] * 110540 - ring[i][1] * 110540);
+  return Math.abs(a / 2);
+}
+
+/** The outline scaled toward a point by `k`. */
+function shrink(g: Polygon | MultiPolygon, c: Position, k: number): Polygon | MultiPolygon {
+  const s = (r: Position[]) => r.map(([x, y]) => [c[0] + (x - c[0]) * k, c[1] + (y - c[1]) * k]);
+  return g.type === 'Polygon' ? { type: 'Polygon', coordinates: [s(g.coordinates[0])] } : { type: 'MultiPolygon', coordinates: g.coordinates.map((p) => [s(p[0])]) };
+}
+
+/**
+ * Buildings as GeoJSON with their chosen height (h) and base (b), once each (the same building comes from
+ * every tile it touches). A home (small, no recorded height) is walls (r 0) to WALL_SHARE of its height and a
+ * smaller roof block (r 1) above, so from the street it reads as a house, not a flat slab.
+ */
+export function withHeights(buildings: Array<{ geometry: Polygon | MultiPolygon; properties: Record<string, unknown> | null }>, index: StoryIndex): FeatureCollection<Polygon | MultiPolygon, { h: number; b: number; r: number }> {
+  const features: Array<Feature<Polygon | MultiPolygon, { h: number; b: number; r: number }>> = [];
+  const seen = new Set<string>();
   for (const f of buildings) {
     const c = centerOf(f.geometry);
     if (!c) continue;
+    const ring = f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : f.geometry.coordinates[0]?.[0];
+    const m2 = ring ? ringM2(ring) : 0;
+    const key = `${c[0].toFixed(5)},${c[1].toFixed(5)},${Math.round(m2 / 5)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     const base = Number(f.properties?.render_min_height) || 0;
     const h = Math.max(base + 1, heightFor(f.properties?.render_height, index.at(c)));
-    features.push({ type: 'Feature', geometry: f.geometry, properties: { h, b: base } });
+    const osm = Number(f.properties?.render_height);
+    const recorded = Number.isFinite(osm) && osm > 0 && osm !== OMT_UNKNOWN_M;
+    if (recorded || base > 0 || m2 > HOME_MAX_M2) {
+      features.push({ type: 'Feature', geometry: f.geometry, properties: { h, b: base, r: 0 } });
+      continue;
+    }
+    const wall = base + (h - base) * WALL_SHARE;
+    features.push({ type: 'Feature', geometry: f.geometry, properties: { h: wall, b: base, r: 0 } });
+    features.push({ type: 'Feature', geometry: shrink(f.geometry, c, ROOF_SCALE), properties: { h, b: wall, r: 1 } });
   }
   return { type: 'FeatureCollection', features };
 }

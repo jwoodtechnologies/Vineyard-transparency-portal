@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { centerOf, CLASS_M, heightFor, OMT_UNKNOWN_M, ROOF_M, STORY_M, StoryIndex, tilesAround, UNKNOWN_M, withHeights } from '../src/console/streetview/heights';
+import { centerOf, CLASS_M, heightFor, OMT_UNKNOWN_M, ROOF_M, ROOF_SCALE, STORY_M, StoryIndex, tilesAround, UNKNOWN_M, WALL_SHARE, withHeights } from '../src/console/streetview/heights';
 import type { Polygon } from 'geojson';
 
 const square = (x: number, y: number, d: number): Polygon => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
@@ -20,8 +20,30 @@ describe('building heights in 3D', () => {
     expect(index.at([-111.7498, 40.3002])).toEqual({ f: 3, c: 'Commercial' });
     expect(index.at([-111.74, 40.3002])).toBeNull();
     const fc = withHeights([{ geometry: square(-111.7499, 40.3001, 0.0001), properties: { render_height: OMT_UNKNOWN_M } }], index);
-    expect(fc.features[0].properties.h).toBeCloseTo(3 * STORY_M + ROOF_M, 6);
+    expect(Math.max(...fc.features.map((f) => f.properties.h))).toBeCloseTo(3 * STORY_M + ROOF_M, 6);
     expect(centerOf(square(0, 0, 2))).toEqual([1, 1]);
+  });
+
+  it('draws a home as walls and a smaller roof block, once, and a large or recorded building as one box', () => {
+    const index = new StoryIndex();
+    const home = { geometry: square(-111.7499, 40.3001, 0.0001), properties: { render_height: OMT_UNKNOWN_M } };
+    // The same home from two tiles: drawn once.
+    const fc = withHeights([home, { ...home }], index);
+    expect(fc.features).toHaveLength(2);
+    const [walls, roof] = fc.features;
+    expect(walls.properties).toEqual({ h: UNKNOWN_M * WALL_SHARE, b: 0, r: 0 });
+    expect(roof.properties.r).toBe(1);
+    expect(roof.properties.b).toBeCloseTo(UNKNOWN_M * WALL_SHARE, 6);
+    expect(roof.properties.h).toBe(UNKNOWN_M);
+    const w = (g: typeof roof.geometry) => {
+      const r = (g as { coordinates: number[][][] }).coordinates[0];
+      return Math.max(...r.map((p) => p[0])) - Math.min(...r.map((p) => p[0]));
+    };
+    expect(w(roof.geometry) / w(walls.geometry)).toBeCloseTo(ROOF_SCALE, 6);
+    // A school (large) and a building with a recorded height: one plain box each.
+    const big = withHeights([{ geometry: square(-111.75, 40.3, 0.001), properties: {} }], index);
+    expect(big.features).toHaveLength(1);
+    expect(withHeights([{ geometry: square(-111.7499, 40.3001, 0.0001), properties: { render_height: 12 } }], index).features).toHaveLength(1);
   });
 
   it('lists the zoom 16 tiles around a point', () => {
