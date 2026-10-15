@@ -165,7 +165,19 @@ async function probe(page, name) {
   const out = await page.evaluate(() => {
     const m = window.__vtpMap;
     if (!m) return null;
-    return m.getStyle().layers.slice(0, 8).map((l) => `${l.id}:${l.type}:${m.getLayoutProperty(l.id, 'visibility') ?? 'visible'}`);
+    const layers = m.getStyle().layers.slice(0, 8).map((l) => `${l.id}:${l.type}:${m.getLayoutProperty(l.id, 'visibility') ?? 'visible'}`);
+    // The tiles each elevation source draws, by zoom (internal, for this check only).
+    const tiles = {};
+    for (const id of ['vtp-sv-dem', 'vtp-sv-dem-shade']) {
+      const tm = m.style.tileManagers?.[id];
+      if (!tm?.getRenderableIds) {
+        tiles[id] = 'n/a';
+        continue;
+      }
+      const ids = tm.getRenderableIds().map((k) => tm.getTileByID(k)?.tileID.canonical).filter(Boolean);
+      tiles[id] = { errored: tm._sourceErrored, loaded: tm._sourceLoaded, list: ids.map((c) => `${c.z}/${c.x}/${c.y}`).sort() };
+    }
+    return { layers, tiles };
   });
   const variants = [
     ['no-shade', (m) => m.setLayoutProperty('vtp-sv-hillshade', 'visibility', 'none'), (m) => m.setLayoutProperty('vtp-sv-hillshade', 'visibility', 'visible')],
