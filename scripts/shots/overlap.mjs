@@ -1,7 +1,7 @@
 /**
  * The map's no-overlap check: every visible control on /map (search, Tools and its menu, the layers panel,
  * Legend, the details card, the projects list, Measure and its buttons, Street View's bar, photo and 3D
- * buttons, the parcel card, the map's own zoom, full screen and (i) buttons) is measured, and any two whose
+ * buttons, the parcel card, Drive mode's picker, bar, turn arrows and small map, the map's own zoom, full screen and (i) buttons) is measured, and any two whose
  * boxes intersect are reported. One control inside another (a button in the panel) is not an overlap.
  * Used by map-shots.mjs; returns the pairs, each with both boxes.
  */
@@ -20,6 +20,10 @@ export const CONTROLS = [
   '.vc-sv-note',
   '.vc-sv-3d',
   '.vc-svp',
+  '.vc-drive-pick',
+  '.vc-drive-bar',
+  '.vc-drive-turns',
+  '.vc-drive-inset',
   '.vc-map .maplibregl-ctrl-top-left > .maplibregl-ctrl',
   '.vc-map .maplibregl-ctrl-top-right > .maplibregl-ctrl',
   '.vc-map .maplibregl-ctrl-bottom-left > .maplibregl-ctrl',

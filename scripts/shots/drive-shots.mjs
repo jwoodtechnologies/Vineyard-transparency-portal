@@ -8,6 +8,7 @@
  *   node scripts/shots/drive-shots.mjs --base https://vineyardportal.org --out shots --pw <playwright index.mjs>
  */
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { overlaps } from './overlap.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : 'true']] : acc), []),
@@ -59,6 +60,7 @@ for (const prof of [
       run.speeds.push(await speed());
     }
     await page.screenshot({ path: `${OUT}/${prof.name}-3-driving.png` });
+    run.overlapsDriving = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
     run.fps = await page.evaluate(() => new Promise((done) => {
       let n = 0;
       const t0 = performance.now();
@@ -68,6 +70,9 @@ for (const prof of [
     run.arrows = await page.waitForSelector('.vc-drive-turns', { timeout: 60000 }).then(() => true, () => false);
     run.turnOptions = await page.locator('.vc-drive-turn').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
     await page.screenshot({ path: `${OUT}/${prof.name}-4-arrows.png` });
+    run.overlapsArrows = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
+    // The car stays clear of the arrows: the canvas under the arrows' box is not where the car is drawn.
+    run.arrowsBox = await page.locator('.vc-drive-turns').boundingBox().catch(() => null);
     const right = page.locator('button[aria-label="Turn right"]:not([disabled])');
     if (await right.count()) await right.click();
     await page.waitForTimeout(12000);
