@@ -5736,7 +5736,7 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
 /* Tools open while driving: the turn arrows step aside under the menu. */
 .vc-map-wrap[data-tools] .vc-drive-turns { visibility: hidden; }
 /* A card while driving on a wider screen: above the Drive bar at the bottom. */
-@media (min-width: 821px) { .vc-map-wrap:has(.vc-drive-hud) .vc-map-card[data-over-sv] { bottom: 5.6rem; max-height: calc(100% - 6.4rem); } }
+@media (min-width: 821px) { .vc-map-wrap:has(.vc-drive-hud) .vc-map-card[data-over-sv] { bottom: 5.6rem; max-height: calc(100% - 5.6rem - 4.6rem); } }
 /* Drive mode, far out: the car as a marker with its heading, the same size at any zoom. */
 .vc-drive-marker { width: 32px; height: 32px; pointer-events: none; filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.45)); }
 .vc-drive-marker[hidden] { display: none; }
@@ -5782,3 +5782,13 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
 /* Drive with the Layers panel open: the small map steps aside, and on wider screens the panel ends above the Drive bar. */
 .vc-map-wrap[data-driving][data-panel='true'] .vc-drive-inset { display: none; }
 @media (min-width: 821px) { .vc-map-wrap[data-driving] .vc-map-panel { max-height: calc(100% - 4.4rem - 5.8rem); } }
+/* The Drive bar on wider screens: always one row. Where the map is narrower than about 760 px (a side panel
+   open, a small window), the buttons show their icons only; each keeps its name as a tooltip. */
+.vc-drive-hud { container-type: inline-size; container-name: drive; }
+@media (min-width: 821px) {
+  .vc-drive-bar { flex-wrap: nowrap; white-space: nowrap; }
+  @container drive (max-width: 760px) {
+    .vc-drive-btn > span:not(.vc-drive-speed) { display: none; }
+    .vc-drive-btn { padding: 0 10px; min-width: 44px; }
+  }
+}
