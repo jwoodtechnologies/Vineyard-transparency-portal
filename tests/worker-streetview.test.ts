@@ -9,7 +9,7 @@ describe('street view config route', () => {
   it('serves the token from the Worker variable, trimmed, cached five minutes', async () => {
     const res = await getStreetviewConfig({ ...testEnv(), MAPILLARY_TOKEN: '  MLY|1234567890|abcdef0123456789 \n' });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ token: 'MLY|1234567890|abcdef0123456789', google: false, googleState: 'no-key' });
+    expect(await res.json()).toEqual({ token: 'MLY|1234567890|abcdef0123456789', google: false, googleState: 'no-key', bindings: ['MAPILLARY_TOKEN'], build: null });
     expect(res.headers.get('cache-control')).toBe('public, max-age=300');
     expect(res.headers.get('content-type')).toContain('application/json');
   });
@@ -25,7 +25,7 @@ describe('street view config route', () => {
     const env = { ...testEnv(), GOOGLE_MAPS_KEY: ` ${KEY} ` };
     const res = await getStreetviewConfig(env);
     const text = await res.text();
-    expect(JSON.parse(text)).toEqual({ token: null, google: true, googleState: 'ok' });
+    expect(JSON.parse(text)).toEqual({ token: null, google: true, googleState: 'ok', bindings: ['GOOGLE_MAPS_KEY'], build: null });
     expect(text).not.toContain('AIza');
     expect(await (await getStreetviewConfig({ ...testEnv(), GOOGLE_MAPS_KEY: 'bad key!' })).json()).toMatchObject({ google: false, googleState: 'key-format' });
     expect(await (await getStreetviewConfig({ ...env, GOOGLE_SV_DAILY_CAP: '0' })).json()).toMatchObject({ google: false, googleState: 'off' });

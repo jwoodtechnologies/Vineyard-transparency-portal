@@ -17,8 +17,17 @@ export function streetviewToken(v: string | undefined | null): string | null {
   return TOKEN.test(t) ? t : null;
 }
 
-export async function getStreetviewConfig(env: { MAPILLARY_TOKEN?: string; GOOGLE_MAPS_KEY?: string; GOOGLE_SV_DAILY_CAP?: string; CATALOG_DB: D1Database }): Promise<Response> {
+type ConfigEnv = { MAPILLARY_TOKEN?: string; GOOGLE_MAPS_KEY?: string; GOOGLE_SV_DAILY_CAP?: string; CATALOG_DB: D1Database; CF_VERSION_METADATA?: { id?: string } };
+
+/** The names (never the values) of the street view bindings this Worker version has, for deploy checks. */
+export const streetviewBindings = (env: object) => Object.keys(env).filter((k) => /^(MAPILLARY|GOOGLE)/.test(k)).sort();
+
+export async function getStreetviewConfig(env: ConfigEnv): Promise<Response> {
   const state = await googleState(env);
-  // googleState says why Google is not offered (no-key, key-format, off, cap, storage); never the key.
-  return json({ token: streetviewToken(env.MAPILLARY_TOKEN), google: state === 'ok', googleState: state }, { cache: 'public, max-age=300' });
+  // googleState says why Google is not offered (no-key, key-format, off, cap, storage); bindings lists the
+  // names of the street view variables this Worker version sees, and build its version id. Never a value.
+  return json(
+    { token: streetviewToken(env.MAPILLARY_TOKEN), google: state === 'ok', googleState: state, bindings: streetviewBindings(env), build: env.CF_VERSION_METADATA?.id ?? null },
+    { cache: 'public, max-age=300' },
+  );
 }
