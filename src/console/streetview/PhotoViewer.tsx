@@ -15,7 +15,7 @@ import { MiniMap } from './MiniMap';
 import { AHEAD_DEG, aheadTo, datesAt, nearestTo, photosAround, type DateChoice } from './nearby';
 import { bearing } from '../measure/geo';
 import { watchTaps } from './watchTaps';
-import { ClickRouter, DOUBLE_MS, featureAt } from './clickRoute';
+import { featureAt } from './clickRoute';
 
 interface Props {
   token: string;
@@ -262,9 +262,6 @@ export default function PhotoViewer({ token, photo, pin, districts, projects, pa
       setHover(null);
     });
     let tapTimer = 0;
-    let cardTimer = 0;
-    let lastTap = 0;
-    const router = new ClickRouter();
     const moveTo = (target: Pos, touch: boolean) => {
       renderer.setCursor(target);
       // A mouse click goes at once; a tap shows the spot for a moment first.
@@ -275,30 +272,18 @@ export default function PhotoViewer({ token, photo, pin, districts, projects, pa
         }, 220);
       else goToward(target);
     };
+    // A tap moves there, except inside a project's outline, which opens its card. Zoning never takes taps
+    // (it covers all the ground); its chips are buttons of their own.
     const stopTaps = watchTaps(
       el,
       ({ x, y, touch }) => {
         clearTimeout(tapTimer);
-        clearTimeout(cardTimer);
         const { g, hit } = hitAt(x, y);
-        const layersOn = groundRef.current.length > 0;
-        if (!layersOn) {
-          // As before: a click moves, and a second quick click steps forward along the street.
-          if (Date.now() - lastTap < DOUBLE_MS) {
-            lastTap = 0;
-            void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined);
-            return;
-          }
-          lastTap = Date.now();
-          if (g) moveTo(g, touch);
+        if (hit && hit.layer !== 'zoning' && g) {
+          cbs.current.onPickFeature(hit.layer, hit.name, g);
           return;
         }
-        const r = router.click(x, y, Date.now(), true, hit != null);
-        if (r.now.kind === 'move' && g) moveTo(g, touch);
-        if (r.later?.kind === 'card' && hit && g) {
-          if (touch) renderer.setHighlight(`${hit.layer}:${hit.name}`);
-          cardTimer = window.setTimeout(() => cbs.current.onPickFeature(hit.layer, hit.name, g), DOUBLE_MS);
-        }
+        if (g) moveTo(g, touch);
       },
       () => {
         renderer.setCursor(null);
@@ -324,7 +309,6 @@ export default function PhotoViewer({ token, photo, pin, districts, projects, pa
       cancelAnimationFrame(frame);
       cancelAnimationFrame(cursorFrame);
       clearTimeout(tapTimer);
-      clearTimeout(cardTimer);
       stopTaps();
       ro.disconnect();
       viewer.remove();

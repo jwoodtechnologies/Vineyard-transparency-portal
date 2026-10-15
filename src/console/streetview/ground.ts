@@ -57,3 +57,53 @@ export function projectsOf(fc: FC): District[] {
   return out;
 }
 
+
+/** A line feature on the ground (a UDOT construction project along a road). */
+export interface GroundLine {
+  layer: string;
+  name: string;
+  lines: Pos[][];
+}
+
+/** Line features with a name in `field`, as GroundLines. */
+export function linesOf(fc: FC, layer: string, field: string): GroundLine[] {
+  const out: GroundLine[] = [];
+  for (const f of fc.features) {
+    const name = String(f.properties?.[field] ?? '').trim();
+    const g = f.geometry;
+    if (!name || !g) continue;
+    const lines = (g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : []) as Pos[][];
+    if (lines.length) out.push({ layer, name, lines: lines.filter((l) => l.length > 1) });
+  }
+  return out;
+}
+
+/** Meters from a point to a segment, on a flat local grid. */
+function toSegment(p: Pos, a: Pos, b: Pos): number {
+  const kx = 111320 * Math.cos((p[1] * Math.PI) / 180),
+    ky = 110540;
+  const ax = (a[0] - p[0]) * kx,
+    ay = (a[1] - p[1]) * ky,
+    bx = (b[0] - p[0]) * kx,
+    by = (b[1] - p[1]) * ky;
+  const dx = bx - ax,
+    dy = by - ay;
+  const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(ax + t * dx, ay + t * dy);
+}
+
+/** The line nearest `at` within `meters`, or null. */
+export function nearLine(list: GroundLine[], at: Pos, meters: number): GroundLine | null {
+  let best: GroundLine | null = null;
+  let bestD = meters;
+  for (const l of list)
+    for (const line of l.lines)
+      for (let i = 0; i + 1 < line.length; i++) {
+        const d = toSegment(at, line[i], line[i + 1]);
+        if (d <= bestD) {
+          bestD = d;
+          best = l;
+        }
+      }
+  return best;
+}

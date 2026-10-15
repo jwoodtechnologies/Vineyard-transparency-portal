@@ -13,7 +13,7 @@ import { ArrowDown, ArrowUp, ExternalLink, Layers, RotateCcw, RotateCw, X } from
 import { getJson } from '../api';
 import { googleStreetViewUrl, parsePhotos, photoSearchUrl, rankPhotos, type Photo, type Pos } from './geo';
 import { addSvLayers, drawSv, groundRing, pinMarker, removeHoverShape, removeSvLayers, setHoverShape, type Camera } from './mapDraw';
-import { ClickRouter, DOUBLE_MS, featureAt } from './clickRoute';
+import { featureAt } from './clickRoute';
 import { watchTaps } from './watchTaps';
 import { lineNear, mapillaryToken, photoNear, snapToLine } from './coverage';
 import { addBuildings, enter3d, leave3d, type Saved } from './threeD';
@@ -22,7 +22,7 @@ import { Compass } from './Compass';
 import { Sky } from './Sky';
 import { createPortal } from 'react-dom';
 import type { District } from './zoningRenderer';
-import { districtsOf, projectsOf } from './ground';
+import { districtsOf, linesOf, nearLine, projectsOf, type GroundLine } from './ground';
 import { groundUnder } from './pickGround';
 
 const PhotoViewer = lazy(() => import('./PhotoViewer'));
@@ -61,6 +61,11 @@ interface Props {
   zoningOn: boolean;
   projectsOn: boolean;
   loadProjects: () => Promise<FC>;
+  /** UDOT's construction projects (lines on roads): on, and their lines. */
+  udotOn: boolean;
+  loadUdot: () => Promise<FC>;
+  /** Go here on a project's card: the pin moves to this spot (n changes each time). */
+  goTo: { at: Pos; n: number } | null;
   /** A click on a zone or project: the map's details card for it. */
   onPick: (layer: string, name: string, at: Pos) => void;
   /** Opens or closes the map's Layers panel (Zoning, Projects and the rest), from the bar. */
@@ -76,7 +81,7 @@ const ZONING_FILL = 'vtp-zoning-fill';
 const coarseQuery = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(pointer: coarse)').matches);
 const wideQuery = () => typeof window !== 'undefined' && window.innerWidth > 820;
 
-export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null, loadZoning, showMapZoning, zoningOn, projectsOn, loadProjects, onPick, onLayers, layersOpen, onClose }: Props) {
+export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null, loadZoning, showMapZoning, zoningOn, projectsOn, loadProjects, udotOn, loadUdot, goTo, onPick, onLayers, layersOpen, onClose }: Props) {
   const [pin, setPin] = useState<Pos | null>(start);
   const [phase, setPhase] = useState<Phase>(start ? 'search' : 'pick');
   const [photo, setPhoto] = useState<Photo | null>(null);
@@ -111,14 +116,40 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   }, [getMap, gen, phase]);
   const panelRef = useRef<HTMLDivElement>(null);
   const phaseRef = useRef(phase);
-  // With Zoning or Projects on, a click on one opens its details and a double click moves (clickRoute.ts).
-  const layersOn = projectsOn || zoningOn;
+  // A tap moves, except inside a capital project or on a UDOT construction project, which opens its card.
+  // Zoning never takes taps (it covers all the ground): the chip by the bar names the zone under the pin.
+  // With a layer on, the mouse highlights the zone or project under it.
+  const layersOn = projectsOn || zoningOn || udotOn;
   const routeRef = useRef({ layersOn, onPick });
   useEffect(() => {
     phaseRef.current = phase;
     routeRef.current = { layersOn, onPick };
   });
+  // Go here on a project's card: move to that spot, as a tap there would.
+  const lastGo = useRef(goTo?.n ?? 0);
+  useEffect(() => {
+    if (!goTo || goTo.n === lastGo.current) return;
+    lastGo.current = goTo.n;
+    setPin(goTo.at);
+    if (phaseRef.current !== '3d') setPhase('search');
+  }, [goTo]);
   const [projects, setProjects] = useState<District[]>([]);
+  const [udot, setUdot] = useState<GroundLine[]>([]);
+  const linesRef = useRef<GroundLine[]>([]);
+  useEffect(() => {
+    linesRef.current = udotOn ? udot : [];
+  });
+  useEffect(() => {
+    if (!udotOn) return;
+    let stale = false;
+    loadUdot().then(
+      (fc) => !stale && setUdot(linesOf(fc, 'udot', 'pin_desc')),
+      () => undefined,
+    );
+    return () => {
+      stale = true;
+    };
+  }, [udotOn, loadUdot]);
   // What can be clicked for details on the map: zoning while it is shown, projects while that layer is on.
   const groundRef = useRef<District[]>([]);
   useEffect(() => {
@@ -156,7 +187,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     const map = getMap();
     if (!map || !ready) return;
     addSvLayers(map);
-    // A double click or double tap moves in street view: the map's own double click zoom is off meanwhile.
+    // A double click would zoom the map under street view: the map's own double click zoom is off meanwhile.
     const dblZoom = map.doubleClickZoom.isEnabled();
     map.doubleClickZoom.disable();
     // Only a deliberate click or tap moves the pin, never the end of a drag, pan, pinch or twist (tapGuard.ts).
@@ -178,8 +209,6 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     };
     const el = map.getCanvasContainer();
     let tapTimer = 0;
-    let cardTimer = 0;
-    const router = new ClickRouter();
     /** The zone or project on the ground under a point of the map, if any (found in the shapes themselves). */
     const hitAt = (x: number, y: number) => {
       const ll = groundUnder(map, x, y);
@@ -187,6 +216,15 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       if (!d) return null;
       const shape: Geometry = { type: 'MultiPolygon', coordinates: d.rings.map((r) => [r]) };
       return { layer: d.layer, name: d.name, shape, color: d.color };
+    };
+    /** What a tap there opens instead of moving: a capital project's outline, or a UDOT project's line. */
+    const cardAt = (ll: maplibregl.LngLat) => {
+      const at: Pos = [ll.lng, ll.lat];
+      const p = featureAt(groundRef.current.filter((g) => g.layer === 'projects').map((g) => ({ ...g, layer: 'projects', name: g.zone })), at);
+      if (p) return { layer: 'projects', name: p.name, shape: { type: 'MultiPolygon', coordinates: p.rings.map((r) => [r]) } as Geometry, color: p.color };
+      const line = nearLine(linesRef.current, at, 12);
+      if (line) return { layer: line.layer, name: line.name, shape: { type: 'MultiLineString', coordinates: line.lines } as Geometry, color: '#5c7cfa' };
+      return null;
     };
     const moveAt = (p: { x: number; y: number }, point: maplibregl.LngLat, touch: boolean) => {
       if (!touch) {
@@ -206,20 +244,14 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       ({ x, y, touch }) => {
         if (phaseRef.current === 'photo' && !wideQuery()) return;
         clearTimeout(tapTimer);
-        clearTimeout(cardTimer);
         const point = groundUnder(map, x, y);
-        const p = { x, y };
-        const { layersOn: on } = routeRef.current;
-        const hit = on ? hitAt(x, y) : null;
-        const r = router.click(x, y, Date.now(), on, hit != null);
-        if (r.now.kind === 'move') moveAt(p, point, touch);
-        if (r.later?.kind === 'card' && hit) {
-          if (touch) setHoverShape(map, hit.shape, hit.color);
-          cardTimer = window.setTimeout(() => {
-            setHoverShape(map, null);
-            routeRef.current.onPick(hit.layer, hit.name, [point.lng, point.lat]);
-          }, DOUBLE_MS);
+        const card = cardAt(point);
+        if (card) {
+          ring.hide();
+          routeRef.current.onPick(card.layer, card.name, [point.lng, point.lat]);
+          return;
         }
+        moveAt({ x, y }, point, touch);
       },
       () => ring.hide(),
     );
@@ -238,21 +270,25 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       const x = e.clientX - r.left,
         y = e.clientY - r.top;
       hoverFrame = requestAnimationFrame(() => {
-        const hit = routeRef.current.layersOn ? hitAt(x, y) : null;
+        const point = groundUnder(map, x, y);
+        const card = routeRef.current.layersOn ? cardAt(point) : null;
+        const hit = card ?? (routeRef.current.layersOn ? hitAt(x, y) : null);
         const key = hit ? `${hit.layer}:${hit.name}` : '';
         if (key !== hovered) setHoverShape(map, hit?.shape ?? null, hit?.color);
         hovered = key;
         label.hidden = !hit;
         if (hit) {
-          label.textContent = hit.name;
+          label.textContent = card ? `${hit.name}: click for details` : hit.name;
           label.style.transform = `translate(${Math.round(x + 14)}px, ${Math.round(y + 14)}px)`;
+        }
+        // A project opens its card; anywhere else (a zone too) a click moves, and the circle shows where.
+        if (card) {
           ring.hide();
           map.getCanvas().style.cursor = 'pointer';
           return;
         }
         map.getCanvas().style.cursor = 'crosshair';
-        const ll = map.unproject([x, y]);
-        ring.show([ll.lng, ll.lat]);
+        ring.show([point.lng, point.lat]);
       });
     };
     const leave = () => {
@@ -269,7 +305,6 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       if (dblZoom) map.doubleClickZoom.enable();
       stopTaps();
       clearTimeout(tapTimer);
-      clearTimeout(cardTimer);
       cancelAnimationFrame(hoverFrame);
       label.remove();
       try {
@@ -387,6 +422,32 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     },
     [],
   );
+  // Capital projects stand out on the ground of the 3D view (a stronger fill and edge), so it is clear where a
+  // tap opens a card instead of moving.
+  useEffect(() => {
+    const map = getMap();
+    if (!map || phase !== '3d' || !projectsOn) return;
+    const FILL = 'vtp-projects-fill',
+      LINE = 'vtp-projects-line';
+    let saved: { fill?: unknown; width?: unknown } | null = null;
+    const boost = () => {
+      if (saved || !map.getLayer(FILL)) return;
+      saved = { fill: map.getPaintProperty(FILL, 'fill-opacity'), width: map.getLayer(LINE) ? map.getPaintProperty(LINE, 'line-width') : undefined };
+      map.setPaintProperty(FILL, 'fill-opacity', 0.42);
+      if (map.getLayer(LINE)) map.setPaintProperty(LINE, 'line-width', 4);
+    };
+    boost();
+    map.on('styledata', boost);
+    return () => {
+      map.off('styledata', boost);
+      try {
+        if (saved && map.getLayer(FILL)) map.setPaintProperty(FILL, 'fill-opacity', saved.fill as number);
+        if (saved?.width !== undefined && map.getLayer(LINE)) map.setPaintProperty(LINE, 'line-width', saved.width as number);
+      } catch {
+        // Map removed.
+      }
+    };
+  }, [getMap, phase, projectsOn]);
   // Zoning on the ground of the 3D view (the map's own zoning layer), while the toggle is on.
   useEffect(() => {
     if (phase !== '3d' || !showZoning) return;
@@ -493,11 +554,17 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   );
   // What a click does here, in one line.
   const act = coarse ? 'Tap' : 'Click';
-  const hint = layersOn ? `${act} a zone or project for details. Double ${act.toLowerCase()} the ground to move there.` : `${act} the ${phase === 'photo' ? 'road' : 'ground'} to move there.`;
+  // The zone under the pin, named in a chip by the bar; tapping it opens the zone's card.
+  const zoneHere = pin ? featureAt(districts.map((d) => ({ ...d, layer: 'zoning', name: d.zone })), pin) : null;
+  const zoneChip = zoneHere && pin && (phase === '3d' || phase === 'photo') ? (
+    <button type="button" className="vc-sv-zone" onClick={() => onPick('zoning', zoneHere.name, pin)} title="Details of this zone">
+      <span className="vc-map-swatch" style={{ background: zoneHere.color }} aria-hidden="true" />
+      Zone: {zoneHere.name}
+    </button>
+  ) : null;
+  const hint = `${act} to move. ${act} a project for details.`;
   const hintLine = (
-    <p className="vc-sv-hint" data-hint={layersOn ? 'details' : 'move'}>
-      {hint} Arrows and keys also move.
-    </p>
+    <p className="vc-sv-hint">{hint}</p>
   );
   const close = (
     <button type="button" className="vc-sv-bar-btn" onClick={onClose} aria-label="Close street view" title="Close (Escape)">
@@ -515,6 +582,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
           {layersButton}
           {google}
         </div>
+        {zoneChip}
         {hintLine}
         <ViewerBoundary key={photo.id} onError={onError}>
           <Suspense fallback={<p className="vc-sv-loading">Loading the street photo.</p>}>
@@ -534,6 +602,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
   return (
     <>
       <div className="vc-sv-note" role="status" data-compact={phase === '3d' || undefined}>
+        {phase === '3d' && zoneChip}
         <div className="vc-sv-bar">
           {close}
           <p className="vc-sv-title">

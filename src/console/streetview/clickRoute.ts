@@ -1,41 +1,8 @@
 /**
- * What a deliberate click or tap does in street view (after tapGuard.ts has ruled out drags):
- *
- * - With Zoning and Projects off, a click moves there at once.
- * - With either on, a click on a zone or project opens its details card, and a double click (or double tap)
- *   moves there. The single click waits for the double click window so a double click never also opens
- *   the card; a click on bare ground does nothing.
+ * Which zone or project lies under a ground point in street view and Drive mode, from the shapes themselves.
+ * (What a tap does with it is in StreetView.tsx: it moves, except inside a project, which opens its card.)
  */
 import type { Pos } from './geo';
-
-export const DOUBLE_MS = 320;
-/** Two clicks this close (in pixels) and this quick are a double click. */
-export const DOUBLE_PX = 24;
-
-export type Action = { kind: 'move' } | { kind: 'card' } | { kind: 'none' };
-
-export class ClickRouter {
-  private last: { x: number; y: number; t: number } | null = null;
-
-  /**
-   * A click at (x, y) at time t. `now` is what to do at once; `later` (only with layers on) is what to do
-   * after DOUBLE_MS if no second click comes, which the caller cancels on the next click.
-   */
-  click(x: number, y: number, t: number, layersOn: boolean, onFeature: boolean): { now: Action; later: Action | null } {
-    const prev = this.last;
-    const double = prev != null && t - prev.t <= DOUBLE_MS && Math.hypot(x - prev.x, y - prev.y) <= DOUBLE_PX;
-    if (!layersOn) {
-      this.last = { x, y, t };
-      return { now: { kind: 'move' }, later: null };
-    }
-    if (double) {
-      this.last = null;
-      return { now: { kind: 'move' }, later: null };
-    }
-    this.last = { x, y, t };
-    return { now: { kind: 'none' }, later: onFeature ? { kind: 'card' } : null };
-  }
-}
 
 /** Shoelace area in squared degrees (only compared, so the units do not matter). */
 function ringArea(r: Pos[]): number {
