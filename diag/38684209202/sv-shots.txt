@@ -1,0 +1,217 @@
+{
+  "spots": {
+    "photo": {
+      "bbox": "-111.7420,40.2950,-111.7330,40.3150",
+      "image": "383365449698419",
+      "pano": false,
+      "pin": [
+        -111.73413468008131,
+        40.295887026042216
+      ],
+      "at": [
+        -111.734220046,
+        40.296148535904
+      ],
+      "found": 48,
+      "pageSearch": {
+        "count": 111,
+        "withComputed": 111,
+        "pickInIt": true
+      }
+    },
+    "none": [
+      -111.7455,
+      40.3035
+    ]
+  },
+  "runs": [
+    {
+      "tag": "phone",
+      "notes": [],
+      "hint": "Tap a street",
+      "photoShownMs": 3168,
+      "drag200": {
+        "samePhoto": true,
+        "pinMoves": 0,
+        "ok": true
+      },
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [],
+      "miniMap": 1,
+      "miniMapInfo": 0,
+      "zoningPressed": "false",
+      "edgeBlack": {
+        "left": 0,
+        "right": 0
+      },
+      "clickToGo": {
+        "before": "600882850877661",
+        "after": "600882850877661"
+      }
+    },
+    {
+      "tag": "phone-dark",
+      "notes": [],
+      "hint": "Tap a street",
+      "photoShownMs": 2280,
+      "drag200": {
+        "samePhoto": true,
+        "pinMoves": 0,
+        "ok": true
+      },
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [],
+      "miniMap": 1,
+      "miniMapInfo": 0,
+      "zoningPressed": "false"
+    },
+    {
+      "tag": "phone-3d",
+      "notes": [],
+      "note": "ZoningGoogle",
+      "drag200": {
+        "pinBefore": "-111.745500,40.303500",
+        "pinAfterDrag": "-111.745500,40.303500",
+        "pinSame": true,
+        "pinMoves": 0,
+        "ringAfterDrag": 0,
+        "tapMoves": 0,
+        "pinAfterTap": "-111.745500,40.303500",
+        "ok": false
+      },
+      "look": {
+        "start": 220,
+        "afterDrag": 273,
+        "afterTurnRight": 303,
+        "forwardKeeps3d": true,
+        "pinY": 404.375,
+        "afterCompassTap": 0,
+        "east": 90,
+        "sky": "287px",
+        "zoningPressed": "false",
+        "title": "",
+        "noteSame": true
+      }
+    },
+    {
+      "tag": "desktop",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 1317,
+      "drag200": {
+        "samePhoto": true,
+        "pinMoves": 0,
+        "ok": true
+      },
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [],
+      "miniMap": 0,
+      "miniMapInfo": 0,
+      "zoningPressed": "false",
+      "edgeBlack": {
+        "left": 0,
+        "right": 0
+      },
+      "clickToGo": {
+        "before": "600882850877661",
+        "after": "600882850877661"
+      }
+    },
+    {
+      "tag": "desktop-dark",
+      "notes": [],
+      "ghostOnLine": 1,
+      "photoShownMs": 1369,
+      "drag200": {
+        "samePhoto": true,
+        "pinMoves": 0,
+        "ok": true
+      },
+      "date": "Photo dateJul 22, 2018Aug 28, 2017",
+      "dateOptions": [
+        "Jul 22, 2018",
+        "Aug 28, 2017"
+      ],
+      "chips": [],
+      "miniMap": 0,
+      "miniMapInfo": 0,
+      "zoningPressed": "false"
+    },
+    {
+      "tag": "desktop-hover",
+      "notes": [],
+      "thumb": 1
+    },
+    {
+      "tag": "desktop-3d",
+      "notes": [],
+      "note": "ZoningGoogle",
+      "ringOnHover": 1,
+      "drag200": {
+        "pinBefore": "-111.745500,40.303502",
+        "pinAfterDrag": "-111.745500,40.303502",
+        "pinSame": true,
+        "pinMoves": 0,
+        "ringAfterDrag": 0,
+        "tapMoves": 1,
+        "pinAfterTap": "-111.746831,40.303502",
+        "ok": true
+      },
+      "look": {
+        "start": 90,
+        "afterDrag": 143,
+        "afterTurnRight": 173,
+        "afterKeyA": 153,
+        "forwardKeeps3d": true,
+        "pinY": 432.234375,
+        "afterCompassTap": 0,
+        "east": 90,
+        "sky": "307px",
+        "zoningPressed": "false",
+        "title": "",
+        "noteSame": true
+      }
+    },
+    {
+      "tag": "geneva-split-1270x580",
+      "notes": [
+        "Street photo could not be opened: no image after 12 seconds.",
+        "Street photo could not be opened: no image after 12 seconds.",
+        "photo slow",
+        "Street photo could not be opened: no image after 12 seconds."
+      ],
+      "overlaps": [],
+      "miniMaps": 0,
+      "ok": true
+    },
+    {
+      "tag": "geneva-phone-390x844",
+      "notes": [
+        "Street photo could not be opened: no image after 12 seconds.",
+        "Street photo could not be opened: no image after 12 seconds.",
+        "photo slow"
+      ],
+      "overlaps": [],
+      "miniMaps": 1,
+      "miniBox": {
+        "w": 108,
+        "h": 108
+      },
+      "miniDark": 0,
+      "ok": true
+    }
+  ],
+  "tokenSet": true
+}
