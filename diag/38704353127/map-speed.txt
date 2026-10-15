@@ -1,0 +1,148 @@
+{
+  "base": "https://vineyardportal.org",
+  "at": "2026-10-15T08:15:59.795Z",
+  "runs": [
+    {
+      "tag": "phone-2d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 2670,
+      "pendingAtPaint": [],
+      "settleOpenMs": 501,
+      "panSettleMs": 4473,
+      "panBackSettleMs": 3751,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 20,
+      "fromSw": 0
+    },
+    {
+      "tag": "phone-3d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1530,
+      "pendingAtPaint": [],
+      "settleOpenMs": 503,
+      "threeDOpenMs": 4456,
+      "threeDSettleMs": 902,
+      "failed": [
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I",
+        "net::ERR_ABORTED https://s3.amazonaws.com/elevation-tiles-prod/terrarium/8/49/96.png"
+      ],
+      "turnSettleMs": 602,
+      "turnBackSettleMs": 602,
+      "tilesOnTurnOut": 159,
+      "tilesOnTurnBack": 84,
+      "tilesOnTurnBackFromSw": 27,
+      "swControlled": true,
+      "tileRequests": 320,
+      "fromSw": 133
+    },
+    {
+      "tag": "phone-2d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1495,
+      "pendingAtPaint": [],
+      "settleOpenMs": 501,
+      "panSettleMs": 3840,
+      "panBackSettleMs": 3547,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 20,
+      "fromSw": 0
+    },
+    {
+      "tag": "phone-3d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1506,
+      "pendingAtPaint": [],
+      "settleOpenMs": 500,
+      "threeDOpenMs": 5009,
+      "threeDSettleMs": 804,
+      "turnSettleMs": 602,
+      "turnBackSettleMs": 301,
+      "tilesOnTurnOut": 172,
+      "tilesOnTurnBack": 83,
+      "tilesOnTurnBackFromSw": 13,
+      "swControlled": true,
+      "tileRequests": 335,
+      "fromSw": 136
+    },
+    {
+      "tag": "desktop-2d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 2551,
+      "pendingAtPaint": [],
+      "settleOpenMs": 500,
+      "panSettleMs": 9081,
+      "panBackSettleMs": 8647,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 36,
+      "fromSw": 0
+    },
+    {
+      "tag": "desktop-3d-visit1",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1762,
+      "pendingAtPaint": [],
+      "settleOpenMs": 301,
+      "threeDOpenMs": 8313,
+      "threeDSettleMs": 1006,
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button[aria-label=\"Turn right\"]')\n    - locator resolved to <button type=\"button\" class=\"vc-sv-3d-btn\" title=\"Turn right (D)\" aria-label=\"Turn right\">…</button>\n  - attempting click action\n    - scrolling into view if needed\n    - done scrolling\n"
+    },
+    {
+      "tag": "desktop-2d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1645,
+      "pendingAtPaint": [],
+      "settleOpenMs": 400,
+      "panSettleMs": 9097,
+      "panBackSettleMs": 8720,
+      "tilesOnPanOut": 8,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 36,
+      "fromSw": 0
+    },
+    {
+      "tag": "desktop-3d-visit2",
+      "console": [
+        "Refused to load the script 'https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920' because it violates the following Content Security Policy directive: \"sc"
+      ],
+      "firstPaintMs": 1880,
+      "pendingAtPaint": [],
+      "settleOpenMs": 300,
+      "threeDOpenMs": 8147,
+      "threeDSettleMs": 1008,
+      "failed": [
+        "net::ERR_ABORTED https://gisaerials.utahcounty.gov/arcgis/rest/services/NewestImagery/NewestImagery_WGS84/I"
+      ],
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button[aria-label=\"Turn right\"]')\n    - locator resolved to <button type=\"button\" class=\"vc-sv-3d-btn\" title=\"Turn right (D)\" aria-label=\"Turn right\">…</button>\n"
+    }
+  ]
+}
