@@ -45,6 +45,14 @@ for (const prof of [
         const resp = await r.response().catch(() => null);
         reqs.push({ t: Date.now(), sw: Boolean(resp?.fromServiceWorker()), url: r.url().split('?')[0].slice(-60) });
       });
+      const pending = new Map();
+      page.on('request', (r) => TILE.test(r.url()) && pending.set(r, Date.now()));
+      page.on('requestfinished', (r) => pending.delete(r));
+      page.on('requestfailed', (r) => {
+        pending.delete(r);
+        if (TILE.test(r.url())) (run.failed ??= []).length < 8 && run.failed.push(`${r.failure()?.errorText} ${r.url().slice(0, 90)}`);
+      });
+      page.on('console', (m) => m.type() === 'error' && (run.console ??= []).length < 6 && run.console.push(m.text().slice(0, 200)));
       const settled = async (maxMs = 45000) => {
         const t0 = Date.now();
         await page.waitForTimeout(300);
@@ -56,6 +64,8 @@ for (const prof of [
         await page.goto(`${BASE}/map?lat=${SPOT[1]}&lng=${SPOT[0]}&z=15`, { waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => document.querySelector('.vc-map canvas') && !document.querySelector('.vc-map-loading'), null, { timeout: 60000 });
         run.firstPaintMs = Date.now() - t0;
+        // Tile requests still open at first paint (a stuck one holds the paint back).
+        run.pendingAtPaint = [...pending.entries()].map(([r, t]) => `${Date.now() - t}ms ${r.url().slice(0, 90)}`).slice(0, 6);
         run.settleOpenMs = await settled();
         const box = await page.locator('.vc-map').boundingBox();
         const cx = box.x + box.width / 2,
