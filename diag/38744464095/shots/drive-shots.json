@@ -1,0 +1,166 @@
+{
+  "runs": [
+    {
+      "tag": "phone",
+      "speeds": [
+        2,
+        3,
+        3,
+        3,
+        4
+      ],
+      "notes": [],
+      "noPicker": true,
+      "roads": true,
+      "overlapsDriving": [],
+      "frameMs": {
+        "frames": 22,
+        "p50": 300,
+        "p95": 766.6,
+        "fps": 3.3
+      },
+      "driveCodeMs": {
+        "p50": 9.7,
+        "p95": 18,
+        "max": 19.4
+      },
+      "orbit": {
+        "before": {
+          "bearing": -55,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "after": {
+          "bearing": -139,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "resetShown": 1
+      },
+      "zoomOut": {
+        "after": {
+          "bearing": -129,
+          "pitch": 66,
+          "zoom": 17
+        },
+        "speed": 35
+      },
+      "reset": {
+        "after": {
+          "bearing": -22,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "resetDisabled": true
+      },
+      "toolsOpenOverlaps": [
+        ".vc-map-tools-menu x .vc-drive-bar",
+        ".vc-map-tools-menu x .vc-drive-turns"
+      ],
+      "zoningOn": true,
+      "zoneTap": {
+        "card": 0,
+        "kind": null,
+        "title": null,
+        "speedBefore": 35,
+        "speedAfter": 35,
+        "zoomSame": true,
+        "pitchSame": true,
+        "overlaps": []
+      },
+      "arrows": true,
+      "turnOptions": [
+        "Turn left",
+        "Go straight",
+        "Turn right"
+      ],
+      "overlapsArrows": [],
+      "arrowsAboveCar": true,
+      "afterStop": 23,
+      "afterGo": 23,
+      "exited": true
+    },
+    {
+      "tag": "desktop",
+      "speeds": [
+        2,
+        2,
+        3,
+        4,
+        4
+      ],
+      "notes": [],
+      "noPicker": true,
+      "roads": true,
+      "overlapsDriving": [],
+      "frameMs": {
+        "frames": 11,
+        "p50": 633.3,
+        "p95": 966.6,
+        "fps": 1.6
+      },
+      "driveCodeMs": {
+        "p50": 8.6,
+        "p95": 16.7,
+        "max": 16.7
+      },
+      "orbit": {
+        "before": {
+          "bearing": -58,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "after": {
+          "bearing": -157,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "resetShown": 1
+      },
+      "zoomOut": {
+        "after": {
+          "bearing": -148,
+          "pitch": 66,
+          "zoom": 15.6
+        },
+        "speed": 32
+      },
+      "reset": {
+        "after": {
+          "bearing": -56,
+          "pitch": 66,
+          "zoom": 19.3
+        },
+        "resetDisabled": true
+      },
+      "toolsOpenOverlaps": [
+        ".vc-map-tools-menu x .vc-drive-turns"
+      ],
+      "zoningOn": true,
+      "zoneTap": {
+        "card": 1,
+        "kind": "Zoning",
+        "title": "RMU",
+        "speedBefore": 27,
+        "speedAfter": 28,
+        "zoomSame": true,
+        "pitchSame": true,
+        "overlaps": [
+          ".vc-map-card x .vc-drive-bar"
+        ]
+      },
+      "arrows": true,
+      "turnOptions": [
+        "Turn left",
+        "Go straight",
+        "Turn right"
+      ],
+      "overlapsArrows": [],
+      "arrowsAboveCar": true,
+      "afterStop": 27,
+      "afterGo": 28,
+      "exited": true
+    }
+  ],
+  "note": "The runner draws WebGL in software (SwiftShader, no GPU), so its frame rate is far below a phone; the frame code time is the part this page controls."
+}
