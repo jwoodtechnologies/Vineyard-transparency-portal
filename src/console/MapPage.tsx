@@ -40,6 +40,8 @@ import { StreetView } from './streetview/StreetView';
 
 /** Google Street View mode (its own chunk; Google's script loads only when it opens). */
 const GoogleView = lazy(() => import('./streetview/GoogleView'));
+/** Drive mode (its own chunk). */
+const DriveMode = lazy(() => import('./drive/DriveMode'));
 import { useLongPress } from './streetview/longPress';
 import { lineNear, photoNear, streetviewConfig, useCoverage } from './streetview/coverage';
 import { usePersonDrag } from './streetview/pegman';
@@ -583,10 +585,12 @@ export default function MapPage() {
   // The Tools menu is open (the Street view item in it can be dragged onto the map).
   const [toolsOpen, setToolsOpen] = useState(false);
   const svButton = useRef<HTMLButtonElement>(null);
+  // Drive mode (Tools, Drive) is open.
+  const [driving, setDriving] = useState(false);
   const measuringRef = useRef(measuring);
   useEffect(() => {
-    measuringRef.current = measuring || Boolean(sv);
-  }, [measuring, sv]);
+    measuringRef.current = measuring || Boolean(sv) || driving;
+  }, [measuring, sv, driving]);
   // The legend starts folded on phones so it never sits on top of the zoom buttons.
   const [legendOpen, setLegendOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 640);
   // Set when a color-coded layer is turned on: the legend opens with a short highlight.
@@ -732,7 +736,8 @@ export default function MapPage() {
       const m = new maplibregl.Map({ container: box.current, style, maxPitch: 70, ...(point ? { center: [point.lng, point.lat] as [number, number], zoom: point.zoom } : { bounds: VINEYARD, fitBoundsOptions: { padding: 24 } }), attributionControl: false, maxZoom: 21, minZoom: 10,
         // Tiles seen in the last few minutes stay in memory (more tiles and more zoom levels than the default),
         // so panning or turning back never reloads them, and terrain does not reload when the view returns.
-        maxTileCacheSize: 1500, maxTileCacheZoomLevels: 10, refreshExpiredTiles: false,
+        // (refreshExpiredTiles stays on: off, MapLibre loads raster tiles as images, which the CSP does not allow.)
+        maxTileCacheSize: 1500, maxTileCacheZoomLevels: 10,
         // Simple movement: one finger pans, pinch and double tap zoom, the wheel zooms; nothing rotates or tilts by accident.
         dragRotate: false, touchPitch: false, pitchWithRotate: false, cooperativeGestures: false });
       m.touchZoomRotate.disableRotation();
@@ -1217,6 +1222,7 @@ export default function MapPage() {
   const measureSnap = useCallback(() => ({ parcels: data.parcels ?? mergedParcels(), roads: data.roads ?? null }), [data]);
   const startMeasure = () => {
     setSv(null);
+    setDriving(false);
     setPicked(null);
     setListActive(null);
     clearHighlight(mapRef.current);
@@ -1237,6 +1243,7 @@ export default function MapPage() {
   }, [setParams]);
   const startStreetView = (start: Pos | null, photo: Photo | null = null) => {
     if (measuring) closeMeasure();
+    setDriving(false);
     setPicked(null);
     setListActive(null);
     clearHighlight(mapRef.current);
@@ -1254,7 +1261,7 @@ export default function MapPage() {
   });
   // Only on the plain map: inside street view a held finger before a look-around drag, or the right click that
   // ends a right drag, must not move anyone (a deliberate tap or click does, tapGuard.ts).
-  useLongPress(getMap, mapGen, ready, !measuring && !sv, (at) => startStreetView(at));
+  useLongPress(getMap, mapGen, ready, !measuring && !sv && !driving, (at) => startStreetView(at));
   const closeStreetView = useCallback(() => setSv(null), []);
   // Google Street View mode: offered only while the Worker has a key and today's opens are under the cap.
   const [googleOk, setGoogleOk] = useState(false);
@@ -1266,6 +1273,15 @@ export default function MapPage() {
       stale = true;
     };
   }, []);
+  const startDrive = () => {
+    if (measuring) closeMeasure();
+    setSv(null);
+    setGsv(null);
+    setPicked(null);
+    if (window.innerWidth <= 820) setPanel(false);
+    setDriving(true);
+  };
+  const stopDrive = useCallback(() => setDriving(false), []);
   const startGoogle = () => {
     const map = mapRef.current;
     if (!map) return;
@@ -1368,6 +1384,8 @@ export default function MapPage() {
             onMeasure={() => (measuring ? closeMeasure() : startMeasure())}
             onStreetView={() => (sv ? closeStreetView() : startStreetView(null))}
             onGoogle={googleOk ? startGoogle : undefined}
+            driving={driving}
+            onDrive={() => (driving ? stopDrive() : startDrive())}
             personRef={svButton}
             personDragged={() => personDragged()}
             onOpenChange={setToolsOpen}
@@ -1483,6 +1501,12 @@ export default function MapPage() {
         })()}
 
         {measuring && <MeasureTool getMap={getMap} gen={mapGen} ready={ready} initial={measureInit} snapData={measureSnap} onClose={closeMeasure} />}
+
+        {driving && (
+          <Suspense fallback={null}>
+            <DriveMode getMap={getMap} ready={ready} dark={dark} onExit={stopDrive} />
+          </Suspense>
+        )}
 
         {gsv && (
           <Suspense fallback={null}>

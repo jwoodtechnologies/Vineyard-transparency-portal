@@ -1,19 +1,20 @@
 /*
  * The map's tile cache. Map tiles that never change under their address (elevation tiles and OpenFreeMap's
- * versioned vector tiles) are kept in the browser after the first view, so panning back, going back into
- * 3D, or the next visit draws them without the network. The aerial photos are left to the browser's own
- * cache (going through here held up the first paint of the satellite map on later visits). Nothing else is
- * touched: pages, the app's own files and every /api request go to the network as usual.
+ * versioned vector tiles) and the county's and the USGS aerial photos are kept in the browser after the
+ * first view, so panning back, going back into 3D, or the next visit draws them without the network.
+ * Nothing else is touched: pages, the app's own files and every /api request go to the network as usual.
  *
  * At most MAX_ENTRIES tiles are kept (about 150 to 250 MB at the usual tile sizes); the oldest go first.
  * Tiles older than MAX_AGE_DAYS are fetched again when the network answers.
  */
-const CACHE = 'vtp-tiles-v2';
+const CACHE = 'vtp-tiles-v3';
 const MAX_ENTRIES = 3000;
 const MAX_AGE_DAYS = 30;
 const TILE_HOSTS = [
   /^https:\/\/s3\.amazonaws\.com\/elevation-tiles-prod\/terrarium\/\d+\/\d+\/\d+\.png$/,
   /^https:\/\/tiles\.openfreemap\.org\/planet\/[^/]+\/\d+\/\d+\/\d+\.pbf$/,
+  /^https:\/\/gisaerials\.utahcounty\.gov\/arcgis\/rest\/services\/NewestImagery\//,
+  /^https:\/\/basemap\.nationalmap\.gov\/arcgis\/rest\/services\/USGSImageryOnly\//,
 ];
 
 self.addEventListener('install', () => self.skipWaiting());
