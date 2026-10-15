@@ -12,7 +12,7 @@ on:
         description: What to capture
         type: choice
         default: fixtures
-        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf, map-speed, map-shots, sv-shots, sv-phone, drive-shots, sw-check, scenery-shots, google-shots, owner-filter, ask-timing]
+        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf, map-speed, map-shots, sv-shots, sv-phone, drive-shots, asset-check, sw-check, scenery-shots, google-shots, owner-filter, ask-timing]
       urls:
         description: Extra URLs to save (space separated, optional)
         default: ""
@@ -42,14 +42,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf' && inputs.task != 'map-speed' && inputs.task != 'map-shots' && inputs.task != 'sv-shots' && inputs.task != 'sv-phone' && inputs.task != 'scenery-shots' && inputs.task != 'sw-check' && inputs.task != 'drive-shots' && inputs.task != 'google-shots' && inputs.task != 'owner-filter' && inputs.task != 'ask-timing'
+        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf' && inputs.task != 'map-speed' && inputs.task != 'map-shots' && inputs.task != 'sv-shots' && inputs.task != 'sv-phone' && inputs.task != 'asset-check' && inputs.task != 'scenery-shots' && inputs.task != 'sw-check' && inputs.task != 'drive-shots' && inputs.task != 'google-shots' && inputs.task != 'owner-filter' && inputs.task != 'ask-timing'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-ingest.txt
       # Node 24 runs the Worker's TypeScript owner filter as is (type stripping), for owner-filter.
       - uses: actions/setup-node@v4
-        if: inputs.task == 'owner-filter' || inputs.task == 'ask-timing' || inputs.task == 'map-shots' || inputs.task == 'map-speed' || inputs.task == 'sv-shots' || inputs.task == 'sv-phone' || inputs.task == 'scenery-shots' || inputs.task == 'sw-check' || inputs.task == 'drive-shots' || inputs.task == 'google-shots'
+        if: inputs.task == 'owner-filter' || inputs.task == 'ask-timing' || inputs.task == 'map-shots' || inputs.task == 'map-speed' || inputs.task == 'sv-shots' || inputs.task == 'sv-phone' || inputs.task == 'asset-check' || inputs.task == 'scenery-shots' || inputs.task == 'sw-check' || inputs.task == 'drive-shots' || inputs.task == 'google-shots'
         with:
           node-version: 24
       - name: Capture
@@ -132,6 +132,11 @@ jobs:
             PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
             (cd "$PW" && npm init -y > /dev/null && npm i -s playwright@1.56.1 && npx playwright install --with-deps chromium) > "$OUT/setup.txt" 2>&1 || true
             node scripts/shots/sv-phone.mjs --base https://vineyardportal.org --pw "$PW/node_modules/playwright/index.mjs" --out "$OUT/shots" > "$OUT/sv-phone.txt" 2>&1 || echo "exit=$?" >> "$OUT/sv-phone.txt"
+          elif [[ "$TASK" == "asset-check" ]]; then
+            # The app files (scripts/shots/asset-check.mjs): a missing /assets/ file is a 404 no-store, /map opens fresh and after a bad kept copy.
+            PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
+            (cd "$PW" && npm init -y > /dev/null && npm i -s playwright@1.56.1 && npx playwright install --with-deps chromium) > "$OUT/setup.txt" 2>&1 || true
+            node scripts/shots/asset-check.mjs --base https://vineyardportal.org --pw "$PW/node_modules/playwright/index.mjs" --out "$OUT/shots" > "$OUT/asset-check.txt" 2>&1 || echo "exit=$?" >> "$OUT/asset-check.txt"
           elif [[ "$TASK" == "drive-shots" ]]; then
             # Drive mode on the live site (scripts/shots/drive-shots.mjs): screenshots, a short recording, speeds.
             PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
