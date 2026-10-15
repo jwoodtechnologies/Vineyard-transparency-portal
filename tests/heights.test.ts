@@ -31,7 +31,9 @@ describe('building heights in 3D', () => {
     const fc = withHeights([home, { ...home }], index);
     expect(fc.features).toHaveLength(2);
     const [walls, roof] = fc.features;
-    expect(walls.properties).toEqual({ h: UNKNOWN_M * WALL_SHARE, b: 0, r: 0 });
+    expect(walls.properties).toMatchObject({ h: UNKNOWN_M * WALL_SHARE, b: 0, r: 0 });
+    expect([0, 1, 2, 3]).toContain(walls.properties.k);
+    expect(roof.properties.k).toBe(walls.properties.k);
     expect(roof.properties.r).toBe(1);
     expect(roof.properties.b).toBeCloseTo(UNKNOWN_M * WALL_SHARE, 6);
     expect(roof.properties.h).toBe(UNKNOWN_M);

@@ -95,7 +95,10 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   if (!map.getSource(H_SRC)) map.addSource(H_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   // Homes are walls with a smaller, darker roof block on top (heights.ts withHeights: r 1 is the roof).
   const roof = dark ? '#4a4c54' : '#8d8780';
-  map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': ['case', ['==', ['get', 'r'], 1], roof, color], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true } });
+  // Four close wall tones (heights.ts toneOf), so a row of homes reads as separate houses.
+  const tones = dark ? ['#6a6c75', '#73757e', '#62646c', '#6e6a70'] : ['#dcd8d0', '#d1ccc2', '#e4e0d8', '#cfd0cb'];
+  const wallColor: maplibregl.ExpressionSpecification = ['match', ['get', 'k'], 1, tones[1], 2, tones[2], 3, tones[3], tones[0]];
+  map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': ['case', ['==', ['get', 'r'], 1], roof, wallColor], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true } });
   heights.get(map)?.stop();
   heights.set(map, recordedHeights(map, src));
 }

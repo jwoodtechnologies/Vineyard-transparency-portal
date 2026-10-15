@@ -138,6 +138,12 @@ function ringM2(ring: Position[]): number {
   return Math.abs(a / 2);
 }
 
+/** A tone 0 to 3 from a position: the same building always gets the same one. */
+export function toneOf(c: Position): number {
+  const n = Math.abs(Math.round(c[0] * 1e5) * 73856093 ^ Math.round(c[1] * 1e5) * 19349663);
+  return n % 4;
+}
+
 /** The outline scaled toward a point by `k`. */
 function shrink(g: Polygon | MultiPolygon, c: Position, k: number): Polygon | MultiPolygon {
   const s = (r: Position[]) => r.map(([x, y]) => [c[0] + (x - c[0]) * k, c[1] + (y - c[1]) * k]);
@@ -149,8 +155,8 @@ function shrink(g: Polygon | MultiPolygon, c: Position, k: number): Polygon | Mu
  * every tile it touches). A home (small, no recorded height) is walls (r 0) to WALL_SHARE of its height and a
  * smaller roof block (r 1) above, so from the street it reads as a house, not a flat slab.
  */
-export function withHeights(buildings: Array<{ geometry: Polygon | MultiPolygon; properties: Record<string, unknown> | null }>, index: StoryIndex): FeatureCollection<Polygon | MultiPolygon, { h: number; b: number; r: number }> {
-  const features: Array<Feature<Polygon | MultiPolygon, { h: number; b: number; r: number }>> = [];
+export function withHeights(buildings: Array<{ geometry: Polygon | MultiPolygon; properties: Record<string, unknown> | null }>, index: StoryIndex): FeatureCollection<Polygon | MultiPolygon, { h: number; b: number; r: number; k: number }> {
+  const features: Array<Feature<Polygon | MultiPolygon, { h: number; b: number; r: number; k: number }>> = [];
   const seen = new Set<string>();
   for (const f of buildings) {
     const c = centerOf(f.geometry);
@@ -163,14 +169,16 @@ export function withHeights(buildings: Array<{ geometry: Polygon | MultiPolygon;
     const base = Number(f.properties?.render_min_height) || 0;
     const h = Math.max(base + 1, heightFor(f.properties?.render_height, index.at(c)));
     const osm = Number(f.properties?.render_height);
+    // One of four close wall tones, from where the building stands, so neighbors read as separate houses.
+    const k = toneOf(c);
     const recorded = Number.isFinite(osm) && osm > 0 && osm !== OMT_UNKNOWN_M;
     if (recorded || base > 0 || m2 > HOME_MAX_M2) {
-      features.push({ type: 'Feature', geometry: f.geometry, properties: { h, b: base, r: 0 } });
+      features.push({ type: 'Feature', geometry: f.geometry, properties: { h, b: base, r: 0, k } });
       continue;
     }
     const wall = base + (h - base) * WALL_SHARE;
-    features.push({ type: 'Feature', geometry: f.geometry, properties: { h: wall, b: base, r: 0 } });
-    features.push({ type: 'Feature', geometry: shrink(f.geometry, c, ROOF_SCALE), properties: { h, b: wall, r: 1 } });
+    features.push({ type: 'Feature', geometry: f.geometry, properties: { h: wall, b: base, r: 0, k } });
+    features.push({ type: 'Feature', geometry: shrink(f.geometry, c, ROOF_SCALE), properties: { h, b: wall, r: 1, k } });
   }
   return { type: 'FeatureCollection', features };
 }
