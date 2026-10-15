@@ -175,6 +175,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           [[ -d diag ]] || exit 0
+          # Never commit a token or key: Mapillary client tokens and Google API keys are blanked in every text file.
+          grep -rlIE 'MLY(\||%7C)|AIza[0-9A-Za-z_-]{30,}' diag | while read -r f; do sed -i -E 's/MLY(\||%7C)[^"&[:space:]<>]+/[token]/g; s/AIza[0-9A-Za-z_-]{30,}/[key]/g' "$f"; done || true
           mv diag "$RUNNER_TEMP/diag"
           if git fetch -q origin diagnostics; then git checkout -q -B diagnostics origin/diagnostics; else git checkout -q --orphan diagnostics && git rm -rq --cached . && git clean -fdq; fi
           mkdir -p diag && cp -r "$RUNNER_TEMP/diag/." diag/
