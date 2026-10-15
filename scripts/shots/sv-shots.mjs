@@ -246,7 +246,9 @@ for (const prof of PROFILES) {
   {
     const run = { tag: `${prof.name}-3d`, notes: [] };
     log.runs.push(run);
-    const { ctx, page, notes, cx, cy } = await open(prof, noPhotoSpot, 18, false);
+    // At pixel density 1: the runner draws 3D without a GPU, and at 3x a frame takes seconds, which makes a
+    // quick tap arrive as a long press.
+    const { ctx, page, notes, cx, cy } = await open({ ...prof, ctx: { ...prof.ctx, deviceScaleFactor: 1 } }, noPhotoSpot, 18, false);
     run.notes = notes;
     try {
       if (prof.ctx.hasTouch) await touchTap(ctx, page, cx, cy, 800);
@@ -258,6 +260,7 @@ for (const prof of PROFILES) {
       {
         // A 200 px drag turns the view and never moves the pin; a still tap on the ground does.
         const pinAt = () => page.getAttribute('.vc-sv-pin', 'data-at').catch(() => null);
+        const facing = async () => Number(((await page.getAttribute('.vc-sv-compass', 'aria-label').catch(() => '')) ?? '').match(/facing (-?\d+)/)?.[1] ?? NaN);
         await page.waitForTimeout(3000);
         const moves = pinMoves(page);
         const at0 = await pinAt();
@@ -292,6 +295,40 @@ for (const prof of PROFILES) {
         run.drag200.tapMoves = moves.n;
         run.drag200.pinAfterTap = await pinAt();
         run.drag200.ok = run.drag200.pinSame && run.drag200.pinAfterTap !== at1;
+        // Zoning on: a click (on the ground, or on a building) opens the zone's card and never moves the pin
+        // or turns the view; closing the card leaves the view; a double click moves.
+        await page.click('.vc-sv-bar-btn[aria-pressed]', { force: true });
+        await page.waitForTimeout(4000);
+        const z = { hint: (await page.textContent('.vc-sv-hint').catch(() => ''))?.trim(), clicks: [] };
+        for (const fy of [0.62, 0.78]) {
+          const before = { pin: await pinAt(), facing: await facing() };
+          const x = m.x + m.width / 2, y = m.y + m.height * fy;
+          if (prof.ctx.hasTouch) await page.touchscreen.tap(x, y);
+          else await page.mouse.click(x, y);
+          await page.waitForTimeout(2500);
+          const card = await page.locator('.vc-map-card[data-over-sv]').count();
+          const title = card ? ((await page.textContent('.vc-map-card').catch(() => '')) ?? '').trim().slice(0, 80) : null;
+          if (fy === 0.62) await page.screenshot({ path: `${OUT}/${prof.name}-9-zone-card.png` });
+          const after = { pin: await pinAt(), facing: await facing() };
+          z.clicks.push({ at: fy, card, title, pinSame: before.pin === after.pin, facingSame: before.facing === after.facing });
+          if (card) await page.click('button[aria-label="Close details"]', { force: true });
+          await page.waitForTimeout(800);
+          z.clicks.at(-1).afterClose = { card: await page.locator('.vc-map-card').count(), pinSame: before.pin === (await pinAt()) };
+        }
+        const before = await pinAt();
+        const x = m.x + m.width / 2, y = m.y + m.height * 0.62;
+        if (prof.ctx.hasTouch) {
+          await page.touchscreen.tap(x, y);
+          await page.touchscreen.tap(x, y);
+        } else await page.mouse.dblclick(x, y);
+        await page.waitForTimeout(4000);
+        z.doubleMoves = before !== (await pinAt());
+        z.ok = z.clicks.every((c) => c.card === 1 && c.pinSame && c.facingSame && c.afterClose.card === 0 && c.afterClose.pinSame) && z.doubleMoves;
+        run.zoning = z;
+        await page.screenshot({ path: `${OUT}/${prof.name}-9b-zone-moved.png` });
+        // Back off for the steps below.
+        await page.click('.vc-sv-bar-btn[aria-pressed]', { force: true });
+        await page.waitForTimeout(1000);
       }
       // Looking around: a drag turns the view, the buttons turn and step, the compass faces north again.
       const facing = async () => Number(((await page.getAttribute('.vc-sv-compass', 'aria-label')) ?? '').match(/facing (-?\d+)/)?.[1] ?? NaN);
