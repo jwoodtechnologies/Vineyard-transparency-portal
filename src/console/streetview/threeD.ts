@@ -61,7 +61,7 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   // only, with a faint highlight: a white highlight washed every slope pale, so the snow no longer stood out.
   if (!map.getSource(SHADE_SRC)) map.addSource(SHADE_SRC, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 12 });
   if (!map.getLayer(SHADE))
-    map.addLayer({ id: SHADE, type: 'hillshade', source: SHADE_SRC, paint: { 'hillshade-exaggeration': 0.5, 'hillshade-shadow-color': 'rgba(0, 0, 0, 0.55)', 'hillshade-highlight-color': 'rgba(255, 255, 255, 0.12)', 'hillshade-accent-color': 'rgba(0, 0, 0, 0.3)' } }, firstAboveGround(map));
+    map.addLayer({ id: SHADE, type: 'hillshade', source: SHADE_SRC, paint: { 'hillshade-exaggeration': 0.5, 'hillshade-shadow-color': 'rgba(0, 0, 0, 0.4)', 'hillshade-highlight-color': 'rgba(255, 255, 255, 0.12)', 'hillshade-accent-color': 'rgba(0, 0, 0, 0.2)' } }, firstAboveGround(map));
   if (!map.getTerrain()) map.setTerrain({ source: DEM, exaggeration: 1 });
   // The streets map already has OpenFreeMap's source (and draws water blue); satellite and plain maps get their own.
   const streets = Boolean(map.getSource('openmaptiles'));
