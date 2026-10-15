@@ -11,6 +11,9 @@ import tailwindcss from '@tailwindcss/vite';
  */
 const BUILD_ID = `${(process.env.GITHUB_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? '').slice(0, 8) || 'local'}-${Date.now().toString(36)}`;
 
+/** The generation mark in every built file name (see build.rollupOptions below). */
+const CHUNK_MARK = 'c2';
+
 /** Each route's screen module (the same table as src/app/router.tsx and public/theme-init.js). */
 const SCREENS: Record<string, string> = {
   console: 'ConsolePage',
@@ -174,6 +177,13 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: true,
     chunkSizeWarningLimit: 900,
+    // Every file name carries a generation mark. It was added (c2) after browsers that loaded during a deploy
+    // stored the app's index.html under chunk names for a year (the asset fallback, now a 404: worker/lib/
+    // edgeCache.ts); a new mark gives every chunk a name no browser has stored. Change it only for that.
+    rollupOptions: { output: { entryFileNames: `assets/[name]-${CHUNK_MARK}-[hash].js`, chunkFileNames: `assets/[name]-${CHUNK_MARK}-[hash].js`, assetFileNames: `assets/[name]-${CHUNK_MARK}-[hash][extname]` } },
+  },
+  worker: {
+    rollupOptions: { output: { entryFileNames: `assets/[name]-${CHUNK_MARK}-[hash].js`, chunkFileNames: `assets/[name]-${CHUNK_MARK}-[hash].js` } },
   },
   server: { port: 5173 },
 });
