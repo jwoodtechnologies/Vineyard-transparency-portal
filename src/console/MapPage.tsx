@@ -1247,7 +1247,9 @@ export default function MapPage() {
     if (photo) startStreetView(photo.pos, photo);
     else startStreetView(lineNear(map, point, 18)?.at ?? lngLat);
   });
-  useLongPress(getMap, mapGen, ready, !measuring, (at) => startStreetView(at));
+  // Only on the plain map: inside street view a held finger before a look-around drag, or the right click that
+  // ends a right drag, must not move anyone (a deliberate tap or click does, tapGuard.ts).
+  useLongPress(getMap, mapGen, ready, !measuring && !sv, (at) => startStreetView(at));
   const closeStreetView = useCallback(() => setSv(null), []);
   // Google Street View mode: offered only while the Worker has a key and today's opens are under the cap.
   const [googleOk, setGoogleOk] = useState(false);

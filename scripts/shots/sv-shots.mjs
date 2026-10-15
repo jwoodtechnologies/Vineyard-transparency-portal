@@ -257,7 +257,10 @@ for (const prof of PROFILES) {
       run.note = (await page.textContent('.vc-sv-note'))?.trim();
       {
         // A 200 px drag turns the view and never moves the pin; a still tap on the ground does.
+        const pinAt = () => page.getAttribute('.vc-sv-pin', 'data-at').catch(() => null);
+        await page.waitForTimeout(3000);
         const moves = pinMoves(page);
+        const at0 = await pinAt();
         const m = await page.locator('.vc-map').boundingBox();
         if (!prof.ctx.hasTouch) {
           await page.mouse.move(m.x + m.width / 2, m.y + m.height * 0.75);
@@ -266,12 +269,29 @@ for (const prof of PROFILES) {
         }
         await drag200(ctx, page, m, prof.ctx.hasTouch);
         await page.waitForTimeout(2500);
-        run.drag200 = { pinMoves: moves.n, ringAfterDrag: await page.locator('.vc-sv-ring:not(.is-tap)').count() };
+        // A finger held still before it drags (phone), or a right button drag (desktop): still only looking.
+        if (prof.ctx.hasTouch) {
+          const cdp = await ctx.newCDPSession(page);
+          const x = m.x + m.width / 2 - 100, y = m.y + m.height * 0.6;
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] });
+          await page.waitForTimeout(900);
+          for (let i = 1; i <= 20; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + i * 10, y, id: 1 }] });
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        } else {
+          await page.mouse.move(m.x + m.width / 2 - 100, m.y + m.height * 0.6);
+          await page.mouse.down({ button: 'right' });
+          await page.mouse.move(m.x + m.width / 2 + 100, m.y + m.height * 0.6, { steps: 20 });
+          await page.mouse.up({ button: 'right' });
+        }
+        await page.waitForTimeout(2500);
+        const at1 = await pinAt();
+        run.drag200 = { pinBefore: at0, pinAfterDrag: at1, pinSame: at0 != null && at0 === at1, pinMoves: moves.n, ringAfterDrag: await page.locator('.vc-sv-ring:not(.is-tap)').count() };
         if (prof.ctx.hasTouch) await touchTap(ctx, page, m.x + m.width / 2, m.y + m.height * 0.8);
         else await page.mouse.click(m.x + m.width / 2, m.y + m.height * 0.8);
         await page.waitForTimeout(2500);
         run.drag200.tapMoves = moves.n;
-        run.drag200.ok = run.drag200.pinMoves === 0 && moves.n >= 1;
+        run.drag200.pinAfterTap = await pinAt();
+        run.drag200.ok = run.drag200.pinSame && run.drag200.pinAfterTap !== at1;
       }
       // Looking around: a drag turns the view, the buttons turn and step, the compass faces north again.
       const facing = async () => Number(((await page.getAttribute('.vc-sv-compass', 'aria-label')) ?? '').match(/facing (-?\d+)/)?.[1] ?? NaN);

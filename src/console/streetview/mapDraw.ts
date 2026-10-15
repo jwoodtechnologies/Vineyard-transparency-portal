@@ -64,6 +64,8 @@ export function pinMarker(map: maplibregl.Map, at: Pos, onMoved: (to: Pos) => vo
   el.setAttribute('aria-label', 'Street view pin. Drag to move it.');
   el.innerHTML =
     '<span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="5" r="2.8" fill="#fbbc04" stroke="#7a5b00" stroke-width="1"/><path d="M8 10c0-1 .8-1.8 1.8-1.8h4.4c1 0 1.8.8 1.8 1.8v5h-2V22h-4v-7H8z" fill="#fbbc04" stroke="#7a5b00" stroke-width="1"/></svg></span>';
+  // Where the pin stands, for the screenshot checks (a drag to look around must leave it where it is).
+  el.dataset.at = `${at[0].toFixed(6)},${at[1].toFixed(6)}`;
   const m = new maplibregl.Marker({ element: el, anchor: 'bottom', draggable: true }).setLngLat(at).addTo(map);
   m.on('dragend', () => {
     const ll = m.getLngLat();

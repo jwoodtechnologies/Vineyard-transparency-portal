@@ -91,7 +91,8 @@ Routes live in `src/app/router.tsx`; every screen is in `src/console/`.
   `MAPILLARY_TOKEN`), the map tilts to a 3D street level view with buildings and zoning. Only a deliberate click or
   tap moves anyone (`tapGuard.ts`): one pointer, down and up within 6 px and 350 ms, no drag, wheel or pinch
   in between; the click that ends a drag never counts. This holds in the photo viewer, the 3D view, the small
-  map and pin dropping. A ring on the ground under the mouse shows where a click would go (hidden while
+  map and pin dropping. While street view is open, a long press or right click no longer drops a new pin (a
+  finger held still before a look-around drag, or a right button drag, would have moved it). A ring on the ground under the mouse shows where a click would go (hidden while
   dragging); on touch the tapped spot lights up just before the move. Arrows and keys also move.
 * **Google Street View mode** (`src/console/streetview/GoogleView.tsx`, Tools menu): Google's terms allow its
   Street View only beside a Google map, so this mode replaces our map with a Google map (Maps JavaScript API)
