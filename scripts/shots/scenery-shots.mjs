@@ -86,6 +86,10 @@ async function open(prof, scenery) {
   page.on('console', (m) => (m.type() === 'error' || /Content Security Policy|Refused to|Error/.test(m.text())) && notes.push(redact(m.text()).slice(0, 300)));
   page.on('pageerror', (e) => notes.push(redact('pageerror: ' + e.message)));
   if (prof.cpu > 1) await (await ctx.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: prof.cpu });
+  // A lost drawing context (the runner draws without a GPU) is noted, since it leaves the map blank.
+  await page.addInitScript(() => {
+    document.addEventListener('webglcontextlost', () => console.error('WebGL context lost'), true);
+  });
   await page.goto(`${BASE}/map?lat=${spot[1]}&lng=${spot[0]}&z=17`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.vc-map canvas', { timeout: 40000 }).catch(() => notes.push('map canvas slow'));
   await page.waitForFunction(() => !document.querySelector('.vc-map-loading'), null, { timeout: 40000 }).catch(() => notes.push('map loading slow'));
