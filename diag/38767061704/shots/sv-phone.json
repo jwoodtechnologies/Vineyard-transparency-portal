@@ -1,0 +1,171 @@
+{
+  "steps": [
+    {
+      "name": "street view",
+      "mode": "3d",
+      "bar": [
+        "Close",
+        "Layers",
+        "Google"
+      ]
+    },
+    {
+      "name": "tools open",
+      "layersOnTop": "yes",
+      "hintShown": false,
+      "overlaps": [
+        ".vc-map-tools-menu x .vc-sv-note"
+      ],
+      "problems": []
+    },
+    {
+      "name": "layers",
+      "panel": true,
+      "projectsOn": true,
+      "zoningOn": true
+    },
+    {
+      "name": "project tap",
+      "tappedAt": [
+        102,
+        467
+      ],
+      "where": {
+        "ground": [
+          -111.750183,
+          40.295527
+        ],
+        "inside": true,
+        "ringPoints": 53,
+        "ringBox": [
+          -111.75172,
+          40.29552,
+          -111.74837,
+          40.29697
+        ]
+      },
+      "tries": 3,
+      "frameMsBeforeTries": [
+        909,
+        2439,
+        6334
+      ],
+      "projected": true,
+      "card": 0,
+      "title": null,
+      "kind": null,
+      "cardBox": null,
+      "pinSame": false,
+      "facingSame": true,
+      "goHere": 0
+    },
+    {
+      "name": "zone chip tap",
+      "card": 1,
+      "kind": "Zoning",
+      "title": "R-1-10",
+      "pinSame": true,
+      "overlaps": [
+        ".vc-map-card x .vc-sv-3d",
+        ".vc-map-card x ctrl-bottom-right full screen",
+        ".vc-map-card x ctrl-bottom-right (i)"
+      ]
+    }
+  ],
+  "project": {
+    "name": "Engineering for Field (Gammon Park / Robin's Property)",
+    "at": [
+      -111.750008,
+      40.296431
+    ]
+  },
+  "notes": [],
+  "rightEdge": [
+    "70: canvas.maplibregl-canvas",
+    "95: canvas.maplibregl-canvas",
+    "120: canvas.maplibregl-canvas",
+    "145: canvas.maplibregl-canvas",
+    "170: canvas.maplibregl-canvas",
+    "195: canvas.maplibregl-canvas",
+    "220: canvas.maplibregl-canvas",
+    "245: canvas.maplibregl-canvas",
+    "270: canvas.maplibregl-canvas",
+    "295: canvas.maplibregl-canvas",
+    "320: canvas.maplibregl-canvas",
+    "345: canvas.maplibregl-canvas",
+    "370: canvas.maplibregl-canvas",
+    "395: canvas.maplibregl-canvas",
+    "420: canvas.maplibregl-canvas"
+  ],
+  "zoneChip": {
+    "text": "Zone: A-1",
+    "overlaps": [],
+    "hint": "Tap to move. Tap a project for details."
+  },
+  "projectTap": {
+    "tappedAt": [
+      102,
+      467
+    ],
+    "where": {
+      "ground": [
+        -111.750183,
+        40.295527
+      ],
+      "inside": true,
+      "ringPoints": 53,
+      "ringBox": [
+        -111.75172,
+        40.29552,
+        -111.74837,
+        40.29697
+      ]
+    },
+    "tries": 3,
+    "frameMsBeforeTries": [
+      909,
+      2439,
+      6334
+    ],
+    "projected": true,
+    "card": 0,
+    "title": null,
+    "kind": null,
+    "cardBox": null,
+    "pinSame": false,
+    "facingSame": true,
+    "goHere": 0
+  },
+  "groundTap": {
+    "tries": 3,
+    "frameMsBeforeTries": [
+      17,
+      17,
+      17
+    ],
+    "moved": false,
+    "card": 0
+  },
+  "zoneTap": {
+    "card": 1,
+    "kind": "Zoning",
+    "title": "R-1-10",
+    "pinSame": true,
+    "overlaps": [
+      ".vc-map-card x .vc-sv-3d",
+      ".vc-map-card x ctrl-bottom-right full screen",
+      ".vc-map-card x ctrl-bottom-right (i)"
+    ]
+  },
+  "ok": {
+    "layersTappable": true,
+    "hintHiddenWithMenu": true,
+    "noOverlap": true,
+    "projectCard": false,
+    "goHere": false,
+    "groundTapMoves": false,
+    "zoneChip": true,
+    "zoneCard": true,
+    "labels": true
+  }
+}
