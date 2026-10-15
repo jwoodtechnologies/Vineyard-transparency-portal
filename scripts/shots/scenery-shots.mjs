@@ -66,6 +66,8 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const PROFILES = [
   // Desktop first: the east view of the snow is the shot that matters most, and the runner sometimes slows down later.
   { name: 'desktop', ctx: { viewport: { width: 1440, height: 900 } }, cpu: 1 },
+  // The same desktop view with the service worker off: does the worker's tile cache change what draws?
+  { name: 'desktop-nosw', ctx: { viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' }, cpu: 1, only: true },
   { name: 'phone', ctx: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 }, cpu: 4 },
 ];
 
@@ -86,6 +88,14 @@ async function open(prof, scenery) {
     const m = r.url().match(/elevation-tiles-prod\/terrarium\/(\d+)\/(\d+)\/(\d+)\.png/);
     if (m) dem.push(m.slice(1).map(Number));
   });
+  // Elevation tile answers: status, and whether the service worker gave them.
+  dem.answers = {};
+  page.on('response', (r) => {
+    if (!/elevation-tiles-prod/.test(r.url())) return;
+    const k = `${r.status()}${r.fromServiceWorker() ? ' sw' : ''}`;
+    dem.answers[k] = (dem.answers[k] ?? 0) + 1;
+  });
+  page.on('requestfailed', (r) => /elevation-tiles-prod/.test(r.url()) && (dem.answers.failed = (dem.answers.failed ?? 0) + 1));
   page.on('console', (m) => (m.type() === 'error' || /Content Security Policy|Refused to|Error/.test(m.text())) && notes.push(redact(m.text()).slice(0, 300)));
   page.on('pageerror', (e) => notes.push(redact('pageerror: ' + e.message)));
   if (prof.cpu > 1) await (await ctx.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: prof.cpu });
@@ -177,7 +187,7 @@ async function probe(page, name) {
 }
 
 for (const prof of PROFILES) {
-  for (const scenery of [true, false]) {
+  for (const scenery of prof.only ? [true] : [true, false]) {
     const run = { tag: `${prof.name}-${scenery ? 'scenery' : 'plain'}`, cpuSlowdown: prof.cpu };
     log.runs.push(run);
     const { ctx, page, notes, dem } = await open(prof, scenery);
@@ -244,6 +254,7 @@ for (const prof of PROFILES) {
       }));
       const far = dem.map(([z, x, y]) => ({ z, km: tileKm(z, x, y), x, y }));
       run.demTiles = dem.length;
+      run.demAnswers = dem.answers;
       run.farthestDemKm = Math.round(Math.max(0, ...far.map((t) => t.km)));
       run.peaksLoaded = Object.fromEntries(Object.entries(PEAKS).map(([k, p]) => [k, dem.some(([z, x, y]) => covers(z, x, y, p))]));
     } catch (e) {
