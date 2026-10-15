@@ -226,6 +226,19 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       if (line) return { layer: line.layer, name: line.name, shape: { type: 'MultiLineString', coordinates: line.lines } as Geometry, color: '#5c7cfa' };
       return null;
     };
+    // For the live checks only (localStorage vtp:debug): what street view holds, and what a point would open.
+    try {
+      if (localStorage.getItem('vtp:debug'))
+        (window as Window & { __vtpSv?: unknown }).__vtpSv = {
+          ground: () => groundRef.current.map((g) => ({ layer: g.layer ?? 'zoning', name: g.zone, rings: g.rings.length })),
+          at: (x: number, y: number) => {
+            const ll = groundUnder(map, x, y);
+            return { ground: [ll.lng, ll.lat], plain: map.unproject([x, y]).toArray(), card: cardAt(ll)?.name ?? null };
+          },
+        };
+    } catch {
+      // Storage blocked.
+    }
     const moveAt = (p: { x: number; y: number }, point: maplibregl.LngLat, touch: boolean) => {
       if (!touch) {
         ring.hide();

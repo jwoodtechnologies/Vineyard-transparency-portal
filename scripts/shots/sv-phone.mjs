@@ -230,6 +230,14 @@ try {
     const where = { ground: ground?.map((v) => +v.toFixed(6)), inside: ground && project ? inRing(ground, project.ring) : null, ringPoints: project?.ring.length, ringBox: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map((v) => +v.toFixed(5)) };
     // The runner draws without a GPU, often slower than a frame a second, and a busy page can see a 70 ms
     // tap last past the 350 ms limit: the frame interval is logged, and the tap tried up to three times.
+    // What street view holds and what this point resolves to (debug hook).
+    where.page = await page.evaluate(([x, y]) => {
+      const sv = window.__vtpSv;
+      if (!sv) return null;
+      const c = document.querySelector('.vc-map')?.getBoundingClientRect();
+      const g = sv.ground();
+      return { projects: g.filter((f) => f.layer === 'projects').map((f) => f.name).slice(0, 12), zones: g.filter((f) => f.layer !== 'projects').length, at: sv.at(x - (c?.left ?? 0), y - (c?.top ?? 0)) };
+    }, [tp.x, tp.y]);
     const card = page.locator('.vc-map-card[data-over-sv]');
     const tries = [];
     for (let i = 0; i < 3 && !(await card.count()); i++) {

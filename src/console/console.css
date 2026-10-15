@@ -5773,3 +5773,9 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
   .vc-map-wrap[data-driving][data-card='true'] .vc-drive-turns,
   .vc-map-wrap[data-driving][data-panel='true'] .vc-drive-turns { display: none; }
 }
+/* A card over street view on a phone: the 3D buttons and the map's corner buttons wait under it. */
+@media (max-width: 820px) {
+  .vc-map-wrap[data-sv]:has(.vc-map-card[data-over-sv]) .vc-sv-3d,
+  .vc-map-wrap[data-sv]:has(.vc-map-card[data-over-sv]) .vc-map .maplibregl-ctrl-bottom-right,
+  .vc-map-wrap[data-driving]:has(.vc-map-card) .vc-map .maplibregl-ctrl-bottom-right { visibility: hidden; }
+}
