@@ -48,6 +48,14 @@ try {
   }
   await page.waitForTimeout(20000);
   await page.screenshot({ path: `${OUT}/bld-1-as-shown.png`, timeout: 120000 }).catch(() => undefined);
+  // Turned toward the houses (west), at eye level, with time for them to draw.
+  for (let i = 0; i < 3; i++) {
+    await page.tap('button[aria-label="Turn left"]').catch(() => undefined);
+    await page.waitForTimeout(1500);
+  }
+  await page.waitForTimeout(30000);
+  log.facingWest = await page.getAttribute('.vc-sv-compass', 'aria-label').catch(() => null);
+  await page.screenshot({ path: `${OUT}/bld-1b-toward-houses.png`, timeout: 120000 }).catch(() => undefined);
   log.data = await page.evaluate(() => {
     const m = window.__vtpMap;
     if (!m) return null;
