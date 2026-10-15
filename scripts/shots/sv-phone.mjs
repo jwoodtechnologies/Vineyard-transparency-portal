@@ -98,6 +98,22 @@ const onTop = (sel) =>
     const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     return top && (el === top || el.contains(top)) ? 'yes' : `covered by ${top?.className || top?.tagName}`;
   }, sel);
+/** The median time between frames over one second, in ms. */
+const frameMs = () =>
+  page.evaluate(
+    () =>
+      new Promise((done) => {
+        const t = [];
+        let last = performance.now();
+        const step = (now) => {
+          t.push(now - last);
+          last = now;
+          if (t.reduce((a, b) => a + b, 0) < 1000) requestAnimationFrame(step);
+          else done(Math.round(t.sort((a, b) => a - b)[Math.floor(t.length / 2)]));
+        };
+        requestAnimationFrame(step);
+      }),
+  );
 /** Turns a layer on or off in the open Layers panel by its label, with a tap, then closes the panel. */
 const layer = async (label, on) => {
   await page.waitForSelector('.vc-map-panel .vc-map-layer', { timeout: 30000 });
@@ -201,12 +217,20 @@ try {
     const xs = project?.ring.map((p) => p[0]) ?? [0],
       ys = project?.ring.map((p) => p[1]) ?? [0];
     const where = { ground: ground?.map((v) => +v.toFixed(6)), inside: ground && project ? inRing(ground, project.ring) : null, ringPoints: project?.ring.length, ringBox: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map((v) => +v.toFixed(5)) };
-    await tap(tp.x, tp.y);
-    await page.waitForTimeout(3000);
+    // The runner draws without a GPU, often slower than a frame a second, and a busy page can see a 70 ms
+    // tap last past the 350 ms limit: the frame interval is logged, and the tap tried up to three times.
     const card = page.locator('.vc-map-card[data-over-sv]');
+    const tries = [];
+    for (let i = 0; i < 3 && !(await card.count()); i++) {
+      tries.push(await frameMs());
+      await tap(tp.x, tp.y);
+      await page.waitForTimeout(3000);
+    }
     const r = {
       tappedAt: [Math.round(tp.x), Math.round(tp.y)],
       where,
+      tries: tries.length,
+      frameMsBeforeTries: tries,
       projected: Boolean(point),
       card: await card.count(),
       title: (await card.locator('.vc-map-card-title').textContent().catch(() => null))?.trim() ?? null,
@@ -232,10 +256,16 @@ try {
   await page.waitForTimeout(4000);
   const mb = await page.locator('.vc-map').boundingBox();
   const before = { pin: await pinAt(), facing: await facing() };
-  await tap(mb.x + mb.width / 2, mb.y + mb.height * 0.72);
-  await page.waitForTimeout(3000);
   const zc = page.locator('.vc-map-card[data-over-sv]');
+  const ztries = [];
+  for (let i = 0; i < 3 && !(await zc.count()); i++) {
+    ztries.push(await frameMs());
+    await tap(mb.x + mb.width / 2, mb.y + mb.height * 0.72);
+    await page.waitForTimeout(3000);
+  }
   log.zoneTap = {
+    tries: ztries.length,
+    frameMsBeforeTries: ztries,
     card: await zc.count(),
     kind: (await zc.locator('.vc-map-kind').textContent().catch(() => null))?.trim() ?? null,
     title: (await zc.locator('.vc-map-card-title').textContent().catch(() => null))?.trim() ?? null,
