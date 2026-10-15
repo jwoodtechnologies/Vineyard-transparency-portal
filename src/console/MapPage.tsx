@@ -807,6 +807,12 @@ export default function MapPage() {
       });
       m.on('zoomend', () => setZoom(m.getZoom()));
       mapRef.current = m;
+      // For the live screenshot checks only (localStorage vtp:debug): the map, to read its layers.
+      try {
+        if (localStorage.getItem('vtp:debug')) (window as Window & { __vtpMap?: maplibregl.Map }).__vtpMap = m;
+      } catch {
+        // Storage blocked.
+      }
     };
     void styleFor(base, isDark).then(create);
     return () => {
