@@ -1,0 +1,1229 @@
+{
+  "base": "https://vineyardportal.org",
+  "seed": 7,
+  "at": "2026-10-15T15:17:11.141Z",
+  "links": {
+    "pages": [
+      {
+        "page": "/api/pages/construction",
+        "status": 200
+      },
+      {
+        "page": "/api/construction",
+        "status": 200
+      },
+      {
+        "page": "/api/budget",
+        "status": 200
+      },
+      {
+        "page": "/api/budget/archive",
+        "status": 200
+      },
+      {
+        "page": "/api/records/ordinances",
+        "status": 200
+      },
+      {
+        "page": "/api/records/resolutions",
+        "status": 200
+      },
+      {
+        "page": "/api/records/rda-resolutions",
+        "status": 200
+      },
+      {
+        "page": "/api/latest",
+        "status": 200
+      },
+      {
+        "page": "/api/coverage/summary",
+        "status": 200
+      }
+    ],
+    "checked": 401,
+    "dead": [],
+    "moved": []
+  },
+  "records": [
+    {
+      "id": "doc_78cb02039218c18d",
+      "title": "23a-October 14, 2015 (PDF)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03931075460487225,
+            "ink": 0.07376114081996435,
+            "samples": 84150
+          },
+          "text": "Page 1 of 1; October 14, 2015 Vineyard Redevelopment Agency Meeting Agenda NOTICE OF A MEETING OF THE VINEYARD REDEVELOPMENT AGENCY BOARD October 14, 2015 - 7:00PM Public Notice is hereby given that the Vineyard Redevelopment Agency Board will hold a meeting on Wednesday, October 14, 2015 ,   starting at approximately 7:00 p.m. or as soon thereafter as possible in the Vineyard Town Hall; 240 East Gammon Road, Vineyard, Utah. The agenda will consist of the following: Agenda 1.   Consent Items a)   July 8, 2015 minutes 2.   BUSINESS ITEMS: 2.1   DISCUSSION AND ACTION   –   Resolution for the Pledge of certain Revenue (resolution 2015-   ) Consideration for adoption of a resolution of the Board of Directors of the Redevelopment Agency of the Town of Vineyard, Utah authorizing the issuance and sale of not to exceed $16,150,000 aggregate principal amount of tax increment revenue bonds, series 2015; and related matters. The Board will take appropriate action. 3.   ITEMS REQUESTED FOR NEXT AGENDA 4.   ADJOURNMENT This meeting may be held electronically to allow a Board Member to participate by teleconference. The Public is invited to participate in all Vineyard Redevelopment Agency meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this meeting should notify the Town Clerk at least 24 hours before the meeting by calling (801) 226-1929. I the undersigned duly appointed Recorder for the Town of Vineyard, hereby certify that the foregoing notice and agenda was emailed to the Daily Herald, posted at the Vineyard Town Hall, the Vineyard Town website, the Utah Public Notice website, delivered electronically to Town staff and to each member of the Governing Body. AGENDA NOTICING COMPLETED ON:   October 13, 2015 at 1:00 pm CERTIFIED (NOTICED) BY: / s/ Pamela Spencer/Town Clerk/Recorder",
+          "shot": "doc-check-shots/doc_78cb02039218c18d-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.033703043506965076,
+            "ink": 0.09526638938403645,
+            "samples": 30294
+          },
+          "text": "Page 1 of 1; October 14, 2015 Vineyard Redevelopment Agency Meeting Agenda NOTICE OF A MEETING OF THE VINEYARD REDEVELOPMENT AGENCY BOARD October 14, 2015 - 7:00PM Public Notice is hereby given that the Vineyard Redevelopment Agency Board will hold a meeting on Wednesday, October 14, 2015 ,   starting at approximately 7:00 p.m. or as soon thereafter as possible in the Vineyard Town Hall; 240 East Gammon Road, Vineyard, Utah. The agenda will consist of the following: Agenda 1.   Consent Items a)   July 8, 2015 minutes 2.   BUSINESS ITEMS: 2.1   DISCUSSION AND ACTION   –   Resolution for the Pledge of certain Revenue (resolution 2015-   ) Consideration for adoption of a resolution of the Board of Directors of the Redevelopment Agency of the Town of Vineyard, Utah authorizing the issuance and sale of not to exceed $16,150,000 aggregate principal amount of tax increment revenue bonds, series 2015; and related matters. The Board will take appropriate action. 3.   ITEMS REQUESTED FOR NEXT AGENDA 4.   ADJOURNMENT This meeting may be held electronically to allow a Board Member to participate by teleconference. The Public is invited to participate in all Vineyard Redevelopment Agency meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this meeting should notify the Town Clerk at least 24 hours before the meeting by calling (801) 226-1929. I the undersigned duly appointed Recorder for the Town of Vineyard, hereby certify that the foregoing notice and agenda was emailed to the Daily Herald, posted at the Vineyard Town Hall, the Vineyard Town website, the Utah Public Notice website, delivered electronically to Town staff and to each member of the Governing Body. AGENDA NOTICING COMPLETED ON:   October 13, 2015 at 1:00 pm CERTIFIED (NOTICED) BY: / s/ Pamela Spencer/Town Clerk/Recorder",
+          "shot": "doc-check-shots/doc_78cb02039218c18d-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_8e2ae95e041a5467",
+      "title": "3.19.2025 Planning Commission Draft Minutes (Planning Commission Meeting, 2025-04-16, item 1)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04559714795008913,
+            "ink": 0.11107546048722519,
+            "samples": 84150
+          },
+          "text": "Page 1 of 4; March 19, 2025, Planning Commission Draft Minutes 1 2   MINUTES OF A REGULAR 3   PLANNING COMMISSION MEETING 4   March 19, 2025, at 6:00 PM 5   ________________ 6   ATTENDANCE: 7 8   COMMISSIONERS PRESENT:   Chair Nathan Steele, Brad Fagg, Chris Bramwell, David 9   Pearce, Natalie Harbin 10 11   STAFF PRESENT:   Anthony Fletcher, Planner; Madison Reed, Planning Technician; Naseem 12   Ghandour, City Engineer and Public Works Director; Brian Vawdrey, Parks and Recreation 13   Director; Cache Hancey, Senior Planner; Maria Artega, Neighborhood Services Coordinator; 14   Morgan Brim, Community Development Director 15 16   OTHERS PRESENT:   Jane Pearce, Graden Ostler 17 18 19 20   1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF 21   ALLEGIANCE 22 23   Chair Nathan Ghandour called the meeting to order. Commissioner David Pearce led the 24   invocation and pledge of allegiance. 25 26   2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 27 28   There were no comments made. 29 30   3.   PUBLIC COMMENTS PC 31 32   There were no comments made. 33 34   4.   CONSENT ITEMS 35 36   4.1.   Approval of the March 5th, 2025 Planning Commission Draft Minutes 37 38   Motion:   COMMISSIONER PEARCE MOTIONED TO APPROVE THE 39   MARCH 5 TH , 2025 PLANNING COMMISSION MINUTES AT 6:02PM. 40   COMMISSIONER CHRIS BRAMWELL SECONDED. ALL IN FAVOR VOTED YES: 41   STEELE, FAGG, BRAMWELL, PEARCE, AND HARBIN. THE VOTE CARRIED 42   UNANIMOUSLY. 43 44   5.   BUSINESS ITEMS",
+          "shot": "doc-check-shots/doc_8e2ae95e041a5467-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05212253251468938,
+            "ink": 0.13395391826764375,
+            "samples": 30294
+          },
+          "text": "Page 1 of 4; March 19, 2025, Planning Commission Draft Minutes 1 2   MINUTES OF A REGULAR 3   PLANNING COMMISSION MEETING 4   March 19, 2025, at 6:00 PM 5   ________________ 6   ATTENDANCE: 7 8   COMMISSIONERS PRESENT:   Chair Nathan Steele, Brad Fagg, Chris Bramwell, David 9   Pearce, Natalie Harbin 10 11   STAFF PRESENT:   Anthony Fletcher, Planner; Madison Reed, Planning Technician; Naseem 12   Ghandour, City Engineer and Public Works Director; Brian Vawdrey, Parks and Recreation 13   Director; Cache Hancey, Senior Planner; Maria Artega, Neighborhood Services Coordinator; 14   Morgan Brim, Community Development Director 15 16   OTHERS PRESENT:   Jane Pearce, Graden Ostler 17 18 19 20   1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF 21   ALLEGIANCE 22 23   Chair Nathan Ghandour called the meeting to order. Commissioner David Pearce led the 24   invocation and pledge of allegiance. 25 26   2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 27 28   There were no comments made. 29 30   3.   PUBLIC COMMENTS PC 31 32   There were no comments made. 33 34   4.   CONSENT ITEMS 35 36   4.1.   Approval of the March 5th, 2025 Planning Commission Draft Minutes 37 38   Motion:   COMMISSIONER PEARCE MOTIONED TO APPROVE THE 39   MARCH 5 TH , 2025 PLANNING COMMISSION MINUTES AT 6:02PM. 40   COMMISSIONER CHRIS BRAMWELL SECONDED. ALL IN FAVOR VOTED YES: 41   STEELE, FAGG, BRAMWELL, PEARCE, AND HARBIN. THE VOTE CARRIED 42   UNANIMOUSLY. 43 44   5.   BUSINESS ITEMS",
+          "shot": "doc-check-shots/doc_8e2ae95e041a5467-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_06b1344a65700107",
+      "title": "475m-09.19.2018 PC Final Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04558526440879382,
+            "ink": 0.08222222222222222,
+            "samples": 84150
+          },
+          "text": "Page 1 of 8   Planning Commission Meeting - Minutes September 19, 2018 VINEYARD PLANNING COMMISSION MEETING Site Visit: 300 W and 400 N at 5:30 PM Regular Meeting: Vineyard City Hall, 125 S Main St. at 6 PM Wednesday, September 19, 2018 _______________ Present   Absent Madam Chair Cristy Welsh   Vice Chair Anthony Jenkins Commissioner Jeff Knighton   Commissioner Tim Blackburn Commissioner Bryce Brady   Commissioner Nate Carter Commissioner Stan Jenne Commissioner Shan Sullivan Staff Present:   Liz, Morgan, Don, Sullivan 1.   CALL TO ORDER Madam Chair Welsh called the meeting to order 6:10 PM 2.   INVOCATION/INSPIRATIONAL THOUGHTS/PLEDGE OF ALLEGIANCE Pledge of Allegiance given by Madam Chair Welsh 3.   OPEN SESSION Madam Chair Welsh opened the open session at 6:10 PM and asked for public comment on items not on the agenda. Ajax Trueblood (lives in Cascade area) stood to speak about his concern about density in Vineyard. He was concerned about Vineyard’s rapid growth and what will happen with traffic, public safety, etc. He was particularly concerned about the 6-acre park. He was concerned it will never be finished and will never be finished in an esthetically pleasing way. He expressed concern about a backslide situation concerning the 6-acre park. He said that the plans Flagship is now working toward for the park are much more industrial and not as ethically pleasing as the first plans. He was concerned about time, the standard the park will be held to, and the maintenance of the park. Madam Chair Welsh thanked Mr. Trueblood for his comments. Mr. Brim interjected that the park plans would be addressed later in the meeting tonight. Madam Chair closed the open session. 4.   MINUTES REVIEW AND APPROVAL No Minutes to review/approve. 5.   BUSINESS ITEMS: 5.1   Site Plan Amendment   –   East Lake Warehouse",
+          "shot": "doc-check-shots/doc_06b1344a65700107-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04287977817389582,
+            "ink": 0.10048194361919852,
+            "samples": 30294
+          },
+          "text": "Page 1 of 8   Planning Commission Meeting - Minutes September 19, 2018 VINEYARD PLANNING COMMISSION MEETING Site Visit: 300 W and 400 N at 5:30 PM Regular Meeting: Vineyard City Hall, 125 S Main St. at 6 PM Wednesday, September 19, 2018 _______________ Present   Absent Madam Chair Cristy Welsh   Vice Chair Anthony Jenkins Commissioner Jeff Knighton   Commissioner Tim Blackburn Commissioner Bryce Brady   Commissioner Nate Carter Commissioner Stan Jenne Commissioner Shan Sullivan Staff Present:   Liz, Morgan, Don, Sullivan 1.   CALL TO ORDER Madam Chair Welsh called the meeting to order 6:10 PM 2.   INVOCATION/INSPIRATIONAL THOUGHTS/PLEDGE OF ALLEGIANCE Pledge of Allegiance given by Madam Chair Welsh 3.   OPEN SESSION Madam Chair Welsh opened the open session at 6:10 PM and asked for public comment on items not on the agenda. Ajax Trueblood (lives in Cascade area) stood to speak about his concern about density in Vineyard. He was concerned about Vineyard’s rapid growth and what will happen with traffic, public safety, etc. He was particularly concerned about the 6-acre park. He was concerned it will never be finished and will never be finished in an esthetically pleasing way. He expressed concern about a backslide situation concerning the 6-acre park. He said that the plans Flagship is now working toward for the park are much more industrial and not as ethically pleasing as the first plans. He was concerned about time, the standard the park will be held to, and the maintenance of the park. Madam Chair Welsh thanked Mr. Trueblood for his comments. Mr. Brim interjected that the park plans would be addressed later in the meeting tonight. Madam Chair closed the open session. 4.   MINUTES REVIEW AND APPROVAL No Minutes to review/approve. 5.   BUSINESS ITEMS: 5.1   Site Plan Amendment   –   East Lake Warehouse",
+          "shot": "doc-check-shots/doc_06b1344a65700107-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_48a5e3d713b1dc0e",
+      "title": "The Bluffs at Vineyard (Planning Commission Meeting, 2025-08-06, item 4)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.97404801664431,
+            "ink": 0.9883380327958609,
+            "samples": 36529
+          },
+          "text": "The Bluffs at Vineyard Planning Commission - August 6",
+          "shot": "doc-check-shots/doc_48a5e3d713b1dc0e-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.9744737079191568,
+            "ink": 0.9890086789393074,
+            "samples": 33299
+          },
+          "text": "The Bluffs at Vineyard Planning Commission - August 6",
+          "shot": "doc-check-shots/doc_48a5e3d713b1dc0e-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_b7d1bf53c3d9be58",
+      "title": "1600 N Office Concept C-Site Plan (Development Review Committee, 2025-07-17, item 1)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.07501730103806228,
+            "ink": 0.14948096885813147,
+            "samples": 43350
+          },
+          "text": "1600 NORTH STREET GENEVA ROAD Retail / Office 2 17,000 sq.ft. N 89°39'15\" E   320.36' S 07°48'15\" E   388.89' S 86°07'56\" W   126.24' N 90°00'00\" W   247.21' S 07°48'15\" E   388.89' S 86°07'56\" W   126.24' N 90°00'00\" W   247.21' Concept Plan Date Scale By Tracing No. Revisions Vineyard   Utah Sheet No. C -   DUDLEY AND ASSOCIATES ENGINEERS PLANNERS SURVEYORS 801-224-1252 353 EAST 1200 SOUTH, OREM, UTAH TD L - 14688 6-18-2025 1\" = 30'",
+          "shot": "doc-check-shots/doc_b7d1bf53c3d9be58-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.08284398096588033,
+            "ink": 0.15115925888427661,
+            "samples": 39508
+          },
+          "text": "1600 NORTH STREET GENEVA ROAD Retail / Office 2 17,000 sq.ft. N 89°39'15\" E   320.36' S 07°48'15\" E   388.89' S 86°07'56\" W   126.24' N 90°00'00\" W   247.21' S 07°48'15\" E   388.89' S 86°07'56\" W   126.24' N 90°00'00\" W   247.21' Concept Plan Date Scale By Tracing No. Revisions Vineyard   Utah Sheet No. C -   DUDLEY AND ASSOCIATES ENGINEERS PLANNERS SURVEYORS 801-224-1252 353 EAST 1200 SOUTH, OREM, UTAH TD L - 14688 6-18-2025 1\" = 30'",
+          "shot": "doc-check-shots/doc_b7d1bf53c3d9be58-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_ddc22bd2885e1e05",
+      "title": "319m-1.26 and 1.27,2017 CC Planning Retreat Final Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.026583481877599523,
+            "ink": 0.049245395127748066,
+            "samples": 84150
+          },
+          "text": "Page 1 of 18; January 26-27, 2017 City Council Planning Retreat Minutes MINUTES OF THE VINEYARD CITY COUNCIL PLANNING RETREAT New Vineyard City Offices, Conference Room 125 South Main, Vineyard Utah January 26, 2017 6:00 PM Present   Absent Mayor Randy Farnworth Councilmember Tyce Flake Councilmember Julie Fullmer Councilmember Dale Goodman Councilmember Nate Riley Staff Present :   Community Development Director Morgan Brim, Building Official George Reid, Finance Director Jacob McHargue, City Recorder Pamela Spencer, Administrative Assistant Neeley Rimal Others Present: Resident and Planning Commission Chair Chris Judd, Cody Deeter with Lewis Young Robertson & Burningham (Lewis Young), Whitney Booth with Provo City EVENING SESSION - January 26 from 6:00 PM The evening session began with dinner at 6:00 PM. Mayor Farnworth opened the review session at 6:31 PM. He turned the time over to Finance Director Jacob McHargue. Mr. McHargue recapped the 2016 retreat. List of projects: Rail Spur Robins Property Remediation Recording Intern Rate analysis on utilities fees General Plan and Zoning Areas Center Street Overpass Train Station Water Tank 2019 Website City Clean Up (Code Enforcement) Economic Development Street Light Updating Level of Service",
+          "shot": "doc-check-shots/doc_ddc22bd2885e1e05-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.02422922030765168,
+            "ink": 0.06357694592988711,
+            "samples": 30294
+          },
+          "text": "Page 1 of 18; January 26-27, 2017 City Council Planning Retreat Minutes MINUTES OF THE VINEYARD CITY COUNCIL PLANNING RETREAT New Vineyard City Offices, Conference Room 125 South Main, Vineyard Utah January 26, 2017 6:00 PM Present   Absent Mayor Randy Farnworth Councilmember Tyce Flake Councilmember Julie Fullmer Councilmember Dale Goodman Councilmember Nate Riley Staff Present :   Community Development Director Morgan Brim, Building Official George Reid, Finance Director Jacob McHargue, City Recorder Pamela Spencer, Administrative Assistant Neeley Rimal Others Present: Resident and Planning Commission Chair Chris Judd, Cody Deeter with Lewis Young Robertson & Burningham (Lewis Young), Whitney Booth with Provo City EVENING SESSION - January 26 from 6:00 PM The evening session began with dinner at 6:00 PM. Mayor Farnworth opened the review session at 6:31 PM. He turned the time over to Finance Director Jacob McHargue. Mr. McHargue recapped the 2016 retreat. List of projects: Rail Spur Robins Property Remediation Recording Intern Rate analysis on utilities fees General Plan and Zoning Areas Center Street Overpass Train Station Water Tank 2019 Website City Clean Up (Code Enforcement) Economic Development Street Light Updating Level of Service",
+          "shot": "doc-check-shots/doc_ddc22bd2885e1e05-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_debf45954ac9a6fe",
+      "title": "13a-April 13, 2016 (PDF)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03945335710041593,
+            "ink": 0.07307189542483661,
+            "samples": 84150
+          },
+          "text": "Page 1 of 1; April 13, 2016 Vineyard Redevelopment Agency Agenda NOTICE OF A REGULAR MEETING OF THE VINEYARD REDEVELOPMENT AGENCY BOARD April 13, 2016 - 7:30PM Public Notice is hereby given that the Vineyard Redevelopment Agency Board will hold a Public Hearing and regular meeting on Wednesday, April 13, 2016 ,   starting at approximately 7:30 p.m. or as soon thereafter as possible in the Vineyard Town Hall; 240 East Gammon Road, Vineyard, Utah. The agenda will consist of the following: Agenda 1.   Consent Agenda – a)   Approval of minutes for March 23, 2016 RDA meeting. 2.   BUSINESS ITEMS: 2.1   DISCUSSION AND ACTION   –   Refunding of the 2013 Series Bonds Finance Director Jacob McHargue will discuss refunding options for the 2013 Series Bonds. The RDA Board will take appropriate action. 2.2   DISCUSSION AND ACTION   –   Housing Study Plan The RDA Board will discuss and possibly act to approve   Lewis Young Robertson & Burningham   to move forward with a Housing Study Plan. 3.   ITEMS REQUESTED FOR NEXT AGENDA 4.   ADJOURNMENT The Public is invited to participate in all Vineyard Redevelopment Agency meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this meeting should notify the Town Clerk at least 24 hours before the meeting by calling (801) 226-1929. I the undersigned duly appointed Recorder for the Town of Vineyard, hereby certify that the foregoing notice and agenda was emailed to the Daily Herald, posted at the Vineyard Town Hall, the Vineyard Town website, the Utah Public Notice website, delivered electronically to Town staff and to each member of the Governing Body. AGENDA NOTICING COMPLETED ON:   April 12, 2016 3:00 PM CERTIFIED (NOTICED) BY:   /s/ Pamela Spencer P. SPENCER, TOWN CLERK/RECORDER",
+          "shot": "doc-check-shots/doc_debf45954ac9a6fe-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03423120089786756,
+            "ink": 0.09242754340793556,
+            "samples": 30294
+          },
+          "text": "Page 1 of 1; April 13, 2016 Vineyard Redevelopment Agency Agenda NOTICE OF A REGULAR MEETING OF THE VINEYARD REDEVELOPMENT AGENCY BOARD April 13, 2016 - 7:30PM Public Notice is hereby given that the Vineyard Redevelopment Agency Board will hold a Public Hearing and regular meeting on Wednesday, April 13, 2016 ,   starting at approximately 7:30 p.m. or as soon thereafter as possible in the Vineyard Town Hall; 240 East Gammon Road, Vineyard, Utah. The agenda will consist of the following: Agenda 1.   Consent Agenda – a)   Approval of minutes for March 23, 2016 RDA meeting. 2.   BUSINESS ITEMS: 2.1   DISCUSSION AND ACTION   –   Refunding of the 2013 Series Bonds Finance Director Jacob McHargue will discuss refunding options for the 2013 Series Bonds. The RDA Board will take appropriate action. 2.2   DISCUSSION AND ACTION   –   Housing Study Plan The RDA Board will discuss and possibly act to approve   Lewis Young Robertson & Burningham   to move forward with a Housing Study Plan. 3.   ITEMS REQUESTED FOR NEXT AGENDA 4.   ADJOURNMENT The Public is invited to participate in all Vineyard Redevelopment Agency meetings. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this meeting should notify the Town Clerk at least 24 hours before the meeting by calling (801) 226-1929. I the undersigned duly appointed Recorder for the Town of Vineyard, hereby certify that the foregoing notice and agenda was emailed to the Daily Herald, posted at the Vineyard Town Hall, the Vineyard Town website, the Utah Public Notice website, delivered electronically to Town staff and to each member of the Governing Body. AGENDA NOTICING COMPLETED ON:   April 12, 2016 3:00 PM CERTIFIED (NOTICED) BY:   /s/ Pamela Spencer P. SPENCER, TOWN CLERK/RECORDER",
+          "shot": "doc-check-shots/doc_debf45954ac9a6fe-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_ecc6e723c41dc449",
+      "title": "Approved Budget 2012, Vineyard City (filed with the State Auditor)",
+      "archived": true,
+      "file": {
+        "ok": false,
+        "status": 416,
+        "type": null,
+        "frame": "DENY",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "card",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": null,
+          "text": "",
+          "shot": "doc-check-shots/doc_ecc6e723c41dc449-390.png",
+          "problems": [
+            "shows \"Open the PDF\" although the portal can serve the file"
+          ]
+        },
+        "desktop": {
+          "error": null,
+          "state": "card",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": null,
+          "text": "",
+          "shot": "doc-check-shots/doc_ecc6e723c41dc449-1440.png",
+          "problems": [
+            "shows \"Open the PDF\" although the portal can serve the file"
+          ]
+        }
+      },
+      "problems": [
+        "file route did not return the PDF (416)",
+        "phone: shows \"Open the PDF\" although the portal can serve the file",
+        "desktop: shows \"Open the PDF\" although the portal can serve the file",
+        "desktop: no PDF frame"
+      ]
+    },
+    {
+      "id": "doc_810b05d2c86347e4",
+      "title": "330a-April 12, 2017 CC Agenda with attachments",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03851455733808675,
+            "ink": 0.06477718360071301,
+            "samples": 84150
+          },
+          "text": "Page 1 of 3; April 12, 2017 City Council Meeting Agenda NOTICE OF A WORK SESSION AND REGULAR MEETING OF THE VINEYARD CITY COUNCIL April 12, 2017 at 6:00 PM _______________ Public Notice is hereby given that the Vineyard City Council will hold a Work Session, and Regular meeting on Wednesday, April 12, 2017, at 6:00 pm in the Vineyard City Hall, 240 East Gammon Road, Vineyard, Utah. The agenda will consist of the following: AGENDA WORK SESSION 1.   CALL TO ORDER 2.   INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 3.   OPEN SESSION –   Citizens’ Comments   (15 minutes) “ Open Session”   is defined as time set aside for citizens to express their views. Each speaker is limited to   three minutes. Because of the need for proper public notice, immediate action cannot   be taken in the Council Meeting. If action is necessary, the item will be listed on a future agenda, however, the Council may elect to discuss the item if it is an immediate matter of concern. 4.   PLANNING COMMISSION UPDATE AND RECOMMENDATIONS TO THE COUNCIL –   Planning Commission Chair Chris Judd 5.   COUNCILMEMBERS’ REPORTS/DISCLOSURES/RECUSALS Julie Fullmer – Mayor Pro-tem – April - June •   Youth Council •   Branding Committee •   City Special Events •   Orem Community Hospital Board Dale Goodman – Mayor Pro-tem – July - September •   Timpanogos Special Service District - Board Member Tyce Flake – Mayor Pro-tem – October - December •   ULCT Legislative Policy Committee",
+          "shot": "doc-check-shots/doc_810b05d2c86347e4-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.035881692744437844,
+            "ink": 0.08301973988248498,
+            "samples": 30294
+          },
+          "text": "Page 1 of 3; April 12, 2017 City Council Meeting Agenda NOTICE OF A WORK SESSION AND REGULAR MEETING OF THE VINEYARD CITY COUNCIL April 12, 2017 at 6:00 PM _______________ Public Notice is hereby given that the Vineyard City Council will hold a Work Session, and Regular meeting on Wednesday, April 12, 2017, at 6:00 pm in the Vineyard City Hall, 240 East Gammon Road, Vineyard, Utah. The agenda will consist of the following: AGENDA WORK SESSION 1.   CALL TO ORDER 2.   INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 3.   OPEN SESSION –   Citizens’ Comments   (15 minutes) “ Open Session”   is defined as time set aside for citizens to express their views. Each speaker is limited to   three minutes. Because of the need for proper public notice, immediate action cannot   be taken in the Council Meeting. If action is necessary, the item will be listed on a future agenda, however, the Council may elect to discuss the item if it is an immediate matter of concern. 4.   PLANNING COMMISSION UPDATE AND RECOMMENDATIONS TO THE COUNCIL –   Planning Commission Chair Chris Judd 5.   COUNCILMEMBERS’ REPORTS/DISCLOSURES/RECUSALS Julie Fullmer – Mayor Pro-tem – April - June •   Youth Council •   Branding Committee •   City Special Events •   Orem Community Hospital Board Dale Goodman – Mayor Pro-tem – July - September •   Timpanogos Special Service District - Board Member Tyce Flake – Mayor Pro-tem – October - December •   ULCT Legislative Policy Committee",
+          "shot": "doc-check-shots/doc_810b05d2c86347e4-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_1695939dfeecc626",
+      "title": "PROC 2025-01 Arbor Day (City Council Meeting, 2025-03-26, item 2)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.035020796197266786,
+            "ink": 0.10090314913844325,
+            "samples": 84150
+          },
+          "text": "PROCLAMATION 2025-01 ARBOR DAY WHEREAS,   in 1872, the Nebraska Board of Agriculture established a special day to be set aside for the planting of trees;   and WHEREAS,   Arbor Day is now observed throughout the nation and the world;   and WHEREAS , trees can be a solution to combating climate change by reducing the erosion of our precious topsoil by wind and water, cutting heating and cooling costs, moderating the temperature, cleaning the air, producing life-giving oxygen, and providing habitat for wildlife; and WHEREAS , trees are a renewable resource giving us paper, wood for our homes, fuel for our fires, and countless other wood products;   and WHEREAS,   trees in our city increase property values, enhance the economic vitality of business areas, and beautify our community;   and WHEREAS,   trees, wherever they are planted, are a source of joy and spiritual renewal. NOW, THEREFORE, I , Julie Fullmer, Mayor of the city of Vineyard, Utah, do hereby proclaim April 25, 2025, as ARBOR DAY and urge all Vineyard residents to celebrate Arbor Day and to support efforts to protect our trees and woodlands;   and FURTHERMORE,   I urge all residents to plant trees to gladden the heart and promote the well-being of this and future generations. Dated this 9th day of April 2025. ________________________________ Mayor Julie Fullmer Attest: ___________________________",
+          "shot": "doc-check-shots/doc_1695939dfeecc626-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.029906912259853435,
+            "ink": 0.11216742589291609,
+            "samples": 30294
+          },
+          "text": "PROCLAMATION 2025-01 ARBOR DAY WHEREAS,   in 1872, the Nebraska Board of Agriculture established a special day to be set aside for the planting of trees;   and WHEREAS,   Arbor Day is now observed throughout the nation and the world;   and WHEREAS , trees can be a solution to combating climate change by reducing the erosion of our precious topsoil by wind and water, cutting heating and cooling costs, moderating the temperature, cleaning the air, producing life-giving oxygen, and providing habitat for wildlife; and WHEREAS , trees are a renewable resource giving us paper, wood for our homes, fuel for our fires, and countless other wood products;   and WHEREAS,   trees in our city increase property values, enhance the economic vitality of business areas, and beautify our community;   and WHEREAS,   trees, wherever they are planted, are a source of joy and spiritual renewal. NOW, THEREFORE, I , Julie Fullmer, Mayor of the city of Vineyard, Utah, do hereby proclaim April 25, 2025, as ARBOR DAY and urge all Vineyard residents to celebrate Arbor Day and to support efforts to protect our trees and woodlands;   and FURTHERMORE,   I urge all residents to plant trees to gladden the heart and promote the well-being of this and future generations. Dated this 9th day of April 2025. ________________________________ Mayor Julie Fullmer Attest: ___________________________",
+          "shot": "doc-check-shots/doc_1695939dfeecc626-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_691e41b15475b757",
+      "title": "06/25/2025 Redevelopment Agency Board Meeting Agenda",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "missing",
+          "toolbar": {
+            "styled": false,
+            "why": "no toolbar"
+          },
+          "pixels": null,
+          "text": "",
+          "shot": "doc-check-shots/doc_691e41b15475b757-390.png",
+          "problems": [
+            "toolbar unstyled (no toolbar)",
+            "first page not drawn (missing)"
+          ]
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.051990493166963754,
+            "ink": 0.10239651416122005,
+            "samples": 30294
+          },
+          "text": "Page 1 of 2; June 25, 2025, Redevelopment Agency Board Agenda NOTICE OF A REDEVELOPMENT AGENCY BOARD MEETING June 25, 2025, at 6:00 PM ________________ PUBLIC NOTICE is hereby given that the Vineyard Redevelopment Agency Board will hold a regularly scheduled Redevelopment Agency Board meeting on Wednesday, June 25, 2025, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. AGENDA Presiding Chair Julie Fullmer 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 3.   CONSENT ITEMS 3.1.   Approval of June 11, 2025, RDA Meeting Minutes 4.   BUSINESS ITEMS 4.1.   Public Hearing - Amending the Vineyard RDA Fiscal Year 2024-2025 Budget Amendment (Resolution U2024-03) RDA Director Josh Daniels will present amendments to the Fiscal Year 2024-2025 RDA Budget. The RDA Board will act to adopt (or deny) this request by resolution 4.2.   Discussion and Action - Final Fiscal Year 2025-2026 RDA Budget (Resolution U2025-04) RDA Director Josh Daniels will present the Final Fiscal Year 2025-2026 RDA Budget. The RDA Board will act to adopt (or deny) this request by resolution. (A public hearing was held on the tentative budget during the May 28th, 2024 RDA Meeting.) 5.   CLOSED SESSION The RDA Board pursuant to Utah Code 52-4-205 may vote to go into a closed session for the purpose of (these are just a few of the items listed, see Utah Code 52-4-205 for the entire list): a   discussion of the character, professional competence, or physical or mental health of an individual b   strategy sessions to discuss collective bargaining",
+          "shot": "doc-check-shots/doc_691e41b15475b757-1440.png",
+          "problems": []
+        }
+      },
+      "problems": [
+        "phone: toolbar unstyled (no toolbar)",
+        "phone: first page not drawn (missing)"
+      ]
+    },
+    {
+      "id": "doc_5027dc7c6fc840c6",
+      "title": "235m-January, 22, 2014 (PDF)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05004159239453357,
+            "ink": 0.09285799168152109,
+            "samples": 84150
+          },
+          "text": "Page 1 of 7; January 22, 2014 Town Council Meeting Minutes MINUTES OF THE VINEYARD TOWN COUNCIL MEETING Vineyard Town hall, 240 East Gammon Road, Vineyard, Utah January 22, 2014, 7:00 PM PRESENT:   ABSENT: Mayor Randy Farnworth Councilmember Sean Fernandez Councilmember Julie Fullmer Councilmember Dale Goodman Councilmember Nathan Riley Staff Present:   Attorney David Church, Planner Nathan Crane, UCSO Deputy Collin Gordon, Deputy Treasurer Jacob McHargue, Water Operator Sullivan Love, Town Clerk/Recorder Pamela Spencer Others Attending : Stephen Hales with Stephen Hales Creative, Bill Brady with Eli/Kirk, Steve Anderson with Elevate, Mike Norton and Charles Norton with Red, Roger Harper with North Pointe Solid Waste Special Service District, and Shaun Christian with T3 Triathlon The Vineyard Town Council held a regular meeting on January 22, 2014 starting at 7:00 PM in the Vineyard Town hall. The invocation was offered by Councilmember Goodman. Regular Session -   The meeting was called to order at 7:00 PM. MINUTES REVIEW AND APPROVAL   – The Council reviewed the minutes from the July 10 2013, October 9, 2013 and October 23, 2014 meetings. Mayor Farnworth asked for discussion or comments. Hearing none, he called for a motion. COUNCILMEMBER RILEY MOVED TO APPROVE THE MINUTES FROM THE JULY 10, 2013, OCTOBER 9, 2013 AND OCTOBER 23, 2013 MEETINGS AS WRITTEN. COUNCILMEMBER FERNANDEZ SECONDED THE MOTION. ALL WERE IN FAVOR. THE MOTION CARRIED UNANIMOUSLY. PLANNING COMMISSION UPDATE AND RECOMMENDATIONS TO THE COUNCIL   – Mayor Farnworth discussed various ideas, including having a rotating liaison or having Mr. Crane report updates and recommendations from the Planning Commission. He asked for comment from the Council. The Council discussed various options and unanimously agreed that the Planning Commission Chair would attend Council meetings as necessary, otherwise, reports and recommendations would be presented by the town planner. STAFF REPORTS Planner      Nathan Crane – Mr. Crane reported that he was meeting the architect with the Larry H. Miller Complex on Friday to discuss a time line of their expectations. He said he spoke with the",
+          "shot": "doc-check-shots/doc_5027dc7c6fc840c6-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04822737175678352,
+            "ink": 0.11886842278999142,
+            "samples": 30294
+          },
+          "text": "Page 1 of 7; January 22, 2014 Town Council Meeting Minutes MINUTES OF THE VINEYARD TOWN COUNCIL MEETING Vineyard Town hall, 240 East Gammon Road, Vineyard, Utah January 22, 2014, 7:00 PM PRESENT:   ABSENT: Mayor Randy Farnworth Councilmember Sean Fernandez Councilmember Julie Fullmer Councilmember Dale Goodman Councilmember Nathan Riley Staff Present:   Attorney David Church, Planner Nathan Crane, UCSO Deputy Collin Gordon, Deputy Treasurer Jacob McHargue, Water Operator Sullivan Love, Town Clerk/Recorder Pamela Spencer Others Attending : Stephen Hales with Stephen Hales Creative, Bill Brady with Eli/Kirk, Steve Anderson with Elevate, Mike Norton and Charles Norton with Red, Roger Harper with North Pointe Solid Waste Special Service District, and Shaun Christian with T3 Triathlon The Vineyard Town Council held a regular meeting on January 22, 2014 starting at 7:00 PM in the Vineyard Town hall. The invocation was offered by Councilmember Goodman. Regular Session -   The meeting was called to order at 7:00 PM. MINUTES REVIEW AND APPROVAL   – The Council reviewed the minutes from the July 10 2013, October 9, 2013 and October 23, 2014 meetings. Mayor Farnworth asked for discussion or comments. Hearing none, he called for a motion. COUNCILMEMBER RILEY MOVED TO APPROVE THE MINUTES FROM THE JULY 10, 2013, OCTOBER 9, 2013 AND OCTOBER 23, 2013 MEETINGS AS WRITTEN. COUNCILMEMBER FERNANDEZ SECONDED THE MOTION. ALL WERE IN FAVOR. THE MOTION CARRIED UNANIMOUSLY. PLANNING COMMISSION UPDATE AND RECOMMENDATIONS TO THE COUNCIL   – Mayor Farnworth discussed various ideas, including having a rotating liaison or having Mr. Crane report updates and recommendations from the Planning Commission. He asked for comment from the Council. The Council discussed various options and unanimously agreed that the Planning Commission Chair would attend Council meetings as necessary, otherwise, reports and recommendations would be presented by the town planner. STAFF REPORTS Planner      Nathan Crane – Mr. Crane reported that he was meeting the architect with the Larry H. Miller Complex on Friday to discuss a time line of their expectations. He said he spoke with the",
+          "shot": "doc-check-shots/doc_5027dc7c6fc840c6-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_80b0b5ba58fafc82",
+      "title": "ATC 03.11.2025 Cancellation Notice",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.022032085561497328,
+            "ink": 0.0348425430778372,
+            "samples": 84150
+          },
+          "text": "Planning Commission Regular Meeting – Agenda CANCELLATION OF REGULAR MEETING OF THE VINEYARD ACTIVE TRANSPORTATION COMMISSION (ATC) Tuesday, March 11, 2025, 5:30 p.m. CANCELLATION NOTICE PUBLIC NOTICE is hereby given that the Vineyard City   Development Review Committee 's regularly scheduled meeting for   Tuesday, March 11, 2025, at 5:30 p.m.   has been canceled. The next meeting scheduled is on April 8, 2025. The foregoing   CANCELLATION   notice was posted on the Utah Public Notice Website and Vineyard Website, posted at the Vineyard City Offices and City Hall, and delivered electronically to city staff and each member of the Development Review Committee. CANCELLATION NOTICING COMPLETED ON:   March 10, 2025. NOTICED BY:   /s/. Anthony Fletcher Anthony Fletcher, Planner.",
+          "shot": "doc-check-shots/doc_80b0b5ba58fafc82-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.021522413679276424,
+            "ink": 0.043738033934112366,
+            "samples": 30294
+          },
+          "text": "Planning Commission Regular Meeting – Agenda CANCELLATION OF REGULAR MEETING OF THE VINEYARD ACTIVE TRANSPORTATION COMMISSION (ATC) Tuesday, March 11, 2025, 5:30 p.m. CANCELLATION NOTICE PUBLIC NOTICE is hereby given that the Vineyard City   Development Review Committee 's regularly scheduled meeting for   Tuesday, March 11, 2025, at 5:30 p.m.   has been canceled. The next meeting scheduled is on April 8, 2025. The foregoing   CANCELLATION   notice was posted on the Utah Public Notice Website and Vineyard Website, posted at the Vineyard City Offices and City Hall, and delivered electronically to city staff and each member of the Development Review Committee. CANCELLATION NOTICING COMPLETED ON:   March 10, 2025. NOTICED BY:   /s/. Anthony Fletcher Anthony Fletcher, Planner.",
+          "shot": "doc-check-shots/doc_80b0b5ba58fafc82-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_303adf56ab7ba6f4",
+      "title": "4.16.2025 Planning Commission Agenda",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.038490790255496135,
+            "ink": 0.05963161021984551,
+            "samples": 84150
+          },
+          "text": "Page 1 of 2; April 16, 2025, Planning Commission Agenda NOTICE OF A REGULAR PLANNING COMMISSION MEETING April 16, 2025, at 6:00 PM ________________ PUBLIC NOTICE is hereby given that the Vineyard Planning Commission will hold a regularly scheduled Planning Commission meeting on Wednesday, April 16, 2025, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. Vineyard City Planning Commissioners: Nathan Steele (Chair), Christopher Bramwell (Vice- Chair), Caden Rhoton, David Pearce, Natalie Harbin, Graden Ostler, Bradley Fagg, Steve Anderson 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 3.   PUBLIC COMMENTS PC Time dedicated for public comment. Comments will be limited to three (3) minutes. No actions may be taken by the Planning Commission due to the need for proper public noticing. 4.   CONSENT ITEMS 4.1.   Approval of the March 19th, 2025 Planning Commission Meeting Minutes 5.   BUSINESS ITEMS 6.   WORK SESSION 6.2.   The Yard Parking Management Plan and Traffic Impact Study • 7.   STAFF AND COMMISSION REPORTS 8.   ADJOURNMENT",
+          "shot": "doc-check-shots/doc_303adf56ab7ba6f4-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04311084703241566,
+            "ink": 0.07892652010299069,
+            "samples": 30294
+          },
+          "text": "Page 1 of 2; April 16, 2025, Planning Commission Agenda NOTICE OF A REGULAR PLANNING COMMISSION MEETING April 16, 2025, at 6:00 PM ________________ PUBLIC NOTICE is hereby given that the Vineyard Planning Commission will hold a regularly scheduled Planning Commission meeting on Wednesday, April 16, 2025, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. Vineyard City Planning Commissioners: Nathan Steele (Chair), Christopher Bramwell (Vice- Chair), Caden Rhoton, David Pearce, Natalie Harbin, Graden Ostler, Bradley Fagg, Steve Anderson 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 3.   PUBLIC COMMENTS PC Time dedicated for public comment. Comments will be limited to three (3) minutes. No actions may be taken by the Planning Commission due to the need for proper public noticing. 4.   CONSENT ITEMS 4.1.   Approval of the March 19th, 2025 Planning Commission Meeting Minutes 5.   BUSINESS ITEMS 6.   WORK SESSION 6.2.   The Yard Parking Management Plan and Traffic Impact Study • 7.   STAFF AND COMMISSION REPORTS 8.   ADJOURNMENT",
+          "shot": "doc-check-shots/doc_303adf56ab7ba6f4-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_91dd714df44fe0ff",
+      "title": "Resolution 2012-01(2) Surplus Property",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03726678550207962,
+            "ink": 0.08459893048128342,
+            "samples": 84150
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_91dd714df44fe0ff-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.022248630091767346,
+            "ink": 0.11474219317356572,
+            "samples": 30294
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_91dd714df44fe0ff-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_1e4bd8c3776e8369",
+      "title": "Consolidated Fee Schedule Amendment 03.12.2025 Draft (City Council Meeting, 2025-03-12, item 2)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03282234105763517,
+            "ink": 0.0594058229352347,
+            "samples": 84150
+          },
+          "text": "ϭ \u0012ŽŶƐŽůŝĚĂƚĞĚ\u0003&ĞĞ\u0003^ĐŚĞĚƵůĞ ϮϬϮ 4 ͲϮϬϮ 5   &ŝƐĐĂů\u0003zĞĂƌ \u0004ĚŵŝŶŝƐƚƌĂƚŝǀĞ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘\u0003\u0003\u0003Ϯ ZĞĐƌĞĂƚŝŽŶ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘\u0003\u0003\u0003ϯ hƚŝůŝƚŝĞƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘\u0003\u0003\u0003ϱ ^ĂŶŝƚĂƚŝŽŶ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘\u0003\u0003\u0003ϲ &ĂĐŝůŝƚŝĞƐ\u0003ZĞŶƚĂů\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘\u0003\u0003\u0003ϲ ^ƉĞĐŝĂů\u0003\u001cǀĞŶƚ\u0003WĞƌŵŝƚ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘\u0003\u0003\u0003ϴ \u0012ŽĚĞ\u0003\u001cŶĨŽƌĐĞŵĞŶƚ\u0003&ĞĞƐ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙\u0003\u0003\u0003ϴ \u0011ƵƐŝŶĞƐƐ\u0003>ŝĐĞŶƐŝŶŐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘\u0003\u0003\u0003ϵ >ĂŶĚ\u0003hƐĞ\u0003\u0004ƉƉůŝĐĂƚŝŽŶƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘\u0003\u0003ϭϬ \u0011ƵŝůĚŝŶŐ\u0003WĞƌŵŝƚ\u0003&ĞĞƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘\u0003\u0003ϭϯ \u0011ƵŝůĚŝŶŐ\u0003/ŶƐƉĞĐƚŝŽŶ\u0003&ĞĞƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘\u0003\u0003ϭϰ /ŵƉĂĐƚ\u0003&ĞĞƐ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘ ϭϱ WĂƐƐͲdŚƌŽƵŐŚ\u0003&ĞĞƐ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘͘͘͘͘͘ \u0003\u0003ϭϱ tĂƚĞƌ DĞƚĞƌ Θ\u0012ŽŶŶĞĐƚŝŽŶ\u0003&ĞĞƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘\u0003\u0003ϭϲ \u0004\u0018D/E/^dZ\u0004d/s\u001c\u0003&\u001c\u001c^",
+          "shot": "doc-check-shots/doc_1e4bd8c3776e8369-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.026044761338878987,
+            "ink": 0.07988380537400146,
+            "samples": 30294
+          },
+          "text": "ϭ \u0012ŽŶƐŽůŝĚĂƚĞĚ\u0003&ĞĞ\u0003^ĐŚĞĚƵůĞ ϮϬϮ 4 ͲϮϬϮ 5   &ŝƐĐĂů\u0003zĞĂƌ \u0004ĚŵŝŶŝƐƚƌĂƚŝǀĞ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘\u0003\u0003\u0003Ϯ ZĞĐƌĞĂƚŝŽŶ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘\u0003\u0003\u0003ϯ hƚŝůŝƚŝĞƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘\u0003\u0003\u0003ϱ ^ĂŶŝƚĂƚŝŽŶ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘\u0003\u0003\u0003ϲ &ĂĐŝůŝƚŝĞƐ\u0003ZĞŶƚĂů\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘\u0003\u0003\u0003ϲ ^ƉĞĐŝĂů\u0003\u001cǀĞŶƚ\u0003WĞƌŵŝƚ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘\u0003\u0003\u0003ϴ \u0012ŽĚĞ\u0003\u001cŶĨŽƌĐĞŵĞŶƚ\u0003&ĞĞƐ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙\u0003\u0003\u0003ϴ \u0011ƵƐŝŶĞƐƐ\u0003>ŝĐĞŶƐŝŶŐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘\u0003\u0003\u0003ϵ >ĂŶĚ\u0003hƐĞ\u0003\u0004ƉƉůŝĐĂƚŝŽŶƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘\u0003\u0003ϭϬ \u0011ƵŝůĚŝŶŐ\u0003WĞƌŵŝƚ\u0003&ĞĞƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘\u0003\u0003ϭϯ \u0011ƵŝůĚŝŶŐ\u0003/ŶƐƉĞĐƚŝŽŶ\u0003&ĞĞƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘\u0003\u0003ϭϰ /ŵƉĂĐƚ\u0003&ĞĞƐ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘ ϭϱ WĂƐƐͲdŚƌŽƵŐŚ\u0003&ĞĞƐ͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘͘͘͘͘͘͘͘ \u0003\u0003ϭϱ tĂƚĞƌ DĞƚĞƌ Θ\u0012ŽŶŶĞĐƚŝŽŶ\u0003&ĞĞƐ\u0003͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͙͘͘͘\u0003\u0003ϭϲ \u0004\u0018D/E/^dZ\u0004d/s\u001c\u0003&\u001c\u001c^",
+          "shot": "doc-check-shots/doc_1e4bd8c3776e8369-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_4f764e24cc51fd0b",
+      "title": "7m-12.21.2016 (PDF)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05295306001188354,
+            "ink": 0.09635175282234106,
+            "samples": 84150
+          },
+          "text": "Page 1 of 6; December 21, 2016 Vineyard Redevelopment Agency Minutes MINUTES OF THE VINEYARD REDEVELOPMENT AGENCY BOARD MEETING 240 East Gammon Road, Vineyard, Utah December 21, 2016 – 6:00 PM Present   Absent Chair Randy Farnworth   Boardmember Julie Fullmer Boardmember Tyce Flake Boardmember Dale Goodman Boardmember Nate Riley Staff Present:   Finance Director Jacob McHargue, Economic Development Director Morgan Brim, Engineer Don Overson, Attorney David Church, Town Clerk/Recorder Pamela Spencer Others Present:   Gerald Anderson and Stewart Park with Anderson Geneva, resident Chris Judd, Cody Deeter with Lewis Young Burningham and Robertson Chair Farnworth opened the meeting at 6:00 PM. CLOSED SESSION: The RDA Board pursuant to Utah Code 52-4-205 may vote to go into a closed session for the purpose of holding a strategy session to discuss the purchase, exchange, or lease of real property. Chair Farnworth called for a motion. Motion:   BOARDMEMBER FLAKE MOVED TO GO INTO A CLOSED SESSION AT 6:02 PM. BOARDMEMBER RILEY SECONDED THE MOTION CLARIFYING THAT IT WAS FOR THE PURPOSE OF HOLDING A STRATEGY SESSION TO DISCUSS THE PURCHASE, EXCHANGE, OR LEASE OF REAL PROPERTY. ROLL CALL WENT AS FOLLOWS: CHAIR FARNWORTH, BOARDMEMBERS FLAKE, GOODMAN, AND RILEY VOTE AYE. BOARDMEMBER FULLMER WAS ABSENT. MOTION CARRIED WITH ONE ABSENT. The Redevelopment Agency meeting resumed at 6:31 PM. CONSENT AGENDA: a)   Approval of the November 9, 2016 meeting minutes Motion:   BOARDMEMBER FLAKE MOVED TO APPROVE THE MINUTES AS RECORDED, BOARDMEMBER RILEY SECONDED THE MOTION. ALL PRESENT WERE IN FAVOR. MOTION CARRIED WITH ONE ABSENT. BUSINESS ITEMS: 3.1 DISCUSSION AND ACTION   –   Designation of Phase 3 of the Geneva Urban Renewal Project Area (Resolution U-2016-07) The Vineyard Redevelopment Agency Board will discuss and approve by resolution the area designated as Phase 3 of the Geneva Urban Renewal Project Area as outlined in the 2016 Annual Report for the Geneva Project Area dated November 1, 2016, in order to begin collecting tax increment.   This annual report is sent to the Taxing Entity Committee",
+          "shot": "doc-check-shots/doc_4f764e24cc51fd0b-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.049019607843137254,
+            "ink": 0.11896745230078563,
+            "samples": 30294
+          },
+          "text": "Page 1 of 6; December 21, 2016 Vineyard Redevelopment Agency Minutes MINUTES OF THE VINEYARD REDEVELOPMENT AGENCY BOARD MEETING 240 East Gammon Road, Vineyard, Utah December 21, 2016 – 6:00 PM Present   Absent Chair Randy Farnworth   Boardmember Julie Fullmer Boardmember Tyce Flake Boardmember Dale Goodman Boardmember Nate Riley Staff Present:   Finance Director Jacob McHargue, Economic Development Director Morgan Brim, Engineer Don Overson, Attorney David Church, Town Clerk/Recorder Pamela Spencer Others Present:   Gerald Anderson and Stewart Park with Anderson Geneva, resident Chris Judd, Cody Deeter with Lewis Young Burningham and Robertson Chair Farnworth opened the meeting at 6:00 PM. CLOSED SESSION: The RDA Board pursuant to Utah Code 52-4-205 may vote to go into a closed session for the purpose of holding a strategy session to discuss the purchase, exchange, or lease of real property. Chair Farnworth called for a motion. Motion:   BOARDMEMBER FLAKE MOVED TO GO INTO A CLOSED SESSION AT 6:02 PM. BOARDMEMBER RILEY SECONDED THE MOTION CLARIFYING THAT IT WAS FOR THE PURPOSE OF HOLDING A STRATEGY SESSION TO DISCUSS THE PURCHASE, EXCHANGE, OR LEASE OF REAL PROPERTY. ROLL CALL WENT AS FOLLOWS: CHAIR FARNWORTH, BOARDMEMBERS FLAKE, GOODMAN, AND RILEY VOTE AYE. BOARDMEMBER FULLMER WAS ABSENT. MOTION CARRIED WITH ONE ABSENT. The Redevelopment Agency meeting resumed at 6:31 PM. CONSENT AGENDA: a)   Approval of the November 9, 2016 meeting minutes Motion:   BOARDMEMBER FLAKE MOVED TO APPROVE THE MINUTES AS RECORDED, BOARDMEMBER RILEY SECONDED THE MOTION. ALL PRESENT WERE IN FAVOR. MOTION CARRIED WITH ONE ABSENT. BUSINESS ITEMS: 3.1 DISCUSSION AND ACTION   –   Designation of Phase 3 of the Geneva Urban Renewal Project Area (Resolution U-2016-07) The Vineyard Redevelopment Agency Board will discuss and approve by resolution the area designated as Phase 3 of the Geneva Urban Renewal Project Area as outlined in the 2016 Annual Report for the Geneva Project Area dated November 1, 2016, in order to begin collecting tax increment.   This annual report is sent to the Taxing Entity Committee",
+          "shot": "doc-check-shots/doc_4f764e24cc51fd0b-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_992897c06ef1fe8e",
+      "title": "Clear Line - 2025 Vineyard Contract (City Council Meeting, 2025-03-26, item 3)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.039623791692066535,
+            "ink": 0.09674083427675695,
+            "samples": 91864
+          },
+          "text": "Independent Contractor Agreement This Independent Contractor Agreement (the \"Agreement\") is made and entered into as of 3/20/2025, between Client, hereinafter referred to as \"Vineyard City,\" and Contractor, hereinafter referred to as \"Clear Line Striping.\" WHEREAS, Vineyard City desires to engage Clear Line Striping to provide road striping services; NOW THEREFORE, Vineyard City and Clear Line Striping agree as follows: 1. Services Clear Line Striping shall provide the following services to Vineyard City (the \"Services\"): 1. Road striping services for Vineyard City's specified locations, including 4-inch, 8-inch, and 12-inch lane markings and lines, pavement markings with various symbols, arrows, and other markings, and red curb striping in designated areas as required by Vineyard City. 2. Application of materials must follow the methods outlined in the specifications provided by Vineyard City. 3. Ensuring compliance with all local regulations and safety standards. 4. Providing a quote for the services based on the scope of work required. 2. Payment In consideration for the services to be performed by Clear Line Striping under the Independent Contractor Agreement, Vineyard City agrees to pay Clear Line Striping based on the following rates for the specified items: 1. 4\" White or Yellow: $0.23 per LF 2. 8\" White or Yellow: $0.26 per LF 3. 12\" Crosswalk/Stop Bar: $0.31 per LF 4. Turn Arrow: $25.75 per Each 5. Shared-Lane Marking: $51.50 per Each 6. Bike Lane Marking: $46.35 per Each 7. STOP/ONLY Marking: $61.80 per Each 8. YIELD Marking: $61.80 per Each 9. SCHOOL Marking: $66.95 per Each 10. HV School Crosswalk: $25.75 per Each 11. Shark Teeth: $5.15 per Each 12. 24\" Stop Bar: $25.75 per Each 13. Railroad Crossing: $257.50 per Each 14. Red Curb: $1.41 per LF Payment for the services rendered shall be made within 30 days of receipt of an invoice from Clear Line Striping. The invoice must include an invoice number, the dates covered by the invoice, and a detailed summary of the work performed. 3. Term Clear Line Striping shall commence providing road striping services under this Agreement on the Start Date, 07/01/2025 and will diligently perform as required and complete performance by the end date. This Agreement shall have an initial term of one year, with the option for a four-year renewal upon mutual agreement of both parties. Page 1 of 3",
+          "shot": "doc-check-shots/doc_992897c06ef1fe8e-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.042977841543121315,
+            "ink": 0.11649928263988522,
+            "samples": 31365
+          },
+          "text": "Independent Contractor Agreement This Independent Contractor Agreement (the \"Agreement\") is made and entered into as of 3/20/2025, between Client, hereinafter referred to as \"Vineyard City,\" and Contractor, hereinafter referred to as \"Clear Line Striping.\" WHEREAS, Vineyard City desires to engage Clear Line Striping to provide road striping services; NOW THEREFORE, Vineyard City and Clear Line Striping agree as follows: 1. Services Clear Line Striping shall provide the following services to Vineyard City (the \"Services\"): 1. Road striping services for Vineyard City's specified locations, including 4-inch, 8-inch, and 12-inch lane markings and lines, pavement markings with various symbols, arrows, and other markings, and red curb striping in designated areas as required by Vineyard City. 2. Application of materials must follow the methods outlined in the specifications provided by Vineyard City. 3. Ensuring compliance with all local regulations and safety standards. 4. Providing a quote for the services based on the scope of work required. 2. Payment In consideration for the services to be performed by Clear Line Striping under the Independent Contractor Agreement, Vineyard City agrees to pay Clear Line Striping based on the following rates for the specified items: 1. 4\" White or Yellow: $0.23 per LF 2. 8\" White or Yellow: $0.26 per LF 3. 12\" Crosswalk/Stop Bar: $0.31 per LF 4. Turn Arrow: $25.75 per Each 5. Shared-Lane Marking: $51.50 per Each 6. Bike Lane Marking: $46.35 per Each 7. STOP/ONLY Marking: $61.80 per Each 8. YIELD Marking: $61.80 per Each 9. SCHOOL Marking: $66.95 per Each 10. HV School Crosswalk: $25.75 per Each 11. Shark Teeth: $5.15 per Each 12. 24\" Stop Bar: $25.75 per Each 13. Railroad Crossing: $257.50 per Each 14. Red Curb: $1.41 per LF Payment for the services rendered shall be made within 30 days of receipt of an invoice from Clear Line Striping. The invoice must include an invoice number, the dates covered by the invoice, and a detailed summary of the work performed. 3. Term Clear Line Striping shall commence providing road striping services under this Agreement on the Start Date, 07/01/2025 and will diligently perform as required and complete performance by the end date. This Agreement shall have an initial term of one year, with the option for a four-year renewal upon mutual agreement of both parties. Page 1 of 3",
+          "shot": "doc-check-shots/doc_992897c06ef1fe8e-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_ed3e2a6fb5509c57",
+      "title": "315a-06.14.2017 Consolidated Fee Schedule - Public Notice",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.031039809863339277,
+            "ink": 0.05464052287581699,
+            "samples": 84150
+          },
+          "text": "Page   1   of   1 NOTICE OF PUBLIC HEARING REQUEST:   To hear public comment in regards to amendments to the Consolidated Fee Schedule. CONTACT:   Pamela Spencer, City Recorder (801) 226-1929. TIME & PLACE   The Vineyard City Council will hold a PUBLIC HEARING on this item on OF HEARING:   Wednesday, June 14, 2017. The public hearing will start at 6:00 PM or as soon thereafter as possible, in the Vineyard City Hall, 240 East Gammon Road, Vineyard, Utah. Any person having interest in this matter may attend and be heard during a public meeting, or may submit testimony in writing to be entered into the record. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this meeting should notify Pamela Spencer, City Recorder, at least 24 hours prior to the meeting by calling (801) 226-1929. I, the undersigned duly appointed Recorder for Vineyard, Utah, hereby certify that the foregoing Public Notice was published in the June 4, 2017 edition of the Daily Herald, posted at the Vineyard City Hall, and the Vineyard website, and posted on the Utah Public Notice website. NOTICING COMPLETED ON:   June 1, 2017 CERTIFIED (NOTICED) BY:   _/s/ Pamela Spencer City Recorder________________",
+          "shot": "doc-check-shots/doc_ed3e2a6fb5509c57-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.02832244008714597,
+            "ink": 0.0688915296758434,
+            "samples": 30294
+          },
+          "text": "Page   1   of   1 NOTICE OF PUBLIC HEARING REQUEST:   To hear public comment in regards to amendments to the Consolidated Fee Schedule. CONTACT:   Pamela Spencer, City Recorder (801) 226-1929. TIME & PLACE   The Vineyard City Council will hold a PUBLIC HEARING on this item on OF HEARING:   Wednesday, June 14, 2017. The public hearing will start at 6:00 PM or as soon thereafter as possible, in the Vineyard City Hall, 240 East Gammon Road, Vineyard, Utah. Any person having interest in this matter may attend and be heard during a public meeting, or may submit testimony in writing to be entered into the record. In compliance with the Americans with Disabilities Act, individuals needing special accommodations during this meeting should notify Pamela Spencer, City Recorder, at least 24 hours prior to the meeting by calling (801) 226-1929. I, the undersigned duly appointed Recorder for Vineyard, Utah, hereby certify that the foregoing Public Notice was published in the June 4, 2017 edition of the Daily Herald, posted at the Vineyard City Hall, and the Vineyard website, and posted on the Utah Public Notice website. NOTICING COMPLETED ON:   June 1, 2017 CERTIFIED (NOTICED) BY:   _/s/ Pamela Spencer City Recorder________________",
+          "shot": "doc-check-shots/doc_ed3e2a6fb5509c57-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_759354844d7ef055",
+      "title": "Ordinance 2016-03 Amending MC Chapter 3-301 Meeting Schedules",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.031102611633855033,
+            "ink": 0.06869324447990238,
+            "samples": 85234
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_759354844d7ef055-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.01820250284414107,
+            "ink": 0.09270176164374117,
+            "samples": 29007
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_759354844d7ef055-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_8713874dfa51c50f",
+      "title": "13m-4.13.2016 (PDF)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.04428995840760547,
+            "ink": 0.07923945335710042,
+            "samples": 84150
+          },
+          "text": "Page 1 of 7; April 13, 2016 Vineyard Redevelopment Agency Minutes MINUTES OF A REGULAR MEETING OF THE VINEYARD REDEVELOPMENT AGENCY BOARD April 13, 2016 - 8:10PM Present:   Absent: Chair Randy Farnworth Boardmember Tyce Flake Boardmember Julie Fullmer Boardmember Dale Goodman Boardmember Nate Riley Staff Present:   Public Works Director/Engineer Don Overson, Town Planner Aric Jensen, Finance Director Jacob McHargue, Utah County Sheriff’s Deputy Collin Gordon, Town Clerk/Recorder Pamela Spencer, Town Building Official George Reid. Others Present:   Gerald Anderson, Mike Hutchings, and Jeff Walker with Anderson Development. The Vineyard Town Redevelopment Agency (RDA) held a board meeting on April 13, 2016 starting at 8:10 PM in the Vineyard Town hall. Regular Session -   The meeting was called to order at 8:10 PM. Consent Agenda – a)   Approval of minutes for March 23, 2016 RDA meeting. Chair Farnworth called for a motion. Motion:   BOARDMEMBER RILEY MOVED TO APPROVE THE CONSET ITEM. BOARDMEMBER FLAKE SECONDED THE MOTION. ALL WERE IN FAVOR. MOTION CARRIED UNANIMOUSLY. BUSINESS ITEMS: 2.1   DISCUSSION AND ACTION   –   Refunding of the 2013 Series Bonds Finance Director Jacob McHargue will discuss refunding options for the 2013 Series Bonds. The RDA Board will take appropriate action. Chair Farnworth turned the time over to Finance Director Jacob McHargue. Mr. McHargue explained that he had been working with Lewis Young Robertson & Burningham (Lewis Young) on the RDA. He mentioned that they had talked about sending the bonds back into the markets. He stated that the interest rates had gone down since they were issued and that the town’s payment history was in good standing. He explained that if they sent the bonds back out they would be asking the bond buyers to trust that Rocky Mountain Power would pay their",
+          "shot": "doc-check-shots/doc_8713874dfa51c50f-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.040238991219383374,
+            "ink": 0.10051495345612993,
+            "samples": 30294
+          },
+          "text": "Page 1 of 7; April 13, 2016 Vineyard Redevelopment Agency Minutes MINUTES OF A REGULAR MEETING OF THE VINEYARD REDEVELOPMENT AGENCY BOARD April 13, 2016 - 8:10PM Present:   Absent: Chair Randy Farnworth Boardmember Tyce Flake Boardmember Julie Fullmer Boardmember Dale Goodman Boardmember Nate Riley Staff Present:   Public Works Director/Engineer Don Overson, Town Planner Aric Jensen, Finance Director Jacob McHargue, Utah County Sheriff’s Deputy Collin Gordon, Town Clerk/Recorder Pamela Spencer, Town Building Official George Reid. Others Present:   Gerald Anderson, Mike Hutchings, and Jeff Walker with Anderson Development. The Vineyard Town Redevelopment Agency (RDA) held a board meeting on April 13, 2016 starting at 8:10 PM in the Vineyard Town hall. Regular Session -   The meeting was called to order at 8:10 PM. Consent Agenda – a)   Approval of minutes for March 23, 2016 RDA meeting. Chair Farnworth called for a motion. Motion:   BOARDMEMBER RILEY MOVED TO APPROVE THE CONSET ITEM. BOARDMEMBER FLAKE SECONDED THE MOTION. ALL WERE IN FAVOR. MOTION CARRIED UNANIMOUSLY. BUSINESS ITEMS: 2.1   DISCUSSION AND ACTION   –   Refunding of the 2013 Series Bonds Finance Director Jacob McHargue will discuss refunding options for the 2013 Series Bonds. The RDA Board will take appropriate action. Chair Farnworth turned the time over to Finance Director Jacob McHargue. Mr. McHargue explained that he had been working with Lewis Young Robertson & Burningham (Lewis Young) on the RDA. He mentioned that they had talked about sending the bonds back into the markets. He stated that the interest rates had gone down since they were issued and that the town’s payment history was in good standing. He explained that if they sent the bonds back out they would be asking the bond buyers to trust that Rocky Mountain Power would pay their",
+          "shot": "doc-check-shots/doc_8713874dfa51c50f-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_8c0c7ef0e9d66ab5",
+      "title": "Vineyard Redevelopment Agency meeting minutes, 03/26/2014 RDA",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03579322638146167,
+            "ink": 0.09119429590017826,
+            "samples": 84150
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_8c0c7ef0e9d66ab5-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.016075790585594506,
+            "ink": 0.12048590479963028,
+            "samples": 30294
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_8c0c7ef0e9d66ab5-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_0f1eca483ffc72af",
+      "title": "07/23/2025 City Council Meeting Minutes",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03486631016042781,
+            "ink": 0.058003565062388594,
+            "samples": 84150
+          },
+          "text": "Page 1 of 6; July 23, 2025, City Council Meeting Minutes NOTICE OF A REGULAR CITY COUNCIL MEETING City Council Chambers 125 South Main Street, Vineyard, Utah July 23, 2025, at 6:00 PM Present   Absent Mayor Julie Fullmer Councilmember Sara Cameron Councilmember Brett Clawson Councilmember Jacob Holdaway Councilmember Mardi Sifuentes Staff Present:   City Attorney Jayme Blakesley, City Manager Eric Ellis, Deputy Brett Ryan with the Utah County Sheriff’s Office, Public Works Director Naseem Ghandour, Finance Director Kristie Bayles, Communications Manager Jenna Ahern, Deputy Recorder Tony Lara, and City Recorder Pamela Spencer Others Speaking:   Residents Karen Cornelious, Kathleen Clawson, and David Lauret 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE Mayor Fullmer opened the meeting at 6:00 PM. Councilmember Sifuentes gave the invocation and led the Pledge of Allegiance. 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS No items were submitted. 3.   WORK SESSION No items were submitted. 4.   PUBLIC COMMENTS Mayor Fullmer called for public comments. Karen Cornelious, living in the Villas Subdivision, asked about the independent auditor on the agenda.",
+          "shot": "doc-check-shots/doc_0f1eca483ffc72af-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.03400013203934773,
+            "ink": 0.0753614577143989,
+            "samples": 30294
+          },
+          "text": "Page 1 of 6; July 23, 2025, City Council Meeting Minutes NOTICE OF A REGULAR CITY COUNCIL MEETING City Council Chambers 125 South Main Street, Vineyard, Utah July 23, 2025, at 6:00 PM Present   Absent Mayor Julie Fullmer Councilmember Sara Cameron Councilmember Brett Clawson Councilmember Jacob Holdaway Councilmember Mardi Sifuentes Staff Present:   City Attorney Jayme Blakesley, City Manager Eric Ellis, Deputy Brett Ryan with the Utah County Sheriff’s Office, Public Works Director Naseem Ghandour, Finance Director Kristie Bayles, Communications Manager Jenna Ahern, Deputy Recorder Tony Lara, and City Recorder Pamela Spencer Others Speaking:   Residents Karen Cornelious, Kathleen Clawson, and David Lauret 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE Mayor Fullmer opened the meeting at 6:00 PM. Councilmember Sifuentes gave the invocation and led the Pledge of Allegiance. 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS No items were submitted. 3.   WORK SESSION No items were submitted. 4.   PUBLIC COMMENTS Mayor Fullmer called for public comments. Karen Cornelious, living in the Villas Subdivision, asked about the independent auditor on the agenda.",
+          "shot": "doc-check-shots/doc_0f1eca483ffc72af-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_371c0be9bfb6e9b4",
+      "title": "04.26.25 Drug Takeback (04.10.25 Vineyard Cares Coalition Meeting, 2025-04-10, item 3)",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.6427745380280997,
+            "ink": 0.7938411948524888,
+            "samples": 81282
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_371c0be9bfb6e9b4-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.6462704371623044,
+            "ink": 0.784366009402849,
+            "samples": 28502
+          },
+          "text": "",
+          "shot": "doc-check-shots/doc_371c0be9bfb6e9b4-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    },
+    {
+      "id": "doc_996e081b6fe6eb1a",
+      "title": "03/12/25 CC Agenda Packet",
+      "archived": true,
+      "file": {
+        "ok": true,
+        "status": 206,
+        "type": "application/pdf",
+        "frame": "SAMEORIGIN",
+        "via": null
+      },
+      "views": {
+        "phone": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.05521093285799168,
+            "ink": 0.0906833036244801,
+            "samples": 84150
+          },
+          "text": "Page 1 of 3; March 12, 2025, City Council Agenda NOTICE OF A REGULAR CITY COUNCIL MEETING March 12, 2025, at 6:00 PM ________________ PUBLIC NOTICE is hereby given that the Vineyard City Council will hold a regularly scheduled City Council meeting on Wednesday, March 12, 2025, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. AGENDA Presiding Mayor Julie Fullmer 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 2.1.   Resolution Recognizing Don Overson For His Service To Vineyard City & Dedication Of The Vineyard Water Tank (Resolution 2025-07) A resolution recognizing Don Overson for his dedicated service as Vineyard City's City Engineer and Public Works Director from June 2, 2014, to July 1, 2021, and naming the City's water tank as the Don E. Overson Water Tank in his honor. The mayor and City Council will act to adopt this recognition and dedication by resolution. 3.   WORK SESSION 3.1.   Discussion about Open and Public Meetings Act (OPMA), Town Halls, Social Media, Subcommittees and Staff Resources 4.   PUBLIC COMMENTS “Public Comments”   is defined as time set aside for citizens to express their views for items not on the agenda. During a period designated for public comment, the mayor or chair may allot each speaker a maximum amount of time to present their comments, subject to extension by the mayor or by a majority vote of the council. Speakers offering duplicate comments may be limited. Because of the need for proper public notice, immediate action cannot be taken in the Council Meeting. The Chair of the meeting reserves the right to organize public comments by topic and may group speakers accordingly. If action is necessary, the item will be listed on a future agenda; however, the Council may elect to discuss the item if it is an immediate matter of concern.   Public comments can be submitted ahead of time to pams@vineyardutah.org. 5.   MAYOR AND COUNCILMEMBERS' REPORTS/DISCLOSURES/RECUSALS Page 1 of 83",
+          "shot": "doc-check-shots/doc_996e081b6fe6eb1a-390.png",
+          "problems": []
+        },
+        "desktop": {
+          "error": null,
+          "state": "drawn",
+          "toolbar": {
+            "styled": true,
+            "why": ""
+          },
+          "pixels": {
+            "dark": 0.06318082788671024,
+            "ink": 0.12197134746154353,
+            "samples": 30294
+          },
+          "text": "Page 1 of 3; March 12, 2025, City Council Agenda NOTICE OF A REGULAR CITY COUNCIL MEETING March 12, 2025, at 6:00 PM ________________ PUBLIC NOTICE is hereby given that the Vineyard City Council will hold a regularly scheduled City Council meeting on Wednesday, March 12, 2025, at 6:00 PM, in the City Council Chambers at City Hall, 125 South Main Street, Vineyard, UT. This meeting can also be viewed on our   live stream page. AGENDA Presiding Mayor Julie Fullmer 1.   CALL TO ORDER/INVOCATION/INSPIRATIONAL THOUGHT/PLEDGE OF ALLEGIANCE 2.   PRESENTATIONS/RECOGNITIONS/AWARDS/PROCLAMATIONS 2.1.   Resolution Recognizing Don Overson For His Service To Vineyard City & Dedication Of The Vineyard Water Tank (Resolution 2025-07) A resolution recognizing Don Overson for his dedicated service as Vineyard City's City Engineer and Public Works Director from June 2, 2014, to July 1, 2021, and naming the City's water tank as the Don E. Overson Water Tank in his honor. The mayor and City Council will act to adopt this recognition and dedication by resolution. 3.   WORK SESSION 3.1.   Discussion about Open and Public Meetings Act (OPMA), Town Halls, Social Media, Subcommittees and Staff Resources 4.   PUBLIC COMMENTS “Public Comments”   is defined as time set aside for citizens to express their views for items not on the agenda. During a period designated for public comment, the mayor or chair may allot each speaker a maximum amount of time to present their comments, subject to extension by the mayor or by a majority vote of the council. Speakers offering duplicate comments may be limited. Because of the need for proper public notice, immediate action cannot be taken in the Council Meeting. The Chair of the meeting reserves the right to organize public comments by topic and may group speakers accordingly. If action is necessary, the item will be listed on a future agenda; however, the Council may elect to discuss the item if it is an immediate matter of concern.   Public comments can be submitted ahead of time to pams@vineyardutah.org. 5.   MAYOR AND COUNCILMEMBERS' REPORTS/DISCLOSURES/RECUSALS Page 1 of 83",
+          "shot": "doc-check-shots/doc_996e081b6fe6eb1a-1440.png",
+          "problems": []
+        }
+      },
+      "problems": []
+    }
+  ],
+  "failed": 2
+}
