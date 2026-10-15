@@ -67,7 +67,9 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   const streets = Boolean(map.getSource('openmaptiles'));
   const src = streets ? 'openmaptiles' : OWN_SRC;
   if (src === OWN_SRC && !map.getSource(OWN_SRC)) map.addSource(OWN_SRC, { type: 'vector', url: OFM });
-  if (scenery()) addScenery(map, SHADE_SRC, streets ? null : src, SHADE, firstAboveGround(map));
+  // The snow reads the terrain's own elevation source: the separate shading source left out far tiles
+  // (Timpanogos's among them) that the terrain had, so the snow never drew there.
+  if (scenery()) addScenery(map, DEM, streets ? null : src, SHADE, firstAboveGround(map));
   showBuildings(map);
   prefetchTerrain(map.getCenter());
   if (map.getLayer(LAYER)) {
