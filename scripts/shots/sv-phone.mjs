@@ -132,8 +132,11 @@ const layer = async (label, on) => {
 };
 
 try {
-  // The pin stands 40 m south of the project's south edge, so all of it is ahead (the view starts facing north).
-  const at = project ? [project.at[0], Math.min(...project.ring.map((v) => v[1])) - 40 / 111320] : [-111.7455, 40.3035];
+  // The pin stands inside the project near its south edge (a park or field is open ground, so no house in
+  // front hides it), and the view starts facing north, across the project.
+  const south = project ? Math.min(...project.ring.map((v) => v[1])) : 0;
+  const inside = project ? [project.at[0], south + 15 / 111320] : null;
+  const at = project ? (inRing(inside, project.ring) ? inside : project.at) : [-111.7455, 40.3035];
   await page.goto(`${BASE}/map?lat=${at[1]}&lng=${at[0]}&z=18`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.vc-map canvas', { timeout: 40000 });
   await page.waitForFunction(() => !document.querySelector('.vc-map-loading'), null, { timeout: 40000 }).catch(() => step('map loading slow'));
