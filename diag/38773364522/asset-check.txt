@@ -1,0 +1,482 @@
+{
+  "missing": {
+    "status": 404,
+    "type": "text/plain; charset=utf-8",
+    "cacheControl": "no-store",
+    "html": false,
+    "ok": true
+  },
+  "files": [
+    {
+      "n": "/assets/ConsolePage-c2-B8y8MI7K.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/Chrome-c2-CDXsi9qx.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/Wordmark-c2-CfuUB38X.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/rotate-ccw-clock-c2-DoYk81mQ.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/file-text-c2-DmBogKq5.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/search-c2-BmBtw2Lj.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/useTheme-c2-BfIbyU3A.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/api-c2-CUvnzovk.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/arrow-up-c2-BxDhZAZy.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/check-c2-B6ypWeHz.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/chevron-down-c2-VIK4glGD.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/chevron-right-c2-DW9vUpLC.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/useWide-c2-8XA0Cp-S.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/trash-c2-BH9gQd6T.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/directory-c2-GJ7qziYJ.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/cityServices-c2-BIGJqdk5.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/mail-c2-C0_XJEBl.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/map-pin-c2-CblA8ZkI.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/message-square-c2-Cl2-WIr-.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/phone-c2-CMJ9QZ70.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/plus-c2-B7hBVrT9.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/rotate-ccw-c2-BQz_RBb7.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/share-2-c2-jBchE7z9.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/thumbs-up-c2-CtAF5yIL.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/PersonCard-c2-DguHml4Z.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/people-c2-Bl8e5kwX.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/useCityServices-c2-CkE6rDkM.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/dates-c2-BiGWYqoC.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/format-c2-De0XXGoq.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/aiNote-c2-BneVRsU1.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/services-c2-CHFPhDoa.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/recordLabels-c2-DC8os2ve.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/Chrome-c2-7js2M6qV.css",
+      "status": 200,
+      "type": "text/css",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/Wordmark-c2-nBYlWVUA.css",
+      "status": 200,
+      "type": "text/css",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/ServicesPage-c2-DG5AAk0m.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/ServiceView-c2-CWHHUV7R.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/MeetingsPage-c2-BDVqiq8p.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/chevron-left-c2-BtX0BQ08.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/RssLink-c2-TzyXOorb.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/meetingDocs-c2-BDxpRfKh.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/ErrorNote-c2-CNhSAgMY.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/DocLink-c2-DrewfkSJ.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/meetings-c2-CUpJt_Dk.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/MeetingPage-c2-Da1Bjzum.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/DocumentView-c2-DUFs3uKd.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/download-c2-B-OUpBWz.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/layers-c2-DG8OHE4Y.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/printer-c2-B_T5k8fs.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/errors-c2-fARY_7ZH.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/DocumentView-c2-D-jpAiyW.css",
+      "status": 200,
+      "type": "text/css",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/MapPage-c2-Cr4yO_EX.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/maplibre-gl-c2-C_tvwFwd.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/construction-c2-BH0wrkge.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/external-link-c2-TBKztuRv.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/eye-c2-B8MGUaXf.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/play-c2-FX7c_gdW.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/undo-2-c2-xwfmC5-u.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/ProjectDetail-c2-CissUnWB.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/votes-c2-CFlwieGJ.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/mapBase-c2-CCC5p_as.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/geo-c2-D_c-DZBD.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/watchTaps-c2-BntTgefL.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/maplibre-gl-c2-B8-mEBLf.css",
+      "status": 200,
+      "type": "text/css",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/RecordsPage-c2-CBvVr1Zy.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/YearChips-c2-Ct5q14Ir.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/RecordsIndexPage-c2-DAiXbx0B.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/PeoplePage-c2-ItvDBpkB.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/VotesPage-c2-Pfwml18B.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/CsvButton-c2-C11IsGuJ.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/MotionCard-c2-D8J3skZ3.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/BoardsPage-c2-DY3jmrhu.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/BudgetPage-c2-qKqI3anb.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/AddPage-c2-CS4qc2sF.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/sticky-note-c2-AaSB6Taz.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    },
+    {
+      "n": "/assets/index-c2-CXgxFuX0.js",
+      "status": 200,
+      "type": "text/javascript",
+      "cc": "public, max-age=31536000, immutable"
+    }
+  ],
+  "filesOk": true,
+  "marked": true,
+  "fresh": {
+    "map": true,
+    "errorPage": 0,
+    "poisonedAnswers": 0,
+    "loads": 1,
+    "url": "https://vineyardportal.org/map",
+    "errors": []
+  },
+  "bad-copy": {
+    "map": true,
+    "errorPage": 0,
+    "poisonedAnswers": 2,
+    "loads": 2,
+    "url": "https://vineyardportal.org/map",
+    "errors": [
+      "Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of \"text/html\". Strict MIME type checking is enforced for module scripts per HTML sp"
+    ]
+  },
+  "ok": true
+}
