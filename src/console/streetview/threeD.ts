@@ -142,6 +142,11 @@ const heights = new WeakMap<maplibregl.Map, { stop: () => void }>();
  * the zoom 16 tiles around it (once each), reads OpenFreeMap's buildings in view, and redraws them with the
  * chosen heights. The plain layer stays underneath, invisible, so its tiles keep loading.
  */
+/** OpenFreeMap's buildings come one by one from tile zoom 14; below it, blocks are merged. */
+export const FULL_DETAIL_Z = 14;
+/** The zoom of the tile a queried feature came from (MapLibre keeps it on the feature, unlisted). */
+export const tileZoom = (f: unknown) => Number((f as { _z?: number })._z ?? FULL_DETAIL_Z);
+
 function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void } {
   const index = new StoryIndex();
   const asked = new Set<string>();
@@ -152,6 +157,9 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void }
     // Only the buildings within NEAR_DEG of the view (about 1.2 km), which is what street level shows close up.
     const c = map.getCenter();
     const feats = map.querySourceFeatures(src, { sourceLayer: 'building' }).filter((f) => {
+      // Only buildings from full detail tiles: farther off, a tilted view loads lower zoom tiles, where
+      // OpenMapTiles merges a block's houses into one shape, which drew as one huge slab.
+      if (tileZoom(f) < FULL_DETAIL_Z) return false;
       const g = f.geometry;
       const p = g.type === 'Polygon' ? g.coordinates[0]?.[0] : g.type === 'MultiPolygon' ? g.coordinates[0]?.[0]?.[0] : null;
       return p != null && Math.abs(p[0] - c.lng) < NEAR_DEG * 1.3 && Math.abs(p[1] - c.lat) < NEAR_DEG;
