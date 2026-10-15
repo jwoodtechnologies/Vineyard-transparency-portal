@@ -59,18 +59,15 @@ export function blankStyle(dark: boolean): maplibregl.StyleSpecification {
 }
 
 /**
- * If the county imagery service fails before any of its tiles has loaded, show the USGS imagery
+ * If the county imagery service fails before any of its tiles has loaded (three errors, or nothing at all
+ * within 7 seconds, as when its requests are refused without an error the map hears), show the USGS imagery
  * instead (same map, no reload). Call right after creating a map with satelliteStyle().
  */
 export function watchSatellite(map: maplibregl.Map): void {
   let ok = false;
   let failures = 0;
-  map.on('sourcedata', (e) => {
-    if (e.sourceId === 'county' && (e as { tile?: unknown }).tile) ok = true;
-  });
-  map.on('error', (e) => {
-    const src = (e as { sourceId?: string }).sourceId;
-    if (ok || src !== 'county' || ++failures < 3) return;
+  const useUsgs = () => {
+    if (ok) return;
     ok = true; // switch once
     try {
       map.setLayoutProperty('sat-usgs', 'visibility', 'visible');
@@ -78,7 +75,22 @@ export function watchSatellite(map: maplibregl.Map): void {
     } catch {
       /* style replaced meanwhile */
     }
+  };
+  const timer = setTimeout(useUsgs, 7000);
+  map.on('sourcedata', (e) => {
+    // One county tile actually drawn is enough (a slow service still counts as working).
+    if (e.sourceId === 'county' && (e as { tile?: { state?: string } }).tile?.state === 'loaded') {
+      ok = true;
+      clearTimeout(timer);
+    }
   });
+  map.on('error', (e) => {
+    const src = (e as { sourceId?: string }).sourceId;
+    if (ok || src !== 'county' || ++failures < 3) return;
+    clearTimeout(timer);
+    useUsgs();
+  });
+  map.once('remove', () => clearTimeout(timer));
 }
 
 type Json = Record<string, unknown>;
