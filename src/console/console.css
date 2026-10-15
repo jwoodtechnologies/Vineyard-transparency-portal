@@ -5779,3 +5779,6 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
   .vc-map-wrap[data-sv]:has(.vc-map-card[data-over-sv]) .vc-map .maplibregl-ctrl-bottom-right,
   .vc-map-wrap[data-driving]:has(.vc-map-card) .vc-map .maplibregl-ctrl-bottom-right { visibility: hidden; }
 }
+/* Drive with the Layers panel open: the small map steps aside, and on wider screens the panel ends above the Drive bar. */
+.vc-map-wrap[data-driving][data-panel='true'] .vc-drive-inset { display: none; }
+@media (min-width: 821px) { .vc-map-wrap[data-driving] .vc-map-panel { max-height: calc(100% - 4.4rem - 5.8rem); } }

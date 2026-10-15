@@ -1391,7 +1391,7 @@ export default function MapPage() {
   return (
     <div className="vc vc-map-page" data-state="page">
       <TopBar />
-      <div className="vc-map-shell" data-projects={projectsShown ? (wide ? 'side' : 'sheet') : undefined}>
+      <div className="vc-map-shell" data-projects={projectsShown && !driving ? (wide ? 'side' : 'sheet') : undefined}>
       <div className="vc-map-wrap" ref={wrapRef} data-panel={panel} data-card={Boolean(picked) && !measuring && !sv} data-measure={measuring || undefined} data-sv={sv ? 'on' : undefined} data-tools={toolsOpen || undefined} data-driving={driving || undefined}>
         <div ref={box} className="vc-map" aria-label="Map of Vineyard, Utah" role="region" style={{ background: bgFor(base, resolved === 'dark') }} />
         {!painted && (
@@ -1668,7 +1668,7 @@ export default function MapPage() {
           </div>
         )}
       </div>
-      {projectsShown && !measuring && !sv && (
+      {projectsShown && !measuring && !sv && !driving && (
         <ProjectViewpoint.Provider value={projectViewpoint}>
           <MapProjects onShow={showProject} onClose={closeProjects} active={activeProject} wide={wide} leaving={projectsLeaving} startExpanded={openTall} />
         </ProjectViewpoint.Provider>

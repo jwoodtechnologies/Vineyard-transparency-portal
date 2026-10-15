@@ -87,7 +87,7 @@ const tapEl = async (sel) => {
   await tap(b.x + b.width / 2, b.y + b.height / 2);
 };
 const shot = (n) => page.screenshot({ path: `${OUT}/phone-${n}.png`, timeout: 120000 }).catch((e) => step(`shot ${n} slow`, { e: String(e).slice(0, 80) }));
-const pinAt = () => page.locator('.vc-sv-pin, .vc-svp').first().getAttribute('data-at').catch(() => null);
+const pinAt = () => page.locator('.vc-sv-pin').first().getAttribute('data-at', { timeout: 3000 }).catch(() => null);
 const facing = async () => Number(((await page.getAttribute('.vc-sv-compass', 'aria-label').catch(() => '')) ?? '').match(/facing (-?\d+)/)?.[1] ?? NaN);
 /** What the topmost element is at the middle of `sel`: is it really tappable there? */
 const onTop = (sel) =>
@@ -285,7 +285,7 @@ try {
     await page.waitForTimeout(6000);
     if (await zc.count()) break;
   }
-  log.groundTap = { tries: mtries.length, frameMsBeforeTries: mtries, moved: before !== (await pinAt()), card: await zc.count() };
+  log.groundTap = { tries: mtries.length, frameMsBeforeTries: mtries, before, after: await pinAt(), moved: before !== (await pinAt()), card: await zc.count(), photo: await page.locator('.vc-svp').count() };
   await shot('5-moved');
   if (log.groundTap.card) await tapEl('button[aria-label="Close details"]').catch(() => undefined);
   // The zone chip opens the zone's card, and the pin stays.

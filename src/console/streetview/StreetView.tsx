@@ -218,8 +218,14 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       return { layer: d.layer, name: d.name, shape, color: d.color };
     };
     /** What a tap there opens instead of moving: a capital project's outline, or a UDOT project's line. */
-    const cardAt = (ll: maplibregl.LngLat) => {
+    const cardAt = (ll: maplibregl.LngLat, plain?: maplibregl.LngLat) => {
+      // Inside a project counts at either point: the ground under the pointer, or the middle of the building
+      // it is on (a tap on a building in a project, or on the project's ground just past one).
       const at: Pos = [ll.lng, ll.lat];
+      if (plain) {
+        const p0 = featureAt(groundRef.current.filter((g) => g.layer === 'projects').map((g) => ({ ...g, layer: 'projects', name: g.zone })), [plain.lng, plain.lat]);
+        if (p0) return { layer: 'projects', name: p0.name, shape: { type: 'MultiPolygon', coordinates: p0.rings.map((r) => [r]) } as Geometry, color: p0.color };
+      }
       const p = featureAt(groundRef.current.filter((g) => g.layer === 'projects').map((g) => ({ ...g, layer: 'projects', name: g.zone })), at);
       if (p) return { layer: 'projects', name: p.name, shape: { type: 'MultiPolygon', coordinates: p.rings.map((r) => [r]) } as Geometry, color: p.color };
       const line = nearLine(linesRef.current, at, 12);
@@ -233,7 +239,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
           ground: () => groundRef.current.map((g) => ({ layer: g.layer ?? 'zoning', name: g.zone, rings: g.rings.length })),
           at: (x: number, y: number) => {
             const ll = groundUnder(map, x, y);
-            return { ground: [ll.lng, ll.lat], plain: map.unproject([x, y]).toArray(), card: cardAt(ll)?.name ?? null };
+            return { ground: [ll.lng, ll.lat], plain: map.unproject([x, y]).toArray(), card: cardAt(ll, map.unproject([x, y]))?.name ?? null };
           },
         };
     } catch {
@@ -258,7 +264,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
         if (phaseRef.current === 'photo' && !wideQuery()) return;
         clearTimeout(tapTimer);
         const point = groundUnder(map, x, y);
-        const card = cardAt(point);
+        const card = cardAt(point, map.unproject([x, y]));
         if (card) {
           ring.hide();
           routeRef.current.onPick(card.layer, card.name, [point.lng, point.lat]);
@@ -284,7 +290,7 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
         y = e.clientY - r.top;
       hoverFrame = requestAnimationFrame(() => {
         const point = groundUnder(map, x, y);
-        const card = routeRef.current.layersOn ? cardAt(point) : null;
+        const card = routeRef.current.layersOn ? cardAt(point, map.unproject([x, y])) : null;
         const hit = card ?? (routeRef.current.layersOn ? hitAt(x, y) : null);
         const key = hit ? `${hit.layer}:${hit.name}` : '';
         if (key !== hovered) setHoverShape(map, hit?.shape ?? null, hit?.color);

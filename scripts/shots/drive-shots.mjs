@@ -168,8 +168,12 @@ for (const prof of [
 
     // A tap on a zone (Zoning is on): the car stops, the zone's card opens with Continue.
     const zc = page.locator('.vc-map-card');
+    // Just beside the car marker: inside the city, where zoning covers the ground.
+    const mk = await page.locator('.vc-drive-marker:not([hidden])').boundingBox().catch(() => null);
+    const tx = mk ? mk.x + mk.width / 2 + 30 : m.x + m.width / 2,
+      ty = mk ? mk.y + mk.height / 2 + 30 : m.y + m.height * 0.6;
     for (let i = 0; i < 3 && !(await zc.count()); i++) {
-      await tap(m.x + m.width * 0.45, m.y + m.height * 0.42);
+      await tap(tx, ty);
       await page.waitForTimeout(3000);
     }
     const v0 = await speed();
@@ -202,7 +206,9 @@ for (const prof of [
     const ab = await page.locator('.vc-drive-turns').boundingBox().catch(() => null);
     run.arrowsAboveCar = ab ? ab.y + ab.height < m.y + m.height * 0.5 : null;
     await tapEl('.vc-drive-bar button[aria-label="Stop"]');
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(500);
+    run.labelAfterStop = (await page.locator('.vc-drive-bar button').nth(1).textContent().catch(() => null))?.trim() ?? null;
+    await page.waitForTimeout(7500);
     run.afterStop = await speed();
     await tapEl('.vc-drive-bar button[aria-label="Go"]');
     await page.waitForTimeout(4000);
