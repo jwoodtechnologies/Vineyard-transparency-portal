@@ -112,7 +112,8 @@ const layer = async (label, on) => {
 };
 
 try {
-  const at = project?.at ?? [-111.7455, 40.3035];
+  // The pin stands about 70 m south of the project, so the project is ahead of it (the view starts facing north).
+  const at = project ? [project.at[0], project.at[1] - 70 / 111320] : [-111.7455, 40.3035];
   await page.goto(`${BASE}/map?lat=${at[1]}&lng=${at[0]}&z=18`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.vc-map canvas', { timeout: 40000 });
   await page.waitForFunction(() => !document.querySelector('.vc-map-loading'), null, { timeout: 40000 }).catch(() => step('map loading slow'));
@@ -171,7 +172,10 @@ try {
         return { x: c.left + p.x, y: c.top + p.y, inView: p.x > 10 && p.y > 120 && p.x < c.width - 70 && p.y < c.height - 60 };
       }, project.at);
     const mb = await page.locator('.vc-map').boundingBox();
-    const tp = point?.inView ? point : { x: mb.x + mb.width / 2, y: mb.y + mb.height * 0.78 };
+    // Never on the pin itself (it would take the tap): clear of it by 60 px.
+    const pin = await page.locator('.vc-sv-pin').boundingBox().catch(() => null);
+    const clear = (p) => !pin || Math.hypot(p.x - (pin.x + pin.width / 2), p.y - (pin.y + pin.height / 2)) > 60;
+    const tp = point?.inView && clear(point) ? point : { x: mb.x + mb.width / 2, y: mb.y + mb.height * 0.78 };
     await tap(tp.x, tp.y);
     await page.waitForTimeout(3000);
     const card = page.locator('.vc-map-card[data-over-sv]');
