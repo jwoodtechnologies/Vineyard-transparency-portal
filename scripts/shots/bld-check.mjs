@@ -70,7 +70,26 @@ try {
       return Math.abs(a / 2);
     };
     const near = (ring) => ring.some(([x, y]) => Math.abs(x - c.lng) * kx < 80 && Math.abs(y - c.lat) * 110540 < 80);
-    const out = { zoom: m.getZoom(), pin: [c.lng, c.lat], layers: {} };
+    const out = { zoom: m.getZoom(), pin: [c.lng, c.lat], layers: {}, overPin: [] };
+    // Every building shape that covers the pin itself (the camera stands there).
+    const inRing = (p, r) => {
+      let ins = false;
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) if (r[i][1] > p[1] !== r[j][1] > p[1] && p[0] < ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) ins = !ins;
+      return ins;
+    };
+    for (const id of ['vtp-sv-buildings', 'vtp-sv-buildings-h']) {
+      const l = m.getLayer(id);
+      if (!l) continue;
+      for (const f of m.querySourceFeatures(l.source, l.sourceLayer ? { sourceLayer: l.sourceLayer } : undefined)) {
+        const g = f.geometry;
+        const rings = g.type === 'Polygon' ? [g.coordinates[0]] : g.type === 'MultiPolygon' ? g.coordinates.map((p) => p[0]) : [];
+        for (const r of rings)
+          if (inRing([c.lng, c.lat], r)) {
+            const xs = r.map((p) => p[0] * kx), ys = r.map((p) => p[1] * 110540);
+            out.overPin.push({ id, z: f._z ?? null, m2: Math.round(area(r)), w: Math.round(Math.max(...xs) - Math.min(...xs)), l: Math.round(Math.max(...ys) - Math.min(...ys)), pts: r.length, props: JSON.stringify(f.properties).slice(0, 160), ring: r.slice(0, 12).map((p) => [+p[0].toFixed(6), +p[1].toFixed(6)]) });
+          }
+      }
+    }
     for (const id of ['vtp-sv-buildings', 'vtp-sv-buildings-h']) {
       const l = m.getLayer(id);
       if (!l) continue;
