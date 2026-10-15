@@ -175,12 +175,20 @@ try {
     return out;
   });
 
-  // Layers from the Tools menu: the panel opens as a sheet; Capital projects on.
+  // Layers from the Tools menu: the panel opens as a sheet; Capital projects and Zoning on.
   await tapEl('.vc-map-tools-menu [role^="menuitem"]');
   await page.waitForTimeout(1500);
   await shot('3-layers-sheet');
-  step('layers from tools', { panel: await page.locator('.vc-map-panel').isVisible(), projectsOn: await layer('Capital projects', true) });
+  const projectsOn = await layer('Capital projects', true);
+  await tapEl('.vc-sv-bar-btn[aria-pressed]');
+  await page.waitForTimeout(800);
+  step('layers', { panel: true, projectsOn, zoningOn: await layer('Zoning', true) });
   await page.waitForTimeout(5000);
+  // The zone under the pin, in a chip by the bar; nothing overlaps with it shown.
+  const chipText = (await page.locator('.vc-sv-zone').first().textContent().catch(() => null))?.trim() ?? null;
+  const ovChip = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
+  log.zoneChip = { text: chipText, overlaps: ovChip, hint: (await page.locator('.vc-sv-hint').first().textContent().catch(() => null))?.trim() ?? null };
+  await shot('3b-zone-chip');
 
   // A finger tap on the project: its card, the pin and view unchanged.
   const tapProject = async (tag) => {
@@ -243,46 +251,57 @@ try {
       facingSame: Number.isNaN(before.facing) || before.facing === (await facing()),
     };
     await shot(tag);
-    if (r.card) await tapEl('button[aria-label="Close details"]').catch(() => undefined);
+    // Go here on the card: the card closes and the pin moves to the project.
+    r.goHere = await card.locator('button', { hasText: 'Go here' }).count();
+    if (r.goHere) {
+      const b = await card.locator('button', { hasText: 'Go here' }).boundingBox();
+      await tap(b.x + b.width / 2, b.y + b.height / 2);
+      await page.waitForTimeout(6000);
+      r.afterGoHere = { card: await card.count(), pinMoved: before.pin !== (await pinAt()) };
+      await shot(`${tag}-go-here`);
+    } else if (r.card) await tapEl('button[aria-label="Close details"]').catch(() => undefined);
     await page.waitForTimeout(1000);
     return r;
   };
   log.projectTap = await tapProject('4-project-card');
   step('project tap', log.projectTap);
 
-  // Layers from the bar this time: Zoning on, a tap on the ground opens the zone's card.
-  await tapEl('.vc-sv-bar-btn[aria-pressed]');
-  await page.waitForTimeout(1200);
-  step('layers from bar', { panel: await page.locator('.vc-map-panel').isVisible(), zoningOn: await layer('Zoning', true), projectsOff: true });
-  await tapEl('.vc-sv-bar-btn[aria-pressed]');
-  await layer('Capital projects', false);
-  await page.waitForTimeout(4000);
+  // With Zoning and Projects on, a tap on the ground away from any project moves (no card).
   const mb = await page.locator('.vc-map').boundingBox();
-  const before = { pin: await pinAt(), facing: await facing() };
   const zc = page.locator('.vc-map-card[data-over-sv]');
-  const ztries = [];
-  for (let i = 0; i < 3 && !(await zc.count()); i++) {
-    ztries.push(await frameMs());
-    await tap(mb.x + mb.width / 2, mb.y + mb.height * 0.72);
-    await page.waitForTimeout(3000);
+  const before = await pinAt();
+  const mtries = [];
+  for (let i = 0; i < 3 && before === (await pinAt()); i++) {
+    mtries.push(await frameMs());
+    await tap(mb.x + mb.width * 0.3, mb.y + mb.height * 0.82);
+    await page.waitForTimeout(6000);
+    if (await zc.count()) break;
   }
+  log.groundTap = { tries: mtries.length, frameMsBeforeTries: mtries, moved: before !== (await pinAt()), card: await zc.count() };
+  await shot('5-moved');
+  if (log.groundTap.card) await tapEl('button[aria-label="Close details"]').catch(() => undefined);
+  // The zone chip opens the zone's card, and the pin stays.
+  const pinBefore = await pinAt();
+  await tapEl('.vc-sv-zone').catch(() => undefined);
+  await page.waitForTimeout(2500);
   log.zoneTap = {
-    tries: ztries.length,
-    frameMsBeforeTries: ztries,
     card: await zc.count(),
     kind: (await zc.locator('.vc-map-kind').textContent().catch(() => null))?.trim() ?? null,
     title: (await zc.locator('.vc-map-card-title').textContent().catch(() => null))?.trim() ?? null,
-    pinSame: before.pin === (await pinAt()),
-    facingSame: Number.isNaN(before.facing) || before.facing === (await facing()),
+    pinSame: pinBefore === (await pinAt()),
+    overlaps: (await overlaps(page)).map((o) => `${o.a} x ${o.b}`),
   };
-  await shot('5-zone-card');
-  step('zone tap', log.zoneTap);
+  await shot('6-zone-card');
+  step('zone chip tap', log.zoneTap);
   log.ok = {
     layersTappable: log.steps.find((s) => s.name === 'tools open')?.layersOnTop === 'yes',
     hintHiddenWithMenu: log.steps.find((s) => s.name === 'tools open')?.hintShown === false,
     noOverlap: (log.steps.find((s) => s.name === 'tools open')?.problems ?? ['?']).length === 0,
     projectCard: log.projectTap.card === 1 && log.projectTap.pinSame && log.projectTap.facingSame,
-    zoneCard: log.zoneTap.card === 1 && log.zoneTap.pinSame && log.zoneTap.facingSame,
+    goHere: Boolean(log.projectTap.afterGoHere?.pinMoved && log.projectTap.afterGoHere.card === 0),
+    groundTapMoves: log.groundTap.moved && !log.groundTap.card,
+    zoneChip: Boolean(log.zoneChip.text?.startsWith('Zone:')) && log.zoneChip.overlaps.length === 0,
+    zoneCard: log.zoneTap.card === 1 && log.zoneTap.pinSame,
     labels: ['Close', 'Layers', 'Google'].every((l) => (log.steps[0]?.bar ?? []).includes(l)),
   };
 } catch (e) {

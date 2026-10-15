@@ -59,7 +59,7 @@ for (const prof of [
     if (!b) throw new Error(`not shown: ${sel}`);
     await tap(b.x + b.width / 2, b.y + b.height / 2);
   };
-  const speed = async () => Number((await page.textContent('.vc-drive-speed').catch(() => '')).match(/\d+/)?.[0] ?? NaN);
+  const speed = async () => Number(((await page.textContent('.vc-drive-speed').catch(() => '')) ?? '').match(/\d+/)?.[0] ?? NaN);
   const camera = () => page.evaluate(() => {
     const m = window.__vtpMap;
     return m ? { bearing: Math.round(m.getBearing()), pitch: Math.round(m.getPitch()), zoom: Math.round(m.getZoom() * 10) / 10 } : null;
@@ -69,20 +69,42 @@ for (const prof of [
     await page.goto(`${BASE}/map?lat=${SPOT[1]}&lng=${SPOT[0]}&z=17`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.querySelector('.vc-map canvas') && !document.querySelector('.vc-map-loading'), null, { timeout: 40000 });
     await page.waitForTimeout(2500);
-    // Tools, Drive: straight to "tap a road" (no car picker).
+    const m = await page.locator('.vc-map').boundingBox();
+    // Street view first, with Zoning and Capital projects turned on from its Layers button (Drive once failed
+    // to start after this), then Tools, Drive.
+    await tapEl('.vc-map-tools > button');
+    await page.waitForSelector('.vc-pegman:not([disabled])', { timeout: 40000 });
+    await tapEl('.vc-pegman');
+    await page.waitForTimeout(2500);
+    await tap(m.x + m.width / 2, m.y + m.height / 2);
+    await page.waitForSelector('.vc-sv-compass, .vc-svp', { timeout: 60000 }).catch(() => run.notes.push('street view slow'));
+    await page.waitForTimeout(4000);
+    for (const label of ['Zoning', 'Capital projects']) {
+      await tapEl('.vc-sv-bar-btn[aria-pressed]');
+      await page.waitForSelector('.vc-map-panel .vc-map-layer', { timeout: 30000 });
+      const row = page.locator('.vc-map-panel .vc-map-layer', { hasText: label }).first();
+      await row.scrollIntoViewIfNeeded().catch(() => undefined);
+      const rb = await row.boundingBox();
+      if (!(await row.locator('input').isChecked())) await tap(rb.x + rb.width - 30, rb.y + rb.height / 2);
+      await page.waitForTimeout(600);
+      await tapEl('.vc-map-panel button[aria-label="Close layers"]');
+      await page.waitForTimeout(800);
+    }
     await tapEl('.vc-map-tools > button');
     await page.waitForSelector('.vc-drive-item:not([disabled])', { timeout: 30000 });
     await tapEl('.vc-drive-item');
     run.noPicker = (await page.locator('.vc-drive-pick').count()) === 0;
     run.roads = await page.waitForFunction(() => /road to start/.test(document.querySelector('.vc-drive-note')?.textContent ?? ''), null, { timeout: 40000 }).then(() => true, () => false);
     await shot('1-road');
-    const m = await page.locator('.vc-map').boundingBox();
     await tap(m.x + m.width / 2, m.y + m.height / 2);
-    await page.waitForSelector('.vc-drive-hud', { timeout: 20000 });
+    run.startedAfterStreetViewLayers = await page.waitForSelector('.vc-drive-hud', { timeout: 20000 }).then(() => true, () => false);
     for (let i = 0; i < 5; i++) {
       await page.waitForTimeout(2000);
       run.speeds.push(await speed());
     }
+    run.toolsHidden = !(await page.locator('.vc-map-tools > button').isVisible().catch(() => false));
+    run.barLabels = (await page.locator('.vc-drive-bar button').allTextContents()).map((t) => t.replace(/\s+/g, ' ').trim());
+    run.barBox = await page.locator('.vc-drive-bar').boundingBox().catch(() => null);
     await shot('2-driving');
     run.overlapsDriving = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
     // Frame times while driving in the chase view.
@@ -94,7 +116,7 @@ for (const prof of [
 
     // One finger (or the mouse) dragged 300 px sideways: the camera swings around the car.
     const c0 = await camera();
-    const x0 = m.x + m.width * 0.2, y0 = m.y + m.height * 0.65;
+    const x0 = m.x + m.width * 0.2, y0 = m.y + m.height * 0.55;
     if (touch) {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0, id: 1 }] });
       for (let i = 1; i <= 20; i++) {
@@ -109,85 +131,74 @@ for (const prof of [
       await page.mouse.up();
     }
     await page.waitForTimeout(2500);
-    const c1 = await camera();
+    run.orbit = { before: c0, after: await camera() };
     await shot('3-orbit');
-    run.orbit = { before: c0, after: c1, resetShown: await page.locator('.vc-drive-reset:not([disabled])').count() };
-    // A pinch in (fingers together) or the wheel: out to a high view.
-    const cx = m.x + m.width / 2, cy = m.y + m.height * 0.6;
-    if (touch) {
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx - 120, y: cy, id: 1 }, { x: cx + 120, y: cy, id: 2 }] });
-      for (let i = 1; i <= 12; i++) {
-        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx - 120 + i * 9, y: cy, id: 1 }, { x: cx + 120 - i * 9, y: cy, id: 2 }] });
-        await page.waitForTimeout(30);
+    // Pinches in (or the wheel) all the way out: the whole city from high above, the car a marker.
+    const cx = m.x + m.width / 2, cy = m.y + m.height * 0.5;
+    for (let k = 0; k < 4; k++) {
+      if (touch) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx - 150, y: cy, id: 1 }, { x: cx + 150, y: cy, id: 2 }] });
+        for (let i = 1; i <= 12; i++) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx - 150 + i * 11, y: cy, id: 1 }, { x: cx + 150 - i * 11, y: cy, id: 2 }] });
+          await page.waitForTimeout(30);
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      } else {
+        await page.mouse.move(cx, cy);
+        for (let i = 0; i < 8; i++) {
+          await page.mouse.wheel(0, 400);
+          await page.waitForTimeout(40);
+        }
       }
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    } else {
-      await page.mouse.move(cx, cy);
-      for (let i = 0; i < 8; i++) {
-        await page.mouse.wheel(0, 300);
-        await page.waitForTimeout(40);
-      }
+      await page.waitForTimeout(800);
     }
-    await page.waitForTimeout(3000);
-    const c2 = await camera();
-    await shot('4-overview');
-    run.zoomOut = { after: c2, speed: await speed() };
-    // Layers while driving, from the high view (zoned ground all around, not just the road, which has no
-    // zone): Tools, Layers, Zoning on, Done; then a tap on the ground opens the zone's card, the car keeps
-    // driving and the camera stays where it was.
-    await tapEl('.vc-map-tools > button');
-    await page.waitForTimeout(800);
-    await shot('6-tools-open');
-    // The menu opens over the Drive bar on purpose (it is on top); anything else is a problem.
-    const ov = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
-    run.toolsOpen = { overlaps: ov, problems: ov.filter((o) => !/\.vc-map-tools-menu x \.vc-drive-bar|\.vc-drive-bar x \.vc-map-tools-menu/.test(o)), menuOnTop: await page.evaluate(() => {
-      const el = document.querySelector('.vc-map-tools-menu [role^="menuitem"]');
-      const r = el?.getBoundingClientRect();
-      const top = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return Boolean(top && el.contains(top));
-    }) };
-    await tapEl('.vc-map-tools-menu [role^="menuitem"]');
-    await page.waitForSelector('.vc-map-panel .vc-map-layer', { timeout: 30000 });
-    const row = page.locator('.vc-map-panel .vc-map-layer', { hasText: 'Zoning' }).first();
-    await row.scrollIntoViewIfNeeded().catch(() => undefined);
-    const rb = await row.boundingBox();
-    if (!(await row.locator('input').isChecked())) await tap(rb.x + rb.width - 30, rb.y + rb.height / 2);
-    await page.waitForTimeout(600);
-    run.zoningOn = await row.locator('input').isChecked();
-    await shot('7-layers');
-    await tapEl('.vc-map-panel button[aria-label="Close layers"]');
     await page.waitForTimeout(4000);
-    const cBefore = await camera();
-    const vBefore = await speed();
-    await tap(m.x + m.width * 0.3, m.y + m.height * 0.72);
-    await page.waitForTimeout(2500);
-    const card = page.locator('.vc-map-card[data-over-sv]');
-    await page.waitForTimeout(2000);
-    const cAfter = await camera();
-    run.zoneTap = {
-      card: await card.count(),
-      kind: (await card.locator('.vc-map-kind').textContent().catch(() => null))?.trim() ?? null,
-      title: (await card.locator('.vc-map-card-title').textContent().catch(() => null))?.trim() ?? null,
-      speedBefore: vBefore,
-      speedAfter: await speed(),
-      zoomSame: cBefore?.zoom === cAfter?.zoom,
-      pitchSame: cBefore?.pitch === cAfter?.pitch,
+    run.zoomOut = { after: await camera(), marker: await page.locator('.vc-drive-marker:not([hidden])').count(), markerBox: await page.locator('.vc-drive-marker:not([hidden])').boundingBox().catch(() => null) };
+    await shot('4-city');
+
+    // Layers from the Drive bar: a sheet over the bar; nothing overlaps.
+    await tapEl('.vc-drive-bar button[aria-pressed]');
+    await page.waitForSelector('.vc-map-panel .vc-map-layer', { timeout: 30000 }).catch(() => undefined);
+    await page.waitForTimeout(1000);
+    run.layersOpen = { panel: await page.locator('.vc-map-panel').isVisible().catch(() => false), barHidden: !(await page.locator('.vc-drive-bar').isVisible()), overlaps: (await overlaps(page)).map((o) => `${o.a} x ${o.b}`) };
+    await shot('5-layers');
+    await tapEl('.vc-map-panel button[aria-label="Close layers"]');
+    await page.waitForTimeout(1500);
+    run.barBack = await page.locator('.vc-drive-bar').isVisible();
+
+    // A tap on a zone (Zoning is on): the car stops, the zone's card opens with Continue.
+    const zc = page.locator('.vc-map-card');
+    for (let i = 0; i < 3 && !(await zc.count()); i++) {
+      await tap(m.x + m.width * 0.45, m.y + m.height * 0.42);
+      await page.waitForTimeout(3000);
+    }
+    const v0 = await speed();
+    await page.waitForTimeout(5000);
+    run.featureTap = {
+      card: await zc.count(),
+      kind: (await zc.locator('.vc-map-kind').textContent().catch(() => null))?.trim() ?? null,
+      title: (await zc.locator('.vc-map-card-title').textContent().catch(() => null))?.trim() ?? null,
+      continueShown: await zc.locator('button', { hasText: 'Continue' }).count(),
+      speedAtCard: v0,
+      speedAfter5s: await speed(),
+      barHidden: !(await page.locator('.vc-drive-bar').isVisible()),
       overlaps: (await overlaps(page)).map((o) => `${o.a} x ${o.b}`),
     };
-    await shot('8-zone-card');
-    if (run.zoneTap.card) await tapEl('button[aria-label="Close details"]').catch(() => undefined);
-
+    await shot('6-card');
+    if (run.featureTap.continueShown) {
+      const b = await zc.locator('button', { hasText: 'Continue' }).boundingBox();
+      await tap(b.x + b.width / 2, b.y + b.height / 2);
+      await page.waitForTimeout(6000);
+      run.afterContinue = { card: await zc.count(), speed: await speed(), bar: await page.locator('.vc-drive-bar').isVisible() };
+    }
     // Reset view: back behind the car.
     await tapEl('.vc-drive-reset');
-    await page.waitForTimeout(3000);
-    run.reset = { after: await camera(), resetDisabled: (await page.locator('.vc-drive-reset[disabled]').count()) === 1 };
-    await shot('5-reset');
-
+    await page.waitForTimeout(4000);
+    run.reset = { after: await camera(), resetDisabled: (await page.locator('.vc-drive-reset[disabled]').count()) === 1, marker: await page.locator('.vc-drive-marker:not([hidden])').count() };
+    await shot('7-reset');
     run.arrows = await page.waitForSelector('.vc-drive-turns', { timeout: 60000 }).then(() => true, () => false);
-    run.turnOptions = await page.locator('.vc-drive-turn').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
-    await shot('9-arrows');
+    await shot('8-arrows');
     run.overlapsArrows = (await overlaps(page)).map((o) => `${o.a} x ${o.b}`);
-    // The car is drawn a little below the middle of the map; the arrows must sit above it.
     const ab = await page.locator('.vc-drive-turns').boundingBox().catch(() => null);
     run.arrowsAboveCar = ab ? ab.y + ab.height < m.y + m.height * 0.5 : null;
     await tapEl('.vc-drive-bar button[aria-label="Stop"]');
@@ -199,7 +210,7 @@ for (const prof of [
     await tapEl('button[aria-label="Exit drive mode"]');
     await page.waitForTimeout(2500);
     run.exited = (await page.locator('.vc-drive-hud').count()) === 0;
-    await shot('10-exit');
+    await shot('9-exit');
   } catch (e) {
     run.error = String(e).slice(0, 400);
     await shot('failed');
