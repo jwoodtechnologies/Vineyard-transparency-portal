@@ -5,7 +5,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { assetCacheControl, assetHeaders, buildId, cacheKey, HTML_CACHE, IMMUTABLE_CACHE } from '../worker/lib/edgeCache';
+import { assetCacheControl, assetHeaders, buildId, cacheKey, HTML_CACHE, IMMUTABLE_CACHE, isMissingAsset } from '../worker/lib/edgeCache';
 import { fresh, resetForBuild } from '../src/console/api';
 
 const read = (f: string) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
@@ -76,6 +76,32 @@ describe('static headers', () => {
     expect(IMMUTABLE_CACHE).toBe('public, max-age=31536000, immutable');
   });
 
+  it('a missing /assets/ file is a 404, plain text, never stored, never the app HTML with immutable', async () => {
+    const url = new URL('https://vineyardportal.org/assets/does-not-exist-abc123.js');
+    // The asset store's single page app fallback: index.html, 200, with the year-long header.
+    const fallback = new Response('<!doctype html><html></html>', { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': IMMUTABLE_CACHE } });
+    expect(isMissingAsset(url.pathname, fallback)).toBe(true);
+    const res = assetHeaders(url, fallback);
+    expect(res.status).toBe(404);
+    expect(res.headers.get('content-type')).toMatch(/^text\/plain/);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.text()).not.toMatch(/<html/i);
+    expect(assetHeaders(url, new Response('nope', { status: 404 })).headers.get('cache-control')).toBe('no-store');
+    // An HTML content type on an /assets/ path never gets immutable.
+    expect(assetCacheControl('/assets/x.js', 'text/html')).toBeNull();
+  });
+
+  it('a real hashed file keeps immutable, and pages keep the HTML fallback', () => {
+    const js = assetHeaders(new URL('https://vineyardportal.org/assets/MapPage-abc123.js'), new Response('export{}', { headers: { 'content-type': 'text/javascript' } }));
+    expect(js.status).toBe(200);
+    expect(js.headers.get('cache-control')).toBe(IMMUTABLE_CACHE);
+    expect(isMissingAsset('/map', new Response('<!doctype html>', { headers: { 'content-type': 'text/html' } }))).toBe(false);
+  });
+
+  it('wrangler.jsonc runs the Worker first for /assets/*', () => {
+    expect(read('wrangler.jsonc')).toMatch(/"run_worker_first":\s*\[[^\]]*"\/assets\/\*"/);
+  });
+
   it('the Worker sets them on assets it serves', () => {
     const res = assetHeaders(new URL('https://vineyardportal.org/votes'), new Response('<!doctype html>', { headers: { 'content-type': 'text/html', 'cache-control': 'public, max-age=14400' } }));
     expect(res.headers.get('cache-control')).toBe(HTML_CACHE);
@@ -93,10 +119,10 @@ describe('static headers', () => {
     expect(h).not.toMatch(/\/theme-init\.js\n\s+Cache-Control: public/);
   });
 
-  it('wrangler: only the API and feeds run the Worker first; the version binding is declared', () => {
+  it('wrangler: the API, feeds and /assets/* run the Worker first; the version binding is declared', () => {
     const w = read('wrangler.jsonc');
     expect(w).toMatch(/"version_metadata":\s*\{\s*"binding":\s*"CF_VERSION_METADATA"\s*\}/);
-    expect(w).toMatch(/"run_worker_first":\s*\["\/api\/\*",\s*"\/feeds\/\*"\]/);
+    expect(w).toMatch(/"run_worker_first":\s*\["\/api\/\*",\s*"\/feeds\/\*",\s*"\/assets\/\*"\]/);
   });
 });
 

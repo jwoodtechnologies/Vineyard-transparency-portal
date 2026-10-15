@@ -7,6 +7,9 @@
  * - HTML (index.html, /, every client route) and /theme-init.js are revalidated on every load: no-cache,
  *   max-age=0, must-revalidate. Hashed files under /assets/ never change: public, max-age=31536000, immutable.
  *   public/_headers sets the same for the asset store; assetHeaders applies it when the Worker serves an asset.
+ * - A request under /assets/ for a file that does not exist is a 404 (text/plain, no-store), never the app's
+ *   index.html: the asset store's single page app fallback answered such requests with the HTML and the
+ *   year-long immutable header, and a browser that asked for a chunk mid-deploy kept that HTML for a year.
  */
 /** The deployed build: the Worker version id, or "dev" where there is no version binding (local, tests). */
 export function buildId(env: { CF_VERSION_METADATA?: { id?: string } }): string {
@@ -31,13 +34,25 @@ export const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 
 /** The Cache-Control a static response should carry, or null to leave it as served. */
 export function assetCacheControl(pathname: string, contentType: string | null): string | null {
-  if (pathname.startsWith('/assets/')) return IMMUTABLE_CACHE;
+  if (pathname.startsWith('/assets/')) return /^text\/html\b/i.test(contentType ?? '') ? null : IMMUTABLE_CACHE;
   if (pathname === '/theme-init.js' || /^text\/html\b/i.test(contentType ?? '')) return HTML_CACHE;
   return null;
 }
 
+/** Whether a response for an /assets/ path is not a real file (not found, or the app's HTML fallback). */
+export function isMissingAsset(pathname: string, res: Response): boolean {
+  if (!pathname.startsWith('/assets/')) return false;
+  return res.status === 404 || /^text\/html\b/i.test(res.headers.get('content-type') ?? '');
+}
+
+/** The answer for a missing /assets/ file: 404, plain text, never stored. */
+export function missingAsset(): Response {
+  return new Response('Not found.', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
+}
+
 /** A static asset response with its cache header set (HTML and theme-init.js never kept past a deploy). */
 export function assetHeaders(url: URL, res: Response): Response {
+  if (isMissingAsset(url.pathname, res)) return missingAsset();
   const cc = res.status === 200 || res.status === 304 ? assetCacheControl(url.pathname, res.headers.get('content-type')) : null;
   if (!cc || res.headers.get('cache-control') === cc) return res;
   const out = new Response(res.body, res);

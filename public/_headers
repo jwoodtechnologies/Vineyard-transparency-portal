@@ -29,6 +29,8 @@
   X-Robots-Tag: noindex, nofollow, noarchive
 
 # Hashed build output never changes under its name: kept a year. "!" drops the rule above for these paths.
+# The Worker serves /assets/* (wrangler.jsonc run_worker_first) and sets this only on real files; a missing
+# file is a 404 with no-store there, never the app's HTML.
 /assets/*
   ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
