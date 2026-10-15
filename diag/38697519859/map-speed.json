@@ -1,0 +1,111 @@
+{
+  "base": "https://vineyardportal.org",
+  "at": "2026-10-15T07:16:00.106Z",
+  "runs": [
+    {
+      "tag": "phone-2d-visit1",
+      "firstPaintMs": 1838,
+      "settleOpenMs": 301,
+      "panSettleMs": 3107,
+      "panBackSettleMs": 2590,
+      "tilesOnPanOut": 0,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 0,
+      "fromSw": 0
+    },
+    {
+      "tag": "phone-3d-visit1",
+      "firstPaintMs": 15738,
+      "settleOpenMs": 301,
+      "threeDOpenMs": 3095,
+      "threeDSettleMs": 1206,
+      "turnSettleMs": 1205,
+      "turnBackSettleMs": 301,
+      "tilesOnTurnOut": 100,
+      "tilesOnTurnBack": 0,
+      "tilesOnTurnBackFromSw": 17,
+      "swControlled": true,
+      "tileRequests": 146,
+      "fromSw": 136
+    },
+    {
+      "tag": "phone-2d-visit2",
+      "firstPaintMs": 15823,
+      "settleOpenMs": 301,
+      "panSettleMs": 2881,
+      "panBackSettleMs": 2505,
+      "tilesOnPanOut": 0,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 0,
+      "fromSw": 0
+    },
+    {
+      "tag": "phone-3d-visit2",
+      "firstPaintMs": 15779,
+      "settleOpenMs": 300,
+      "threeDOpenMs": 2092,
+      "threeDSettleMs": 1306,
+      "turnSettleMs": 502,
+      "turnBackSettleMs": 300,
+      "tilesOnTurnOut": 100,
+      "tilesOnTurnBack": 0,
+      "tilesOnTurnBackFromSw": 17,
+      "swControlled": true,
+      "tileRequests": 146,
+      "fromSw": 136
+    },
+    {
+      "tag": "desktop-2d-visit1",
+      "firstPaintMs": 1088,
+      "settleOpenMs": 301,
+      "panSettleMs": 5568,
+      "panBackSettleMs": 5153,
+      "tilesOnPanOut": 0,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 0,
+      "fromSw": 0
+    },
+    {
+      "tag": "desktop-3d-visit1",
+      "firstPaintMs": 15504,
+      "settleOpenMs": 300,
+      "threeDOpenMs": 5336,
+      "threeDSettleMs": 1007,
+      "turnSettleMs": 603,
+      "turnBackSettleMs": 301,
+      "tilesOnTurnOut": 125,
+      "tilesOnTurnBack": 0,
+      "tilesOnTurnBackFromSw": 7,
+      "swControlled": true,
+      "tileRequests": 161,
+      "fromSw": 151
+    },
+    {
+      "tag": "desktop-2d-visit2",
+      "firstPaintMs": 1127,
+      "settleOpenMs": 300,
+      "panSettleMs": 5434,
+      "panBackSettleMs": 5156,
+      "tilesOnPanOut": 0,
+      "tilesOnPanBack": 0,
+      "tilesOnPanBackFromSw": 0,
+      "swControlled": true,
+      "tileRequests": 0,
+      "fromSw": 0
+    },
+    {
+      "tag": "desktop-3d-visit2",
+      "firstPaintMs": 15541,
+      "settleOpenMs": 301,
+      "threeDOpenMs": 5175,
+      "threeDSettleMs": 903,
+      "error": "TimeoutError: page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button[aria-label=\"Turn right\"]')\n    - locator resolved to <button type=\"button\" class=\"vc-sv-3d-btn\" title=\"Turn right (D)\" aria-label=\"Turn right\">…</button>\n  - attempting click action\n    - scrolling into view if needed\n    - done scrolling\n    - forcing action\n    - performing click action\n    - click acti"
+    }
+  ]
+}
