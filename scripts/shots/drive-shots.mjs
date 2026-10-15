@@ -72,6 +72,7 @@ for (const prof of [
     const m = await page.locator('.vc-map').boundingBox();
     // Street view first, with Zoning and Capital projects turned on from its Layers button (Drive once failed
     // to start after this), then Tools, Drive.
+    try {
     await tapEl('.vc-map-tools > button');
     await page.waitForSelector('.vc-pegman:not([disabled])', { timeout: 40000 });
     await tapEl('.vc-pegman');
@@ -90,6 +91,13 @@ for (const prof of [
       await tapEl('.vc-map-panel button[aria-label="Close layers"]');
       await page.waitForTimeout(800);
     }
+    } catch (e) {
+      // The street view part is a lead in; Drive is what is checked here.
+      run.svPrelude = String(e).slice(0, 200);
+      await shot('0-sv-prelude');
+      await page.keyboard.press('Escape').catch(() => undefined);
+    }
+    await page.waitForTimeout(800);
     await tapEl('.vc-map-tools > button');
     await page.waitForSelector('.vc-drive-item:not([disabled])', { timeout: 30000 });
     await tapEl('.vc-drive-item');
