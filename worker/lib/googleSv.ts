@@ -48,16 +48,25 @@ export async function googleOpensOn(env: GoogleEnv, day: string): Promise<number
   return Number(r?.opens ?? 0);
 }
 
+/** Why the mode is or is not offered now (never the key itself), for the config answer and checks. */
+export type GoogleState = 'ok' | 'no-key' | 'key-format' | 'off' | 'cap' | 'storage';
+
+export async function googleState(env: GoogleEnv, now = new Date()): Promise<GoogleState> {
+  const raw = (env.GOOGLE_MAPS_KEY ?? '').trim();
+  if (!raw) return 'no-key';
+  if (!googleKey(raw)) return 'key-format';
+  const cap = googleCap(env.GOOGLE_SV_DAILY_CAP);
+  if (cap === 0) return 'off';
+  try {
+    return (await googleOpensOn(env, capDay(now))) < cap ? 'ok' : 'cap';
+  } catch {
+    return 'storage';
+  }
+}
+
 /** True while the mode can be opened today. */
 export async function googleAvailable(env: GoogleEnv, now = new Date()): Promise<boolean> {
-  if (!googleKey(env.GOOGLE_MAPS_KEY)) return false;
-  const cap = googleCap(env.GOOGLE_SV_DAILY_CAP);
-  if (cap === 0) return false;
-  try {
-    return (await googleOpensOn(env, capDay(now))) < cap;
-  } catch {
-    return false;
-  }
+  return (await googleState(env, now)) === 'ok';
 }
 
 /**
