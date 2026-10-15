@@ -158,7 +158,7 @@ export function setEye(map: maplibregl.Map, at: Pos | null): void {
   if (at && map.getLayer(LAYER)) map.setPaintProperty(LAYER, 'fill-extrusion-opacity', 0);
   heights.get(map)?.redraw();
 }
-const EYE_CLEAR_M = 4;
+const EYE_CLEAR_M = 8;
 
 /** Whether a building outline covers the eye or comes within EYE_CLEAR_M of it. */
 function aroundEye(rings: Pos[][], eye: Pos): boolean {
