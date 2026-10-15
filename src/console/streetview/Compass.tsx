@@ -4,8 +4,11 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type * as maplibregl from 'maplibre-gl';
+import type { Pos } from '../measure/geo';
+import { eyeView } from './eye';
 
-export function Compass({ getMap }: { getMap: () => maplibregl.Map | null }) {
+/** `pin`: where the camera stands (street view 3D); turning pivots on it. */
+export function Compass({ getMap, pin }: { getMap: () => maplibregl.Map | null; pin?: () => Pos | null }) {
   const [bearing, setBearing] = useState(() => getMap()?.getBearing() ?? 0);
   const box = useRef<HTMLButtonElement>(null);
   const dragged = useRef(false);
@@ -45,7 +48,9 @@ export function Compass({ getMap }: { getMap: () => maplibregl.Map | null }) {
       const d = angle(e) - from;
       if (Math.abs(d) > 2) dragged.current = true;
       // Turning the compass clockwise turns the view clockwise.
-      map.setBearing(base - d);
+      const at = pin?.();
+      if (at) map.jumpTo(eyeView(map, at, base - d, map.getPitch()));
+      else map.setBearing(base - d);
     };
     const up = () => (active = false);
     el.addEventListener('pointerdown', down);
@@ -58,7 +63,7 @@ export function Compass({ getMap }: { getMap: () => maplibregl.Map | null }) {
       el.removeEventListener('pointerup', up);
       el.removeEventListener('pointercancel', up);
     };
-  }, [getMap]);
+  }, [getMap, pin]);
 
   const heading = Math.round(((bearing % 360) + 360) % 360);
   return (
@@ -67,7 +72,9 @@ export function Compass({ getMap }: { getMap: () => maplibregl.Map | null }) {
       type="button"
       className="vc-sv-compass"
       onClick={() => {
-        if (!dragged.current) getMap()?.easeTo({ bearing: 0, duration: 300 });
+        const map = getMap();
+        const at = pin?.();
+        if (!dragged.current && map) map.easeTo({ ...(at ? eyeView(map, at, 0, map.getPitch()) : { bearing: 0 }), duration: 300 });
         dragged.current = false;
       }}
       aria-label={`Compass: facing ${heading} degrees. Drag to turn; tap to face north.`}

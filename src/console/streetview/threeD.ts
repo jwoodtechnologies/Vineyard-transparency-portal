@@ -9,6 +9,7 @@ import type { Pos } from './geo';
 import type { MultiPolygon, Polygon } from 'geojson';
 import { getJson } from '../api';
 import { buildingHeight, StoryIndex, tilesAround, withHeights } from './heights';
+import { EYE_MAX_ZOOM, eyeView } from './eye';
 import { addScenery, SNOW_LAYER, WATER_EDGE, WATER_LAYER } from './scenery';
 
 const LAYER = 'vtp-sv-buildings';
@@ -47,6 +48,7 @@ export interface Saved {
   pitch: number;
   bearing: number;
   maxPitch: number;
+  maxZoom?: number;
   sky: maplibregl.SkySpecification | undefined;
 }
 
@@ -239,10 +241,12 @@ const still = () => typeof window !== 'undefined' && window.matchMedia?.('(prefe
  * frame is drawn (StreetView), so the view opens fast and they stream in. Marks vtp-3d-first-frame.
  */
 export function enter3d(map: maplibregl.Map, pin: Pos): Saved {
-  const saved: Saved = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), maxPitch: map.getMaxPitch(), sky: map.getSky() };
+  const saved: Saved = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), maxPitch: map.getMaxPitch(), maxZoom: map.getMaxZoom(), sky: map.getSky() };
   map.setMaxPitch(MAX_PITCH);
+  map.setMaxZoom(EYE_MAX_ZOOM);
   map.setSky(SKY);
-  map.jumpTo({ center: pin, zoom: 18.4, pitch: START_PITCH, bearing: map.getBearing() });
+  // The camera stands at the pin at eye height (eye.ts).
+  map.jumpTo(eyeView(map, pin, map.getBearing(), START_PITCH));
   map.once('render', () => performance.mark?.('vtp-3d-first-frame'));
   map.triggerRepaint();
   return saved;
@@ -260,5 +264,8 @@ export function leave3d(map: maplibregl.Map, saved: Saved): void {
   removeBuildings(map);
   map.setSky(saved.sky ?? {});
   map.easeTo({ center: saved.center, zoom: saved.zoom, pitch: saved.pitch, bearing: saved.bearing, duration: still() ? 0 : 700 });
-  map.once('moveend', () => map.setMaxPitch(saved.maxPitch));
+  map.once('moveend', () => {
+    map.setMaxPitch(saved.maxPitch);
+    if (saved.maxZoom != null) map.setMaxZoom(saved.maxZoom);
+  });
 }

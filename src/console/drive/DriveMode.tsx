@@ -371,6 +371,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
         removeBuildings(map);
         map.setSky(saved.sky ?? {});
         map.setMaxPitch(saved.maxPitch);
+        if (saved.maxZoom != null) map.setMaxZoom(saved.maxZoom);
         handlers.forEach((h, i) => was[i] && h.enable());
         const end = car.pose().at;
         map.jumpTo({ center: end, zoom: 17, pitch: 0, bearing: 0 });

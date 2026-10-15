@@ -6,13 +6,15 @@
  */
 import type * as maplibregl from 'maplibre-gl';
 import { destination, type Pos } from '../measure/geo';
+import { eyeView } from './eye';
 
 const TURN_PER_PX = 0.35;
 const TILT_PER_PX = 0.22;
 export const MAX_PITCH_3D = 85;
 
 /** Switches the map's gestures to looking around; returns how to put them back. */
-export function enableOrbit(map: maplibregl.Map): () => void {
+/** `pin`: where the camera stands; turning and tilting pivot on it. */
+export function enableOrbit(map: maplibregl.Map, pin: () => Pos | null): () => void {
   const before = {
     dragPan: map.dragPan.isEnabled(),
     dragRotate: map.dragRotate.isEnabled(),
@@ -37,7 +39,8 @@ export function enableOrbit(map: maplibregl.Map): () => void {
   let pending: { bearing: number; pitch: number } | null = null;
   const apply = () => {
     frame = 0;
-    if (pending) map.jumpTo(pending);
+    const at = pin();
+    if (pending) map.jumpTo(at ? eyeView(map, at, pending.bearing, pending.pitch) : pending);
     pending = null;
   };
   const start = (e: PointerEvent) => {
@@ -88,13 +91,14 @@ export function enableOrbit(map: maplibregl.Map): () => void {
 
 const still = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-/** Turns the view by `deg` degrees (positive is clockwise). */
-export function turn(map: maplibregl.Map, deg: number): void {
-  map.easeTo({ bearing: map.getBearing() + deg, duration: still() ? 0 : 250 });
+/** Turns the view by `deg` degrees (positive is clockwise), standing at `pin`. */
+export function turn(map: maplibregl.Map, deg: number, pin: Pos | null): void {
+  const bearing = map.getBearing() + deg;
+  map.easeTo({ ...(pin ? eyeView(map, pin, bearing, map.getPitch()) : { bearing }), duration: still() ? 0 : 250 });
 }
 
-/** The spot `meters` ahead of the view's center along the way it faces (negative is back). */
-export function stepFrom(map: maplibregl.Map, meters: number): Pos {
+/** The spot `meters` ahead of the pin along the way the view faces (negative is back). */
+export function stepFrom(map: maplibregl.Map, meters: number, pin: Pos | null): Pos {
   const c = map.getCenter();
-  return destination([c.lng, c.lat], map.getBearing(), meters);
+  return destination(pin ?? [c.lng, c.lat], map.getBearing(), meters);
 }

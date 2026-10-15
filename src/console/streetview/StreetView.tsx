@@ -17,6 +17,7 @@ import { featureAt } from './clickRoute';
 import { watchTaps } from './watchTaps';
 import { lineNear, mapillaryToken, photoNear, snapToLine } from './coverage';
 import { addBuildings, enter3d, leave3d, type Saved } from './threeD';
+import { eyeView } from './eye';
 import { enableOrbit, stepFrom, turn } from './orbit';
 import { Compass } from './Compass';
 import { Sky } from './Sky';
@@ -83,6 +84,12 @@ const wideQuery = () => typeof window !== 'undefined' && window.innerWidth > 820
 
 export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null, loadZoning, showMapZoning, zoningOn, projectsOn, loadProjects, udotOn, loadUdot, goTo, onPick, onLayers, layersOpen, onClose }: Props) {
   const [pin, setPin] = useState<Pos | null>(start);
+  // The pin for code outside React's render (the camera stands there in 3D).
+  const pinRefPos = useRef<Pos | null>(start);
+  useEffect(() => {
+    pinRefPos.current = pin;
+  }, [pin]);
+  const pinNow = useCallback(() => pinRefPos.current, []);
   const [phase, setPhase] = useState<Phase>(start ? 'search' : 'pick');
   const [photo, setPhoto] = useState<Photo | null>(null);
   // The next nearest photos, tried in turn when one does not load (at most three in all).
@@ -421,14 +428,14 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     const map = getMap();
     if (!map || !ready || !pin) return;
     if (phase === '3d') {
-      if (saved.current?.map === map) map.easeTo({ center: pin, duration: 450 });
-      else saved.current = { map, at: enter3d(map, pin), orbitOff: enableOrbit(map) };
+      if (saved.current?.map === map) map.easeTo({ ...eyeView(map, pin, map.getBearing(), map.getPitch()), duration: 450 });
+      else saved.current = { map, at: enter3d(map, pin), orbitOff: enableOrbit(map, pinNow) };
     } else if (phase === 'photo' && saved.current) {
       saved.current.orbitOff();
       leave3d(saved.current.map, saved.current.at);
       saved.current = null;
     }
-  }, [getMap, ready, phase, pin]);
+  }, [getMap, ready, phase, pin, pinNow]);
   useEffect(
     () => () => {
       if (!saved.current) return;
@@ -539,10 +546,10 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       const t = e.target as HTMLElement | null;
       if (phaseRef.current !== '3d' || !map || e.metaKey || e.ctrlKey || e.altKey || (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
       const k = e.key.toLowerCase();
-      if (k === 'a' || k === 'arrowleft') turn(map, -20);
-      else if (k === 'd' || k === 'arrowright') turn(map, 20);
-      else if (k === 'w' || k === 'arrowup') setPin(stepFrom(map, 12));
-      else if (k === 's' || k === 'arrowdown') setPin(stepFrom(map, -12));
+      if (k === 'a' || k === 'arrowleft') turn(map, -20, pinRefPos.current);
+      else if (k === 'd' || k === 'arrowright') turn(map, 20, pinRefPos.current);
+      else if (k === 'w' || k === 'arrowup') setPin(stepFrom(map, 12, pinRefPos.current));
+      else if (k === 's' || k === 'arrowdown') setPin(stepFrom(map, -12, pinRefPos.current));
       else return;
       e.preventDefault();
     };
@@ -636,17 +643,17 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
       {phase === '3d' && getMap() && createPortal(<Sky getMap={getMap} />, getMap()!.getContainer())}
       {phase === '3d' && stackHost && createPortal(
         <div className="vc-sv-3d maplibregl-ctrl" role="group" aria-label="Look around">
-          <Compass getMap={getMap} />
-          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && turn(getMap()!, -30)} aria-label="Turn left" title="Turn left (A)">
+          <Compass getMap={getMap} pin={pinNow} />
+          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && turn(getMap()!, -30, pinRefPos.current)} aria-label="Turn left" title="Turn left (A)">
             <RotateCcw size={18} strokeWidth={2} />
           </button>
-          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && turn(getMap()!, 30)} aria-label="Turn right" title="Turn right (D)">
+          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && turn(getMap()!, 30, pinRefPos.current)} aria-label="Turn right" title="Turn right (D)">
             <RotateCw size={18} strokeWidth={2} />
           </button>
-          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && setPin(stepFrom(getMap()!, 12))} aria-label="Forward" title="Forward (W)">
+          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && setPin(stepFrom(getMap()!, 12, pinRefPos.current))} aria-label="Forward" title="Forward (W)">
             <ArrowUp size={18} strokeWidth={2} />
           </button>
-          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && setPin(stepFrom(getMap()!, -12))} aria-label="Back" title="Back (S)">
+          <button type="button" className="vc-sv-3d-btn" onClick={() => getMap() && setPin(stepFrom(getMap()!, -12, pinRefPos.current))} aria-label="Back" title="Back (S)">
             <ArrowDown size={18} strokeWidth={2} />
           </button>
         </div>,
