@@ -64,8 +64,9 @@ const PEAKS = { lakeMountains: [-111.935, 40.235], westMountain: [-111.80, 40.09
 // SwiftShader through ANGLE's GL backend: the runner's default Vulkan backend left the 3D view blank.
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const PROFILES = [
-  { name: 'phone', ctx: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 }, cpu: 4 },
+  // Desktop first: the east view of the snow is the shot that matters most, and the runner sometimes slows down later.
   { name: 'desktop', ctx: { viewport: { width: 1440, height: 900 } }, cpu: 1 },
+  { name: 'phone', ctx: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 }, cpu: 4 },
 ];
 
 async function open(prof, scenery) {
@@ -171,11 +172,16 @@ for (const prof of PROFILES) {
         });
       run.layers = await page.evaluate(() => [...document.querySelectorAll('.vc-sv-sun')].length);
       if (scenery) {
-        for (const [name, deg] of [['west', 270], ['south', 180], ['east', 90], ['timpanogos', 30], ['sun', log.sun.azimuth]]) {
-          await face(page, deg);
-          await page.waitForTimeout(20000);
-          await page.screenshot({ path: `${OUT}/${prof.name}-${name}.png` });
-          run[`facing_${name}`] = await facing(page);
+        // East and Timpanogos first. One slow view (the runner draws without a GPU) does not stop the others.
+        for (const [name, deg] of [['east', 90], ['timpanogos', 30], ['west', 270], ['south', 180], ['sun', log.sun.azimuth]]) {
+          try {
+            await face(page, deg);
+            await page.waitForTimeout(20000);
+            await page.screenshot({ path: `${OUT}/${prof.name}-${name}.png`, timeout: 120000 });
+            run[`facing_${name}`] = await facing(page);
+          } catch (e) {
+            run[`error_${name}`] = redact(e).slice(0, 200);
+          }
         }
         run.sunShown = await page.locator('.vc-sv-sun:not([hidden])').count();
         // What the map holds: the 3D layers in drawing order, the snow ramp, the terrain height at Timpanogos.
@@ -196,7 +202,7 @@ for (const prof of PROFILES) {
         // The same view with the snow drawn red: where the snow layer draws at all.
         await page.evaluate(() => window.__vtpMap?.getLayer('vtp-sv-snow') && window.__vtpMap.setPaintProperty('vtp-sv-snow', 'color-relief-color', ['interpolate', ['linear'], ['elevation'], 2650, 'rgba(255,0,0,0)', 2950, 'rgba(255,0,0,1)']));
         await page.waitForTimeout(4000);
-        await page.screenshot({ path: `${OUT}/${prof.name}-sun-snow-red.png` });
+        await page.screenshot({ path: `${OUT}/${prof.name}-sun-snow-red.png`, timeout: 120000 }).catch(() => (run.redShot = 'slow'));
       }
       await face(page, 270);
       await page.waitForTimeout(3000);
