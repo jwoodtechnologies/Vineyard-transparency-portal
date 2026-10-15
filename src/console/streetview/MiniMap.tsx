@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import { satelliteStyle, watchSatellite } from '../mapBase';
 import { addCoverage, lineNear, photoNear } from './coverage';
+import { watchTaps } from './watchTaps';
 import type { Photo, Pos } from './geo';
 import { addSvLayers, drawSv, type Camera } from './mapDraw';
 
@@ -48,10 +49,11 @@ export function MiniMap({ token, camera, onPick }: Props) {
         addSvLayers(map);
         drawSv(map, cam.current, null);
       });
-      map.on('click', (e) => {
+      // Only a deliberate click or tap picks a photo, never the end of a pan or pinch (tapGuard.ts).
+      watchTaps(map.getCanvasContainer(), ({ x, y }) => {
         if (!map) return;
-        const photo = photoNear(map, e.point, 24);
-        const line = photo ? null : lineNear(map, e.point, 16);
+        const photo = photoNear(map, { x, y }, 24);
+        const line = photo ? null : lineNear(map, { x, y }, 16);
         if (photo || line) pick.current(photo, photo ? photo.pos : line!.at);
       });
     });

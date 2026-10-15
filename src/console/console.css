@@ -5651,3 +5651,8 @@ html.vtp-fs-lock body { overflow: hidden; overscroll-behavior: none; }
    screens, the photo takes the right half): the zoom and full screen stack and (i) move to the open map's edge. */
 .vc-map-wrap:has(.vc-svp:not([data-wide])) :is(.vc-map-top, .vc-map-legend, .vc-map .maplibregl-control-container) { visibility: hidden; }
 .vc-map-wrap:has(.vc-svp[data-wide='true']) .vc-map .maplibregl-ctrl-bottom-right { right: 50%; }
+/* Street view: the ring on the ground where a click would put the pin, and the tapped spot just before it moves. */
+.vc-sv-ring { width: 34px; height: 34px; border-radius: 50%; border: 2.5px solid rgb(255 255 255 / 0.95); background: rgb(255 255 255 / 0.18); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35), inset 0 0 0 1px rgb(0 0 0 / 0.2); pointer-events: none; }
+.vc-sv-ring.is-tap { border-color: #fff; background: rgb(255 90 31 / 0.45); animation: vc-sv-ring-tap 220ms ease-out; }
+@keyframes vc-sv-ring-tap { from { transform: scale(0.6); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .vc-sv-ring.is-tap { animation: none; } }

@@ -88,7 +88,11 @@ Routes live in `src/app/router.tsx`; every screen is in `src/console/`.
   drops a pin. The nearest Mapillary photo within 60 m opens turned to face the pin (MapillaryJS, its own chunk,
   loaded only then), with zoning districts and the parcel under the pin drawn on the ground and a camera cone on
   the map. Without a photo, or without a token (`GET /api/streetview/config`, from the Worker variable
-  `MAPILLARY_TOKEN`), the map tilts to a 3D street level view with buildings and zoning. A build step
+  `MAPILLARY_TOKEN`), the map tilts to a 3D street level view with buildings and zoning. Only a deliberate click or
+  tap moves anyone (`tapGuard.ts`): one pointer, down and up within 6 px and 350 ms, no drag, wheel or pinch
+  in between; the click that ends a drag never counts. This holds in the photo viewer, the 3D view, the small
+  map and pin dropping. A ring on the ground under the mouse shows where a click would go (hidden while
+  dragging); on touch the tapped spot lights up just before the move. Arrows and keys also move. A build step
   (`mapillaryNoEval` in `vite.config.ts`) removes MapillaryJS's one use of `new Function`, so the CSP needs no
   `'unsafe-eval'`.
 

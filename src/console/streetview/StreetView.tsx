@@ -12,7 +12,8 @@ import type { FeatureCollection, Geometry } from 'geojson';
 import { ArrowDown, ArrowUp, ExternalLink, Layers, RotateCcw, RotateCw, X } from 'lucide-react';
 import { getJson } from '../api';
 import { googleStreetViewUrl, parsePhotos, photoSearchUrl, rankPhotos, type Photo, type Pos } from './geo';
-import { addSvLayers, drawSv, pinMarker, removeSvLayers, type Camera } from './mapDraw';
+import { addSvLayers, drawSv, groundRing, pinMarker, removeSvLayers, type Camera } from './mapDraw';
+import { watchTaps } from './watchTaps';
 import { lineNear, mapillaryToken, photoNear, snapToLine } from './coverage';
 import { addBuildings, enter3d, leave3d, type Saved } from './threeD';
 import { enableOrbit, stepFrom, turn } from './orbit';
@@ -137,25 +138,73 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     const map = getMap();
     if (!map || !ready) return;
     addSvLayers(map);
-    const click = (e: maplibregl.MapMouseEvent) => {
+    // Only a deliberate click or tap moves the pin, never the end of a drag, pan, pinch or twist (tapGuard.ts).
+    const ring = groundRing(map);
+    const click = (point: { x: number; y: number }, lngLat: maplibregl.LngLat) => {
       // On a phone the photo covers the map; on wider screens a tap beside it moves the pin.
       if (phaseRef.current === 'photo' && !wideQuery()) return;
       // On or near a blue line: the photo there. Away from the lines: the spot itself, as before.
-      const near = photoNear(map, e.point, 28);
+      const near = photoNear(map, point, 28);
       if (near) {
         direct.current = near;
         setPin(near.pos);
       } else if (phaseRef.current === '3d') {
         // In the 3D view a tap on the ground moves the pin there and keeps looking the same way.
-        setPin([e.lngLat.lng, e.lngLat.lat]);
+        setPin([lngLat.lng, lngLat.lat]);
         return;
-      } else setPin(lineNear(map, e.point, 18)?.at ?? [e.lngLat.lng, e.lngLat.lat]);
+      } else setPin(lineNear(map, point, 18)?.at ?? [lngLat.lng, lngLat.lat]);
       setPhase('search');
     };
-    map.on('click', click);
+    const el = map.getCanvasContainer();
+    let tapTimer = 0;
+    const stopTaps = watchTaps(
+      el,
+      ({ x, y, touch }) => {
+        if (phaseRef.current === 'photo' && !wideQuery()) return;
+        const point = map.unproject([x, y]);
+        const p = { x, y };
+        if (!touch) {
+          ring.hide();
+          click(p, point);
+          return;
+        }
+        // On touch the tapped spot lights up for a moment first.
+        ring.show([point.lng, point.lat], true);
+        clearTimeout(tapTimer);
+        tapTimer = window.setTimeout(() => {
+          ring.hide();
+          click(p, point);
+        }, 220);
+      },
+      () => ring.hide(),
+    );
+    let hoverFrame = 0;
+    const hover = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
+      cancelAnimationFrame(hoverFrame);
+      if (e.buttons !== 0 || (phaseRef.current === 'photo' && !wideQuery())) return ring.hide();
+      const r = el.getBoundingClientRect();
+      const x = e.clientX - r.left,
+        y = e.clientY - r.top;
+      hoverFrame = requestAnimationFrame(() => {
+        const ll = map.unproject([x, y]);
+        ring.show([ll.lng, ll.lat]);
+      });
+    };
+    const leave = () => {
+      cancelAnimationFrame(hoverFrame);
+      ring.hide();
+    };
+    el.addEventListener('pointermove', hover);
+    el.addEventListener('pointerleave', leave);
     map.getCanvas().style.cursor = 'crosshair';
     return () => {
-      map.off('click', click);
+      stopTaps();
+      clearTimeout(tapTimer);
+      cancelAnimationFrame(hoverFrame);
+      el.removeEventListener('pointermove', hover);
+      el.removeEventListener('pointerleave', leave);
+      ring.remove();
       map.getCanvas().style.cursor = '';
       pinRef.current?.remove();
       pinRef.current = null;

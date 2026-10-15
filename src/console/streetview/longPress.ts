@@ -7,7 +7,7 @@ import type * as maplibregl from 'maplibre-gl';
 import type { Pos } from './geo';
 
 const HOLD_MS = 550;
-const SLOP_PX = 8;
+const SLOP_PX = 6;
 
 export function useLongPress(getMap: () => maplibregl.Map | null, gen: number, ready: boolean, enabled: boolean, onPress: (at: Pos) => void): void {
   const cb = useRef(onPress);

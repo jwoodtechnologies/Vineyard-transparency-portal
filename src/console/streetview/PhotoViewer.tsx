@@ -14,6 +14,7 @@ import { inRing, ZoningRenderer, type District } from './zoningRenderer';
 import { MiniMap } from './MiniMap';
 import { AHEAD_DEG, aheadTo, datesAt, nearestTo, photosAround, type DateChoice } from './nearby';
 import { bearing } from '../measure/geo';
+import { watchTaps } from './watchTaps';
 
 interface Props {
   token: string;
@@ -217,59 +218,41 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       keepHeading.current = null;
       report();
     });
-    // Like Google's: a ground circle shows where a click would go; a click on the road moves to the photo
-    // nearest that spot, a double click or double tap steps forward.
-    let downAt: number[] | null = null;
+    // Like Google's: a ground circle shows where a click would go (hidden while dragging); a deliberate click
+    // on the road moves to the photo nearest that spot, and a second click right after steps forward. A drag
+    // to look around never moves (tapGuard.ts). On touch the circle shows at the tapped spot just before moving.
     let cursorFrame = 0;
     viewer.on('mousemove', (e: ViewerMouseEvent) => {
       cancelAnimationFrame(cursorFrame);
-      cursorFrame = requestAnimationFrame(() => renderer.setCursor(renderer.unprojectGround(e.pixelPoint[0], e.pixelPoint[1], el.clientWidth, el.clientHeight)));
+      const pressed = e.originalEvent instanceof MouseEvent && e.originalEvent.buttons !== 0;
+      cursorFrame = requestAnimationFrame(() => renderer.setCursor(pressed ? null : renderer.unprojectGround(e.pixelPoint[0], e.pixelPoint[1], el.clientWidth, el.clientHeight)));
     });
     viewer.on('mouseout', () => renderer.setCursor(null));
-    viewer.on('mousedown', (e: ViewerMouseEvent) => (downAt = e.pixelPoint));
-    const goTo = (x: number, y: number) => {
-      const target = renderer.unprojectGround(x, y, el.clientWidth, el.clientHeight);
-      if (!target) return;
-      renderer.setCursor(target);
-      goToward(target);
-    };
-    viewer.on('click', (e: ViewerMouseEvent) => {
-      if (e.originalEvent instanceof PointerEvent && e.originalEvent.pointerType === 'touch') return; // taps below
-      const moved = downAt ? Math.hypot(e.pixelPoint[0] - downAt[0], e.pixelPoint[1] - downAt[1]) : 0;
-      downAt = null;
-      if (moved > 6) return; // a drag to look around
-      goTo(e.pixelPoint[0], e.pixelPoint[1]);
-    });
-    viewer.on('dblclick', () => void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined));
-    // Touch: the viewer reports no clicks for taps. A quick still tap goes to the spot; two taps step forward.
-    let touch: { x: number; y: number; t: number } | null = null;
     let tapTimer = 0;
     let lastTap = 0;
-    const tStart = (e: TouchEvent) => {
-      const t = e.touches[0];
-      const r = el.getBoundingClientRect();
-      touch = e.touches.length === 1 ? { x: t.clientX - r.left, y: t.clientY - r.top, t: Date.now() } : null;
-    };
-    const tEnd = (e: TouchEvent) => {
-      const t = e.changedTouches[0];
-      if (!touch || !t) return;
-      const r = el.getBoundingClientRect();
-      const x = t.clientX - r.left,
-        y = t.clientY - r.top;
-      const still = Math.hypot(x - touch.x, y - touch.y) < 10 && Date.now() - touch.t < 350;
-      touch = null;
-      if (!still) return;
-      clearTimeout(tapTimer);
-      if (Date.now() - lastTap < 320) {
-        lastTap = 0;
-        void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined);
-        return;
-      }
-      lastTap = Date.now();
-      tapTimer = window.setTimeout(() => goTo(x, y), 320);
-    };
-    el.addEventListener('touchstart', tStart, { passive: true });
-    el.addEventListener('touchend', tEnd, { passive: true });
+    const stopTaps = watchTaps(
+      el,
+      ({ x, y, touch }) => {
+        clearTimeout(tapTimer);
+        if (Date.now() - lastTap < 320) {
+          lastTap = 0;
+          void viewer.moveDir(NavigationDirection.StepForward).catch(() => undefined);
+          return;
+        }
+        lastTap = Date.now();
+        const target = renderer.unprojectGround(x, y, el.clientWidth, el.clientHeight);
+        if (!target) return;
+        renderer.setCursor(target);
+        // A mouse click goes at once; a tap waits a moment, to show where and to hear a second tap.
+        if (touch)
+          tapTimer = window.setTimeout(() => {
+            goToward(target);
+            renderer.setCursor(null);
+          }, 320);
+        else goToward(target);
+      },
+      () => renderer.setCursor(null),
+    );
     viewer.on('position', report);
     viewer.on('pov', report);
     viewer.on('fov', report);
@@ -289,8 +272,7 @@ export default function PhotoViewer({ token, photo, pin, districts, parcel, show
       cancelAnimationFrame(frame);
       cancelAnimationFrame(cursorFrame);
       clearTimeout(tapTimer);
-      el.removeEventListener('touchstart', tStart);
-      el.removeEventListener('touchend', tEnd);
+      stopTaps();
       ro.disconnect();
       viewer.remove();
       viewerRef.current = null;

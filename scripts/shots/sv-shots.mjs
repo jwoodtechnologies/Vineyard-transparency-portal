@@ -115,6 +115,30 @@ const streetViewOn = async (page) => {
   await page.waitForSelector('.vc-map-tools-item.vc-pegman:not([disabled])', { timeout: 30000 });
   await page.click('.vc-map-tools-item.vc-pegman');
 };
+/** A 200 px sideways drag (mouse or one finger) starting at the middle of `box`. */
+async function drag200(ctx, page, box, touch) {
+  const x = box.x + box.width / 2 - 100, y = box.y + box.height * 0.6;
+  if (touch) {
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] });
+    for (let i = 1; i <= 20; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + i * 10, y, id: 1 }] });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  } else {
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 200, y, { steps: 20 });
+    await page.mouse.up();
+  }
+}
+/** Counts parcel lookups, which the page makes each time the pin moves. */
+const pinMoves = (page) => {
+  const c = { n: 0 };
+  page.on('request', (r) => /\/api\/map\/parcel\?/.test(r.url()) && c.n++);
+  return c;
+};
 const attribution = (page) => page.getAttribute('.vc-svp-view', 'data-image').catch(() => '');
 
 for (const prof of PROFILES) {
@@ -153,6 +177,16 @@ for (const prof of PROFILES) {
         run.photoShownMs = shown ? Date.now() - t0 : null;
         await page.waitForTimeout(3500);
         await page.screenshot({ path: `${OUT}/${tag}-2-photo.png` });
+        {
+          // A 200 px drag only looks around: the same photo, no pin move.
+          const moves = pinMoves(page);
+          const before = await attribution(page);
+          const v = await page.locator('.vc-svp-canvas').boundingBox();
+          await drag200(ctx, page, v, prof.ctx.hasTouch);
+          await page.waitForTimeout(3000);
+          run.drag200 = { samePhoto: before === (await attribution(page)), pinMoves: moves.n };
+          run.drag200.ok = run.drag200.samePhoto && moves.n === 0;
+        }
         run.date = (await page.textContent('.vc-svp-when').catch(() => ''))?.trim();
         run.dateOptions = await page.locator('.vc-svp-when option').allTextContents();
         run.chips = await page.locator('.vc-svp-chip').allTextContents();
@@ -221,6 +255,24 @@ for (const prof of PROFILES) {
       await page.waitForTimeout(6000);
       await page.screenshot({ path: `${OUT}/${prof.name}-6-3d.png` });
       run.note = (await page.textContent('.vc-sv-note'))?.trim();
+      {
+        // A 200 px drag turns the view and never moves the pin; a still tap on the ground does.
+        const moves = pinMoves(page);
+        const m = await page.locator('.vc-map').boundingBox();
+        if (!prof.ctx.hasTouch) {
+          await page.mouse.move(m.x + m.width / 2, m.y + m.height * 0.75);
+          await page.waitForTimeout(500);
+          run.ringOnHover = await page.locator('.vc-sv-ring').count();
+        }
+        await drag200(ctx, page, m, prof.ctx.hasTouch);
+        await page.waitForTimeout(2500);
+        run.drag200 = { pinMoves: moves.n, ringAfterDrag: await page.locator('.vc-sv-ring:not(.is-tap)').count() };
+        if (prof.ctx.hasTouch) await touchTap(ctx, page, m.x + m.width / 2, m.y + m.height * 0.8);
+        else await page.mouse.click(m.x + m.width / 2, m.y + m.height * 0.8);
+        await page.waitForTimeout(2500);
+        run.drag200.tapMoves = moves.n;
+        run.drag200.ok = run.drag200.pinMoves === 0 && moves.n >= 1;
+      }
       // Looking around: a drag turns the view, the buttons turn and step, the compass faces north again.
       const facing = async () => Number(((await page.getAttribute('.vc-sv-compass', 'aria-label')) ?? '').match(/facing (-?\d+)/)?.[1] ?? NaN);
       const pinY = async () => (await page.locator('.vc-sv-pin').boundingBox().catch(() => null))?.y ?? null;

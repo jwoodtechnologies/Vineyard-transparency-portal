@@ -71,3 +71,28 @@ export function pinMarker(map: maplibregl.Map, at: Pos, onMoved: (to: Pos) => vo
   });
   return m;
 }
+
+/**
+ * A ring lying on the ground where a click would put the pin: under the mouse while it hovers (hidden while
+ * dragging), and briefly at a tapped spot before the pin moves there.
+ */
+export function groundRing(map: maplibregl.Map): { show: (at: Pos, tapped?: boolean) => void; hide: () => void; remove: () => void } {
+  const el = document.createElement('div');
+  el.className = 'vc-sv-ring';
+  el.setAttribute('aria-hidden', 'true');
+  const m = new maplibregl.Marker({ element: el, pitchAlignment: 'map', rotationAlignment: 'map' });
+  let on = false;
+  return {
+    show: (at, tapped = false) => {
+      m.setLngLat(at);
+      el.classList.toggle('is-tap', tapped);
+      if (!on) m.addTo(map);
+      on = true;
+    },
+    hide: () => {
+      if (on) m.remove();
+      on = false;
+    },
+    remove: () => m.remove(),
+  };
+}
