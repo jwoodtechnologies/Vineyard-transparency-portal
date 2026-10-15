@@ -149,6 +149,33 @@ async function fps(page, ms) {
   return counting;
 }
 
+// At the east view: every layer below the buildings, then the same view without the hillshade, without the
+// snow, and with the snow drawn red, so a grey summit can be traced to the layer that greys it.
+async function probe(page, name) {
+  const out = await page.evaluate(() => {
+    const m = window.__vtpMap;
+    if (!m) return null;
+    return m.getStyle().layers.slice(0, 8).map((l) => `${l.id}:${l.type}:${m.getLayoutProperty(l.id, 'visibility') ?? 'visible'}`);
+  });
+  const variants = [
+    ['no-shade', (m) => m.setLayoutProperty('vtp-sv-hillshade', 'visibility', 'none'), (m) => m.setLayoutProperty('vtp-sv-hillshade', 'visibility', 'visible')],
+    ['no-snow', (m) => m.setLayoutProperty('vtp-sv-snow', 'visibility', 'none'), (m) => m.setLayoutProperty('vtp-sv-snow', 'visibility', 'visible')],
+  ];
+  for (const [tag, on, off] of variants) {
+    await page.evaluate(`(${on})(window.__vtpMap)`);
+    await page.waitForTimeout(10000);
+    await page.screenshot({ path: `${OUT}/${name}-east-${tag}.png`, timeout: 120000 }).catch(() => undefined);
+    await page.evaluate(`(${off})(window.__vtpMap)`);
+  }
+  const ramp = await page.evaluate(() => JSON.stringify(window.__vtpMap.getPaintProperty('vtp-sv-snow', 'color-relief-color')));
+  await page.evaluate(() => window.__vtpMap.setPaintProperty('vtp-sv-snow', 'color-relief-color', ['step', ['elevation'], 'rgba(255,0,0,0)', 2550, 'rgba(255,0,0,1)']));
+  await page.waitForTimeout(10000);
+  await page.screenshot({ path: `${OUT}/${name}-east-red.png`, timeout: 120000 }).catch(() => undefined);
+  await page.evaluate((r) => window.__vtpMap.setPaintProperty('vtp-sv-snow', 'color-relief-color', JSON.parse(r)), ramp);
+  await page.waitForTimeout(5000);
+  return out;
+}
+
 for (const prof of PROFILES) {
   for (const scenery of [true, false]) {
     const run = { tag: `${prof.name}-${scenery ? 'scenery' : 'plain'}`, cpuSlowdown: prof.cpu };
@@ -179,6 +206,7 @@ for (const prof of PROFILES) {
             await page.waitForTimeout(20000);
             await page.screenshot({ path: `${OUT}/${prof.name}-${name}.png`, timeout: 120000 });
             run[`facing_${name}`] = await facing(page);
+            if (name === 'east') run.probe = await probe(page, prof.name);
           } catch (e) {
             run[`error_${name}`] = redact(e).slice(0, 200);
           }
