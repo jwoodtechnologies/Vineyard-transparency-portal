@@ -67,7 +67,7 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   const streets = Boolean(map.getSource('openmaptiles'));
   const src = streets ? 'openmaptiles' : OWN_SRC;
   if (src === OWN_SRC && !map.getSource(OWN_SRC)) map.addSource(OWN_SRC, { type: 'vector', url: OFM });
-  if (scenery()) addScenery(map, SHADE_SRC, streets ? null : src, SHADE);
+  if (scenery()) addScenery(map, SHADE_SRC, streets ? null : src, SHADE, firstAboveGround(map));
   showBuildings(map);
   prefetchTerrain(map.getCenter());
   if (map.getLayer(LAYER)) {
