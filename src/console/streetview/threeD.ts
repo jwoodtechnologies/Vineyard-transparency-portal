@@ -27,8 +27,9 @@ const SHADE_SRC = 'vtp-sv-dem-shade';
 const SHADE = 'vtp-sv-hillshade';
 
 /**
- * The sky: a clear light blue overhead going pale at the horizon. Haze starts about two thirds of the way
- * to the horizon, so the Lake Mountains, West Mountain and Nebo show softened by distance, not cut off.
+ * The sky: a clear light blue overhead going pale at the horizon. Haze starts about four fifths of the way
+ * to the horizon: the near Wasatch stays crisp (its snow white), and the Lake Mountains, West Mountain and
+ * Nebo show softened by distance, not cut off.
  */
 export const SKY: maplibregl.SkySpecification = {
   'sky-color': '#6eaee6',
@@ -36,7 +37,7 @@ export const SKY: maplibregl.SkySpecification = {
   'fog-color': '#dfe8f0',
   'sky-horizon-blend': 0.65,
   'horizon-fog-blend': 0.5,
-  'fog-ground-blend': 0.7,
+  'fog-ground-blend': 0.82,
   'atmosphere-blend': 0,
 };
 
@@ -56,10 +57,11 @@ const firstAboveGround = (map: maplibregl.Map) => map.getStyle().layers.find((l)
 export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   map.setSky(SKY);
   if (!map.getSource(DEM)) map.addSource(DEM, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 12, attribution: DEM_ATTR });
-  // The shading reads its own copy of the tiles, as MapLibre advises when terrain uses the same data.
+  // The shading reads its own copy of the tiles, as MapLibre advises when terrain uses the same data. Shadows
+  // only, with a faint highlight: a white highlight washed every slope pale, so the snow no longer stood out.
   if (!map.getSource(SHADE_SRC)) map.addSource(SHADE_SRC, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 12 });
   if (!map.getLayer(SHADE))
-    map.addLayer({ id: SHADE, type: 'hillshade', source: SHADE_SRC, paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#303030', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#3c3c3c' } }, firstAboveGround(map));
+    map.addLayer({ id: SHADE, type: 'hillshade', source: SHADE_SRC, paint: { 'hillshade-exaggeration': 0.5, 'hillshade-shadow-color': 'rgba(0, 0, 0, 0.55)', 'hillshade-highlight-color': 'rgba(255, 255, 255, 0.12)', 'hillshade-accent-color': 'rgba(0, 0, 0, 0.3)' } }, firstAboveGround(map));
   if (!map.getTerrain()) map.setTerrain({ source: DEM, exaggeration: 1 });
   // The streets map already has OpenFreeMap's source (and draws water blue); satellite and plain maps get their own.
   const streets = Boolean(map.getSource('openmaptiles'));

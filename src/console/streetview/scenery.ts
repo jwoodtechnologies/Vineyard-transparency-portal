@@ -4,7 +4,7 @@
  * the hillshade, so the slopes keep their shading and the photo shows through.
  *
  * The snow is a color relief from the same elevation tiles as the terrain: clear below SNOW_START, then
- * patchy from about 2,700 m and solid white from about 3,000 m. The tiles are about 30 m apart, so the edge
+ * patchy from about 2,650 m and solid white from about 2,950 m. The tiles are about 30 m apart, so the edge
  * is soft on its own. The water is OpenFreeMap's water shapes in a natural lake blue that covers most of
  * the green in the aerial photos. (No blurred shore line: the shapes are cut at tile edges, and a line along
  * them drew seams across the lake.)
@@ -12,9 +12,9 @@
 import type * as maplibregl from 'maplibre-gl';
 
 /** Where snow starts to show, in meters (patchy up to SNOW_FULL). */
-export const SNOW_START = 2700;
-/** Where it is solid, bright white, in meters (Timpanogos's summit is 3,582 m). */
-export const SNOW_FULL = 3000;
+export const SNOW_START = 2650;
+/** Where it is solid, bright white, in meters (Timpanogos's summit is 3,582 m; its upper bowls are 3,000 to 3,400). */
+export const SNOW_FULL = 2950;
 
 export const SNOW_LAYER = 'vtp-sv-snow';
 export const WATER_LAYER = 'vtp-sv-water';
@@ -34,17 +34,17 @@ export const snowColor = (): maplibregl.ExpressionSpecification => [
   ['elevation'],
   SNOW_START,
   'rgba(255, 255, 255, 0)',
-  2780,
-  'rgba(255, 255, 255, 0.32)',
+  2720,
+  'rgba(255, 255, 255, 0.35)',
+  2770,
+  'rgba(255, 255, 255, 0.22)',
   2830,
-  'rgba(255, 255, 255, 0.2)',
+  'rgba(255, 255, 255, 0.7)',
   2880,
-  'rgba(255, 255, 255, 0.62)',
-  2930,
-  'rgba(255, 255, 255, 0.5)',
+  'rgba(255, 255, 255, 0.55)',
   SNOW_FULL,
-  'rgba(255, 255, 255, 0.96)',
-  3100,
+  'rgba(255, 255, 255, 0.97)',
+  3050,
   'rgba(255, 255, 255, 1)',
 ];
 
