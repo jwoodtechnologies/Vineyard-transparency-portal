@@ -1,0 +1,154 @@
+{
+  "steps": [
+    {
+      "name": "street view",
+      "mode": "3d",
+      "bar": [
+        "Close",
+        "Layers",
+        "Google"
+      ]
+    },
+    {
+      "name": "tools open",
+      "layersOnTop": "yes",
+      "hintShown": false,
+      "overlaps": [],
+      "problems": []
+    },
+    {
+      "name": "layers from tools",
+      "panel": true,
+      "projectsOn": true
+    },
+    {
+      "name": "project tap",
+      "tappedAt": [
+        43,
+        420
+      ],
+      "where": {
+        "ground": [
+          -111.750421,
+          40.295779
+        ],
+        "inside": true,
+        "ringPoints": 53,
+        "ringBox": [
+          -111.75172,
+          40.29552,
+          -111.74837,
+          40.29697
+        ]
+      },
+      "tries": 3,
+      "frameMsBeforeTries": [
+        961,
+        17,
+        17
+      ],
+      "projected": true,
+      "card": 0,
+      "title": null,
+      "kind": null,
+      "cardBox": null,
+      "pinSame": true,
+      "facingSame": true
+    },
+    {
+      "name": "layers from bar",
+      "panel": true,
+      "zoningOn": true,
+      "projectsOff": true
+    },
+    {
+      "name": "zone tap",
+      "tries": 1,
+      "frameMsBeforeTries": [
+        5599
+      ],
+      "card": 1,
+      "kind": "Zoning",
+      "title": "R-1-10",
+      "pinSame": true,
+      "facingSame": true
+    }
+  ],
+  "project": {
+    "name": "Engineering for Field (Gammon Park / Robin's Property)",
+    "at": [
+      -111.750008,
+      40.296431
+    ]
+  },
+  "notes": [],
+  "rightEdge": [
+    "70: canvas.maplibregl-canvas",
+    "95: canvas.maplibregl-canvas",
+    "120: canvas.maplibregl-canvas",
+    "145: canvas.maplibregl-canvas",
+    "170: canvas.maplibregl-canvas",
+    "195: canvas.maplibregl-canvas",
+    "220: canvas.maplibregl-canvas",
+    "245: canvas.maplibregl-canvas",
+    "270: canvas.maplibregl-canvas",
+    "295: canvas.maplibregl-canvas",
+    "320: canvas.maplibregl-canvas",
+    "345: canvas.maplibregl-canvas",
+    "370: canvas.maplibregl-canvas",
+    "395: canvas.maplibregl-canvas",
+    "420: canvas.maplibregl-canvas"
+  ],
+  "projectTap": {
+    "tappedAt": [
+      43,
+      420
+    ],
+    "where": {
+      "ground": [
+        -111.750421,
+        40.295779
+      ],
+      "inside": true,
+      "ringPoints": 53,
+      "ringBox": [
+        -111.75172,
+        40.29552,
+        -111.74837,
+        40.29697
+      ]
+    },
+    "tries": 3,
+    "frameMsBeforeTries": [
+      961,
+      17,
+      17
+    ],
+    "projected": true,
+    "card": 0,
+    "title": null,
+    "kind": null,
+    "cardBox": null,
+    "pinSame": true,
+    "facingSame": true
+  },
+  "zoneTap": {
+    "tries": 1,
+    "frameMsBeforeTries": [
+      5599
+    ],
+    "card": 1,
+    "kind": "Zoning",
+    "title": "R-1-10",
+    "pinSame": true,
+    "facingSame": true
+  },
+  "ok": {
+    "layersTappable": true,
+    "hintHiddenWithMenu": true,
+    "noOverlap": true,
+    "projectCard": false,
+    "zoneCard": true,
+    "labels": true
+  }
+}
