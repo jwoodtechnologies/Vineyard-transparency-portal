@@ -187,6 +187,26 @@ for (const prof of PROFILES) {
           run.drag200 = { samePhoto: before === (await attribution(page)), pinMoves: moves.n };
           run.drag200.ok = run.drag200.samePhoto && moves.n === 0;
         }
+        if (!dark) {
+          // Zoning on in the photo: a district chip opens the zone's card, and the photo stays where it is.
+          await page.click('.vc-svp .vc-sv-bar-btn[aria-pressed]', { force: true });
+          await page.waitForTimeout(3000);
+          const before = await attribution(page);
+          const chip = page.locator('button.vc-svp-chip').first();
+          run.photoZoning = { chips: await page.locator('button.vc-svp-chip').count(), hint: (await page.textContent('.vc-svp .vc-sv-hint').catch(() => ''))?.trim() };
+          if (run.photoZoning.chips) {
+            await chip.click({ force: true });
+            await page.waitForTimeout(2500);
+            run.photoZoning.card = await page.locator('.vc-map-card[data-over-sv]').count();
+            run.photoZoning.title = ((await page.textContent('.vc-map-card').catch(() => '')) ?? '').trim().slice(0, 60);
+            await page.screenshot({ path: `${OUT}/${tag}-2c-zone-card.png` });
+            if (run.photoZoning.card) await page.click('button[aria-label="Close details"]', { force: true });
+            await page.waitForTimeout(800);
+          }
+          run.photoZoning.samePhoto = before === (await attribution(page));
+          await page.click('.vc-svp .vc-sv-bar-btn[aria-pressed]', { force: true });
+          await page.waitForTimeout(800);
+        }
         run.date = (await page.textContent('.vc-svp-when').catch(() => ''))?.trim();
         run.dateOptions = await page.locator('.vc-svp-when option').allTextContents();
         run.chips = await page.locator('.vc-svp-chip').allTextContents();
