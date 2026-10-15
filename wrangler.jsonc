@@ -7,7 +7,7 @@
   "main": "worker/index.ts",
   "compatibility_date": "2026-09-01",
   "workers_dev": true,
-  // Keep variables set in the Cloudflare dashboard (MAPILLARY_TOKEN) when deploying.
+  // Keep variables set in the Cloudflare dashboard (MAPILLARY_TOKEN, GOOGLE_MAPS_KEY, GOOGLE_SV_DAILY_CAP) when deploying.
   "keep_vars": true,
   "preview_urls": false,
   "assets": {

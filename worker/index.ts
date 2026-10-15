@@ -22,6 +22,7 @@ import { listEvents } from './api/events';
 import { getMapLayer, getParcelAt, getParcelLines, getParcelOutlines, getStories, listMapLayers } from './api/map';
 import { getElevation } from './lib/elevation';
 import { getStreetviewConfig } from './lib/streetview';
+import { openGoogle } from './lib/googleSv';
 import { getLatest } from './api/latest';
 import { getBudget, getBudgetArchive } from './api/budget';
 import { getDraftMinutes } from './api/draftMinutes';
@@ -102,6 +103,7 @@ async function route(request: Request, env: Env, url: URL, ctx: ExecutionContext
     if (a === 'add' && parts.length === 1) return addForm(env, request);
     if (a === 'add' && b === 'file' && parts.length === 2) return addFile(env, request);
     if (a === 'add' && b === 'report' && parts.length === 2) return reportSubmission(env, request);
+    if (a === 'streetview' && b === 'google' && c === 'open' && parts.length === 3) return openGoogle(env);
     throw new HttpError(405, 'method_not_allowed', 'Method not allowed.');
   }
 

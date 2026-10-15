@@ -23,6 +23,10 @@ export interface Env {
   SEARCH_SHARDS?: string;
   /** Mapillary client token for the map's street photos (GET /api/streetview/config). Set in the Cloudflare dashboard, never in the repo. */
   MAPILLARY_TOKEN?: string;
+  /** Maps JavaScript API browser key for the Google Street View mode (POST /api/streetview/google/open). Cloudflare dashboard only, never in the repo. */
+  GOOGLE_MAPS_KEY?: string;
+  /** Opens of the Google Street View mode allowed per UTC day (default 150). */
+  GOOGLE_SV_DAILY_CAP?: string;
   /** Comma-separated shard numbers that receive newly indexed documents. */
   SEARCH_WRITE_SHARDS?: string;
   /** Pause indexing when a search shard database passes this size (bytes). */
