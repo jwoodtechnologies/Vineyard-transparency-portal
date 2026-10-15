@@ -176,11 +176,23 @@ try {
     const pin = await page.locator('.vc-sv-pin').boundingBox().catch(() => null);
     const clear = (p) => !pin || Math.hypot(p.x - (pin.x + pin.width / 2), p.y - (pin.y + pin.height / 2)) > 60;
     const tp = point?.inView && clear(point) ? point : { x: mb.x + mb.width / 2, y: mb.y + mb.height * 0.78 };
+    // Where that tap lands on the ground, and whether it is inside the project's outline.
+    const ground = await page.evaluate(([x, y]) => {
+      const m = window.__vtpMap;
+      if (!m) return null;
+      const c = m.getContainer().getBoundingClientRect();
+      const ll = m.unproject([x - c.left, y - c.top]);
+      return [ll.lng, ll.lat];
+    }, [tp.x, tp.y]);
+    const xs = project?.ring.map((p) => p[0]) ?? [0],
+      ys = project?.ring.map((p) => p[1]) ?? [0];
+    const where = { ground: ground?.map((v) => +v.toFixed(6)), inside: ground && project ? inRing(ground, project.ring) : null, ringPoints: project?.ring.length, ringBox: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map((v) => +v.toFixed(5)) };
     await tap(tp.x, tp.y);
     await page.waitForTimeout(3000);
     const card = page.locator('.vc-map-card[data-over-sv]');
     const r = {
       tappedAt: [Math.round(tp.x), Math.round(tp.y)],
+      where,
       projected: Boolean(point?.inView),
       card: await card.count(),
       title: (await card.locator('.vc-map-card-title').textContent().catch(() => null))?.trim() ?? null,
