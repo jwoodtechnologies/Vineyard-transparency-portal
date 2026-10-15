@@ -142,14 +142,44 @@ function prefetchTerrain(c: { lng: number; lat: number }): void {
 /** How far from the view's center buildings are redrawn with recorded heights, in degrees of latitude. */
 const NEAR_DEG = 0.011;
 
-const heights = new WeakMap<maplibregl.Map, { stop: () => void }>();
+const heights = new WeakMap<maplibregl.Map, { stop: () => void; redraw: () => void }>();
+
+/** Where the street view camera stands (eye.ts), per map; a building around it is left out. */
+const eyes = new WeakMap<maplibregl.Map, Pos | null>();
+
+/**
+ * Tells the 3D view where the eye level camera stands. Any building whose outline is within EYE_CLEAR_M of
+ * that spot is left out, so the camera is never inside a wall (OpenStreetMap has small buildings mapped on
+ * or beside some roads). The plain building layer is hidden meanwhile; the redrawn one holds every other
+ * building.
+ */
+export function setEye(map: maplibregl.Map, at: Pos | null): void {
+  eyes.set(map, at);
+  if (at && map.getLayer(LAYER)) map.setPaintProperty(LAYER, 'fill-extrusion-opacity', 0);
+  heights.get(map)?.redraw();
+}
+const EYE_CLEAR_M = 4;
+
+/** Whether a building outline covers the eye or comes within EYE_CLEAR_M of it. */
+function aroundEye(rings: Pos[][], eye: Pos): boolean {
+  const kx = 111320 * Math.cos((eye[1] * Math.PI) / 180);
+  const probes: Pos[] = [eye];
+  for (let a = 0; a < 360; a += 45) probes.push([eye[0] + (EYE_CLEAR_M * Math.sin((a * Math.PI) / 180)) / kx, eye[1] + (EYE_CLEAR_M * Math.cos((a * Math.PI) / 180)) / 110540]);
+  return rings.some((r) => probes.some((p) => ringHas(r, p)));
+}
+function ringHas(r: Pos[], p: Pos): boolean {
+  let inside = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++)
+    if (r[i][1] > p[1] !== r[j][1] > p[1] && p[0] < ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) inside = !inside;
+  return inside;
+}
 
 /**
  * Keeps the buildings at their recorded heights: when the view settles, loads the assessor's floors for
  * the zoom 16 tiles around it (once each), reads OpenFreeMap's buildings in view, and redraws them with the
  * chosen heights. The plain layer stays underneath, invisible, so its tiles keep loading.
  */
-function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void } {
+function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void; redraw: () => void } {
   const index = new StoryIndex();
   const asked = new Set<string>();
   let stopped = false;
@@ -163,10 +193,18 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void }
       const p = g.type === 'Polygon' ? g.coordinates[0]?.[0] : g.type === 'MultiPolygon' ? g.coordinates[0]?.[0]?.[0] : null;
       return p != null && Math.abs(p[0] - c.lng) < NEAR_DEG * 1.3 && Math.abs(p[1] - c.lat) < NEAR_DEG;
     });
-    const key = `${feats.length}:${index.size}`;
+    const eye = eyes.get(map) ?? null;
+    const key = `${feats.length}:${index.size}:${eye?.join(',') ?? ''}`;
     if (key === shown || !feats.length) return;
     shown = key;
-    const fc = withHeights(feats.map((f) => ({ geometry: f.geometry as Polygon | MultiPolygon, properties: f.properties })), index);
+    const kept = eye
+      ? feats.filter((f) => {
+          const g = f.geometry;
+          const rings = (g.type === 'Polygon' ? [g.coordinates[0]] : g.type === 'MultiPolygon' ? g.coordinates.map((x) => x[0]) : []) as Pos[][];
+          return !aroundEye(rings, eye);
+        })
+      : feats;
+    const fc = withHeights(kept.map((f) => ({ geometry: f.geometry as Polygon | MultiPolygon, properties: f.properties })), index);
     (map.getSource(H_SRC) as maplibregl.GeoJSONSource).setData(fc);
     if (map.getLayer(LAYER)) map.setPaintProperty(LAYER, 'fill-extrusion-opacity', 0);
   };
@@ -201,6 +239,10 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void }
     stop: () => {
       stopped = true;
       map.off('idle', later);
+    },
+    redraw: () => {
+      shown = '';
+      draw();
     },
   };
 }

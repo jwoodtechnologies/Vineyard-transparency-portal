@@ -6,10 +6,10 @@ export const EYE_M = 3;
 export const EYE_MAX_ZOOM = 24;
 
 /** Map center (meters ahead of the pin) and zoom for the eye at `pin`, for a view `heightPx` tall. */
-export function eyeGeometry(lat: number, pitch: number, fovDeg: number, heightPx: number): { ahead: number; zoom: number } {
+export function eyeGeometry(lat: number, pitch: number, fovDeg: number, heightPx: number, eyeM = EYE_M): { ahead: number; zoom: number } {
   const p = (Math.min(pitch, 89) * Math.PI) / 180;
-  const ahead = EYE_M * Math.tan(p);
-  const dist = EYE_M / Math.cos(p);
+  const ahead = eyeM * Math.tan(p);
+  const dist = eyeM / Math.cos(p);
   // MapLibre's camera stands this many pixels from the center: half the view's height over tan(fov / 2).
   const camPx = (0.5 * heightPx) / Math.tan((fovDeg * Math.PI) / 360);
   const metersPerPx = dist / camPx;

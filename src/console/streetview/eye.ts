@@ -11,12 +11,21 @@
  */
 import type * as maplibregl from 'maplibre-gl';
 import { destination, type Pos } from '../measure/geo';
-import { eyeGeometry } from './eyeMath';
+import { EYE_M, eyeGeometry } from './eyeMath';
 
 export { EYE_M, EYE_MAX_ZOOM } from './eyeMath';
 
 /** The camera at the pin, at eye height, facing `bearing`, tilted `pitch`. */
 export function eyeView(map: maplibregl.Map, pin: Pos, bearing: number, pitch: number): maplibregl.CameraOptions {
-  const { ahead, zoom } = eyeGeometry(pin[1], pitch, map.getVerticalFieldOfView(), map.getCanvas().clientHeight || 600);
-  return { center: destination(pin, bearing, ahead), zoom, bearing, pitch };
+  const h = map.getCanvas().clientHeight || 600;
+  const fov = map.getVerticalFieldOfView();
+  let g = eyeGeometry(pin[1], pitch, fov, h);
+  // MapLibre keeps the camera at its height over the ground where the view is centered. Where the ground at
+  // the pin is higher than there (a slope), the eye goes up by the difference, so it never sinks under the
+  // terrain at the pin.
+  const at = map.queryTerrainElevation({ lng: pin[0], lat: pin[1] });
+  const c = destination(pin, bearing, g.ahead);
+  const ahead = map.queryTerrainElevation({ lng: c[0], lat: c[1] });
+  if (at != null && ahead != null && at > ahead) g = eyeGeometry(pin[1], pitch, fov, h, EYE_M + (at - ahead));
+  return { center: destination(pin, bearing, g.ahead), zoom: g.zoom, bearing, pitch };
 }
