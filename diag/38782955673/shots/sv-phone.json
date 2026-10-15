@@ -1,0 +1,262 @@
+{
+  "steps": [
+    {
+      "name": "street view",
+      "mode": "3d",
+      "bar": [
+        "Close",
+        "Layers",
+        "Google"
+      ]
+    },
+    {
+      "name": "tools open",
+      "layersOnTop": "yes",
+      "hintShown": false,
+      "overlaps": [
+        ".vc-map-tools-menu x .vc-sv-note"
+      ],
+      "problems": []
+    },
+    {
+      "name": "layers",
+      "panel": true,
+      "projectsOn": true,
+      "zoningOn": true
+    },
+    {
+      "name": "project tap",
+      "tappedAt": [
+        102,
+        467
+      ],
+      "where": {
+        "ground": [
+          -111.750183,
+          40.295527
+        ],
+        "inside": true,
+        "ringPoints": 53,
+        "ringBox": [
+          -111.75172,
+          40.29552,
+          -111.74837,
+          40.29697
+        ],
+        "page": {
+          "projects": [
+            "1200 North Bridge",
+            "1600 N Geneva Road Intersection Widening",
+            "300 West Striping & Design (Parking Implementation)",
+            "400 North & Mill Road Traffic Signal",
+            "Holdaway Fields 400 S Extension",
+            "Install Street Lights – 170 South",
+            "Traffic Signal – 600 N & Main",
+            "Vineyard Connector Overpass Bridge",
+            "Holdaway Road Complete Street Design & Survey",
+            "Rail Consolidation",
+            "Public Works Building Expansion & Improvements",
+            "Slide Hill at Grove Park"
+          ],
+          "zones": 21,
+          "at": {
+            "ground": [
+              -111.750117319503,
+              40.29497021137628
+            ],
+            "stand": [
+              -111.75012075035328,
+              40.294930944700475
+            ],
+            "plain": [
+              -111.75018299999931,
+              40.295527499998286
+            ],
+            "card": "Engineering for Field (Gammon Park / Robin's Property)",
+            "phase": "3d"
+          }
+        }
+      },
+      "tries": 1,
+      "frameMsBeforeTries": [
+        17
+      ],
+      "projected": true,
+      "card": 1,
+      "title": "Engineering for Field (Gammon Park / Robin's Property)",
+      "kind": "Capital projects",
+      "cardBox": {
+        "x": 9.59375,
+        "y": 70.40625,
+        "width": 370.8125,
+        "height": 688
+      },
+      "pinSame": true,
+      "facingSame": true,
+      "goHere": 1,
+      "afterGoHere": {
+        "card": 0,
+        "pinMoved": true
+      }
+    },
+    {
+      "name": "zone chip tap",
+      "card": 1,
+      "kind": "Zoning",
+      "title": "R-1-10",
+      "pinSame": true,
+      "overlaps": []
+    }
+  ],
+  "project": {
+    "name": "Engineering for Field (Gammon Park / Robin's Property)",
+    "at": [
+      -111.750008,
+      40.296431
+    ]
+  },
+  "notes": [],
+  "rightEdge": [
+    "70: canvas.maplibregl-canvas",
+    "95: canvas.maplibregl-canvas",
+    "120: canvas.maplibregl-canvas",
+    "145: canvas.maplibregl-canvas",
+    "170: canvas.maplibregl-canvas",
+    "195: canvas.maplibregl-canvas",
+    "220: canvas.maplibregl-canvas",
+    "245: canvas.maplibregl-canvas",
+    "270: canvas.maplibregl-canvas",
+    "295: canvas.maplibregl-canvas",
+    "320: canvas.maplibregl-canvas",
+    "345: canvas.maplibregl-canvas",
+    "370: canvas.maplibregl-canvas",
+    "395: canvas.maplibregl-canvas",
+    "420: canvas.maplibregl-canvas"
+  ],
+  "zoneChip": {
+    "text": "Zone: A-1",
+    "overlaps": [],
+    "hint": "Tap to move. Tap a project for details."
+  },
+  "projectTap": {
+    "tappedAt": [
+      102,
+      467
+    ],
+    "where": {
+      "ground": [
+        -111.750183,
+        40.295527
+      ],
+      "inside": true,
+      "ringPoints": 53,
+      "ringBox": [
+        -111.75172,
+        40.29552,
+        -111.74837,
+        40.29697
+      ],
+      "page": {
+        "projects": [
+          "1200 North Bridge",
+          "1600 N Geneva Road Intersection Widening",
+          "300 West Striping & Design (Parking Implementation)",
+          "400 North & Mill Road Traffic Signal",
+          "Holdaway Fields 400 S Extension",
+          "Install Street Lights – 170 South",
+          "Traffic Signal – 600 N & Main",
+          "Vineyard Connector Overpass Bridge",
+          "Holdaway Road Complete Street Design & Survey",
+          "Rail Consolidation",
+          "Public Works Building Expansion & Improvements",
+          "Slide Hill at Grove Park"
+        ],
+        "zones": 21,
+        "at": {
+          "ground": [
+            -111.750117319503,
+            40.29497021137628
+          ],
+          "stand": [
+            -111.75012075035328,
+            40.294930944700475
+          ],
+          "plain": [
+            -111.75018299999931,
+            40.295527499998286
+          ],
+          "card": "Engineering for Field (Gammon Park / Robin's Property)",
+          "phase": "3d"
+        }
+      }
+    },
+    "tries": 1,
+    "frameMsBeforeTries": [
+      17
+    ],
+    "projected": true,
+    "card": 1,
+    "title": "Engineering for Field (Gammon Park / Robin's Property)",
+    "kind": "Capital projects",
+    "cardBox": {
+      "x": 9.59375,
+      "y": 70.40625,
+      "width": 370.8125,
+      "height": 688
+    },
+    "pinSame": true,
+    "facingSame": true,
+    "goHere": 1,
+    "afterGoHere": {
+      "card": 0,
+      "pinMoved": true
+    }
+  },
+  "groundTap": {
+    "page": {
+      "ground": [
+        -111.75017962480099,
+        40.29378595194436
+      ],
+      "stand": [
+        -111.75017962480099,
+        40.29378595194436
+      ],
+      "plain": [
+        -111.75017962480099,
+        40.29378595194436
+      ],
+      "card": null,
+      "phase": "3d"
+    },
+    "tries": 3,
+    "frameMsBeforeTries": [
+      33,
+      17,
+      17
+    ],
+    "before": "-111.750121,40.294931",
+    "after": "-111.750121,40.294931",
+    "moved": false,
+    "card": 0,
+    "photo": 0
+  },
+  "zoneTap": {
+    "card": 1,
+    "kind": "Zoning",
+    "title": "R-1-10",
+    "pinSame": true,
+    "overlaps": []
+  },
+  "ok": {
+    "layersTappable": true,
+    "hintHiddenWithMenu": true,
+    "noOverlap": true,
+    "projectCard": true,
+    "goHere": true,
+    "groundTapMoves": false,
+    "zoneChip": true,
+    "zoneCard": true,
+    "labels": true
+  }
+}
