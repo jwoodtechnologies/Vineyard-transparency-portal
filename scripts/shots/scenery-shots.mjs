@@ -173,13 +173,13 @@ async function probe(page, name) {
   ];
   for (const [tag, on, off] of variants) {
     await page.evaluate(`(${on})(window.__vtpMap)`);
-    await page.waitForTimeout(10000);
+    await page.waitForTimeout(25000);
     await page.screenshot({ path: `${OUT}/${name}-east-${tag}.png`, timeout: 120000 }).catch(() => undefined);
     await page.evaluate(`(${off})(window.__vtpMap)`);
   }
   const ramp = await page.evaluate(() => JSON.stringify(window.__vtpMap.getPaintProperty('vtp-sv-snow', 'color-relief-color')));
-  await page.evaluate(() => window.__vtpMap.setPaintProperty('vtp-sv-snow', 'color-relief-color', ['step', ['elevation'], 'rgba(255,0,0,0)', 2550, 'rgba(255,0,0,1)']));
-  await page.waitForTimeout(10000);
+  await page.evaluate(() => window.__vtpMap.setPaintProperty('vtp-sv-snow', 'color-relief-color', ['step', ['elevation'], 'rgba(255,0,0,0)', 2400, 'rgba(255,0,0,1)']));
+  await page.waitForTimeout(25000);
   await page.screenshot({ path: `${OUT}/${name}-east-red.png`, timeout: 120000 }).catch(() => undefined);
   await page.evaluate((r) => window.__vtpMap.setPaintProperty('vtp-sv-snow', 'color-relief-color', JSON.parse(r)), ramp);
   await page.waitForTimeout(5000);

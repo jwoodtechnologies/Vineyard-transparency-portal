@@ -5,18 +5,19 @@
  * through so the ridges and gullies stay readable.
  *
  * The snow is a color relief from the same elevation tiles as the terrain: clear below SNOW_START, then
- * patchy from about 2,550 m and solid white from about 2,850 m (Timpanogos's summit ridge and upper bowls, and
- * the tops of Cascade and Provo Peak). The tiles are about 30 m apart, so the edge
- * is soft on its own. The water is OpenFreeMap's water shapes in a natural lake blue that covers most of
+ * patchy from about 2,400 m and nearly solid white from about 2,700 m (Timpanogos's summit ridge and upper
+ * bowls, and the tops of Cascade and Provo Peak). Far mountains are drawn from coarser elevation tiles that
+ * average the peaks down a few hundred meters, so the ramp sits low enough that they still read white. The
+ * tiles are about 30 m apart near the view, so the edge is soft on its own. The water is OpenFreeMap's water shapes in a natural lake blue that covers most of
  * the green in the aerial photos. (No blurred shore line: the shapes are cut at tile edges, and a line along
  * them drew seams across the lake.)
  */
 import type * as maplibregl from 'maplibre-gl';
 
 /** Where snow starts to show, in meters (patchy up to SNOW_FULL). */
-export const SNOW_START = 2550;
-/** Where it is solid, bright white, in meters (Timpanogos's summit is 3,582 m; its upper bowls are 3,000 to 3,400). */
-export const SNOW_FULL = 2850;
+export const SNOW_START = 2400;
+/** Where it is nearly solid white, in meters (Timpanogos's summit is 3,582 m; its upper bowls are 3,000 to 3,400). */
+export const SNOW_FULL = 2700;
 
 export const SNOW_LAYER = 'vtp-sv-snow';
 export const WATER_LAYER = 'vtp-sv-water';
@@ -36,17 +37,17 @@ export const snowColor = (): maplibregl.ExpressionSpecification => [
   ['elevation'],
   SNOW_START,
   'rgba(255, 255, 255, 0)',
-  2610,
+  2460,
   'rgba(255, 255, 255, 0.4)',
-  2660,
+  2510,
   'rgba(255, 255, 255, 0.25)',
-  2730,
+  2580,
   'rgba(255, 255, 255, 0.75)',
-  2790,
+  2640,
   'rgba(255, 255, 255, 0.6)',
   SNOW_FULL,
-  'rgba(255, 255, 255, 0.88)',
-  3000,
+  'rgba(255, 255, 255, 0.9)',
+  2850,
   `rgba(255, 255, 255, ${SNOW_MAX})`,
 ];
 
