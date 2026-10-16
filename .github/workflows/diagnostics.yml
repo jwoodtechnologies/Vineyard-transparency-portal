@@ -151,7 +151,7 @@ jobs:
             # Data for the 3D street scene (scripts/data/fetch-world.mjs): OSM signs and paths, county CORS, a CC0 car model.
             node scripts/data/fetch-world.mjs --out "$OUT/world" > "$OUT/fetch-world.txt" 2>&1 || echo "exit=$?" >> "$OUT/fetch-world.txt"
             rm -f "$OUT/world/kenney-car-kit.zip"
-            find "$OUT/world/car-kit" -type f ! -iname "*.glb" ! -iname "License*" ! -iname "*.txt" -delete 2>/dev/null || true
+            find "$OUT/world/car-kit" -type f ! -iname "*.glb" ! -iname "License*" ! -iname "*.txt" ! -iname "colormap.png" -delete 2>/dev/null || true
           elif [[ "$TASK" == "drive-shots" ]]; then
             # Drive mode on the live site (scripts/shots/drive-shots.mjs): screenshots, a short recording, speeds.
             PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
