@@ -89,6 +89,9 @@ for (const spot of SPOTS) {
     await page.waitForTimeout(20000);
     const b = await page.screenshot({ path: `${OUT}/${spot.name}-2-turned.png`, timeout: 120000 });
     run.flat2 = await flatShare(page, b);
+    // The pin by now (a pin off the street moves onto it once the OpenStreetMap data is in) and the scene's notes.
+    run.pinLater = await page.locator('.vc-sv-pin').first().getAttribute('data-at').catch(() => null);
+    run.scene = await page.evaluate(() => window.__vtpScene ?? null);
     // Facing the Wasatch: how much of the band where the ridges are is white (snow), with the snow layer on,
     // off, and on without the haze (the cloud overlay hidden so only the map counts).
     if (spot.turns === 3) {
@@ -110,7 +113,7 @@ for (const spot of SPOTS) {
           return Math.round((n / (d.length / 4)) * 1000) / 1000;
         }, png.toString('base64'));
       };
-      await page.evaluate(() => document.querySelectorAll('.vc-sv-sky').forEach((e) => (e.style.display = 'none')));
+      await page.evaluate(() => document.querySelectorAll('.vc-sv-sky-mask, .vc-sv-sun-clip').forEach((e) => (e.style.display = 'none')));
       run.snow = { on: await white('3-snow-on') };
       await page.evaluate(() => window.__vtpMap.setLayoutProperty('vtp-sv-snow', 'visibility', 'none'));
       run.snow.off = await white('4-snow-off');
@@ -125,7 +128,7 @@ for (const spot of SPOTS) {
       run.layers = await page.evaluate(() => {
         const m = window.__vtpMap;
         const pick = (id) => (m.getLayer(id) ? { vis: m.getLayoutProperty(id, 'visibility') ?? 'visible', src: m.getLayer(id).source } : null);
-        return { snow: pick('vtp-sv-snow'), shade: pick('vtp-sv-hillshade'), county: pick('sat-county'), usgs: pick('sat-usgs'), zoom: m.getZoom(), fog: JSON.stringify(m.getSky()).slice(0, 200) };
+        return { snow: pick('vtp-sv-snow'), shade: pick('vtp-sv-hillshade'), county: pick('sat-county'), usgs: pick('sat-usgs'), zoom: m.getZoom(), fog: JSON.stringify(m.getSky() ?? null).slice(0, 200) };
       });
       await page.evaluate(() => window.__vtpMap.setLayoutProperty('vtp-sv-snow', 'visibility', 'none'));
       await page.waitForTimeout(15000);

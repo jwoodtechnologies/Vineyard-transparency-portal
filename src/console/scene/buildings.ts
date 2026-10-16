@@ -152,6 +152,8 @@ export function removeScene(map: maplibregl.Map): void {
 }
 
 const EYE_CLEAR_M = 8;
+/** The last decision on moving the pin to a street, for the live checks (window.__vtpScene). */
+let lastMove: { eye: Pos | null; osm: boolean; cb: boolean; near: number | null; to: Pos | null } | null = null;
 /** A pin farther than this from any street or path moves to the nearest street, when one is within STREET_FAR_M. */
 const STREET_NEAR_M = 12;
 const STREET_FAR_M = 40;
@@ -194,11 +196,14 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
   let moved = false;
   // Street view stands on a street or path: a pin off them (a back yard, a gap between homes, where the view
   // is one wall) moves to the nearest street within STREET_FAR_M once the OpenStreetMap data is here.
+  lastMove = { eye, osm: Boolean(osm), cb: Boolean(st.onEyeOut), near: null, to: null };
   if (eye && osm && st.onEyeOut) {
     const near = nearestRoad([...osm.roads, ...osm.paths], eye, STREET_FAR_M);
+    lastMove.near = near?.d ?? null;
     if (near && near.d > STREET_NEAR_M) {
       const road = nearestRoad(osm.roads, eye, STREET_FAR_M);
       const to = road?.at ?? near.at;
+      lastMove.to = to;
       moved = true;
       const cb = st.onEyeOut;
       setTimeout(() => cb(to), 0);
@@ -281,7 +286,7 @@ function send(map: maplibregl.Map, st: State, req: SceneRequest, dark: boolean, 
       onDone?.(a);
       // For the live checks only (localStorage vtp:debug): what the scene holds.
       try {
-        if (localStorage.getItem('vtp:debug')) (window as Window & { __vtpScene?: unknown }).__vtpScene = { buildings: a.picks.length, photoRoofs: a.photoRoofs, triangles: a.mesh.length / 18, note: a.note ?? null, at: Date.now() };
+        if (localStorage.getItem('vtp:debug')) (window as Window & { __vtpScene?: unknown }).__vtpScene = { buildings: a.picks.length, photoRoofs: a.photoRoofs, triangles: a.mesh.length / 18, note: a.note ?? null, move: lastMove, at: Date.now() };
       } catch {
         // Storage blocked.
       }
