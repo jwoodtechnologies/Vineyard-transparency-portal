@@ -1,0 +1,55 @@
+{
+  "cols": 3600,
+  "rows": 320,
+  "degMin": -2,
+  "degMax": 14,
+  "pxPerDeg": 20,
+  "eyeM": 3,
+  "views": [
+    {
+      "lng": -111.772,
+      "lat": 40.275,
+      "file": "sky-0.png"
+    },
+    {
+      "lng": -111.74,
+      "lat": 40.275,
+      "file": "sky-1.png"
+    },
+    {
+      "lng": -111.708,
+      "lat": 40.275,
+      "file": "sky-2.png"
+    },
+    {
+      "lng": -111.772,
+      "lat": 40.303,
+      "file": "sky-3.png"
+    },
+    {
+      "lng": -111.74,
+      "lat": 40.303,
+      "file": "sky-4.png"
+    },
+    {
+      "lng": -111.708,
+      "lat": 40.303,
+      "file": "sky-5.png"
+    },
+    {
+      "lng": -111.772,
+      "lat": 40.331,
+      "file": "sky-6.png"
+    },
+    {
+      "lng": -111.74,
+      "lat": 40.331,
+      "file": "sky-7.png"
+    },
+    {
+      "lng": -111.708,
+      "lat": 40.331,
+      "file": "sky-8.png"
+    }
+  ]
+}

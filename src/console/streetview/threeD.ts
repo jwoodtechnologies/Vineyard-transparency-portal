@@ -37,19 +37,12 @@ const SHADE_SRC = 'vtp-sv-dem-shade';
 const SHADE = 'vtp-sv-hillshade';
 
 /**
- * The sky: a clear light blue overhead going pale at the horizon. Haze starts about four fifths of the way
- * to the horizon: the near Wasatch stays crisp (its snow white), and the Lake Mountains, West Mountain and
- * Nebo show softened by distance, not cut off.
+ * The map draws no sky of its own in 3D: above its terrain the canvas stays clear, and the Sky component
+ * behind it shows the blue, the skyline panorama of the mountains with their snow (the map's terrain stops
+ * a few kilometers from an eye level camera) and the clouds. The colours are in console.css (.vc-sv-sky).
  */
-export const SKY: maplibregl.SkySpecification = {
-  'sky-color': '#6eaee6',
-  'horizon-color': '#e4eef7',
-  'fog-color': '#dfe8f0',
-  'sky-horizon-blend': 0.65,
-  'horizon-fog-blend': 0.5,
-  'fog-ground-blend': 0.82,
-  'atmosphere-blend': 0,
-};
+// Map.setSky's type wants a sky, but the style takes none: it then draws the sky transparent.
+const clearSky = (map: maplibregl.Map) => map.setSky(undefined as unknown as maplibregl.SkySpecification);
 
 export interface Saved {
   center: maplibregl.LngLatLike;
@@ -66,7 +59,7 @@ const firstAboveGround = (map: maplibregl.Map) => map.getStyle().layers.find((l)
 
 /** Adds the terrain, hillshade and raised buildings (again after the map is remade). */
 export function addBuildings(map: maplibregl.Map, dark: boolean): void {
-  map.setSky(SKY);
+  clearSky(map);
   if (!map.getSource(DEM)) map.addSource(DEM, { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: DEM_MAX_Z, attribution: DEM_ATTR });
   // The shading reads its own copy of the tiles, as MapLibre advises when terrain uses the same data. Shadows
   // only, with a faint highlight: a white highlight washed every slope pale, so the snow no longer stood out.
@@ -269,7 +262,7 @@ export function enter3d(map: maplibregl.Map, pin: Pos): Saved {
   const saved: Saved = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), maxPitch: map.getMaxPitch(), maxZoom: map.getMaxZoom(), sky: map.getSky() };
   map.setMaxPitch(MAX_PITCH);
   map.setMaxZoom(EYE_MAX_ZOOM);
-  map.setSky(SKY);
+  clearSky(map);
   // The camera stands at the pin at eye height (eye.ts).
   map.jumpTo(eyeView(map, pin, map.getBearing(), START_PITCH));
   map.once('render', () => performance.mark?.('vtp-3d-first-frame'));

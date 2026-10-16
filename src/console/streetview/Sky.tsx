@@ -6,11 +6,35 @@
  *
  * A soft sun glow sits where the sun really is for Vineyard at this moment (sun.ts), and is gone while the
  * sun is below the horizon or behind the view. The hillshade is lit from the same direction.
+ *
+ * The whole sky sits behind the map's canvas (the map draws no sky of its own in 3D, so above its terrain the
+ * canvas is clear): the blue, then the skyline panorama of the mountains with their snow (skyline.ts, from
+ * the viewpoint nearest the view), then the clouds. The map's ground, slopes, buildings and car draw over it.
  */
 import { useEffect, useRef } from 'react';
 import type * as maplibregl from 'maplibre-gl';
 import { horizonY } from './geo';
+import { nearestView, SKYLINE, skylineLayout } from './skyline';
 import { screenPoint, sunPosition, type SunPos } from './sun';
+
+/** The panorama files, by name. */
+const PANORAMAS = import.meta.glob('./skyline/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const panoramaUrl = (file: string) => PANORAMAS[`./skyline/${file}`];
+const images = new Map<string, HTMLImageElement>();
+function panorama(file: string, onLoad: () => void): HTMLImageElement | null {
+  const url = panoramaUrl(file);
+  if (!url) return null;
+  let img = images.get(url);
+  if (!img) {
+    img = new Image();
+    img.decoding = 'async';
+    img.src = url;
+    images.set(url, img);
+  }
+  if (img.complete && img.naturalWidth) return img;
+  img.addEventListener('load', onLoad, { once: true });
+  return null;
+}
 
 const SHADE = 'vtp-sv-hillshade';
 
@@ -31,12 +55,34 @@ const TILE = 900;
 export function Sky({ getMap }: { getMap: () => maplibregl.Map | null }) {
   const box = useRef<HTMLDivElement>(null);
   const sunEl = useRef<HTMLDivElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const map = getMap();
     const el = box.current;
     const glow = sunEl.current;
-    if (!map || !el || !glow) return;
+    const cv = canvas.current;
+    if (!map || !el || !glow || !cv) return;
     let frame = 0;
+    // The skyline: the panorama from the nearest viewpoint, cut into strips across the view.
+    const drawSkyline = () => {
+      const w = map.getContainer().clientWidth,
+        h = map.getContainer().clientHeight;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+        cv.width = Math.round(w * dpr);
+        cv.height = Math.round(h * dpr);
+      }
+      const g = cv.getContext('2d');
+      if (!g) return;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+      const c = map.getCenter();
+      const img = panorama(SKYLINE.views[nearestView(c.lng, c.lat)].file, queue);
+      if (!img) return;
+      const lay = skylineLayout(w, h, map.getBearing(), map.getPitch(), map.getVerticalFieldOfView());
+      g.imageSmoothingEnabled = true;
+      for (const s of lay.strips) g.drawImage(img, s.sx, 0, Math.max(0.01, s.sw), SKYLINE.rows, s.dx, lay.top, s.dw + 0.5, lay.height);
+    };
     let sun: SunPos = { azimuth: 0, altitude: -90 };
     const lightFromSun = () => {
       const c = map.getCenter();
@@ -63,6 +109,7 @@ export function Sky({ getMap }: { getMap: () => maplibregl.Map | null }) {
       // The cloud pattern repeats every TILE pixels, so the slide wraps without a jump.
       const shift = (((-map.getBearing() * w) / Math.max(1, hfov)) % TILE) - TILE;
       el.style.setProperty('--sky-x', `${Math.round(shift)}px`);
+      drawSkyline();
     };
     const queue = () => {
       if (!frame) frame = requestAnimationFrame(place);
@@ -88,6 +135,7 @@ export function Sky({ getMap }: { getMap: () => maplibregl.Map | null }) {
   }, [getMap]);
   return (
     <div ref={box} className="vc-sv-sky" aria-hidden="true">
+      <canvas ref={canvas} className="vc-sv-skyline" />
       <div className="vc-sv-sun-clip">
         <div ref={sunEl} className="vc-sv-sun" hidden />
       </div>
