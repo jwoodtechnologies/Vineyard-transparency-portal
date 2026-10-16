@@ -28,6 +28,7 @@ import { createPortal } from 'react-dom';
 import { canDrive, nearestEdge, type Graph, type Leg, type Pos, type SpeedMode } from './graph';
 import { carLayer, type CarLayer } from './carLayer';
 import { parseCar, type CarModel } from './carModel';
+import { eyeGeometry } from '../streetview/eyeMath';
 import { loadOsm } from '../scene/buildings';
 import type { StopSign } from './sim';
 import suvUrl from './models/suv.bin?url';
@@ -45,6 +46,9 @@ const MODE_LABEL: Record<SpeedMode, string> = { slow: 'Slow', normal: 'Normal', 
 
 /** The one car: a red sedan. */
 const KIND = 'suv';
+/** The driver's eye in the car view: height above the road and the camera's tilt (90 is level). */
+const CABIN_EYE_M = 1.25;
+const CABIN_PITCH = 85;
 const COLOR = '#c62828';
 
 let suv: Promise<CarModel | null> | null = null;
@@ -99,6 +103,9 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
   // The camera: where it is asked to be (drags, pinches, Reset view); the frame loop eases toward it.
   const viewRef = useRef<View>(CHASE);
   const [chase, setChase] = useState(true);
+  /** In the car: the camera at the driver's eye looking down the road (a tap on the car; Reset view steps out). */
+  const cabinRef = useRef(false);
+  const [cabin, setCabin] = useState(false);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stopped, setStopped] = useState(false);
@@ -214,7 +221,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
     let spread = 0;
     const setView = (v: View) => {
       viewRef.current = v;
-      setChase(isChase(v));
+      setChase(!cabinRef.current && isChase(v));
     };
     const local = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
@@ -250,6 +257,15 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       const t = guard.up(e.pointerId, p.x, p.y, e.timeStamp);
       spread = pts.size === 2 ? pinch() : 0;
       if (!t) return;
+      // A tap on the car itself (its drawn body, within 44 px of where it stands) gets in the car.
+      const pose = car.pose();
+      const carPx = map.project({ lng: pose.at[0], lat: pose.at[1] });
+      if (!cabinRef.current && cam.zoom >= 17.5 && Math.hypot(carPx.x - t.x, carPx.y - t.y - 12) < 44) {
+        cabinRef.current = true;
+        setCabin(true);
+        setChase(false);
+        return;
+      }
       // On a building, the zone or project under that building (pickGround.ts).
       const ll = groundUnder(map, t.x, t.y);
       tapRef.current([ll.lng, ll.lat]);
@@ -286,7 +302,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
         return false;
       }
     })();
-    const stats = { frames: [] as number[], work: [] as number[] };
+    const stats = { frames: [] as number[], work: [] as number[], at: null as Pos | null, cabin: false };
     if (debug) (window as unknown as { __vtpDrive?: typeof stats }).__vtpDrive = stats;
     const extents = (graph?.edges ?? []).map((e) => {
       let w = Infinity,
@@ -323,6 +339,8 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       // gap, such as a hidden tab, counts as half a second at most).
       const dt = Math.min(0.5, (now - last) / 1000);
       if (debug) {
+        stats.at = car.pose().at;
+        stats.cabin = cabinRef.current;
         stats.frames.push(now - last);
         if (stats.frames.length > 600) stats.frames.shift();
       }
@@ -334,6 +352,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       const ground = map.queryTerrainElevation({ lng: at[0], lat: at[1] });
       if (ground != null) elevation += (ground - elevation) * (1 - Math.exp(-dt * 6));
       layer.place(at, heading, elevation);
+      layer.setVisible(!cabinRef.current);
       const far = cam.zoom < 17.5;
       if (far !== dotShown) {
         dotShown = far;
@@ -342,9 +361,19 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       if (far) marker.setLngLat(at).setRotation(heading);
       // The camera eases toward the asked for view, and its heading follows the car's a little behind.
       carHeading = easeAngle(carHeading, heading, dt, 2.5);
-      cam = ease(cam, viewRef.current, dt);
-      const bearing = carHeading + cam.yaw;
-      map.jumpTo({ center: destination(at, bearing, lead(cam.zoom)), bearing, pitch: cam.pitch, zoom: cam.zoom });
+      if (cabinRef.current) {
+        // The driver's eye: 1.2 m up at the windshield, looking nearly level down the road, turning with the car.
+        carHeading = easeAngle(carHeading, heading, dt, 6);
+        const bearing = carHeading + viewRef.current.yaw;
+        const g = eyeGeometry(at[1], CABIN_PITCH, map.getVerticalFieldOfView(), map.getCanvas().clientHeight || 600, CABIN_EYE_M);
+        const eye = destination(at, heading, 0.6);
+        cam = { yaw: viewRef.current.yaw, pitch: CABIN_PITCH, zoom: g.zoom };
+        map.jumpTo({ center: destination(eye, bearing, g.ahead), bearing, pitch: CABIN_PITCH, zoom: g.zoom });
+      } else {
+        cam = ease(cam, viewRef.current, dt);
+        const bearing = carHeading + cam.yaw;
+        map.jumpTo({ center: destination(at, bearing, lead(cam.zoom)), bearing, pitch: cam.pitch, zoom: cam.zoom });
+      }
       // Only what changed is written to the page.
       const mph = Math.round(car.v / 0.44704);
       if (mph !== shownMph && speedRef.current) {
@@ -478,6 +507,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
   return (
     <>
       {map && createPortal(<Sky getMap={getMap} />, map.getContainer())}
+      {map && cabin && createPortal(<div className="vc-drive-dash" aria-hidden="true" />, map.getContainer())}
       <div className="vc-drive-hud">
         <div className="vc-sv-bar vc-drive-bar" data-layers={layersOpen || undefined}>
           <button type="button" className="vc-sv-bar-btn vc-drive-btn" onClick={onExit} aria-label="Exit drive mode" title="Exit (Escape)">
@@ -497,14 +527,16 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
             className="vc-sv-bar-btn vc-drive-btn vc-drive-reset"
             onClick={() => {
               viewRef.current = CHASE;
+              cabinRef.current = false;
+              setCabin(false);
               setChase(true);
             }}
             disabled={chase}
-            aria-label="Reset view"
-            title="Reset view: back behind the car"
+            aria-label={cabin ? 'Get out of the car' : 'Reset view'}
+            title={cabin ? 'Get out: back behind the car' : 'Reset view: back behind the car'}
           >
             <LocateFixed size={17} strokeWidth={2} aria-hidden="true" />
-            <span>Reset view</span>
+            <span>{cabin ? 'Get out' : 'Reset view'}</span>
           </button>
           <button type="button" className="vc-sv-bar-btn vc-drive-btn vc-drive-speedbtn" onClick={() => setMode(NEXT_MODE[mode])} aria-label={`Speed: ${MODE_LABEL[mode]}. Change speed`} title="Speed: Slow, Normal or Fast">
             <Gauge size={17} strokeWidth={2} aria-hidden="true" />

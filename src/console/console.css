@@ -5739,6 +5739,10 @@ button.vc-svp-chip:hover, button.vc-svp-chip:focus-visible { background: rgba(12
 @media (min-width: 821px) { .vc-map-wrap:has(.vc-drive-hud) .vc-map-card[data-over-sv] { bottom: 5.6rem; max-height: calc(100% - 5.6rem - 4.6rem); } }
 /* Drive mode, far out: the car as a marker with its heading, the same size at any zoom. */
 .vc-drive-marker { width: 32px; height: 32px; pointer-events: none; filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.45)); }
+/* In the car: the dashboard along the bottom of the view and the hood beyond it. */
+.vc-drive-dash { position: absolute; left: 0; right: 0; bottom: 0; height: 9%; min-height: 34px; background: #1f2023; pointer-events: none; z-index: 1; }
+.vc-drive-dash::before { content: ''; position: absolute; left: -8%; right: -8%; bottom: 100%; height: 115%; background: #a81f1f; border-radius: 50% 50% 0 0 / 100% 100% 0 0; }
+.vc-drive-dash::after { content: ''; position: absolute; left: 50%; bottom: 6px; width: 110px; height: 110px; margin-left: -55px; border: 9px solid #2e2f33; border-radius: 50%; box-sizing: border-box; clip-path: inset(0 0 55% 0); }
 .vc-drive-marker[hidden] { display: none; }
 .vc-drive-marker circle { fill: #c62828; stroke: #fff; stroke-width: 3; }
 .vc-drive-marker path { fill: #fff; }

@@ -122,6 +122,24 @@ for (const prof of [
     run.frameMs = st ? { frames: st.frames.length, p50: pct(st.frames, 50), p95: pct(st.frames, 95), fps: st.frames.length ? Math.round((1000 / pct(st.frames, 50)) * 10) / 10 : null } : null;
     run.driveCodeMs = st ? { p50: pct(st.work, 50), p95: pct(st.work, 95), max: pct(st.work, 100) } : null;
 
+    // A tap on the car itself gets in it: the view from the driver's seat, the dashboard along the bottom.
+    const carPx = await page.evaluate(() => {
+      const d = window.__vtpDrive, m = window.__vtpMap;
+      if (!d || !d.at || !m) return null;
+      const p = m.project({ lng: d.at[0], lat: d.at[1] });
+      const r = m.getContainer().getBoundingClientRect();
+      return { x: p.x + r.left, y: p.y + r.top + 12 };
+    });
+    if (carPx) {
+      await tap(carPx.x, carPx.y);
+      await page.waitForTimeout(3000);
+      run.cabin = { tapped: carPx, inCar: await page.evaluate(() => Boolean(window.__vtpDrive?.cabin)), dash: await page.locator('.vc-drive-dash').count(), camera: await camera(), getOut: (await page.locator('.vc-drive-reset').textContent().catch(() => '')).trim() };
+      await shot('2b-cabin');
+      await tapEl('.vc-drive-reset');
+      await page.waitForTimeout(2500);
+      run.cabin.outAgain = !(await page.evaluate(() => Boolean(window.__vtpDrive?.cabin)));
+    } else run.cabin = { tapped: null };
+
     // One finger (or the mouse) dragged 300 px sideways: the camera swings around the car.
     const c0 = await camera();
     const x0 = m.x + m.width * 0.2, y0 = m.y + m.height * 0.55;

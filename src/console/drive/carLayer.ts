@@ -121,6 +121,8 @@ export interface CarLayer extends maplibregl.CustomLayerInterface {
   setLook(kind: CarKind, color: string): void;
   /** Draw the baked model (in the current colour) instead of the boxes. */
   setModel(model: CarModel): void;
+  /** Hidden while the camera is in the car. */
+  setVisible(on: boolean): void;
 }
 
 export function carLayer(id: string, kind: CarKind, color: string): CarLayer {
@@ -134,6 +136,7 @@ export function carLayer(id: string, kind: CarKind, color: string): CarLayer {
   let data = build();
   let dirty = true;
   let pose: { at: Pos; heading: number; elevation: number } | null = null;
+  let visible = true;
   let map: maplibregl.Map | null = null;
   const upload = () => {
     if (!gl || !buf) return;
@@ -170,7 +173,7 @@ export function carLayer(id: string, kind: CarKind, color: string): CarLayer {
       map = null;
     },
     render(context, options) {
-      if (!prog || !buf || !pose) return;
+      if (!prog || !buf || !pose || !visible) return;
       if (dirty) upload();
       const mc = maplibregl.MercatorCoordinate.fromLngLat({ lng: pose.at[0], lat: pose.at[1] }, pose.elevation);
       const s = mc.meterInMercatorCoordinateUnits();
@@ -210,6 +213,9 @@ export function carLayer(id: string, kind: CarKind, color: string): CarLayer {
       data = build();
       dirty = true;
       map?.triggerRepaint();
+    },
+    setVisible(on) {
+      visible = on;
     },
   };
 }
