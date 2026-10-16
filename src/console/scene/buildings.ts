@@ -11,7 +11,7 @@ import { centerOf, heightFor, mergedBlocks, OMT_UNKNOWN_M, toneOf, type StoryInd
 import { countyAerial } from '../mapBase';
 import { meshLayer, type MeshLayer } from './meshLayer';
 import { pushOut, toLocal } from './footprint';
-import { nearestRoadPoint } from './roadsNear';
+import { nearestRoad, nearestRoadPoint } from './roadsNear';
 import { addCrowd, removeCrowd, setCrowdPaths } from './crowd';
 import osmUrl from './data/vineyard-osm.json?url';
 import type { SceneAnswer, SceneBuilding, SceneNode, ScenePath, ScenePick, SceneRequest, SceneRoad } from './scene.worker';
@@ -152,6 +152,9 @@ export function removeScene(map: maplibregl.Map): void {
 }
 
 const EYE_CLEAR_M = 8;
+/** A pin farther than this from any street or path moves to the nearest street, when one is within STREET_FAR_M. */
+const STREET_NEAR_M = 12;
+const STREET_FAR_M = 40;
 
 /** Whether a ring covers a point or comes within EYE_CLEAR_M of it. */
 function aroundEye(ring: Pos[], eye: Pos): boolean {
@@ -189,6 +192,18 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
   const merged = mergedBlocks(feats);
   const seen = new Set<string>();
   let moved = false;
+  // Street view stands on a street or path: a pin off them (a back yard, a gap between homes, where the view
+  // is one wall) moves to the nearest street within STREET_FAR_M once the OpenStreetMap data is here.
+  if (eye && osm && st.onEyeOut) {
+    const near = nearestRoad([...osm.roads, ...osm.paths], eye, STREET_FAR_M);
+    if (near && near.d > STREET_NEAR_M) {
+      const road = nearestRoad(osm.roads, eye, STREET_FAR_M);
+      const to = road?.at ?? near.at;
+      moved = true;
+      const cb = st.onEyeOut;
+      setTimeout(() => cb(to), 0);
+    }
+  }
   const list: SceneBuilding[] = [];
   feats.forEach((f, i) => {
     if (merged.has(i)) return;

@@ -5,6 +5,11 @@
 export type RoadLine = { coords: Array<[number, number]> };
 
 export function nearestRoadPoint(roads: RoadLine[], p: [number, number], maxM: number): [number, number] | null {
+  return nearestRoad(roads, p, maxM)?.at ?? null;
+}
+
+/** The nearest point on any road within `maxM` meters, and how far it is. */
+export function nearestRoad(roads: RoadLine[], p: [number, number], maxM: number): { at: [number, number]; d: number } | null {
   const kx = 111320 * Math.cos((p[1] * Math.PI) / 180);
   const ky = 110540;
   const box = maxM / Math.min(kx, ky);
@@ -28,5 +33,5 @@ export function nearestRoadPoint(roads: RoadLine[], p: [number, number], maxM: n
       if (d <= maxM && (!best || d < best.d)) best = { q: [p[0] + qx / kx, p[1] + qy / ky], d };
     }
   }
-  return best?.q ?? null;
+  return best ? { at: best.q, d: best.d } : null;
 }
