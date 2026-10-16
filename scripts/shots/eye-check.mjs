@@ -22,6 +22,8 @@ const SPOTS = [
   { name: 'waters-edge-road', at: [-111.7451, 40.3036] },
   { name: 'center-main', at: [-111.7357, 40.2976] },
   { name: 'geneva-road', at: [-111.7452, 40.3155] },
+  // Turned three times (90 degrees): east toward Timpanogos, for the snowcap.
+  { name: 'timp-east', at: [-111.7452, 40.3155], turns: 3 },
 ];
 const { chromium } = await import(args.pw ?? 'playwright');
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -80,7 +82,7 @@ for (const spot of SPOTS) {
     run.pin = await page.locator('.vc-sv-pin').first().getAttribute('data-at').catch(() => null);
     const a = await page.screenshot({ path: `${OUT}/${spot.name}-1.png`, timeout: 120000 });
     run.flat1 = await flatShare(page, a);
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < (spot.turns ?? 2); i++) {
       await page.click('button[aria-label="Turn right"]').catch(() => undefined);
       await page.waitForTimeout(1500);
     }
