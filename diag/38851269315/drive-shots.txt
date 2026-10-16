@@ -1,0 +1,230 @@
+{
+  "runs": [
+    {
+      "tag": "phone",
+      "speeds": [
+        23,
+        25,
+        30,
+        30,
+        30
+      ],
+      "notes": [],
+      "noPicker": true,
+      "roads": true,
+      "startedAfterStreetViewLayers": true,
+      "toolsHidden": true,
+      "barLabels": [
+        "Exit",
+        "Stop",
+        "Layers",
+        "Reset view",
+        "30 mphNormal"
+      ],
+      "barBox": {
+        "x": 9.59375,
+        "y": 770.40625,
+        "width": 370.8125,
+        "height": 64
+      },
+      "overlapsDriving": [],
+      "frameMs": {
+        "frames": 2,
+        "p50": 3449.8,
+        "p95": 3449.8,
+        "fps": 0.3
+      },
+      "driveCodeMs": {
+        "p50": 32.5,
+        "p95": 32.5,
+        "max": 32.5
+      },
+      "cabin": {
+        "tapped": {
+          "x": 194.74908646161742,
+          "y": 601.4112808057762
+        },
+        "inCar": false,
+        "lastTap": {
+          "x": 194.74908447265625,
+          "y": 534.0362548828125,
+          "carX": 195.0000413326174,
+          "carY": 458.72729165655477,
+          "zoom": 20.3,
+          "onCar": false
+        },
+        "dash": 0,
+        "camera": {
+          "bearing": -30,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "getOut": "Reset view"
+      },
+      "orbit": {
+        "before": {
+          "bearing": -28,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "after": {
+          "bearing": -122,
+          "pitch": 66,
+          "zoom": 20.3
+        }
+      },
+      "zoomOut": {
+        "after": {
+          "bearing": -138,
+          "pitch": 66,
+          "zoom": 12
+        },
+        "marker": 1,
+        "markerBox": {
+          "x": 175.3335723876953,
+          "y": 435.7085876464844,
+          "width": 39.332855224609375,
+          "height": 39.33282470703125
+        }
+      },
+      "layersOpen": {
+        "panel": true,
+        "barHidden": true,
+        "overlaps": []
+      },
+      "barBack": true,
+      "featureTap": {
+        "card": 0,
+        "kind": null,
+        "title": null,
+        "continueShown": 0,
+        "speedAtCard": null,
+        "speedAfter5s": null,
+        "barHidden": true,
+        "overlaps": []
+      },
+      "error": "TimeoutError: locator.boundingBox: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.vc-drive-reset').first()\n"
+    },
+    {
+      "tag": "desktop",
+      "speeds": [
+        6,
+        8,
+        11,
+        11,
+        11
+      ],
+      "notes": [],
+      "noPicker": true,
+      "roads": true,
+      "startedAfterStreetViewLayers": true,
+      "toolsHidden": false,
+      "barLabels": [
+        "Exit",
+        "Stop",
+        "Layers",
+        "Reset view",
+        "11 mphNormal"
+      ],
+      "barBox": {
+        "x": 369.5,
+        "y": 723.609375,
+        "width": 541,
+        "height": 54
+      },
+      "overlapsDriving": [],
+      "frameMs": {
+        "frames": 3,
+        "p50": 1450,
+        "p95": 2866.5,
+        "fps": 0.7
+      },
+      "driveCodeMs": {
+        "p50": 10.6,
+        "p95": 13.5,
+        "max": 13.5
+      },
+      "cabin": {
+        "tapped": {
+          "x": 638.0932125893097,
+          "y": 563.5845800857222
+        },
+        "inCar": false,
+        "lastTap": {
+          "x": 638.0932006835938,
+          "y": 496.3502197265625,
+          "carX": 640.0000555374394,
+          "carY": 436.50285687795696,
+          "zoom": 20.3,
+          "onCar": false
+        },
+        "dash": 0,
+        "camera": {
+          "bearing": -43,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "getOut": "Reset view"
+      },
+      "orbit": {
+        "before": {
+          "bearing": -37,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "after": {
+          "bearing": -132,
+          "pitch": 66,
+          "zoom": 20.3
+        }
+      },
+      "zoomOut": {
+        "after": {
+          "bearing": -139,
+          "pitch": 66,
+          "zoom": 12
+        },
+        "marker": 1,
+        "markerBox": {
+          "x": 620.404052734375,
+          "y": 414.6384582519531,
+          "width": 39.19189453125,
+          "height": 39.19183349609375
+        }
+      },
+      "layersOpen": {
+        "panel": true,
+        "barHidden": false,
+        "overlaps": []
+      },
+      "barBack": true,
+      "featureTap": {
+        "card": 0,
+        "kind": null,
+        "title": null,
+        "continueShown": 0,
+        "speedAtCard": 35,
+        "speedAfter5s": 28,
+        "barHidden": false,
+        "overlaps": []
+      },
+      "reset": {
+        "after": {
+          "bearing": -31,
+          "pitch": 66,
+          "zoom": 20.1
+        },
+        "resetDisabled": true,
+        "marker": 1
+      },
+      "arrows": true,
+      "overlapsArrows": [],
+      "arrowsAboveCar": true,
+      "labelAfterStop": "Go",
+      "afterStop": 35,
+      "afterGo": 35,
+      "exited": true
+    }
+  ],
+  "note": "The runner draws WebGL in software (SwiftShader, no GPU), so its frame rate is far below a phone; the frame code time is the part this page controls."
+}
