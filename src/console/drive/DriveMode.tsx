@@ -257,10 +257,10 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       const t = guard.up(e.pointerId, p.x, p.y, e.timeStamp);
       spread = pts.size === 2 ? pinch() : 0;
       if (!t) return;
-      // A tap on the car itself (its drawn body, within 44 px of where it stands) gets in the car.
+      // A tap on the car itself (its drawn body: within 60 px of a point a little above where it stands) gets in the car.
       const pose = car.pose();
       const carPx = map.project({ lng: pose.at[0], lat: pose.at[1] });
-      const onCar = cam.zoom >= 17.5 && Math.hypot(carPx.x - t.x, carPx.y - t.y - 12) < 44;
+      const onCar = cam.zoom >= 17.5 && Math.hypot(carPx.x - t.x, carPx.y - 20 - t.y) < 60;
       if (debug) stats.lastTap = { x: t.x, y: t.y, carX: carPx.x, carY: carPx.y, zoom: cam.zoom, onCar };
       if (!cabinRef.current && onCar) {
         cabinRef.current = true;

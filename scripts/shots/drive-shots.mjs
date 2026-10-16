@@ -123,17 +123,23 @@ for (const prof of [
     run.driveCodeMs = st ? { p50: pct(st.work, 50), p95: pct(st.work, 95), max: pct(st.work, 100) } : null;
 
     // A tap on the car itself gets in it: the view from the driver's seat, the dashboard along the bottom.
-    const carPx = await page.evaluate(() => {
+    // The car moves between frames (a second or more each on this runner), so the tap is made in the page
+    // itself, at where the car is at that moment, as pointer events on the map.
+    const carTap = await page.evaluate((touch) => {
       const d = window.__vtpDrive, m = window.__vtpMap;
       if (!d || !d.at || !m) return null;
       const p = m.project({ lng: d.at[0], lat: d.at[1] });
-      const r = m.getContainer().getBoundingClientRect();
-      return { x: p.x + r.left, y: p.y + r.top + 12 };
-    });
-    if (carPx) {
-      await tap(carPx.x, carPx.y);
+      const el = m.getCanvasContainer();
+      const r = el.getBoundingClientRect();
+      const x = r.left + p.x, y = r.top + p.y - 10;
+      const ev = (type) => new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, pointerType: touch ? 'touch' : 'mouse', isPrimary: true, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerdown' ? 1 : 0 });
+      el.dispatchEvent(ev('pointerdown'));
+      el.dispatchEvent(ev('pointerup'));
+      return { x, y };
+    }, touch);
+    if (carTap) {
       await page.waitForTimeout(3000);
-      run.cabin = { tapped: carPx, inCar: await page.evaluate(() => Boolean(window.__vtpDrive?.cabin)), lastTap: await page.evaluate(() => window.__vtpDrive?.lastTap ?? null), dash: await page.locator('.vc-drive-dash').count(), camera: await camera(), getOut: (await page.locator('.vc-drive-reset').textContent().catch(() => '')).trim() };
+      run.cabin = { tapped: carTap, inCar: await page.evaluate(() => Boolean(window.__vtpDrive?.cabin)), lastTap: await page.evaluate(() => window.__vtpDrive?.lastTap ?? null), dash: await page.locator('.vc-drive-dash').count(), camera: await camera(), getOut: (await page.locator('.vc-drive-reset').textContent().catch(() => '')).trim() };
       await shot('2b-cabin');
       if (run.cabin.inCar) {
         await tapEl('.vc-drive-reset');
@@ -199,12 +205,20 @@ for (const prof of [
     await page.waitForTimeout(1500);
     run.barBack = await page.locator('.vc-drive-bar').isVisible();
 
-    // A tap on a zone (Zoning is on): the car stops, the zone's card opens with Continue.
+    // A tap on a zone (Zoning is on): the car stops, the zone's card opens with Continue. The tap lands on a
+    // known spot in the RMU zone by Center Street and Main Street, wherever the car has got to.
     const zc = page.locator('.vc-map-card');
-    // Just beside the car marker: inside the city, where zoning covers the ground.
+    const zonePx = await page.evaluate(() => {
+      const mp = window.__vtpMap;
+      if (!mp) return null;
+      const p = mp.project({ lng: -111.7357, lat: 40.2976 });
+      const r = mp.getContainer().getBoundingClientRect();
+      return { x: r.left + p.x, y: r.top + p.y, w: r.width, h: r.height };
+    });
+    const onScreen = zonePx && zonePx.x > 20 && zonePx.x < zonePx.w - 20 && zonePx.y > 160 && zonePx.y < zonePx.h - 120;
     const mk = await page.locator('.vc-drive-marker:not([hidden])').boundingBox().catch(() => null);
-    const tx = mk ? mk.x + mk.width / 2 + 30 : m.x + m.width / 2,
-      ty = mk ? mk.y + mk.height / 2 + 30 : m.y + m.height * 0.6;
+    const tx = onScreen ? zonePx.x : mk ? mk.x + mk.width / 2 + 30 : m.x + m.width / 2,
+      ty = onScreen ? zonePx.y : mk ? mk.y + mk.height / 2 + 30 : m.y + m.height * 0.6;
     for (let i = 0; i < 3 && !(await zc.count()); i++) {
       await tap(tx, ty);
       await page.waitForTimeout(3000);
@@ -218,6 +232,8 @@ for (const prof of [
       continueShown: await zc.locator('button', { hasText: 'Continue' }).count(),
       speedAtCard: v0,
       speedAfter5s: await speed(),
+      zoneSpotOnScreen: Boolean(onScreen),
+      url: page.url(),
       barHidden: !(await page.locator('.vc-drive-bar').isVisible()),
       overlaps: (await overlaps(page)).map((o) => `${o.a} x ${o.b}`),
     };
