@@ -11,7 +11,7 @@ import { centerOf, heightFor, mergedBlocks, OMT_UNKNOWN_M, toneOf, type StoryInd
 import { countyAerial } from '../mapBase';
 import { meshLayer, type MeshLayer } from './meshLayer';
 import { pushOut, toLocal } from './footprint';
-import type { SceneAnswer, SceneBuilding, ScenePick, SceneRequest } from './scene.worker';
+import type { SceneAnswer, SceneBuilding, SceneNode, ScenePath, ScenePick, SceneRequest, SceneRoad } from './scene.worker';
 
 type Pos = [number, number];
 export const SCENE_LAYER = 'vtp-sv-scene';
@@ -30,6 +30,51 @@ const WALLS_DARK: Array<[number, number, number]> = [
   [0.48, 0.45, 0.41],
 ];
 const ROOF_DEFAULT: [number, number, number] = [0.43, 0.37, 0.34];
+
+/** The OpenStreetMap data for Vineyard (scripts/data/trim-osm.mjs), loaded once when the scene first draws. */
+interface OsmData {
+  signs: Array<{ at: [number, number]; kind: string }>;
+  crossings: Array<{ at: [number, number]; kind: string; marked: boolean }>;
+  paths: Array<{ coords: Array<[number, number]>; kind: string; sidewalk?: boolean; crossing?: boolean }>;
+  roads: Array<{ coords: Array<[number, number]>; highway: string; lanes?: string; oneway?: string }>;
+  green: Array<{ ring: Array<[number, number]>; kind: string }>;
+  trees: Array<[number, number]>;
+}
+let osm: OsmData | null = null;
+let osmLoading: Promise<OsmData> | null = null;
+function loadOsm(onLoaded: () => void): OsmData | null {
+  if (osm) return osm;
+  if (!osmLoading)
+    osmLoading = import('./data/vineyard-osm.json').then((m) => {
+      osm = (m.default ?? m) as unknown as OsmData;
+      onLoaded();
+      return osm;
+    });
+  return null;
+}
+
+/** How far from the view's centre road furniture is built, in degrees (about 1 km). */
+const NEAR = 0.009;
+
+/** The roads, paths, signs and crossings within NEAR of a point, with the ground's height at each point. */
+function furnitureNear(map: maplibregl.Map, c: Pos, originZ: number, data: OsmData): Pick<SceneRequest, 'roads' | 'paths' | 'signs' | 'crossings'> {
+  const near = (p: [number, number]) => Math.abs(p[0] - c[0]) < NEAR * 1.3 && Math.abs(p[1] - c[1]) < NEAR;
+  const dzAt = (p: [number, number]) => (map.queryTerrainElevation({ lng: p[0], lat: p[1] }) ?? originZ) - originZ;
+  const roads: SceneRoad[] = [];
+  for (const r of data.roads) {
+    if (!r.coords.some(near)) continue;
+    const lanes = r.lanes ? parseInt(r.lanes, 10) : undefined;
+    roads.push({ coords: r.coords, dz: r.coords.map(dzAt), highway: r.highway, lanes: Number.isFinite(lanes) ? lanes : undefined, oneway: r.oneway === 'yes' || r.oneway === '-1' });
+  }
+  const paths: ScenePath[] = [];
+  for (const p of data.paths) {
+    if (p.crossing || !p.coords.some(near)) continue;
+    paths.push({ coords: p.coords, dz: p.coords.map(dzAt), sidewalk: p.sidewalk });
+  }
+  const signs: SceneNode[] = data.signs.filter((s) => near(s.at)).map((s) => ({ at: s.at, dz: dzAt(s.at), kind: s.kind }));
+  const crossings: SceneNode[] = data.crossings.filter((x) => x.marked && near(x.at)).map((x) => ({ at: x.at, dz: dzAt(x.at), kind: x.kind }));
+  return { roads, paths, signs, crossings };
+}
 
 interface State {
   layer: MeshLayer;
@@ -59,6 +104,12 @@ export function standOutside(eye: Pos, rings: Pos[][]): Pos | null {
     return [eye[0] + out[0] / kx, eye[1] + out[1] / 110540];
   }
   return null;
+}
+
+/** Set by threeD.ts: asks for the scene to be drawn again (when the OpenStreetMap data arrives). */
+export let heightsRedraw: ((map: maplibregl.Map) => void) | null = null;
+export function setRedraw(fn: (map: maplibregl.Map) => void): void {
+  heightsRedraw = fn;
 }
 
 /** The building outlines and tops now drawn, for hit testing. */
@@ -161,7 +212,8 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
       list.push({ ring, height, base, recorded, dz, wall: (dark ? WALLS_DARK : WALLS)[k], roof: ROOF_DEFAULT });
     }
   });
-  const req: SceneRequest = { id: st.next++, origin, buildings: list, aerial: countyAerial() };
+  const data = loadOsm(() => heightsRedraw?.(map));
+  const req: SceneRequest = { id: st.next++, origin, buildings: list, aerial: countyAerial(), ...(data ? furnitureNear(map, [c.lng, c.lat], originZ, data) : {}) };
   if (st.busy) {
     st.queued = req;
     return;

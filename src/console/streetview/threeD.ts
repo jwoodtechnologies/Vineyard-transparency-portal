@@ -9,7 +9,9 @@ import type { Pos } from './geo';
 import type { MultiPolygon, Polygon } from 'geojson';
 import { getJson } from '../api';
 import { buildingHeight, StoryIndex, tilesAround } from './heights';
-import { addScene, drawScene, removeScene, SCENE_LAYER } from '../scene/buildings';
+import { addScene, drawScene, removeScene, SCENE_LAYER, setRedraw } from '../scene/buildings';
+
+setRedraw((map) => heights.get(map)?.redraw());
 import { EYE_MAX_ZOOM, eyeView } from './eye';
 import { addScenery, SNOW_LAYER, WATER_EDGE, WATER_LAYER } from './scenery';
 

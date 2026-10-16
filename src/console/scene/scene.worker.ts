@@ -7,6 +7,7 @@
 import { roofColor, tileAt, tileBounds, tileUrl, type RGB } from './aerial';
 import { buildingsMesh, topOf, type BuildingIn } from './buildingMesh';
 import { toLocal, type XY } from './footprint';
+import { roadsMesh, roadWidth, type CrossingIn, type PathIn, type RoadIn, type SignIn } from './roadMesh';
 
 export interface SceneBuilding {
   /** Outline in longitude and latitude. */
@@ -21,10 +22,33 @@ export interface SceneBuilding {
   roof: RGB;
 }
 
+/** A road, path, sign or crossing from the OpenStreetMap data (scene/data), in longitude and latitude. */
+export interface SceneRoad {
+  coords: Array<[number, number]>;
+  dz: number[];
+  highway: string;
+  lanes?: number;
+  oneway?: boolean;
+}
+export interface ScenePath {
+  coords: Array<[number, number]>;
+  dz: number[];
+  sidewalk?: boolean;
+}
+export interface SceneNode {
+  at: [number, number];
+  dz: number;
+  kind: string;
+}
+
 export interface SceneRequest {
   id: number;
   origin: [number, number, number];
   buildings: SceneBuilding[];
+  roads?: SceneRoad[];
+  paths?: ScenePath[];
+  signs?: SceneNode[];
+  crossings?: SceneNode[];
   /** The county aerial's tile address template ({bbox-epsg-3857}) and tile size in pixels, or null to skip the photo. */
   aerial: { template: string; px: number } | null;
 }
@@ -101,7 +125,52 @@ async function build(req: SceneRequest): Promise<SceneAnswer> {
     list.push(inB);
     picks.push({ ring: b.ring, base: b.base, top: topOf({ ...inB, height: b.height, base: b.base }) });
   });
-  return { id: req.id, origin: req.origin, mesh: buildingsMesh(list), picks, photoRoofs, note };
+  const buildings = buildingsMesh(list);
+  const furniture = roadFurniture(req, local);
+  const mesh = new Float32Array(buildings.length + furniture.length);
+  mesh.set(buildings, 0);
+  mesh.set(furniture, buildings.length);
+  return { id: req.id, origin: req.origin, mesh, picks, photoRoofs, note };
+}
+
+/** The direction (radians from east) and width of the road nearest a point, within 25 m. */
+function roadAt(roads: RoadIn[], p: XY): { along: number; width: number } | null {
+  let best: { d: number; along: number; width: number } | null = null;
+  for (const r of roads)
+    for (let i = 0; i + 1 < r.coords.length; i++) {
+      const a = r.coords[i],
+        b = r.coords[i + 1];
+      const dx = b[0] - a[0],
+        dy = b[1] - a[1];
+      const l2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2));
+      const d = Math.hypot(a[0] + t * dx - p[0], a[1] + t * dy - p[1]);
+      if (d < 25 && (!best || d < best.d)) best = { d, along: Math.atan2(dy, dx), width: roadWidth(r.highway, r.lanes) };
+    }
+  return best ? { along: best.along, width: best.width } : null;
+}
+
+/** Roads, sidewalks, crossings and signs near the view as one mesh. */
+function roadFurniture(req: SceneRequest, local: (p: [number, number]) => XY): Float32Array {
+  const roads: RoadIn[] = (req.roads ?? []).map((r) => ({ coords: r.coords.map(local), dz: r.dz, highway: r.highway, lanes: r.lanes, oneway: r.oneway }));
+  const paths: PathIn[] = (req.paths ?? []).map((p) => ({ coords: p.coords.map(local), dz: p.dz, sidewalk: p.sidewalk }));
+  const signs: SignIn[] = [];
+  for (const n of req.signs ?? []) {
+    const at = local(n.at);
+    const r = roadAt(roads, at);
+    if (!r) continue;
+    // The sign stands at the road's right edge for traffic coming along it, the plate across the road.
+    const kind = n.kind === 'give_way' ? 'give_way' : n.kind === 'traffic_signals' ? 'traffic_signals' : 'stop';
+    const side = r.width / 2 + 0.6;
+    signs.push({ at: [at[0] + Math.sin(r.along) * side, at[1] - Math.cos(r.along) * side], dz: n.dz, kind, along: r.along });
+  }
+  const crossings: CrossingIn[] = [];
+  for (const n of req.crossings ?? []) {
+    const at = local(n.at);
+    const r = roadAt(roads, at);
+    if (r) crossings.push({ at, dz: n.dz, along: r.along, width: r.width });
+  }
+  return roadsMesh(roads, paths, signs, crossings);
 }
 
 self.onmessage = async (e: MessageEvent<SceneRequest>) => {

@@ -54,8 +54,8 @@ export function roofKind(ring: XY[], m2: number, recorded: boolean | undefined):
   return 'flat';
 }
 
-/** Appends one triangle with a baked colour. */
-class Out {
+/** Appends triangles with baked colours (shared with roadMesh.ts). */
+export class MeshOut {
   data: number[] = [];
   tri(a: [number, number, number], b: [number, number, number], c: [number, number, number], color: RGB): void {
     const ux = b[0] - a[0],
@@ -75,17 +75,64 @@ class Out {
   }
 }
 
-/** Vertical walls along a ring (counterclockwise), facing outward. */
-function walls(out: Out, ring: XY[], z0: number, z1: number, color: RGB): void {
+/** Window glass, door and trim colours. */
+const GLASS: RGB = [0.3, 0.36, 0.44];
+const DOOR: RGB = [0.35, 0.25, 0.2];
+const GARAGE: RGB = [0.88, 0.86, 0.82];
+export const STOREY_M = 3.1;
+
+/**
+ * Vertical walls along a ring (counterclockwise), facing outward, with windows on each storey of every wall
+ * long enough, a front door on the longest wall and a garage door on the second longest (homes only:
+ * `openings` false on big or recorded buildings).
+ */
+function walls(out: MeshOut, ring: XY[], z0: number, z1: number, color: RGB, openings = false): void {
+  const lens = ring.map((a, i) => {
+    const b = ring[(i + 1) % ring.length];
+    return Math.hypot(b[0] - a[0], b[1] - a[1]);
+  });
+  const order = lens.map((l, i) => [l, i] as const).sort((p, q) => q[0] - p[0]);
+  const doorWall = openings ? order[0]?.[1] : -1;
+  const garageWall = openings && order[1] && order[1][0] >= 7 ? order[1][1] : -1;
   for (let i = 0; i < ring.length; i++) {
     const a = ring[i],
       b = ring[(i + 1) % ring.length];
     out.quad([a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1], color);
+    if (!openings) continue;
+    const len = lens[i];
+    if (len < 3.5) continue;
+    // Along the wall (unit) and out of it (the ring is counterclockwise, so outward is to the right).
+    const ux = (b[0] - a[0]) / len,
+      uy = (b[1] - a[1]) / len;
+    const nx = uy * 0.06,
+      ny = -ux * 0.06;
+    const plate = (s0: number, s1: number, h0: number, h1: number, c: RGB) => {
+      const p = (s: number, h: number): [number, number, number] => [a[0] + ux * s + nx, a[1] + uy * s + ny, h];
+      out.quad(p(s0, h0), p(s1, h0), p(s1, h1), p(s0, h1), c);
+    };
+    const storeys = Math.max(1, Math.floor((z1 - z0) / STOREY_M + 0.3));
+    for (let k = 0; k < storeys; k++) {
+      const sill = z0 + k * STOREY_M + 1.0;
+      const top = Math.min(z1 - 0.3, sill + 1.3);
+      if (top - sill < 0.6) continue;
+      // Windows 1.2 m wide every 2.6 m, centred on the wall.
+      const n = Math.floor((len - 1.4) / 2.6);
+      const start = (len - (n - 1) * 2.6) / 2;
+      for (let w = 0; w < n; w++) {
+        const s = start + w * 2.6;
+        // Leave room for the door and the garage door on the ground floor.
+        if (k === 0 && i === doorWall && Math.abs(s - len / 2) < 1.6) continue;
+        if (k === 0 && i === garageWall && Math.abs(s - len / 2) < 3.2) continue;
+        plate(s - 0.6, s + 0.6, sill, top, GLASS);
+      }
+    }
+    if (i === doorWall) plate(len / 2 - 0.5, len / 2 + 0.5, z0, z0 + 2.1, DOOR);
+    if (i === garageWall) plate(len / 2 - 2.4, len / 2 + 2.4, z0, z0 + 2.2, GARAGE);
   }
 }
 
 /** A flat cap over a ring at height z, facing up. */
-function cap(out: Out, ring: XY[], z: number, color: RGB): void {
+function cap(out: MeshOut, ring: XY[], z: number, color: RGB): void {
   const flat: number[] = [];
   for (const [x, y] of ring) flat.push(x, y);
   const idx = earcut(flat);
@@ -109,21 +156,21 @@ export function topOf(b: BuildingIn): number {
 }
 
 /** Triangles for one building: interleaved x, y, z, r, g, b (six numbers a vertex). */
-export function buildingMesh(b: BuildingIn, out = new Out()): number[] {
+export function buildingMesh(b: BuildingIn, out = new MeshOut()): number[] {
   const ring = cleanRing(b.ring);
   if (ring.length < 3) return out.data;
   const m2 = Math.abs(signedArea(ring));
   const kind = roofKind(ring, m2, b.recorded);
   const darkRoof: RGB = [b.roof[0] * 0.9, b.roof[1] * 0.9, b.roof[2] * 0.9];
   if (kind === 'flat') {
-    walls(out, ring, b.base, b.height, b.wall);
+    walls(out, ring, b.base, b.height, b.wall, !b.recorded && m2 <= FLAT_M2);
     cap(out, ring, b.height, b.recorded ? b.roof : darkRoof);
     return out.data;
   }
   const box = orientedBox(ring);
   if (kind === 'gable') {
     const rise = Math.min(ROOF_RISE_MAX, box.short * ROOF_PITCH * 0.5);
-    walls(out, ring, b.base, b.height, b.wall);
+    walls(out, ring, b.base, b.height, b.wall, true);
     // The roof sits on the rectangle with eaves out past it; the gable ends close the rectangle's short sides.
     const [p0, p1, p2, p3] = boxCorners(box, EAVE_M);
     const c = Math.cos(box.angle),
@@ -148,7 +195,7 @@ export function buildingMesh(b: BuildingIn, out = new Out()): number[] {
   }
   // Hip: walls to the eaves, roof planes from an outline grown by the eave to a smaller one at the ridge.
   const rise = Math.min(ROOF_RISE_MAX, Math.sqrt(m2) * ROOF_PITCH * 0.5);
-  walls(out, ring, b.base, b.height, b.wall);
+  walls(out, ring, b.base, b.height, b.wall, true);
   const outer = grow(ring, EAVE_M);
   const inner = shrink(ring, 0.42);
   for (let i = 0; i < ring.length; i++) {
@@ -196,7 +243,7 @@ function normal2(a: XY, b: XY): XY {
 
 /** Meshes for many buildings in one array. */
 export function buildingsMesh(list: BuildingIn[]): Float32Array {
-  const out = new Out();
+  const out = new MeshOut();
   for (const b of list) buildingMesh(b, out);
   return new Float32Array(out.data);
 }
