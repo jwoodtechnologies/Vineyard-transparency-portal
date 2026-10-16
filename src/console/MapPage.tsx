@@ -33,6 +33,7 @@ import { FoldedAttribution } from './mapAttribution';
 import { FULL_ZOOM, levelFor, LINES_MIN_ZOOM, loadLines, MID_ZOOM, tapLooksUpParcel, tilesMinZoom, type LineFC, type LineLevel } from './parcelLines';
 import { formatDate } from '@/lib/dates';
 import { ProjectViewpoint, viewpointFor, type Pos } from './streetView';
+import { setCityBounds } from './scene/buildings';
 import { StreetViewLink } from './StreetViewLink';
 import { MeasureTool } from './measure/MeasureTool';
 import { MapTools } from './MapTools';
@@ -843,6 +844,8 @@ export default function MapPage() {
       loadLayer(l).then(
         (fc) => {
           setData((d) => (d[l.key] ? d : { ...d, [l.key]: fc }));
+          // The street scene builds only the buildings inside the city.
+          if (l.key === 'boundary') setCityBounds(fc.features.flatMap((f) => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates[0]] : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates.map((pg) => pg[0]) : [])) as Pos[][]);
           dataRef.current = { ...dataRef.current, [l.key]: fc };
           setTimeout(() => applyRef.current(), 0);
         },
