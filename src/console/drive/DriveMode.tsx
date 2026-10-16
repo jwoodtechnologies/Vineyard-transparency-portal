@@ -341,7 +341,6 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       // gap, such as a hidden tab, counts as half a second at most).
       const dt = Math.min(0.5, (now - last) / 1000);
       if (debug) {
-        stats.at = car.pose().at;
         stats.cabin = cabinRef.current;
         stats.frames.push(now - last);
         if (stats.frames.length > 600) stats.frames.shift();
@@ -349,6 +348,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       last = now;
       for (let left = dt; left > 1e-6; left -= 0.1) car.step(Math.min(0.1, left));
       const { at, heading } = car.pose();
+      if (debug) stats.at = at;
       // The ground height eases too: the elevation tiles change detail as the car moves, and a raw read
       // would make the car and camera hop.
       const ground = map.queryTerrainElevation({ lng: at[0], lat: at[1] });
