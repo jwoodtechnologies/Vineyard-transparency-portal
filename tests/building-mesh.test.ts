@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boxCorners, cleanRing, orientedBox, rectangularity, shrink, toLocal, type XY } from '../src/console/scene/footprint';
+import { boxCorners, cleanRing, inside, orientedBox, pushOut, rectangularity, shrink, toLocal, type XY } from '../src/console/scene/footprint';
 import { buildingMesh, buildingsMesh, grow, roofKind, topOf, ROOF_RISE_MAX } from '../src/console/scene/buildingMesh';
 
 const rect = (w: number, l: number, angle = 0, cx = 0, cy = 0): XY[] => {
@@ -36,6 +36,18 @@ describe('footprint geometry', () => {
     expect(boxCorners({ center: [0, 0], angle: 0, long: 4, short: 2 }, 1)).toEqual([[-3, -2], [3, -2], [3, 2], [-3, 2]]);
     const loc = toLocal([-111.75, 40.3]);
     expect(loc([-111.75, 40.301])[1]).toBeCloseTo(110.54, 1);
+  });
+
+  it('moves a point inside a building out past its nearest wall', () => {
+    const sq: XY[] = [[0, 0], [10, 0], [10, 10], [0, 10]];
+    expect(inside(sq, [1, 5])).toBe(true);
+    const out = pushOut(sq, [1, 5], 3);
+    expect(out[0]).toBeCloseTo(-3, 6);
+    expect(out[1]).toBeCloseTo(5, 6);
+    expect(inside(sq, out)).toBe(false);
+    expect(pushOut(sq, [20, 5], 3)).toEqual([20, 5]);
+    // The same for a clockwise ring.
+    expect(pushOut(sq.slice().reverse(), [5, 9], 2)[1]).toBeCloseTo(12, 6);
   });
 
   it('grows a square outward evenly', () => {

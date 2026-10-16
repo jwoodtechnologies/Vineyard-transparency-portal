@@ -36,7 +36,7 @@ export const ROOF_RISE_MAX = 3.2;
 
 /** Sunlight from the south west, a little above the horizon, for the baked shading. */
 const LIGHT = norm3([-0.45, -0.55, 0.7]);
-const AMBIENT = 0.58;
+const AMBIENT = 0.74;
 
 function norm3(v: [number, number, number]): [number, number, number] {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;

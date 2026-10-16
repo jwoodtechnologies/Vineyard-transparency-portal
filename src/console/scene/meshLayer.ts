@@ -94,10 +94,9 @@ export function meshLayer(id: string): MeshLayer {
       context.vertexAttribPointer(col, 3, context.FLOAT, false, 24, 12);
       context.enable(context.DEPTH_TEST);
       context.depthFunc(context.LEQUAL);
-      context.enable(context.CULL_FACE);
-      context.cullFace(context.BACK);
-      context.drawArrays(context.TRIANGLES, 0, count);
+      // No face culling: the map's y axis is mirrored against local north, which turns the winding around.
       context.disable(context.CULL_FACE);
+      context.drawArrays(context.TRIANGLES, 0, count);
       context.disableVertexAttribArray(pos);
       context.disableVertexAttribArray(col);
     },

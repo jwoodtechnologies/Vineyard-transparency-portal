@@ -17,6 +17,7 @@ import { featureAt } from './clickRoute';
 import { watchTaps } from './watchTaps';
 import { lineNear, mapillaryToken, photoNear, snapToLine } from './coverage';
 import { addBuildings, enter3d, leave3d, setEye, type Saved } from './threeD';
+import { onEyeOut } from '../scene/buildings';
 import { eyeView } from './eye';
 import { enableOrbit, stepFrom, turn } from './orbit';
 import { Compass } from './Compass';
@@ -430,8 +431,10 @@ export function StreetView({ getMap, gen, ready, dark, start, startPhoto = null,
     if (phase === '3d') {
       if (saved.current?.map === map) map.easeTo({ ...eyeView(map, pin, map.getBearing(), map.getPitch()), duration: 450 });
       else saved.current = { map, at: enter3d(map, pin), orbitOff: enableOrbit(map, pinNow) };
-      // No building around the camera is drawn, so it never stands inside a wall.
+      // No building around the camera is drawn, so it never stands inside a wall; a pin dropped inside one
+      // moves to just outside its nearest wall.
       setEye(map, pin);
+      onEyeOut(map, (at) => setPin(at));
     } else if (phase === 'photo' && saved.current) {
       setEye(saved.current.map, null);
       saved.current.orbitOff();

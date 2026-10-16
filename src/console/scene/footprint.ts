@@ -105,3 +105,37 @@ export function boxCorners(b: Box, grow = 0): XY[] {
   const at = (u: number, v: number): XY => [b.center[0] + u * c - v * s, b.center[1] + u * s + v * c];
   return [at(-hl, -hs), at(hl, -hs), at(hl, hs), at(-hl, hs)];
 }
+
+/**
+ * A point inside a ring moved just outside it: to the nearest point on the outline, then `clear` farther
+ * out. A point already outside comes back as it is.
+ */
+export function pushOut(ring: XY[], p: XY, clear: number): XY {
+  if (!inside(ring, p)) return p;
+  let best: { q: XY; d: number; n: XY } | null = null;
+  const ccw = signedArea(ring) > 0;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i],
+      b = ring[(i + 1) % ring.length];
+    const dx = b[0] - a[0],
+      dy = b[1] - a[1];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+    const q: XY = [a[0] + t * dx, a[1] + t * dy];
+    const d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    if (!best || d < best.d) {
+      const l = Math.hypot(dx, dy) || 1;
+      // Outward normal of a counterclockwise ring's edge is to its right.
+      const n: XY = ccw ? [dy / l, -dx / l] : [-dy / l, dx / l];
+      best = { q, d, n };
+    }
+  }
+  if (!best) return p;
+  return [best.q[0] + best.n[0] * clear, best.q[1] + best.n[1] * clear];
+}
+
+export function inside(ring: XY[], p: XY): boolean {
+  let yes = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++)
+    if (ring[i][1] > p[1] !== ring[j][1] > p[1] && p[0] < ((ring[j][0] - ring[i][0]) * (p[1] - ring[i][1])) / (ring[j][1] - ring[i][1]) + ring[i][0]) yes = !yes;
+  return yes;
+}

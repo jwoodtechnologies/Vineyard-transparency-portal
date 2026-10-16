@@ -10,6 +10,7 @@ import type { MultiPolygon, Polygon } from 'geojson';
 import { centerOf, heightFor, mergedBlocks, OMT_UNKNOWN_M, toneOf, type StoryIndex } from '../streetview/heights';
 import { countyAerial } from '../mapBase';
 import { meshLayer, type MeshLayer } from './meshLayer';
+import { pushOut, toLocal } from './footprint';
 import type { SceneAnswer, SceneBuilding, ScenePick, SceneRequest } from './scene.worker';
 
 type Pos = [number, number];
@@ -32,6 +33,8 @@ const ROOF_DEFAULT: [number, number, number] = [0.43, 0.37, 0.34];
 
 interface State {
   layer: MeshLayer;
+  /** Told where to stand when the eye was inside a building (the pin moves there). */
+  onEyeOut: ((at: Pos) => void) | null;
   worker: Worker | null;
   picks: ScenePick[];
   busy: number;
@@ -39,6 +42,24 @@ interface State {
   next: number;
 }
 const states = new WeakMap<maplibregl.Map, State>();
+
+/** Street view listens here: when its pin lands inside a building, the spot just outside it to stand at. */
+export function onEyeOut(map: maplibregl.Map, cb: ((at: Pos) => void) | null): void {
+  const st = states.get(map);
+  if (st) st.onEyeOut = cb;
+}
+
+/** Where to stand when `eye` is inside a building: just outside its nearest wall, EYE_CLEAR_M out. */
+export function standOutside(eye: Pos, rings: Pos[][]): Pos | null {
+  const local = toLocal(eye);
+  const kx = 111320 * Math.cos((eye[1] * Math.PI) / 180);
+  for (const ring of rings) {
+    if (!inRing(ring, eye)) continue;
+    const out = pushOut(ring.map(local), [0, 0], EYE_CLEAR_M);
+    return [eye[0] + out[0] / kx, eye[1] + out[1] / 110540];
+  }
+  return null;
+}
 
 /** The building outlines and tops now drawn, for hit testing. */
 export function scenePicks(map: maplibregl.Map): ScenePick[] {
@@ -49,7 +70,7 @@ export function scenePicks(map: maplibregl.Map): ScenePick[] {
 export function addScene(map: maplibregl.Map, before?: string): void {
   let st = states.get(map);
   if (!st) {
-    st = { layer: meshLayer(SCENE_LAYER), worker: null, picks: [], busy: 0, queued: null, next: 1 };
+    st = { layer: meshLayer(SCENE_LAYER), onEyeOut: null, worker: null, picks: [], busy: 0, queued: null, next: 1 };
     states.set(map, st);
   }
   if (!map.getLayer(SCENE_LAYER)) map.addLayer(st.layer, before);
@@ -120,6 +141,15 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
       const key = `${mid[0].toFixed(5)},${mid[1].toFixed(5)},${Math.round(m2 / 5)}`;
       if (seen.has(key)) continue;
       seen.add(key);
+      if (eye && inRing(ring, eye)) {
+        // The camera stands inside this building: street view moves the pin just outside it.
+        const out = standOutside(eye, [ring]);
+        if (out && st.onEyeOut) {
+          const cb = st.onEyeOut;
+          setTimeout(() => cb(out), 0);
+        }
+        continue;
+      }
       if (eye && aroundEye(ring, eye)) continue;
       const p = f.properties ?? {};
       const osm = Number(p.render_height);

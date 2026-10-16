@@ -15,7 +15,7 @@ const args = Object.fromEntries(
 const BASE = (args.base ?? 'https://vineyardportal.org').replace(/\/+$/, '');
 const OUT = args.out ?? 'shots';
 // On the road just east of Waters Edge (the reviewer's view): the map is opened here and the pin dropped at its middle.
-const AT = [-111.7451, 40.3036];
+const AT = [-111.7448, 40.3036];
 mkdirSync(OUT, { recursive: true });
 const { chromium } = await import(args.pw ?? 'playwright');
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
