@@ -114,7 +114,7 @@ const families = (bodyArg ?? ranked[0]?.[0] ?? '160,160,160').split(';').map((k)
 const bodyKey = families[0].join(',');
 const body = families[0];
 
-// Painted bodywork: every colour within 22 degrees of the paint's hue with some saturation (the kit's colour
+// Painted bodywork (the body node only, never the wheels): every colour within 22 degrees of the paint's hue with some saturation (the kit's colour
 // map holds the paint in several shades).
 const hsv = ([r, g, b]) => {
   const mx = Math.max(r, g, b),
@@ -153,10 +153,10 @@ for (const v of verts) {
   out.writeUInt8(Math.round(v.c[1] * 255), o + 7);
   out.writeUInt8(Math.round(v.c[2] * 255), o + 8);
   out.writeUInt8(Math.round(shade * 255), o + 9);
-  out.writeUInt8(isPaint(v.c) ? 1 : 0, o + 10);
+  out.writeUInt8(v.body && isPaint(v.c) ? 1 : 0, o + 10);
   out.writeUInt8(0, o + 11);
   o += 12;
 }
-const painted = verts.filter((v) => isPaint(v.c)).length;
+const painted = verts.filter((v) => v.body && isPaint(v.c)).length;
 writeFileSync(outPath, out);
 console.log(JSON.stringify({ vertices: verts.length, triangles: verts.length / 3, bytes: out.length, box: BOX_M, body: bodyKey, painted, top: ranked.slice(0, 6) }));
