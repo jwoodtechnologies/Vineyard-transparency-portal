@@ -1,0 +1,111 @@
+{
+  "runs": [
+    {
+      "name": "waters-edge-road-2x",
+      "at": [
+        -111.7451,
+        40.3036
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745100,40.303600",
+      "flat1": 0.87,
+      "flat2": 0.75,
+      "layers": {
+        "snow": {
+          "vis": "visible",
+          "src": "vtp-sv-dem"
+        },
+        "shade": {
+          "vis": "visible",
+          "src": "vtp-sv-dem-shade"
+        },
+        "county": {
+          "vis": "visible",
+          "src": "county"
+        },
+        "usgs": {
+          "vis": "none",
+          "src": "usgs"
+        },
+        "zoom": 21.346327143610768,
+        "fog": "{\"sky-color\":\"#6eaee6\",\"horizon-color\":\"#e4eef7\",\"fog-color\":\"#dfe8f0\",\"sky-horizon-blend\":0.65,\"horizon-fog-blend\":0.5,\"fog-ground-blend\":0.82,\"atmosphere-blend\":0}"
+      },
+      "flatNoSnow": 0.75,
+      "flatNoShade": 0.75
+    },
+    {
+      "name": "waters-edge-road",
+      "at": [
+        -111.7451,
+        40.3036
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745100,40.303600",
+      "flat1": 0.89,
+      "flat2": 0.75
+    },
+    {
+      "name": "center-main",
+      "at": [
+        -111.7357,
+        40.2976
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.735700,40.297600",
+      "flat1": 0.26,
+      "flat2": 0.23
+    },
+    {
+      "name": "geneva-road",
+      "at": [
+        -111.7452,
+        40.3155
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745200,40.315500",
+      "flat1": 0.07,
+      "flat2": 0.09
+    },
+    {
+      "name": "timp-east",
+      "at": [
+        -111.7452,
+        40.3155
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745200,40.315500",
+      "flat1": 0.07,
+      "flat2": 0.09,
+      "snow": {
+        "on": 0.044,
+        "off": 0.045,
+        "clear": 0.045
+      }
+    }
+  ]
+}
