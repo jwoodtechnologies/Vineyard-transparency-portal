@@ -166,6 +166,32 @@ describe('drive simulation', () => {
     run(car, 1);
     expect(car.v).toBeGreaterThan(0);
   });
+
+  it('comes to a full stop at a stop sign beside the lane, waits, then drives on', () => {
+    const g = buildGraph([seg([S, N])]);
+    const car = new Car(g, { edge: 0, forward: true });
+    // A stop sign 60 m up the road, 2 m right of the centre line (the lane is 1.6 m right of it).
+    const sign = destination(destination(S, 0, 60), 90, 2);
+    car.setSigns([{ at: sign, kind: 'stop' }]);
+    expect(car.nextStop()?.s).toBeCloseTo(60, 0);
+    let stoppedAt: number | null = null;
+    let held = 0;
+    run(car, 30, (c) => {
+      if (c.atStop()) {
+        held += 1 / 60;
+        if (stoppedAt == null) stoppedAt = c.s;
+      }
+    });
+    expect(stoppedAt).not.toBeNull();
+    expect(Math.abs((stoppedAt ?? 0) - 60)).toBeLessThan(1.6);
+    expect(held).toBeGreaterThan(1.3);
+    expect(car.s).toBeGreaterThan(70);
+    expect(car.v).toBeGreaterThan(0);
+    // A sign far from the road is ignored.
+    const other = new Car(g, { edge: 0, forward: true });
+    other.setSigns([{ at: destination(destination(S, 0, 60), 90, 12), kind: 'stop' }]);
+    expect(other.nextStop()).toBeNull();
+  });
 });
 
 describe('junctions the tiles left out', () => {

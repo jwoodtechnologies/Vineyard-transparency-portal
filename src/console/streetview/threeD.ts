@@ -10,6 +10,7 @@ import type { MultiPolygon, Polygon } from 'geojson';
 import { getJson } from '../api';
 import { buildingHeight, StoryIndex, tilesAround } from './heights';
 import { addScene, drawScene, removeScene, SCENE_LAYER, setRedraw } from '../scene/buildings';
+import { PEOPLE_LAYER } from '../scene/crowd';
 
 setRedraw((map) => heights.get(map)?.redraw());
 import { EYE_MAX_ZOOM, eyeView } from './eye';
@@ -229,7 +230,7 @@ function recordedHeights(map: maplibregl.Map, src: string, dark: boolean): { sto
 }
 
 /** Every layer the 3D view adds. */
-const LAYERS_3D = [SHADE, SNOW_LAYER, WATER_LAYER, WATER_EDGE, LAYER, SCENE_LAYER];
+const LAYERS_3D = [SHADE, SNOW_LAYER, WATER_LAYER, WATER_EDGE, LAYER, SCENE_LAYER, PEOPLE_LAYER];
 
 /**
  * Leaving 3D hides the terrain, shading, scenery and buildings instead of removing them: their sources and

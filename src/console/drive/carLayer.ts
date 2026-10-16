@@ -1,9 +1,10 @@
 /**
- * The car in Drive mode: a MapLibre custom 3D layer drawing a small low poly car (a body, a cabin with glass
- * and a roof, four wheels) with plain WebGL, so no 3D library is needed. Faces are shaded by which way they
- * face, baked into the colors once; each frame only moves one matrix.
+ * The car in Drive mode: a MapLibre custom 3D layer drawing the baked SUV model (carModel.ts; a box car of
+ * the same size until the model has loaded) with plain WebGL, so no 3D library is needed. Shading is baked
+ * into the colors once; each frame only moves one matrix.
  */
 import * as maplibregl from 'maplibre-gl';
+import { carMesh, type CarModel } from './carModel';
 import type { Pos } from './graph';
 
 export type CarKind = 'sedan' | 'suv' | 'hatch';
@@ -118,6 +119,8 @@ const FRAG = `precision mediump float; varying vec3 v_col; void main() { gl_Frag
 export interface CarLayer extends maplibregl.CustomLayerInterface {
   place(at: Pos, heading: number, elevation: number): void;
   setLook(kind: CarKind, color: string): void;
+  /** Draw the baked model (in the current colour) instead of the boxes. */
+  setModel(model: CarModel): void;
 }
 
 export function carLayer(id: string, kind: CarKind, color: string): CarLayer {
@@ -125,7 +128,10 @@ export function carLayer(id: string, kind: CarKind, color: string): CarLayer {
   let prog: WebGLProgram | null = null;
   let buf: WebGLBuffer | null = null;
   let count = 0;
-  let data = mesh(carBoxes(kind, color));
+  let model: CarModel | null = null;
+  let look = { kind, color };
+  const build = () => (model ? carMesh(model, look.color) : mesh(carBoxes(look.kind, look.color)));
+  let data = build();
   let dirty = true;
   let pose: { at: Pos; heading: number; elevation: number } | null = null;
   let map: maplibregl.Map | null = null;
@@ -194,7 +200,14 @@ export function carLayer(id: string, kind: CarKind, color: string): CarLayer {
       pose = { at, heading, elevation };
     },
     setLook(k, col) {
-      data = mesh(carBoxes(k, col));
+      look = { kind: k, color: col };
+      data = build();
+      dirty = true;
+      map?.triggerRepaint();
+    },
+    setModel(m) {
+      model = m;
+      data = build();
       dirty = true;
       map?.triggerRepaint();
     },

@@ -13,6 +13,15 @@ const PLAN_AHEAD_M = 25; // the next road is joined on (and the choice locked) t
 const OPTIONS_AHEAD_M = 130; // the turn buttons show from this far before an intersection
 const TURN_SPEED = 5; // m/s (about 11 mph) through a turn
 const LOOK_M = 60; // speed is planned over this much path ahead
+const STOP_NEAR_M = 4; // a stop sign this close to the lane applies to it
+const STOP_HOLD_S = 1.5; // a full stop at a stop sign lasts this long
+const SIGNAL_HOLD_S = 3; // and at a traffic signal
+
+/** A stop sign or traffic signal the car stops at. */
+export interface StopSign {
+  at: Pos;
+  kind: 'stop' | 'traffic_signals';
+}
 
 export type Choice = 'left' | 'straight' | 'right';
 
@@ -59,6 +68,14 @@ export class Car {
   stopped = false;
   mode: SpeedMode = 'normal';
   private opts: TurnOptions | null = null;
+  /** The stop signs and signals around; each applies where the path passes it. */
+  private signs: StopSign[] = [];
+  /** Where on the path the car must stop (meters), in path order, with the hold each one takes. */
+  private stopsAt: Array<{ s: number; hold: number }> = [];
+  /** Seconds left standing at the current stop, or null while driving. */
+  private holding: number | null = null;
+  /** True once the car has done its stop and may pass it. */
+  private released = false;
 
   constructor(
     private g: Graph,
@@ -74,6 +91,42 @@ export class Car {
 
   private lane(l: Leg): Pos[] {
     return offsetLine(legCoords(this.g, l), laneOffset(this.g.edges[l.edge]));
+  }
+
+  /** Tells the car where the stop signs and signals are (any order; those along the path ahead are found as it is laid). */
+  setSigns(list: StopSign[]): void {
+    this.signs = list;
+    this.stopsAt = [];
+    this.findStops(0);
+  }
+
+  /** Finds the signs within STOP_NEAR_M of the path from point `from` on, adding each as a stop at its station. */
+  private findStops(from: number): void {
+    for (const sg of this.signs) {
+      let best: { s: number; d: number } | null = null;
+      for (let i = Math.max(1, from); i < this.pts.length; i++) {
+        const a = this.pts[i - 1],
+          b = this.pts[i];
+        const l = Math.max(1e-6, distance(a, b));
+        // The station of the sign's nearest point on this segment, by bearings and distances (meters).
+        const da = distance(a, sg.at);
+        const ang = ((bearing(a, sg.at) - bearing(a, b)) * Math.PI) / 180;
+        const t = Math.max(0, Math.min(1, (da * Math.cos(ang)) / l));
+        const q: Pos = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        const d = distance(q, sg.at);
+        if (d <= STOP_NEAR_M && (!best || d < best.d)) best = { s: this.cum[i - 1] + t * l, d };
+      }
+      if (!best) continue;
+      const s = best.s;
+      if (s < this.s - 2 || this.stopsAt.some((x) => Math.abs(x.s - s) < 3)) continue;
+      this.stopsAt.push({ s, hold: sg.kind === 'traffic_signals' ? SIGNAL_HOLD_S : STOP_HOLD_S });
+    }
+    this.stopsAt.sort((a, b) => a.s - b.s);
+  }
+
+  /** The next stop ahead on the path, if any. */
+  nextStop(): { s: number; hold: number } | null {
+    return this.stopsAt.find((x) => x.s > this.s - 1.5) ?? null;
   }
 
   /** Adds lane points to the path, joining the corner with a curve (or a U turn). */
@@ -135,10 +188,13 @@ export class Car {
     const uturn = leg.edge === this.leg.edge && leg.forward !== this.leg.forward;
     this.next = leg;
     const end = this.legEndAt;
+    const before = this.pts.length;
     this.append(this.lane(leg), true, uturn);
     // The new leg's lane ends where the whole path now ends.
     this.legEndAt = this.cum[this.cum.length - 1];
     this.pendingSwitch = end;
+    // The corner was trimmed and curved, so look a little before where the old path ended too.
+    this.findStops(Math.max(1, before - 20));
   }
   /** Where on the path the car passes from the current leg onto the next one. */
   private pendingSwitch: number | null = null;
@@ -164,6 +220,9 @@ export class Car {
       const toNode = this.legEndAt - this.s;
       if (toNode < OPTIONS_AHEAD_M && this.turning()) limit = Math.min(limit, Math.sqrt(TURN_SPEED * TURN_SPEED + 2 * BRAKE * 0.8 * Math.max(0, toNode - 8)));
     }
+    // Brake to a full stop at a stop sign or signal ahead, and stand there while holding.
+    const stop = this.nextStop();
+    if (stop && !this.released) limit = Math.min(limit, this.holding != null ? 0 : Math.sqrt(2 * BRAKE * Math.max(0, stop.s - this.s - 0.3)));
     // Never run off the end of the path.
     const left = this.cum[this.cum.length - 1] - this.s;
     return Math.min(limit, Math.sqrt(2 * BRAKE * Math.max(0, left - 1)));
@@ -174,6 +233,17 @@ export class Car {
     dt = Math.min(dt, 0.1);
     const total = this.cum[this.cum.length - 1];
     if (!this.next && total - this.s < PLAN_AHEAD_M) this.planNext();
+    const stop = this.nextStop();
+    if (stop && !this.released && this.holding == null && this.v < 0.05 && stop.s - this.s < 1.5) this.holding = stop.hold;
+    if (this.holding != null) {
+      this.holding -= dt;
+      if (this.holding <= 0) {
+        this.holding = null;
+        this.released = true;
+      }
+    }
+    // Once past the stop, the next one applies again.
+    if (this.released && stop && this.s > stop.s + 1.5) this.released = false;
     const want = this.allowed();
     this.v = this.v < want ? Math.min(want, this.v + ACCEL * dt) : Math.max(want, this.v - BRAKE * dt);
     this.s += this.v * dt;
@@ -193,6 +263,7 @@ export class Car {
       this.s -= drop;
       this.legEndAt -= drop;
       if (this.pendingSwitch != null) this.pendingSwitch -= drop;
+      this.stopsAt = this.stopsAt.filter((x) => x.s > drop - 5).map((x) => ({ s: x.s - drop, hold: x.hold }));
     }
   }
 
@@ -202,6 +273,11 @@ export class Car {
     const ahead = along(this.pts, this.cum, this.s + 4).p;
     const behind = along(this.pts, this.cum, Math.max(0, this.s - 1)).p;
     return { at, heading: distance(at, ahead) > 0.2 ? bearing(behind, ahead) : bearing(behind, at) };
+  }
+
+  /** True while standing at a stop sign or signal. */
+  atStop(): boolean {
+    return this.holding != null;
   }
 
   /** The road the car is on: its class, for the speed shown. */

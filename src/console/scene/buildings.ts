@@ -11,6 +11,8 @@ import { centerOf, heightFor, mergedBlocks, OMT_UNKNOWN_M, toneOf, type StoryInd
 import { countyAerial } from '../mapBase';
 import { meshLayer, type MeshLayer } from './meshLayer';
 import { pushOut, toLocal } from './footprint';
+import { nearestRoadPoint } from './roadsNear';
+import { addCrowd, removeCrowd, setCrowdPaths } from './crowd';
 import type { SceneAnswer, SceneBuilding, SceneNode, ScenePath, ScenePick, SceneRequest, SceneRoad } from './scene.worker';
 
 type Pos = [number, number];
@@ -42,7 +44,8 @@ interface OsmData {
 }
 let osm: OsmData | null = null;
 let osmLoading: Promise<OsmData> | null = null;
-function loadOsm(onLoaded: () => void): OsmData | null {
+/** The OpenStreetMap data once loaded (loadOsm starts it; Drive mode reads the stop signs from it). */
+export function loadOsm(onLoaded: () => void): OsmData | null {
   if (osm) return osm;
   if (!osmLoading)
     osmLoading = import('./data/vineyard-osm.json').then((m) => {
@@ -125,6 +128,7 @@ export function addScene(map: maplibregl.Map, before?: string): void {
     states.set(map, st);
   }
   if (!map.getLayer(SCENE_LAYER)) map.addLayer(st.layer, before);
+  addCrowd(map, before);
 }
 
 export function removeScene(map: maplibregl.Map): void {
@@ -133,6 +137,7 @@ export function removeScene(map: maplibregl.Map): void {
   st.worker?.terminate();
   st.worker = null;
   st.picks = [];
+  removeCrowd(map);
   try {
     if (map.getLayer(SCENE_LAYER)) map.removeLayer(SCENE_LAYER);
   } catch {
@@ -193,8 +198,8 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
       if (seen.has(key)) continue;
       seen.add(key);
       if (eye && inRing(ring, eye)) {
-        // The camera stands inside this building: street view moves the pin just outside it.
-        const out = standOutside(eye, [ring]);
+        // The camera stands inside this building: street view moves the pin to the nearest street, or just outside the wall.
+        const out = (osm && nearestRoadPoint(osm.roads, eye, 40)) ?? standOutside(eye, [ring]);
         if (out && st.onEyeOut) {
           const cb = st.onEyeOut;
           setTimeout(() => cb(out), 0);
@@ -203,8 +208,8 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
       }
       if (eye && aroundEye(ring, eye)) continue;
       const p = f.properties ?? {};
-      const osm = Number(p.render_height);
-      const recorded = Number.isFinite(osm) && osm > 0 && osm !== OMT_UNKNOWN_M;
+      const osmH = Number(p.render_height);
+      const recorded = Number.isFinite(osmH) && osmH > 0 && osmH !== OMT_UNKNOWN_M;
       const base = Number(p.render_min_height) || 0;
       const height = Math.max(base + 1, heightFor(p.render_height, index.at(mid)));
       const dz = (map.queryTerrainElevation({ lng: mid[0], lat: mid[1] }) ?? originZ) - originZ;
@@ -213,7 +218,13 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
     }
   });
   const data = loadOsm(() => heightsRedraw?.(map));
-  const req: SceneRequest = { id: st.next++, origin, buildings: list, aerial: countyAerial(), ...(data ? furnitureNear(map, [c.lng, c.lat], originZ, data) : {}) };
+  const near = data ? furnitureNear(map, [c.lng, c.lat], originZ, data) : null;
+  const req: SceneRequest = { id: st.next++, origin, buildings: list, aerial: countyAerial(), ...(near ?? {}) };
+  if (near) {
+    // The pedestrians walk the sidewalks and paths around the view.
+    const local = toLocal([origin[0], origin[1]]);
+    setCrowdPaths(map, origin, near.paths!.map((p) => ({ coords: p.coords.map(local), dz: p.dz })), eye ? local(eye) : null);
+  }
   if (st.busy) {
     st.queued = req;
     return;

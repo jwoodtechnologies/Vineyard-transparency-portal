@@ -27,6 +27,10 @@ import { CHASE, dragged, ease, easeAngle, isChase, lead, zoomed, type View } fro
 import { createPortal } from 'react-dom';
 import { canDrive, nearestEdge, type Graph, type Leg, type Pos, type SpeedMode } from './graph';
 import { carLayer, type CarLayer } from './carLayer';
+import { parseCar, type CarModel } from './carModel';
+import { loadOsm } from '../scene/buildings';
+import type { StopSign } from './sim';
+import suvUrl from './models/suv.bin?url';
 import { Car, type Choice } from './sim';
 import { distance, bearing as bearingOf } from '../measure/geo';
 
@@ -40,8 +44,18 @@ const NEXT_MODE: Record<SpeedMode, SpeedMode> = { slow: 'normal', normal: 'fast'
 const MODE_LABEL: Record<SpeedMode, string> = { slow: 'Slow', normal: 'Normal', fast: 'Fast' };
 
 /** The one car: a red sedan. */
-const KIND = 'sedan';
+const KIND = 'suv';
 const COLOR = '#c62828';
+
+let suv: Promise<CarModel | null> | null = null;
+/** The baked SUV, fetched once (74 KB) and kept. */
+function loadSuv(): Promise<CarModel | null> {
+  if (!suv)
+    suv = fetch(suvUrl)
+      .then(async (r) => (r.ok ? parseCar(await r.arrayBuffer()) : null))
+      .catch(() => null);
+  return suv;
+}
 
 interface Props {
   getMap: () => maplibregl.Map | null;
@@ -129,7 +143,16 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       for (let i = 0; i < hit.index; i++) from += distance(e.coords[i], e.coords[i + 1]);
       from += distance(e.coords[hit.index], hit.at);
       if (!leg.forward) from = e.len - from;
-      carRef.current = new Car(graph, leg, from);
+      const car = new Car(graph, leg, from);
+      carRef.current = car;
+      // The stop signs and signals (OpenStreetMap data, loaded once): the car stops at the ones along its way.
+      const signsOf = () => {
+        const data = loadOsm(() => {
+          if (carRef.current === car) car.setSigns(signsOf());
+        });
+        return (data?.signs ?? []).filter((x) => x.kind === 'stop' || x.kind === 'traffic_signals').map((x) => ({ at: x.at, kind: x.kind }) as StopSign);
+      };
+      car.setSigns(signsOf());
       setPhase('drive');
     },
     [graph, getMap],
@@ -169,6 +192,9 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
     const layer = carLayer(LAYER_ID, KIND, COLOR);
     layerRef.current = layer;
     if (!map.getLayer(LAYER_ID)) map.addLayer(layer);
+    loadSuv().then((m) => {
+      if (m && layerRef.current === layer) layer.setModel(m);
+    });
     // From far out the car is a marker with its heading, the same size on screen at any zoom.
     const dot = document.createElement('div');
     dot.className = 'vc-drive-marker';
