@@ -1,0 +1,16 @@
+{
+  "overpass": {
+    "status": 406
+  },
+  "overpassError": "SyntaxError: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON",
+  "county": {
+    "status": 200,
+    "type": "image/jpeg",
+    "acao": "https://vineyardportal.org",
+    "cors": true
+  },
+  "kenney": {
+    "status": 404,
+    "type": "text/html; charset=UTF-8"
+  }
+}
