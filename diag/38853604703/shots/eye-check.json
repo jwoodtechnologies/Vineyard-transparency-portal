@@ -1,0 +1,90 @@
+{
+  "runs": [
+    {
+      "name": "waters-edge-road-2x",
+      "at": [
+        -111.7451,
+        40.3036
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745100,40.303600",
+      "flat1": 0.89,
+      "flat2": 0.75,
+      "error": "Error: page.evaluate: TypeError: Cannot read properties of undefined (reading 'slice')\n    at eval (eval at evaluate (:290:30), <anonymous>:4:180)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "name": "waters-edge-road",
+      "at": [
+        -111.7451,
+        40.3036
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745100,40.303600",
+      "flat1": 0.89,
+      "flat2": 0.75
+    },
+    {
+      "name": "center-main",
+      "at": [
+        -111.7357,
+        40.2976
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.735700,40.297600",
+      "flat1": 0.26,
+      "flat2": 0.23
+    },
+    {
+      "name": "geneva-road",
+      "at": [
+        -111.7452,
+        40.3155
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745200,40.315500",
+      "flat1": 0.07,
+      "flat2": 0.09
+    },
+    {
+      "name": "timp-east",
+      "at": [
+        -111.7452,
+        40.3155
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745200,40.315500",
+      "flat1": 0.07,
+      "flat2": 0.09,
+      "snow": {
+        "on": 0.043,
+        "off": 0.043,
+        "clear": 0.043
+      }
+    }
+  ]
+}
