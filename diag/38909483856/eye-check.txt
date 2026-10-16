@@ -1,0 +1,201 @@
+{
+  "runs": [
+    {
+      "name": "waters-edge-road-2x",
+      "at": [
+        -111.7451,
+        40.3036
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745283,40.303624",
+      "flat1": 0.12,
+      "flat2": 0.39,
+      "pinLater": "-111.745283,40.303624",
+      "scene": {
+        "buildings": 488,
+        "photoRoofs": 486,
+        "triangles": 25866,
+        "note": null,
+        "move": {
+          "eye": [
+            -111.74528281122191,
+            40.3036237575964
+          ],
+          "osm": true,
+          "cb": true,
+          "near": 3.6801229913436253,
+          "to": null
+        },
+        "at": 1792158114023
+      },
+      "layers": {
+        "snow": {
+          "vis": "visible",
+          "src": "vtp-sv-dem"
+        },
+        "shade": {
+          "vis": "visible",
+          "src": "vtp-sv-dem-shade"
+        },
+        "county": {
+          "vis": "visible",
+          "src": "county"
+        },
+        "usgs": {
+          "vis": "none",
+          "src": "usgs"
+        },
+        "zoom": 21.346326646464966,
+        "fog": "null"
+      },
+      "flatNoSnow": 0.39,
+      "flatNoShade": 0.39
+    },
+    {
+      "name": "waters-edge-road",
+      "at": [
+        -111.7451,
+        40.3036
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.744962,40.303733",
+      "flat1": 0.31,
+      "flat2": 0.31,
+      "pinLater": "-111.744962,40.303733",
+      "scene": {
+        "buildings": 736,
+        "photoRoofs": 724,
+        "triangles": 28478,
+        "note": null,
+        "move": {
+          "eye": [
+            -111.74496177742482,
+            40.30373337383676
+          ],
+          "osm": true,
+          "cb": true,
+          "near": 1.90779482202421e-10,
+          "to": null
+        },
+        "at": 1792158500065
+      }
+    },
+    {
+      "name": "center-main",
+      "at": [
+        -111.7357,
+        40.2976
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.735763,40.297405",
+      "flat1": 0.17,
+      "flat2": 0.14,
+      "pinLater": "-111.735763,40.297405",
+      "scene": {
+        "buildings": 70,
+        "photoRoofs": 70,
+        "triangles": 11467,
+        "note": null,
+        "move": {
+          "eye": [
+            -111.735763,
+            40.297405
+          ],
+          "osm": true,
+          "cb": true,
+          "near": 0,
+          "to": null
+        },
+        "at": 1792158601741
+      }
+    },
+    {
+      "name": "geneva-road",
+      "at": [
+        -111.7452,
+        40.3155
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745200,40.315500",
+      "flat1": 0.07,
+      "flat2": 0.09,
+      "pinLater": "-111.745200,40.315500",
+      "scene": {
+        "buildings": 1,
+        "photoRoofs": 1,
+        "triangles": 1634,
+        "note": null,
+        "move": {
+          "eye": [
+            -111.74520000000057,
+            40.31550047933658
+          ],
+          "osm": true,
+          "cb": true,
+          "near": 5.884568493465869,
+          "to": null
+        },
+        "at": 1792158689129
+      }
+    },
+    {
+      "name": "timp-east",
+      "at": [
+        -111.7452,
+        40.3155
+      ],
+      "mode": "3d",
+      "camera": {
+        "zoom": 21.35,
+        "pitch": 83,
+        "bearing": 0
+      },
+      "pin": "-111.745200,40.315500",
+      "flat1": 0.07,
+      "flat2": 0.09,
+      "pinLater": "-111.745200,40.315500",
+      "scene": {
+        "buildings": 1,
+        "photoRoofs": 1,
+        "triangles": 1634,
+        "note": null,
+        "move": {
+          "eye": [
+            -111.74520000000057,
+            40.31550047933658
+          ],
+          "osm": true,
+          "cb": true,
+          "near": 5.884568493465869,
+          "to": null
+        },
+        "at": 1792158868784
+      },
+      "snow": {
+        "on": 0.063,
+        "off": 0.063,
+        "clear": 0.063
+      }
+    }
+  ]
+}
