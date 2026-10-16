@@ -27,7 +27,7 @@ for (const f of src.features) {
     const c = g.coordinates.map(r6);
     if (!inside(c)) continue;
     if (p.highway === 'stop' || p.highway === 'give_way' || p.highway === 'traffic_signals') out.signs.push({ at: c, kind: p.highway, dir: p.direction ?? null, stop: p.stop ?? null });
-    else if (p.highway === 'crossing' || p.crossing) out.crossings.push({ at: c, kind: p.crossing ?? 'unmarked', marked: p.crossing === 'marked' || p.crossing === 'zebra' || p['crossing:markings'] === 'yes' || p['crossing:markings'] === 'zebra' });
+    else if ((p.highway === 'crossing' || p.crossing) && (p.crossing === 'marked' || p.crossing === 'zebra' || p['crossing:markings'] === 'yes' || p['crossing:markings'] === 'zebra')) out.crossings.push({ at: c, kind: p.crossing ?? 'marked' });
     else if (p.natural === 'tree') out.trees.push(c);
   } else if (g.type === 'LineString') {
     const coords = g.coordinates.map((c) => c.map(r6));
@@ -37,7 +37,7 @@ for (const f of src.features) {
   } else if (g.type === 'Polygon') {
     const ring = g.coordinates[0].map((c) => c.map(r6));
     if (!ring.some(inside)) continue;
-    if (p.leisure) out.green.push({ ring, kind: p.leisure, name: p.name ?? null });
+    if (p.leisure) out.green.push({ ring, kind: p.leisure });
   }
 }
 const text = JSON.stringify(out);

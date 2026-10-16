@@ -13,6 +13,7 @@ import { meshLayer, type MeshLayer } from './meshLayer';
 import { pushOut, toLocal } from './footprint';
 import { nearestRoadPoint } from './roadsNear';
 import { addCrowd, removeCrowd, setCrowdPaths } from './crowd';
+import osmUrl from './data/vineyard-osm.json?url';
 import type { SceneAnswer, SceneBuilding, SceneNode, ScenePath, ScenePick, SceneRequest, SceneRoad } from './scene.worker';
 
 type Pos = [number, number];
@@ -36,7 +37,8 @@ const ROOF_DEFAULT: [number, number, number] = [0.43, 0.37, 0.34];
 /** The OpenStreetMap data for Vineyard (scripts/data/trim-osm.mjs), loaded once when the scene first draws. */
 interface OsmData {
   signs: Array<{ at: [number, number]; kind: string }>;
-  crossings: Array<{ at: [number, number]; kind: string; marked: boolean }>;
+  /** Marked crossings only. */
+  crossings: Array<{ at: [number, number]; kind: string }>;
   paths: Array<{ coords: Array<[number, number]>; kind: string; sidewalk?: boolean; crossing?: boolean }>;
   roads: Array<{ coords: Array<[number, number]>; highway: string; lanes?: string; oneway?: string }>;
   green: Array<{ ring: Array<[number, number]>; kind: string }>;
@@ -47,12 +49,15 @@ let osmLoading: Promise<OsmData> | null = null;
 /** The OpenStreetMap data once loaded (loadOsm starts it; Drive mode reads the stop signs from it). */
 export function loadOsm(onLoaded: () => void): OsmData | null {
   if (osm) return osm;
+  // Fetched as a plain file (compressed on the way, parsed by JSON.parse), not bundled as a script.
   if (!osmLoading)
-    osmLoading = import('./data/vineyard-osm.json').then((m) => {
-      osm = (m.default ?? m) as unknown as OsmData;
-      onLoaded();
-      return osm;
-    });
+    osmLoading = fetch(osmUrl)
+      .then((r) => r.json())
+      .then((m) => {
+        osm = m as OsmData;
+        onLoaded();
+        return osm;
+      });
   return null;
 }
 
@@ -75,7 +80,7 @@ function furnitureNear(map: maplibregl.Map, c: Pos, originZ: number, data: OsmDa
     paths.push({ coords: p.coords, dz: p.coords.map(dzAt), sidewalk: p.sidewalk });
   }
   const signs: SceneNode[] = data.signs.filter((s) => near(s.at)).map((s) => ({ at: s.at, dz: dzAt(s.at), kind: s.kind }));
-  const crossings: SceneNode[] = data.crossings.filter((x) => x.marked && near(x.at)).map((x) => ({ at: x.at, dz: dzAt(x.at), kind: x.kind }));
+  const crossings: SceneNode[] = data.crossings.filter((x) => near(x.at)).map((x) => ({ at: x.at, dz: dzAt(x.at), kind: x.kind }));
   return { roads, paths, signs, crossings };
 }
 
