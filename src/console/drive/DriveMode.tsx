@@ -260,7 +260,9 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
       // A tap on the car itself (its drawn body, within 44 px of where it stands) gets in the car.
       const pose = car.pose();
       const carPx = map.project({ lng: pose.at[0], lat: pose.at[1] });
-      if (!cabinRef.current && cam.zoom >= 17.5 && Math.hypot(carPx.x - t.x, carPx.y - t.y - 12) < 44) {
+      const onCar = cam.zoom >= 17.5 && Math.hypot(carPx.x - t.x, carPx.y - t.y - 12) < 44;
+      if (debug) stats.lastTap = { x: t.x, y: t.y, carX: carPx.x, carY: carPx.y, zoom: cam.zoom, onCar };
+      if (!cabinRef.current && onCar) {
         cabinRef.current = true;
         setCabin(true);
         setChase(false);
@@ -302,7 +304,7 @@ export default function DriveMode({ getMap, ready, dark, onExit, onTapMap, hold,
         return false;
       }
     })();
-    const stats = { frames: [] as number[], work: [] as number[], at: null as Pos | null, cabin: false };
+    const stats = { frames: [] as number[], work: [] as number[], at: null as Pos | null, cabin: false, lastTap: null as Record<string, number | boolean> | null };
     if (debug) (window as unknown as { __vtpDrive?: typeof stats }).__vtpDrive = stats;
     const extents = (graph?.edges ?? []).map((e) => {
       let w = Infinity,

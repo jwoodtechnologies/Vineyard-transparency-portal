@@ -5,16 +5,17 @@
  *
  *   node scripts/data/bake-car.mjs <model.glb> <colormap.png> <out.bin> [length m]
  *
- * File: 'VCAR', version 1 (one byte), the body colour (three bytes: the most common colour on the body, so
- * the layer can repaint it to the driver's choice), the vertex count (uint32), then for each vertex
- * x y z (int16 mm), r g b (uint8, unshaded) and the shade (uint8, 255 is full light): 10 bytes a vertex.
+ * File: 'VCAR', version 2 (one byte), the paint colour (three bytes), the vertex count (uint32), then for each
+ * vertex x y z (int16 mm), r g b (uint8, unshaded), the shade (uint8, 255 is full light), flags (bit 0: this
+ * vertex is painted bodywork, in a shade of the paint colour, which the layer repaints to the driver's
+ * choice) and a spare byte: 12 bytes a vertex.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import sharp from 'sharp';
 
 const [glbPath, pngPath, outPath, lengthArg, bodyArg] = process.argv.slice(2);
 if (!glbPath || !outPath) {
-  console.error('usage: bake-car.mjs <model.glb> <colormap.png|-> <out.bin> [length m] [body r,g,b]');
+  console.error('usage: bake-car.mjs <model.glb> <colormap.png|-> <out.bin> [length m] [body r,g,b[;r,g,b...]]');
   process.exit(2);
 }
 /** The car is fitted to this box (meters: across, along, tall), a 2026 mid size SUV. */
@@ -107,12 +108,31 @@ const cx = (min[0] + max[0]) / 2,
   cy = (min[1] + max[1]) / 2;
 // The paint: the colour named on the command line, else the most common one on the body.
 const ranked = [...bodyCounts.entries()].sort((a, b) => b[1] - a[1]);
-const bodyKey = bodyArg ?? ranked[0]?.[0] ?? '160,160,160';
-const body = bodyKey.split(',').map(Number);
+// The paint colour (the first), and any more colour families that are bodywork too (the kit paints its SUV's
+// roof and sides in a grey blue and the front in green).
+const families = (bodyArg ?? ranked[0]?.[0] ?? '160,160,160').split(';').map((k) => k.split(',').map(Number));
+const bodyKey = families[0].join(',');
+const body = families[0];
 
-const out = Buffer.alloc(12 + verts.length * 10);
+// Painted bodywork: every colour within 22 degrees of the paint's hue with some saturation (the kit's colour
+// map holds the paint in several shades).
+const hsv = ([r, g, b]) => {
+  const mx = Math.max(r, g, b),
+    mn = Math.min(r, g, b),
+    d = mx - mn;
+  let h = 0;
+  if (d > 0) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [((h * 60 + 360) % 360), mx ? d / mx : 0, mx];
+};
+const famH = families.map((f) => hsv(f.map((v) => v / 255)));
+const isPaint = (c) => {
+  const [h, sat] = hsv(c);
+  return famH.some(([fh, fs]) => fs > 0.08 && sat > fs * 0.5 && sat < fs * 1.6 + 0.05 && Math.min(Math.abs(h - fh), 360 - Math.abs(h - fh)) < 22);
+};
+
+const out = Buffer.alloc(12 + verts.length * 12);
 out.write('VCAR', 0);
-out.writeUInt8(1, 4);
+out.writeUInt8(2, 4);
 out.writeUInt8(body[0], 5);
 out.writeUInt8(body[1], 6);
 out.writeUInt8(body[2], 7);
@@ -133,7 +153,10 @@ for (const v of verts) {
   out.writeUInt8(Math.round(v.c[1] * 255), o + 7);
   out.writeUInt8(Math.round(v.c[2] * 255), o + 8);
   out.writeUInt8(Math.round(shade * 255), o + 9);
-  o += 10;
+  out.writeUInt8(isPaint(v.c) ? 1 : 0, o + 10);
+  out.writeUInt8(0, o + 11);
+  o += 12;
 }
+const painted = verts.filter((v) => isPaint(v.c)).length;
 writeFileSync(outPath, out);
-console.log(JSON.stringify({ vertices: verts.length, triangles: verts.length / 3, bytes: out.length, box: BOX_M, body: bodyKey, top: ranked.slice(0, 6) }));
+console.log(JSON.stringify({ vertices: verts.length, triangles: verts.length / 3, bytes: out.length, box: BOX_M, body: bodyKey, painted, top: ranked.slice(0, 6) }));

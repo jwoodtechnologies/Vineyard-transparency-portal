@@ -133,11 +133,18 @@ for (const prof of [
     if (carPx) {
       await tap(carPx.x, carPx.y);
       await page.waitForTimeout(3000);
-      run.cabin = { tapped: carPx, inCar: await page.evaluate(() => Boolean(window.__vtpDrive?.cabin)), dash: await page.locator('.vc-drive-dash').count(), camera: await camera(), getOut: (await page.locator('.vc-drive-reset').textContent().catch(() => '')).trim() };
+      run.cabin = { tapped: carPx, inCar: await page.evaluate(() => Boolean(window.__vtpDrive?.cabin)), lastTap: await page.evaluate(() => window.__vtpDrive?.lastTap ?? null), dash: await page.locator('.vc-drive-dash').count(), camera: await camera(), getOut: (await page.locator('.vc-drive-reset').textContent().catch(() => '')).trim() };
       await shot('2b-cabin');
-      await tapEl('.vc-drive-reset');
-      await page.waitForTimeout(2500);
-      run.cabin.outAgain = !(await page.evaluate(() => Boolean(window.__vtpDrive?.cabin)));
+      if (run.cabin.inCar) {
+        await tapEl('.vc-drive-reset');
+        await page.waitForTimeout(2500);
+        run.cabin.outAgain = !(await page.evaluate(() => Boolean(window.__vtpDrive?.cabin)));
+      } else {
+        // The tap fell through to the map (a card may have opened): close it so the rest of the check runs as before.
+        await page.locator('.vc-map-card button[aria-label="Close details"]').first().click({ timeout: 2000 }).catch(() => undefined);
+        await page.locator('.vc-drive-bar button', { hasText: 'Continue' }).first().click({ timeout: 2000 }).catch(() => undefined);
+        await page.waitForTimeout(1500);
+      }
     } else run.cabin = { tapped: null };
 
     // One finger (or the mouse) dragged 300 px sideways: the camera swings around the car.

@@ -1,26 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { carMesh, parseCar } from '../src/console/drive/carModel';
 
-/** A two triangle model: one body coloured, one black, in the baked file's layout. */
+/** A two triangle model: one painted bodywork (a lighter shade on one vertex), one black, in the baked file's layout. */
 function file(): ArrayBuffer {
   const verts = [
-    [0, 0, 0, 153, 153, 158, 255],
-    [1000, 0, 0, 153, 153, 158, 255],
-    [0, 1000, 0, 153, 153, 158, 128],
-    [0, 0, 500, 20, 20, 20, 255],
-    [-1000, 0, 500, 20, 20, 20, 255],
-    [0, -1000, 500, 20, 20, 20, 255],
+    [0, 0, 0, 153, 153, 158, 255, 1],
+    [1000, 0, 0, 153, 153, 158, 255, 1],
+    [0, 1000, 0, 153, 153, 158, 128, 1],
+    [0, 0, 500, 20, 20, 20, 255, 0],
+    [-1000, 0, 500, 20, 20, 20, 255, 0],
+    [0, -1000, 500, 20, 20, 20, 255, 0],
   ];
-  const buf = new ArrayBuffer(12 + verts.length * 10);
+  const buf = new ArrayBuffer(12 + verts.length * 12);
   const v = new DataView(buf);
   'VCAR'.split('').forEach((c, i) => v.setUint8(i, c.charCodeAt(0)));
-  v.setUint8(4, 1);
+  v.setUint8(4, 2);
   v.setUint8(5, 153);
   v.setUint8(6, 153);
   v.setUint8(7, 158);
   v.setUint32(8, verts.length, true);
   verts.forEach((w, i) => {
-    const o = 12 + i * 10;
+    const o = 12 + i * 12;
     v.setInt16(o, w[0], true);
     v.setInt16(o + 2, w[1], true);
     v.setInt16(o + 4, w[2], true);
@@ -28,6 +28,7 @@ function file(): ArrayBuffer {
     v.setUint8(o + 7, w[4]);
     v.setUint8(o + 8, w[5]);
     v.setUint8(o + 9, w[6]);
+    v.setUint8(o + 10, w[7]);
   });
   return buf;
 }
@@ -40,6 +41,7 @@ describe('baked car model', () => {
     expect(m.pos[3]).toBe(1000);
     expect(m.pos[14]).toBe(500);
     expect(m.shade[2]).toBe(128);
+    expect(Array.from(m.paint)).toEqual([1, 1, 1, 0, 0, 0]);
   });
 
   it('paints body coloured vertices the chosen colour, shaded, and leaves the rest', () => {
