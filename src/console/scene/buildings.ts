@@ -228,7 +228,7 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
   if (near) {
     // The pedestrians walk the sidewalks and paths around the view.
     const local = toLocal([origin[0], origin[1]]);
-    setCrowdPaths(map, origin, near.paths!.map((p) => ({ coords: p.coords.map(local), dz: p.dz })), eye ? local(eye) : null);
+    setCrowdPaths(map, origin, near.paths!.map((p) => ({ key: p.coords[0].join(','), coords: p.coords.map(local), dz: p.dz })), eye ? local(eye) : null);
   }
   if (st.busy) {
     st.queued = req;
