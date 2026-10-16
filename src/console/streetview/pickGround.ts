@@ -7,11 +7,12 @@
 import type * as maplibregl from 'maplibre-gl';
 import { OMT_UNKNOWN_M, UNKNOWN_M } from './heights';
 import { firstHitAt, middle, type Box } from './rayPick';
+import { scenePicks } from '../scene/buildings';
 
 type Pos = [number, number];
 
 /** The raised buildings of the 3D view (threeD.ts): the recorded heights over the plain ones. */
-const LAYERS = ['vtp-sv-buildings-h', 'vtp-sv-buildings'];
+const LAYERS = ['vtp-sv-buildings'];
 
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
 
@@ -23,6 +24,13 @@ function boxesNear(map: maplibregl.Map, a: Pos, b: Pos): Box[] {
     s = Math.min(a[1], b[1]) - pad,
     n = Math.max(a[1], b[1]) + pad;
   const out: Box[] = [];
+  // The scene's buildings (with their shaped roofs' tops), when it is drawn.
+  for (const p of scenePicks(map)) {
+    const [x, y] = p.ring[0] ?? [NaN, NaN];
+    if (x < w || x > e || y < s || y > n) continue;
+    out.push({ ring: p.ring, base: p.base, top: p.top });
+  }
+  if (out.length) return out;
   for (const id of LAYERS) {
     const layer = map.getLayer(id) as unknown as { source?: string; sourceLayer?: string } | undefined;
     if (!layer?.source || map.getLayoutProperty(id, 'visibility') === 'none') continue;

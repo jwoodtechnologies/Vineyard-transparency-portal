@@ -57,6 +57,7 @@ try {
   await page.waitForTimeout(30000);
   log.facingWest = await page.getAttribute('.vc-sv-compass', 'aria-label').catch(() => null);
   await page.screenshot({ path: `${OUT}/bld-1b-toward-houses.png`, timeout: 120000 }).catch(() => undefined);
+  log.scene = await page.evaluate(() => window.__vtpScene ?? null);
   log.data = await page.evaluate(() => {
     const m = window.__vtpMap;
     if (!m) return null;

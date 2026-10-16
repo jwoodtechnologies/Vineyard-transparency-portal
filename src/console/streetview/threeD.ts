@@ -8,14 +8,13 @@ import type * as maplibregl from 'maplibre-gl';
 import type { Pos } from './geo';
 import type { MultiPolygon, Polygon } from 'geojson';
 import { getJson } from '../api';
-import { buildingHeight, StoryIndex, tilesAround, withHeights } from './heights';
+import { buildingHeight, StoryIndex, tilesAround } from './heights';
+import { addScene, drawScene, removeScene, SCENE_LAYER } from '../scene/buildings';
 import { EYE_MAX_ZOOM, eyeView } from './eye';
 import { addScenery, SNOW_LAYER, WATER_EDGE, WATER_LAYER } from './scenery';
 
 const LAYER = 'vtp-sv-buildings';
 /** The same buildings redrawn with the assessor's floors (heights.ts), over the plain ones once ready. */
-const H_SRC = 'vtp-sv-bld';
-const H_LAYER = 'vtp-sv-buildings-h';
 const OWN_SRC = 'vtp-sv-ofm';
 /** OpenFreeMap's vector tiles (already allowed by the CSP for the streets map). */
 const OFM = 'https://tiles.openfreemap.org/planet';
@@ -83,7 +82,8 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
   prefetchTerrain(map.getCenter());
   if (map.getLayer(LAYER)) {
     // Back in 3D with the layers kept: only the recorded heights need watching again.
-    if (map.getSource(H_SRC) && !heights.has(map)) heights.set(map, recordedHeights(map, src));
+    addScene(map);
+    if (!heights.has(map)) heights.set(map, recordedHeights(map, src, dark));
     return;
   }
   const color = dark ? '#6a6c75' : '#dcd8d0';
@@ -101,17 +101,10 @@ export function addBuildings(map: maplibregl.Map, dark: boolean): void {
       'fill-extrusion-vertical-gradient': true,
     },
   });
-  if (!map.getSource(H_SRC)) map.addSource(H_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-  // Homes are walls with a smaller, darker roof block on top (heights.ts withHeights: r 1 is the roof).
-  // Homes in Vineyard: shingle roofs in brown greys over stucco and siding in warm light tans (no darkening
-  // toward the ground, which turned the tans a dark brown at eye level).
-  const roof = dark ? '#4e4540' : '#6e5f56';
-  // Four close wall tones (heights.ts toneOf), so a row of homes reads as separate houses.
-  const tones = dark ? ['#76706a', '#7d746a', '#6e6862', '#7a7268'] : ['#e6dccd', '#dccdb8', '#ece4d6', '#d6c8b4'];
-  const wallColor: maplibregl.ExpressionSpecification = ['match', ['get', 'k'], 1, tones[1], 2, tones[2], 3, tones[3], tones[0]];
-  map.addLayer({ id: H_LAYER, type: 'fill-extrusion', source: H_SRC, minzoom: 14, paint: { 'fill-extrusion-color': ['case', ['==', ['get', 'r'], 1], roof, wallColor], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': false } });
+  // The scene: every building as a mesh with its real roof colour and a shaped roof (scene/buildings.ts).
+  addScene(map);
   heights.get(map)?.stop();
-  heights.set(map, recordedHeights(map, src));
+  heights.set(map, recordedHeights(map, src, dark));
 }
 
 /** The Wasatch from Timpanogos to Nebo, Utah Lake and the mountains west of it: what 3D shows at the horizon. */
@@ -164,37 +157,20 @@ const eyes = new WeakMap<maplibregl.Map, Pos | null>();
  */
 export function setEye(map: maplibregl.Map, at: Pos | null): void {
   eyes.set(map, at);
-  if (at && map.getLayer(LAYER)) map.setPaintProperty(LAYER, 'fill-extrusion-opacity', 0);
   heights.get(map)?.redraw();
 }
-const EYE_CLEAR_M = 8;
-
-/** Whether a building outline covers the eye or comes within EYE_CLEAR_M of it. */
-function aroundEye(rings: Pos[][], eye: Pos): boolean {
-  const kx = 111320 * Math.cos((eye[1] * Math.PI) / 180);
-  const probes: Pos[] = [eye];
-  for (let a = 0; a < 360; a += 45) probes.push([eye[0] + (EYE_CLEAR_M * Math.sin((a * Math.PI) / 180)) / kx, eye[1] + (EYE_CLEAR_M * Math.cos((a * Math.PI) / 180)) / 110540]);
-  return rings.some((r) => probes.some((p) => ringHas(r, p)));
-}
-function ringHas(r: Pos[], p: Pos): boolean {
-  let inside = false;
-  for (let i = 0, j = r.length - 1; i < r.length; j = i++)
-    if (r[i][1] > p[1] !== r[j][1] > p[1] && p[0] < ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) inside = !inside;
-  return inside;
-}
-
 /**
  * Keeps the buildings at their recorded heights: when the view settles, loads the assessor's floors for
  * the zoom 16 tiles around it (once each), reads OpenFreeMap's buildings in view, and redraws them with the
  * chosen heights. The plain layer stays underneath, invisible, so its tiles keep loading.
  */
-function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void; redraw: () => void } {
+function recordedHeights(map: maplibregl.Map, src: string, dark: boolean): { stop: () => void; redraw: () => void } {
   const index = new StoryIndex();
   const asked = new Set<string>();
   let stopped = false;
   let shown = '';
   const draw = () => {
-    if (stopped || !map.getSource(H_SRC) || map.getZoom() < 14) return;
+    if (stopped || !map.getLayer(SCENE_LAYER) || map.getZoom() < 14) return;
     // Only the buildings within NEAR_DEG of the view (about 1.2 km), which is what street level shows close up.
     const c = map.getCenter();
     const feats = map.querySourceFeatures(src, { sourceLayer: 'building' }).filter((f) => {
@@ -206,16 +182,10 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void; 
     const key = `${feats.length}:${index.size}:${eye?.join(',') ?? ''}`;
     if (key === shown || !feats.length) return;
     shown = key;
-    const kept = eye
-      ? feats.filter((f) => {
-          const g = f.geometry;
-          const rings = (g.type === 'Polygon' ? [g.coordinates[0]] : g.type === 'MultiPolygon' ? g.coordinates.map((x) => x[0]) : []) as Pos[][];
-          return !aroundEye(rings, eye);
-        })
-      : feats;
-    const fc = withHeights(kept.map((f) => ({ geometry: f.geometry as Polygon | MultiPolygon, properties: f.properties })), index);
-    (map.getSource(H_SRC) as maplibregl.GeoJSONSource).setData(fc);
-    if (map.getLayer(LAYER)) map.setPaintProperty(LAYER, 'fill-extrusion-opacity', 0);
+    drawScene(map, feats.map((f) => ({ geometry: f.geometry as Polygon | MultiPolygon, properties: f.properties })), index, eye, dark, () => {
+      // The plain buildings underneath stay invisible once the scene draws them.
+      if (map.getLayer(LAYER)) map.setPaintProperty(LAYER, 'fill-extrusion-opacity', 0);
+    });
   };
   const settle = () => {
     if (stopped) return;
@@ -257,7 +227,7 @@ function recordedHeights(map: maplibregl.Map, src: string): { stop: () => void; 
 }
 
 /** Every layer the 3D view adds. */
-const LAYERS_3D = [SHADE, SNOW_LAYER, WATER_LAYER, WATER_EDGE, LAYER, H_LAYER];
+const LAYERS_3D = [SHADE, SNOW_LAYER, WATER_LAYER, WATER_EDGE, LAYER, SCENE_LAYER];
 
 /**
  * Leaving 3D hides the terrain, shading, scenery and buildings instead of removing them: their sources and
@@ -268,6 +238,7 @@ export function removeBuildings(map: maplibregl.Map): void {
   heights.get(map)?.stop();
   heights.delete(map);
   for (const id of LAYERS_3D) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+  removeScene(map);
   if (map.getTerrain()) map.setTerrain(null);
 }
 

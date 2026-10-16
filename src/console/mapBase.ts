@@ -33,6 +33,11 @@ function countyTiles(): { px: number; maxzoom: number } {
   const dpr = typeof window !== 'undefined' && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
   return dpr >= 1.5 ? { px: 512, maxzoom: 20 } : { px: 256, maxzoom: 21 };
 }
+/** The county aerial as the street scene reads it for roof colours (scene/aerial.ts): the address template and tile size. */
+export function countyAerial(): { template: string; px: number } {
+  const { px } = countyTiles();
+  return { template: COUNTY_IMAGERY(px), px };
+}
 const USGS_IMAGERY = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
 const USGS_ATTR = '<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a>';
 
