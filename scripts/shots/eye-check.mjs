@@ -89,6 +89,37 @@ for (const spot of SPOTS) {
     await page.waitForTimeout(20000);
     const b = await page.screenshot({ path: `${OUT}/${spot.name}-2-turned.png`, timeout: 120000 });
     run.flat2 = await flatShare(page, b);
+    // Facing the Wasatch: how much of the band where the ridges are is white (snow), with the snow layer on,
+    // off, and on without the haze (the cloud overlay hidden so only the map counts).
+    if (spot.turns === 3) {
+      const white = async (name) => {
+        await page.waitForTimeout(12000);
+        const png = await page.screenshot({ path: `${OUT}/${spot.name}-${name}.png`, timeout: 120000 });
+        return page.evaluate(async (b64) => {
+          const img = new Image();
+          img.src = `data:image/png;base64,${b64}`;
+          await img.decode();
+          const c = document.createElement('canvas');
+          c.width = img.width;
+          c.height = img.height;
+          const g = c.getContext('2d');
+          g.drawImage(img, 0, 0);
+          const d = g.getImageData(0, Math.floor(img.height * 0.12), img.width, Math.floor(img.height * 0.3)).data;
+          let n = 0;
+          for (let i = 0; i < d.length; i += 4) if (d[i] > 225 && d[i + 1] > 225 && d[i + 2] > 225 && Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) < 14) n++;
+          return Math.round((n / (d.length / 4)) * 1000) / 1000;
+        }, png.toString('base64'));
+      };
+      await page.evaluate(() => document.querySelectorAll('.vc-sv-sky').forEach((e) => (e.style.display = 'none')));
+      run.snow = { on: await white('3-snow-on') };
+      await page.evaluate(() => window.__vtpMap.setLayoutProperty('vtp-sv-snow', 'visibility', 'none'));
+      run.snow.off = await white('4-snow-off');
+      await page.evaluate(() => {
+        window.__vtpMap.setLayoutProperty('vtp-sv-snow', 'visibility', 'visible');
+        window.__vtpMap.setSky({ ...window.__vtpMap.getSky(), 'fog-ground-blend': 1, 'horizon-fog-blend': 1 });
+      });
+      run.snow.clear = await white('5-snow-no-haze');
+    }
     // The same view without the snow layer, then without the hillshade: is either what turns it white?
     if (spot.dpr) {
       run.layers = await page.evaluate(() => {

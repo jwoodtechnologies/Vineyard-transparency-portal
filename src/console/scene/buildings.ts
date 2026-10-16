@@ -188,6 +188,7 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
   const origin: [number, number, number] = [c.lng, c.lat, originZ];
   const merged = mergedBlocks(feats);
   const seen = new Set<string>();
+  let moved = false;
   const list: SceneBuilding[] = [];
   feats.forEach((f, i) => {
     if (merged.has(i)) return;
@@ -205,13 +206,24 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
       if (eye && inRing(ring, eye)) {
         // The camera stands inside this building: street view moves the pin to the nearest street, or just outside the wall.
         const out = (osm && nearestRoadPoint(osm.roads, eye, 40)) ?? standOutside(eye, [ring]);
-        if (out && st.onEyeOut) {
+        if (out && st.onEyeOut && !moved) {
+          moved = true;
           const cb = st.onEyeOut;
           setTimeout(() => cb(out), 0);
         }
         continue;
       }
-      if (eye && aroundEye(ring, eye)) continue;
+      if (eye && aroundEye(ring, eye)) {
+        // The camera stands against this building (a back yard, a gap between homes): the view would be one
+        // wall, so street view moves the pin to the nearest street when one is close.
+        const out = osm && !moved ? nearestRoadPoint(osm.roads, eye, 40) : null;
+        if (out && st.onEyeOut) {
+          moved = true;
+          const cb = st.onEyeOut;
+          setTimeout(() => cb(out), 0);
+        }
+        continue;
+      }
       const p = f.properties ?? {};
       const osmH = Number(p.render_height);
       const recorded = Number.isFinite(osmH) && osmH > 0 && osmH !== OMT_UNKNOWN_M;
