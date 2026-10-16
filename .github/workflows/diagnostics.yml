@@ -12,7 +12,7 @@ on:
         description: What to capture
         type: choice
         default: fixtures
-        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf, map-speed, map-shots, sv-shots, sv-phone, drive-shots, asset-check, bld-check, eye-check, sw-check, scenery-shots, google-shots, owner-filter, ask-timing]
+        options: [fixtures, crawl-log, ingest-log, archive-plan, perf, map-perf, map-speed, map-shots, sv-shots, sv-phone, drive-shots, asset-check, bld-check, eye-check, fetch-world, sw-check, scenery-shots, google-shots, owner-filter, ask-timing]
       urls:
         description: Extra URLs to save (space separated, optional)
         default: ""
@@ -42,14 +42,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf' && inputs.task != 'map-speed' && inputs.task != 'map-shots' && inputs.task != 'sv-shots' && inputs.task != 'sv-phone' && inputs.task != 'asset-check' && inputs.task != 'bld-check' && inputs.task != 'eye-check' && inputs.task != 'scenery-shots' && inputs.task != 'sw-check' && inputs.task != 'drive-shots' && inputs.task != 'google-shots' && inputs.task != 'owner-filter' && inputs.task != 'ask-timing'
+        if: inputs.task != 'fixtures' && inputs.task != 'perf' && inputs.task != 'map-perf' && inputs.task != 'map-speed' && inputs.task != 'map-shots' && inputs.task != 'sv-shots' && inputs.task != 'sv-phone' && inputs.task != 'asset-check' && inputs.task != 'bld-check' && inputs.task != 'eye-check' && inputs.task != 'fetch-world' && inputs.task != 'scenery-shots' && inputs.task != 'sw-check' && inputs.task != 'drive-shots' && inputs.task != 'google-shots' && inputs.task != 'owner-filter' && inputs.task != 'ask-timing'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements-ingest.txt
       # Node 24 runs the Worker's TypeScript owner filter as is (type stripping), for owner-filter.
       - uses: actions/setup-node@v4
-        if: inputs.task == 'owner-filter' || inputs.task == 'ask-timing' || inputs.task == 'map-shots' || inputs.task == 'map-speed' || inputs.task == 'sv-shots' || inputs.task == 'sv-phone' || inputs.task == 'asset-check' || inputs.task == 'bld-check' || inputs.task == 'eye-check' || inputs.task == 'scenery-shots' || inputs.task == 'sw-check' || inputs.task == 'drive-shots' || inputs.task == 'google-shots'
+        if: inputs.task == 'owner-filter' || inputs.task == 'ask-timing' || inputs.task == 'map-shots' || inputs.task == 'map-speed' || inputs.task == 'sv-shots' || inputs.task == 'sv-phone' || inputs.task == 'asset-check' || inputs.task == 'bld-check' || inputs.task == 'eye-check' || inputs.task == 'fetch-world' || inputs.task == 'scenery-shots' || inputs.task == 'sw-check' || inputs.task == 'drive-shots' || inputs.task == 'google-shots'
         with:
           node-version: 24
       - name: Capture
@@ -147,6 +147,11 @@ jobs:
             PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
             (cd "$PW" && npm init -y > /dev/null && npm i -s playwright@1.56.1 && npx playwright install --with-deps chromium) > "$OUT/setup.txt" 2>&1 || true
             node scripts/shots/eye-check.mjs --base https://vineyardportal.org --pw "$PW/node_modules/playwright/index.mjs" --out "$OUT/shots" > "$OUT/eye-check.txt" 2>&1 || echo "exit=$?" >> "$OUT/eye-check.txt"
+          elif [[ "$TASK" == "fetch-world" ]]; then
+            # Data for the 3D street scene (scripts/data/fetch-world.mjs): OSM signs and paths, county CORS, a CC0 car model.
+            node scripts/data/fetch-world.mjs --out "$OUT/world" > "$OUT/fetch-world.txt" 2>&1 || echo "exit=$?" >> "$OUT/fetch-world.txt"
+            rm -f "$OUT/world/kenney-car-kit.zip"
+            find "$OUT/world/car-kit" -type f ! -iname "*.glb" ! -iname "License*" ! -iname "*.txt" -delete 2>/dev/null || true
           elif [[ "$TASK" == "drive-shots" ]]; then
             # Drive mode on the live site (scripts/shots/drive-shots.mjs): screenshots, a short recording, speeds.
             PW="$RUNNER_TEMP/pw"; mkdir -p "$PW"
