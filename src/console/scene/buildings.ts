@@ -163,7 +163,7 @@ export function removeScene(map: maplibregl.Map): void {
 const EYE_CLEAR_M = 8;
 /** The last decision on moving the pin to a street, for the live checks (window.__vtpScene). */
 let lastMove: { eye: Pos | null; osm: boolean; cb: boolean; near: number | null; to: Pos | null } | null = null;
-/** A pin farther than this from any street or path moves to the nearest street, when one is within STREET_FAR_M. */
+/** A pin farther than this from any street moves to the nearest street, when one is within STREET_FAR_M. */
 const STREET_NEAR_M = 12;
 const STREET_FAR_M = 40;
 
@@ -203,19 +203,18 @@ export function drawScene(map: maplibregl.Map, feats: Array<{ geometry: Polygon 
   const merged = mergedBlocks(feats);
   const seen = new Set<string>();
   let moved = false;
-  // Street view stands on a street or path: a pin off them (a back yard, a gap between homes, where the view
-  // is one wall) moves to the nearest street within STREET_FAR_M once the OpenStreetMap data is here.
+  // Street view stands on a street: a pin off the streets (a back yard, a driveway, a gap between homes, where
+  // the view is one wall or a garage door) moves to the nearest one within STREET_FAR_M once the
+  // OpenStreetMap data is here. A pin with no street that close (a park, a field) stays where it was put.
   lastMove = { eye, osm: Boolean(osm), cb: Boolean(eyeOuts.get(map)), near: null, to: null };
   if (eye && osm && eyeOuts.get(map)) {
-    const near = nearestRoad([...osm.roads, ...osm.paths], eye, STREET_FAR_M);
+    const near = nearestRoad(osm.roads, eye, STREET_FAR_M);
     lastMove.near = near?.d ?? null;
     if (near && near.d > STREET_NEAR_M) {
-      const road = nearestRoad(osm.roads, eye, STREET_FAR_M);
-      const to = road?.at ?? near.at;
-      lastMove.to = to;
+      lastMove.to = near.at;
       moved = true;
       const cb = eyeOuts.get(map)!;
-      setTimeout(() => cb(to), 0);
+      setTimeout(() => cb(near.at), 0);
     }
   }
   const list: SceneBuilding[] = [];
