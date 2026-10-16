@@ -1,0 +1,262 @@
+{
+  "runs": [
+    {
+      "tag": "phone",
+      "speeds": [
+        8,
+        11,
+        14,
+        14,
+        15
+      ],
+      "notes": [],
+      "noPicker": true,
+      "roads": true,
+      "startedAfterStreetViewLayers": true,
+      "toolsHidden": true,
+      "barLabels": [
+        "Exit",
+        "Stop",
+        "Layers",
+        "Reset view",
+        "15 mphNormal"
+      ],
+      "barBox": {
+        "x": 9.59375,
+        "y": 770.40625,
+        "width": 370.8125,
+        "height": 64
+      },
+      "overlapsDriving": [],
+      "frameMs": {
+        "frames": 7,
+        "p50": 566.7,
+        "p95": 1633.3,
+        "fps": 1.8
+      },
+      "driveCodeMs": {
+        "p50": 13.8,
+        "p95": 19,
+        "max": 19
+      },
+      "cabin": {
+        "tapped": {
+          "x": 194.86390779200445,
+          "y": 538.1469827528355
+        },
+        "inCar": true,
+        "lastTap": {
+          "x": 194.86390779200445,
+          "y": 470.77198275283547,
+          "carX": 195.00004338522703,
+          "carY": 458.40694373241394,
+          "zoom": 20.3,
+          "onCar": true
+        },
+        "dash": 1,
+        "camera": {
+          "bearing": -33,
+          "pitch": 85,
+          "zoom": 22.2
+        },
+        "getOut": "Get out",
+        "outAgain": true
+      },
+      "orbit": {
+        "before": {
+          "bearing": -28,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "after": {
+          "bearing": -114,
+          "pitch": 66,
+          "zoom": 20.3
+        }
+      },
+      "zoomOut": {
+        "after": {
+          "bearing": -156,
+          "pitch": 66,
+          "zoom": 12
+        },
+        "marker": 1,
+        "markerBox": {
+          "x": 175.40408325195312,
+          "y": 435.7790832519531,
+          "width": 39.19183349609375,
+          "height": 39.19183349609375
+        }
+      },
+      "layersOpen": {
+        "panel": true,
+        "barHidden": true,
+        "overlaps": []
+      },
+      "barBack": true,
+      "featureTap": {
+        "card": 1,
+        "kind": "Zoning",
+        "title": "HDR-1",
+        "continueShown": 1,
+        "speedAtCard": 24,
+        "speedAfter5s": 0,
+        "zoneSpotOnScreen": true,
+        "url": "https://vineyardportal.org/map?lat=40.2976&lng=-111.7357&z=17",
+        "barHidden": true,
+        "overlaps": []
+      },
+      "afterContinue": {
+        "card": 0,
+        "speed": 21,
+        "bar": true
+      },
+      "reset": {
+        "after": {
+          "bearing": -10,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "resetDisabled": true,
+        "marker": 0
+      },
+      "arrows": true,
+      "overlapsArrows": [],
+      "arrowsAboveCar": true,
+      "labelAfterStop": "Go",
+      "afterStop": 0,
+      "afterGo": 13,
+      "exited": true
+    },
+    {
+      "tag": "desktop",
+      "speeds": [
+        4,
+        8,
+        8,
+        8,
+        12
+      ],
+      "notes": [],
+      "noPicker": true,
+      "roads": true,
+      "startedAfterStreetViewLayers": true,
+      "toolsHidden": false,
+      "barLabels": [
+        "Exit",
+        "Stop",
+        "Layers",
+        "Reset view",
+        "12 mphNormal"
+      ],
+      "barBox": {
+        "x": 369.5,
+        "y": 723.609375,
+        "width": 541,
+        "height": 54
+      },
+      "overlapsDriving": [],
+      "frameMs": {
+        "frames": 4,
+        "p50": 1616.5,
+        "p95": 2483.3,
+        "fps": 0.6
+      },
+      "driveCodeMs": {
+        "p50": 9.5,
+        "p95": 17.3,
+        "max": 17.3
+      },
+      "cabin": {
+        "tapped": {
+          "x": 639.4285210877778,
+          "y": 576.0531082188494
+        },
+        "inCar": false,
+        "lastTap": {
+          "x": 639.4285210877778,
+          "y": 508.8187332188494,
+          "carX": 640.0000546163898,
+          "carY": 436.8798816896271,
+          "zoom": 20.3,
+          "onCar": false
+        },
+        "dash": 0,
+        "camera": {
+          "bearing": -35,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "getOut": "Reset view"
+      },
+      "orbit": {
+        "before": {
+          "bearing": -33,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "after": {
+          "bearing": -33,
+          "pitch": 66,
+          "zoom": 20.3
+        }
+      },
+      "zoomOut": {
+        "after": {
+          "bearing": -33,
+          "pitch": 66,
+          "zoom": 12
+        },
+        "marker": 1,
+        "markerBox": {
+          "x": 624,
+          "y": 418.234375,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "layersOpen": {
+        "panel": true,
+        "barHidden": false,
+        "overlaps": [
+          ".vc-map-panel x .vc-map-card"
+        ]
+      },
+      "barBack": true,
+      "featureTap": {
+        "card": 1,
+        "kind": "Zoning",
+        "title": "RMU",
+        "continueShown": 1,
+        "speedAtCard": 0,
+        "speedAfter5s": 0,
+        "zoneSpotOnScreen": true,
+        "url": "https://vineyardportal.org/map?lat=40.2976&lng=-111.7357&z=17",
+        "barHidden": false,
+        "overlaps": []
+      },
+      "afterContinue": {
+        "card": 0,
+        "speed": 20,
+        "bar": true
+      },
+      "reset": {
+        "after": {
+          "bearing": -30,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "resetDisabled": true,
+        "marker": 0
+      },
+      "arrows": true,
+      "overlapsArrows": [],
+      "arrowsAboveCar": true,
+      "labelAfterStop": "Go",
+      "afterStop": 0,
+      "afterGo": 9,
+      "exited": true
+    }
+  ],
+  "note": "The runner draws WebGL in software (SwiftShader, no GPU), so its frame rate is far below a phone; the frame code time is the part this page controls."
+}
