@@ -1,0 +1,148 @@
+{
+  "runs": [
+    {
+      "tag": "phone",
+      "speeds": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "notes": [
+        "TypeError: Cannot read properties of undefined (reading 'default')\n    at ne (https://vineyardportal.org/assets/index-c2-D5SdN40_.js:2:4506)\n    at eo (https://vineyardportal.org/assets/index-c2-D5SdN",
+        "React Router caught the following error during render TypeError: Cannot read properties of undefined (reading 'default')\n    at ne (https://vineyardportal.org/assets/index-c2-D5SdN40_.js:2:4506)\n    a"
+      ],
+      "noPicker": true,
+      "roads": false,
+      "startedAfterStreetViewLayers": false,
+      "toolsHidden": false,
+      "barLabels": [],
+      "barBox": null,
+      "overlapsDriving": [],
+      "frameMs": null,
+      "driveCodeMs": null,
+      "orbit": {
+        "before": {
+          "bearing": 0,
+          "pitch": 0,
+          "zoom": 17
+        },
+        "after": {
+          "bearing": 0,
+          "pitch": 0,
+          "zoom": 17
+        }
+      },
+      "zoomOut": {
+        "after": {
+          "bearing": 0,
+          "pitch": 0,
+          "zoom": 10
+        },
+        "marker": 0,
+        "markerBox": null
+      },
+      "error": "TimeoutError: locator.boundingBox: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.vc-drive-bar button[aria-pressed]').first()\n"
+    },
+    {
+      "tag": "desktop",
+      "speeds": [
+        20,
+        25,
+        27,
+        29,
+        29
+      ],
+      "notes": [],
+      "noPicker": true,
+      "roads": false,
+      "startedAfterStreetViewLayers": true,
+      "toolsHidden": false,
+      "barLabels": [
+        "Exit",
+        "Stop",
+        "Layers",
+        "Reset view",
+        "29 mphNormal"
+      ],
+      "barBox": {
+        "x": 369.5,
+        "y": 723.609375,
+        "width": 541,
+        "height": 54
+      },
+      "overlapsDriving": [],
+      "frameMs": {
+        "frames": 1,
+        "p50": 3233.3,
+        "p95": 3233.3,
+        "fps": 0.3
+      },
+      "driveCodeMs": {
+        "p50": 5.3,
+        "p95": 5.3,
+        "max": 5.3
+      },
+      "orbit": {
+        "before": {
+          "bearing": -33,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "after": {
+          "bearing": -133,
+          "pitch": 66,
+          "zoom": 20.3
+        }
+      },
+      "zoomOut": {
+        "after": {
+          "bearing": -109,
+          "pitch": 66,
+          "zoom": 12
+        },
+        "marker": 1,
+        "markerBox": {
+          "x": 620.402099609375,
+          "y": 413.6364440917969,
+          "width": 39.19580078125,
+          "height": 39.19586181640625
+        }
+      },
+      "layersOpen": {
+        "panel": true,
+        "barHidden": false,
+        "overlaps": []
+      },
+      "barBack": true,
+      "featureTap": {
+        "card": 0,
+        "kind": null,
+        "title": null,
+        "continueShown": 0,
+        "speedAtCard": 29,
+        "speedAfter5s": 34,
+        "barHidden": false,
+        "overlaps": []
+      },
+      "reset": {
+        "after": {
+          "bearing": -51,
+          "pitch": 66,
+          "zoom": 20.3
+        },
+        "resetDisabled": true,
+        "marker": 0
+      },
+      "arrows": true,
+      "overlapsArrows": [],
+      "arrowsAboveCar": true,
+      "labelAfterStop": "Go",
+      "afterStop": 25,
+      "afterGo": 28,
+      "exited": true
+    }
+  ],
+  "note": "The runner draws WebGL in software (SwiftShader, no GPU), so its frame rate is far below a phone; the frame code time is the part this page controls."
+}
