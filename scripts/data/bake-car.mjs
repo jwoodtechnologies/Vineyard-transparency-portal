@@ -12,9 +12,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import sharp from 'sharp';
 
-const [glbPath, pngPath, outPath, lengthArg] = process.argv.slice(2);
+const [glbPath, pngPath, outPath, lengthArg, bodyArg] = process.argv.slice(2);
 if (!glbPath || !outPath) {
-  console.error('usage: bake-car.mjs <model.glb> <colormap.png|-> <out.bin> [length m]');
+  console.error('usage: bake-car.mjs <model.glb> <colormap.png|-> <out.bin> [length m] [body r,g,b]');
   process.exit(2);
 }
 /** The car is fitted to this box (meters: across, along, tall), a 2026 mid size SUV. */
@@ -105,7 +105,9 @@ for (const v of verts) for (let k = 0; k < 3; k++) (min[k] = Math.min(min[k], v.
 const scale = BOX_M.map((m, k) => m / (max[k] - min[k]));
 const cx = (min[0] + max[0]) / 2,
   cy = (min[1] + max[1]) / 2;
-const bodyKey = [...bodyCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '160,160,160';
+// The paint: the colour named on the command line, else the most common one on the body.
+const ranked = [...bodyCounts.entries()].sort((a, b) => b[1] - a[1]);
+const bodyKey = bodyArg ?? ranked[0]?.[0] ?? '160,160,160';
 const body = bodyKey.split(',').map(Number);
 
 const out = Buffer.alloc(12 + verts.length * 10);
@@ -134,4 +136,4 @@ for (const v of verts) {
   o += 10;
 }
 writeFileSync(outPath, out);
-console.log(JSON.stringify({ vertices: verts.length, triangles: verts.length / 3, bytes: out.length, box: BOX_M, body: bodyKey, colors: bodyCounts.size }));
+console.log(JSON.stringify({ vertices: verts.length, triangles: verts.length / 3, bytes: out.length, box: BOX_M, body: bodyKey, top: ranked.slice(0, 6) }));
