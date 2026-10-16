@@ -95,4 +95,13 @@ describe('building meshes', () => {
     expect(all).toBeInstanceOf(Float32Array);
     expect(all.length).toBe(buildingMesh(home).length + l.length);
   });
+
+  it('a plain building (far from the camera) has no windows or doors', () => {
+    const ring: XY[] = [[0, 0], [12, 0], [12, 8], [0, 8]];
+    const near = buildingMesh({ ring, height: 6, base: 0, wall: [0.8, 0.8, 0.8], roof: [0.4, 0.4, 0.4] });
+    const far = buildingMesh({ ring, height: 6, base: 0, wall: [0.8, 0.8, 0.8], roof: [0.4, 0.4, 0.4], plain: true });
+    expect(far.length).toBeLessThan(near.length);
+    // Walls (4 quads), two roof planes, two gable ends, two eave undersides: 8 quads and 2 triangles.
+    expect(far.length / 18).toBe(18);
+  });
 });

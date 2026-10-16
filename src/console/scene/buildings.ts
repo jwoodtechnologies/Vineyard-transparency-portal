@@ -53,8 +53,8 @@ function loadOsm(onLoaded: () => void): OsmData | null {
   return null;
 }
 
-/** How far from the view's centre road furniture is built, in degrees (about 1 km). */
-const NEAR = 0.009;
+/** How far from the view's centre road furniture is built, in degrees (about 550 m). */
+const NEAR = 0.005;
 
 /** The roads, paths, signs and crossings within NEAR of a point, with the ground's height at each point. */
 function furnitureNear(map: maplibregl.Map, c: Pos, originZ: number, data: OsmData): Pick<SceneRequest, 'roads' | 'paths' | 'signs' | 'crossings'> {

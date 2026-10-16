@@ -88,9 +88,25 @@ export function samples(coords: XY[], dz: number[], step: number, from = 0): Arr
   return out;
 }
 
-/** A flat strip `width` wide along the line, offset `off` to its left (negative: right), `z` up, with height `h` as a box when given. */
+/** Each point of a polyline with the direction to use there (the average of its two edges) and its height. */
+function corners(coords: XY[], dz: number[]): Array<{ p: XY; d: XY; z: number }> {
+  const out: Array<{ p: XY; d: XY; z: number }> = [];
+  for (let i = 0; i < coords.length; i++) {
+    const a = coords[Math.max(0, i - 1)],
+      b = coords[Math.min(coords.length - 1, i + 1)];
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    out.push({ p: coords[i], d: [(b[0] - a[0]) / l, (b[1] - a[1]) / l], z: dz[i] ?? 0 });
+  }
+  return out;
+}
+
+/**
+ * A flat strip `width` wide along the line, offset `off` to its left (negative: right), `z` up, following the
+ * line's own points (two triangles a segment). `h` raises it as a flat slab (no sides: a curb reads from its
+ * colour and its height against the ground).
+ */
 export function strip(out: MeshOut, coords: XY[], dz: number[], off: number, width: number, z: number, color: RGB, h = 0): void {
-  const pts = samples(coords, dz, 2);
+  const pts = corners(coords, dz);
   if (pts.length < 2) return;
   const left = (q: { p: XY; d: XY }, o: number): XY => [q.p[0] - q.d[1] * o, q.p[1] + q.d[0] * o];
   for (let i = 0; i + 1 < pts.length; i++) {
@@ -100,13 +116,7 @@ export function strip(out: MeshOut, coords: XY[], dz: number[], off: number, wid
       a1 = left(a, off + width / 2),
       b0 = left(b, off - width / 2),
       b1 = left(b, off + width / 2);
-    const za = a.z + z,
-      zb = b.z + z;
-    out.quad([a0[0], a0[1], za + h], [b0[0], b0[1], zb + h], [b1[0], b1[1], zb + h], [a1[0], a1[1], za + h], color);
-    if (h > 0) {
-      out.quad([a0[0], a0[1], za], [b0[0], b0[1], zb], [b0[0], b0[1], zb + h], [a0[0], a0[1], za + h], color);
-      out.quad([b1[0], b1[1], zb], [a1[0], a1[1], za], [a1[0], a1[1], za + h], [b1[0], b1[1], zb + h], color);
-    }
+    out.quad([a0[0], a0[1], a.z + z + h], [b0[0], b0[1], b.z + z + h], [b1[0], b1[1], b.z + z + h], [a1[0], a1[1], a.z + z + h], color);
   }
 }
 

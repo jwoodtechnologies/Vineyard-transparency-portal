@@ -69,6 +69,9 @@ export interface SceneAnswer {
   note?: string;
 }
 
+/** Buildings farther than this from the view's centre (meters) are drawn without windows and doors. */
+export const DETAIL_M = 300;
+
 /** Aerial tiles at this zoom: about 300 m across in Vineyard, 0.6 m a pixel at 512 px. */
 const TILE_Z = 17;
 
@@ -121,7 +124,8 @@ async function build(req: SceneRequest): Promise<SceneAnswer> {
     const ring: XY[] = b.ring.map(local);
     const roof = colors[i] ?? b.roof;
     if (colors[i]) photoRoofs++;
-    const inB: BuildingIn = { ring: ring.map(([x, y]) => [x, y + 0] as XY), height: b.height + b.dz, base: b.base + b.dz, wall: b.wall, roof, recorded: b.recorded };
+    const plain = Math.hypot(ring[0][0], ring[0][1]) > DETAIL_M;
+    const inB: BuildingIn = { ring, height: b.height + b.dz, base: b.base + b.dz, wall: b.wall, roof, recorded: b.recorded, plain };
     list.push(inB);
     picks.push({ ring: b.ring, base: b.base, top: topOf({ ...inB, height: b.height, base: b.base }) });
   });

@@ -20,6 +20,8 @@ export interface BuildingIn {
   roof: RGB;
   /** True when OpenStreetMap recorded the height: drawn as a plain block (the height already includes the roof). */
   recorded?: boolean;
+  /** True for a building far from the camera: drawn without windows and doors (fewer triangles). */
+  plain?: boolean;
 }
 
 export type RoofKind = 'gable' | 'hip' | 'flat';
@@ -163,14 +165,14 @@ export function buildingMesh(b: BuildingIn, out = new MeshOut()): number[] {
   const kind = roofKind(ring, m2, b.recorded);
   const darkRoof: RGB = [b.roof[0] * 0.9, b.roof[1] * 0.9, b.roof[2] * 0.9];
   if (kind === 'flat') {
-    walls(out, ring, b.base, b.height, b.wall, !b.recorded && m2 <= FLAT_M2);
+    walls(out, ring, b.base, b.height, b.wall, !b.plain && !b.recorded && m2 <= FLAT_M2);
     cap(out, ring, b.height, b.recorded ? b.roof : darkRoof);
     return out.data;
   }
   const box = orientedBox(ring);
   if (kind === 'gable') {
     const rise = Math.min(ROOF_RISE_MAX, box.short * ROOF_PITCH * 0.5);
-    walls(out, ring, b.base, b.height, b.wall, true);
+    walls(out, ring, b.base, b.height, b.wall, !b.plain);
     // The roof sits on the rectangle with eaves out past it; the gable ends close the rectangle's short sides.
     const [p0, p1, p2, p3] = boxCorners(box, EAVE_M);
     const c = Math.cos(box.angle),
@@ -195,7 +197,7 @@ export function buildingMesh(b: BuildingIn, out = new MeshOut()): number[] {
   }
   // Hip: walls to the eaves, roof planes from an outline grown by the eave to a smaller one at the ridge.
   const rise = Math.min(ROOF_RISE_MAX, Math.sqrt(m2) * ROOF_PITCH * 0.5);
-  walls(out, ring, b.base, b.height, b.wall, true);
+  walls(out, ring, b.base, b.height, b.wall, !b.plain);
   const outer = grow(ring, EAVE_M);
   const inner = shrink(ring, 0.42);
   for (let i = 0; i < ring.length; i++) {
