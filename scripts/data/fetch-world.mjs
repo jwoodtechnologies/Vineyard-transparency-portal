@@ -38,9 +38,23 @@ out body;
 >;
 out skel qt;`;
 try {
-  const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query), headers: { 'content-type': 'application/x-www-form-urlencoded' } });
-  log.overpass = { status: res.status };
-  const data = await res.json();
+  // Overpass answered a plain POST with 406: a GET with the query in the address, a user agent, and a mirror.
+  let data = null;
+  log.overpass = [];
+  for (const host of ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter']) {
+    try {
+      const res = await fetch(`${host}?data=${encodeURIComponent(query)}`, { headers: { 'user-agent': 'vineyardportal.org street scene build (one query)', accept: 'application/json' } });
+      const text = await res.text();
+      log.overpass.push({ host, status: res.status, head: text.slice(0, 80) });
+      if (res.ok && text.trimStart().startsWith('{')) {
+        data = JSON.parse(text);
+        break;
+      }
+    } catch (e) {
+      log.overpass.push({ host, error: String(e).slice(0, 120) });
+    }
+  }
+  if (!data) throw new Error('no Overpass answer');
   const nodes = new Map();
   for (const e of data.elements) if (e.type === 'node') nodes.set(e.id, e);
   const features = [];
@@ -81,7 +95,11 @@ try {
 // 3) Kenney's car kit (CC0): the SUV and any other car models, as glTF binaries.
 try {
   const zip = join(OUT, 'kenney-car-kit.zip');
-  const res = await fetch('https://kenney.nl/media/pages/assets/car-kit/8e3a6f8a0c-1677578915/kenney_car-kit.zip');
+  // The zip's address is found on the kit's page.
+  const page = await (await fetch('https://kenney.nl/assets/car-kit', { headers: { 'user-agent': 'vineyardportal.org street scene build' } })).text();
+  const m = page.match(/https?:\/\/kenney\.nl\/media\/[^"']+?\.zip/) ?? page.match(/\/media\/[^"']+?\.zip/);
+  log.kenneyLink = m?.[0] ?? null;
+  const res = await fetch(m ? (m[0].startsWith('http') ? m[0] : `https://kenney.nl${m[0]}`) : 'https://kenney.nl/media/pages/assets/car-kit/kenney_car-kit.zip', { headers: { 'user-agent': 'vineyardportal.org street scene build' } });
   log.kenney = { status: res.status, type: res.headers.get('content-type') };
   if (res.ok) {
     writeFileSync(zip, Buffer.from(await res.arrayBuffer()));
